@@ -1,0 +1,321 @@
+[
+  {
+    "id": 1,
+    "fechaPagoEsperada": "2025-03-01T22:05:34.813Z",
+    "fechaPagada": null,
+    "montoPago": 200,
+    "saldoPendiente": 200,
+    "empresaId": 1,
+    "empresa": {
+      "id": 1,
+      "nombre": "Nova Sistemas S.A."
+    },
+    "metodoPago": "PENDIENTE",
+    "clienteId": 1,
+    "cliente": {
+      "id": 1,
+      "nombre": "Mari Mileidy",
+      "apellidos": "Camposeco",
+      "telefono": "40017273",
+      "direccion": "Jacaltenango, Salida a San Antonio",
+      "dpi": "12398345",
+      "estadoCliente": "ACTIVO",
+      "servicioInternet": null,
+      "facturacionZona": {
+        "id": 1,
+        "nombre": "Jacaltenango Corte 20"
+      },
+      "empresa": {
+        "id": 1,
+        "nombre": "Nova Sistemas S.A."
+      }
+    },
+    "estadoFacturaInternet": "PENDIENTE",
+    "pagos": [],
+    "creadoEn": "2025-03-14T22:05:34.823Z",
+    "actualizadoEn": "2025-03-14T22:05:34.823Z",
+    "nombreClienteFactura": "Mari Mileidy Camposeco",
+    "detalleFactura": "Servicio de Internet No asignado - 3 2025",
+    "facturacionZonaId": 1,
+    "facturacionZona": {
+      "id": 1,
+      "nombre": "Jacaltenango Corte 20"
+    },
+    "RecordatorioPago": [
+      {
+        "id": 1,
+        "fechaEnvio": "2025-03-14T22:05:34.838Z",
+        "medioEnvio": "Sistema Auto"
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "fechaPagoEsperada": "2025-03-01T22:19:46.020Z",
+    "fechaPagada": null,
+    "montoPago": 200,
+    "saldoPendiente": 200,
+    "empresaId": 1,
+    "empresa": {
+      "id": 1,
+      "nombre": "Nova Sistemas S.A."
+    },
+    "metodoPago": "PENDIENTE",
+    "clienteId": 2,
+    "cliente": {
+      "id": 2,
+      "nombre": "Julio",
+      "apellidos": "Alberto",
+      "telefono": "23409324",
+      "direccion": "Santa Rosa, Santa Rosa",
+      "dpi": "234255",
+      "estadoCliente": "ACTIVO",
+      "servicioInternet": null,
+      "facturacionZona": {
+        "id": 3,
+        "nombre": "San Antonio Corte 15"
+      },
+      "empresa": {
+        "id": 1,
+        "nombre": "Nova Sistemas S.A."
+      }
+    },
+    "estadoFacturaInternet": "PENDIENTE",
+    "pagos": [],
+    "creadoEn": "2025-03-14T22:19:46.026Z",
+    "actualizadoEn": "2025-03-14T22:19:46.026Z",
+    "nombreClienteFactura": "Julio Alberto",
+    "detalleFactura": "Servicio de Internet No asignado - 3 2025",
+    "facturacionZonaId": 3,
+    "facturacionZona": {
+      "id": 3,
+      "nombre": "San Antonio Corte 15"
+    },
+    "RecordatorioPago": [
+      {
+        "id": 2,
+        "fechaEnvio": "2025-03-14T22:19:46.038Z",
+        "medioEnvio": "Sistema Auto"
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "fechaPagoEsperada": "2025-03-01T14:44:30.472Z",
+    "fechaPagada": null,
+    "montoPago": 200,
+    "saldoPendiente": 200,
+    "empresaId": 1,
+    "empresa": {
+      "id": 1,
+      "nombre": "Nova Sistemas S.A."
+    },
+    "metodoPago": "PENDIENTE",
+    "clienteId": 3,
+    "cliente": {
+      "id": 3,
+      "nombre": "Cardona Santos",
+      "apellidos": "Miguel",
+      "telefono": "23455634",
+      "direccion": "Jacaltenango, Salida a San Antonio",
+      "dpi": "234575678",
+      "estadoCliente": "ACTIVO",
+      "servicioInternet": null,
+      "facturacionZona": {
+        "id": 3,
+        "nombre": "San Antonio Corte 15"
+      },
+      "empresa": {
+        "id": 1,
+        "nombre": "Nova Sistemas S.A."
+      }
+    },
+    "estadoFacturaInternet": "PENDIENTE",
+    "pagos": [],
+    "creadoEn": "2025-03-15T14:44:30.479Z",
+    "actualizadoEn": "2025-03-15T14:44:30.479Z",
+    "nombreClienteFactura": "Cardona Santos Miguel",
+    "detalleFactura": "Servicio de Internet No asignado - 3 2025",
+    "facturacionZonaId": 3,
+    "facturacionZona": {
+      "id": 3,
+      "nombre": "San Antonio Corte 15"
+    },
+    "RecordatorioPago": [
+      {
+        "id": 3,
+        "fechaEnvio": "2025-03-15T14:44:30.488Z",
+        "medioEnvio": "Sistema Auto"
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "fechaPagoEsperada": "2025-03-01T15:33:36.465Z",
+    "fechaPagada": null,
+    "montoPago": 150,
+    "saldoPendiente": 150,
+    "empresaId": 1,
+    "empresa": {
+      "id": 1,
+      "nombre": "Nova Sistemas S.A."
+    },
+    "metodoPago": "PENDIENTE",
+    "clienteId": 4,
+    "cliente": {
+      "id": 4,
+      "nombre": "ClienteNuevo",
+      "apellidos": "Apellido",
+      "telefono": "23454575",
+      "direccion": "San Antonio",
+      "dpi": "32453456",
+      "estadoCliente": "ACTIVO",
+      "servicioInternet": null,
+      "facturacionZona": {
+        "id": 3,
+        "nombre": "San Antonio Corte 15"
+      },
+      "empresa": {
+        "id": 1,
+        "nombre": "Nova Sistemas S.A."
+      }
+    },
+    "estadoFacturaInternet": "PENDIENTE",
+    "pagos": [],
+    "creadoEn": "2025-03-15T15:33:36.473Z",
+    "actualizadoEn": "2025-03-15T15:33:36.473Z",
+    "nombreClienteFactura": "ClienteNuevo Apellido",
+    "detalleFactura": "Servicio de Internet No asignado - 3 2025",
+    "facturacionZonaId": 3,
+    "facturacionZona": {
+      "id": 3,
+      "nombre": "San Antonio Corte 15"
+    },
+    "RecordatorioPago": [
+      {
+        "id": 4,
+        "fechaEnvio": "2025-03-15T15:33:36.486Z",
+        "medioEnvio": "Sistema Auto"
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "fechaPagoEsperada": "2025-03-01T14:52:10.000Z",
+    "fechaPagada": null,
+    "montoPago": 200,
+    "saldoPendiente": 200,
+    "empresaId": 1,
+    "empresa": {
+      "id": 1,
+      "nombre": "Nova Sistemas S.A."
+    },
+    "metodoPago": "PENDIENTE",
+    "clienteId": 5,
+    "cliente": {
+      "id": 5,
+      "nombre": "clienteNuevoFormato",
+      "apellidos": "nuevo",
+      "telefono": "2342353456",
+      "direccion": "jacal",
+      "dpi": "235346",
+      "estadoCliente": "ACTIVO",
+      "servicioInternet": {
+        "id": 2,
+        "nombre": "Plan Básico de 24Mbps",
+        "velocidad": "24Mbps",
+        "precio": 200
+      },
+      "facturacionZona": {
+        "id": 3,
+        "nombre": "San Antonio Corte 15"
+      },
+      "empresa": {
+        "id": 1,
+        "nombre": "Nova Sistemas S.A."
+      }
+    },
+    "estadoFacturaInternet": "PENDIENTE",
+    "pagos": [],
+    "creadoEn": "2025-03-18T14:52:10.009Z",
+    "actualizadoEn": "2025-03-18T14:52:10.009Z",
+    "nombreClienteFactura": "clienteNuevoFormato nuevo",
+    "detalleFactura": "Servicio de Internet Plan Básico de 24Mbps - 3 2025",
+    "facturacionZonaId": 3,
+    "facturacionZona": {
+      "id": 3,
+      "nombre": "San Antonio Corte 15"
+    },
+    "RecordatorioPago": [
+      {
+        "id": 5,
+        "fechaEnvio": "2025-03-18T14:52:10.019Z",
+        "medioEnvio": "Sistema Auto"
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "fechaPagoEsperada": "2025-03-25T15:09:49.243Z",
+    "fechaPagada": null,
+    "montoPago": 150,
+    "saldoPendiente": 150,
+    "empresaId": 1,
+    "empresa": {
+      "id": 1,
+      "nombre": "Nova Sistemas S.A."
+    },
+    "metodoPago": "PENDIENTE",
+    "clienteId": 6,
+    "cliente": {
+      "id": 6,
+      "nombre": "clientepruebas",
+      "apellidos": "pruebas2",
+      "telefono": "23456456",
+      "direccion": "jacaltenango",
+      "dpi": "3453465",
+      "estadoCliente": "ACTIVO",
+      "servicioInternet": {
+        "id": 1,
+        "nombre": "Plan Básico de 150Mbps",
+        "velocidad": "15Mbps",
+        "precio": 150
+      },
+      "facturacionZona": {
+        "id": 4,
+        "nombre": "FacturacionZona#1"
+      },
+      "empresa": {
+        "id": 1,
+        "nombre": "Nova Sistemas S.A."
+      }
+    },
+    "estadoFacturaInternet": "PENDIENTE",
+    "pagos": [
+      {
+        "cobrador": "Santos Miguel",
+        "montoPagado": 10,
+        "metodoPago": "EFECTIVO",
+        "fechaPago": "2025-03-18T17:33:59.935Z",
+        "cobradorId": 1,
+        "creadoEn": "2025-03-18T17:33:59.935Z"
+      }
+    ],
+    "creadoEn": "2025-03-18T15:09:49.251Z",
+    "actualizadoEn": "2025-03-18T15:09:49.251Z",
+    "nombreClienteFactura": "clientepruebas pruebas2",
+    "detalleFactura": "Servicio de Internet Plan Básico de 150Mbps - 3 2025",
+    "facturacionZonaId": 4,
+    "facturacionZona": {
+      "id": 4,
+      "nombre": "FacturacionZona#1"
+    },
+    "RecordatorioPago": [
+      {
+        "id": 6,
+        "fechaEnvio": "2025-03-18T15:09:49.259Z",
+        "medioEnvio": "Sistema Auto"
+      }
+    ]
+  }
+]

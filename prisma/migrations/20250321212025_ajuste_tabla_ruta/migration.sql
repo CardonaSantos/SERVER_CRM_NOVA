@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Ruta" ALTER COLUMN "cobrados" SET DEFAULT 0,
+ALTER COLUMN "montoCobrado" SET DEFAULT 0;

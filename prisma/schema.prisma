@@ -1,0 +1,757 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL_CRM")
+}
+
+// schemaCrm.prisma
+model Empresa {
+  id              Int       @id @default(autoincrement())
+  nombre          String
+  direccion       String?
+  telefono        String?
+  pbx             String?
+  correo          String?
+  sitioWeb        String?
+  nit             String?  // Número de identificación tributaria
+  logo1           String?  // URL o path del logo de la empresa
+  logo2           String?  // URL o path del logo de la empresa
+  logo3           String?  // URL o path del logo de la empresa
+  // saldo           Int?     // Saldo pendiente o registrado de la empresa
+  creadoEn        DateTime @default(now())
+  actualizadoEn   DateTime @updatedAt
+  // Relaciones
+  empleados       Usuario[]     // Empleados, cobradores, técnicos, etc.
+  rutas           Ruta[]        // Rutas asignadas para cobranza
+  clientesInternet ClienteInternet[]  // Clientes de servicio de internet
+  facturas        FacturaInternet[]    // Facturas generadas para clientes
+  //
+  @@unique([nombre]) // Evita duplicados de empresas
+  TicketSoporte TicketSoporte[]
+  saldoEmpresa SaldoEmpresa?
+  saldoCaja SaldoCaja?
+  ServicioInternet ServicioInternet[]
+  Ubicacion Ubicacion[]
+  Proveedor Proveedor[]
+  Servicio Servicio[]
+  Factura Factura[]
+  //PODEMOS TENER VARIAS
+  FacturacionZona FacturacionZona[]
+  ConfiguracionGlobal ConfiguracionGlobal[]
+}
+
+model ConfiguracionGlobal {
+  id        Int      @id @default(autoincrement())
+  empresaId Int      // Relación con la empresa que usa esta configuración
+  empresa   Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  clave     String   @unique // Ej: "realizar_corte_automatico", "enviar_factura_email"
+  valor     String   // Se almacena como String, pero puede ser booleano, JSON, etc.
+
+  creadoEn  DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+}
+
+model TipoServicio {
+  id          Int       @id @default(autoincrement())
+  nombre      String    @unique  // Nombre del tipo de servicio (Ej: "Internet", "IPTV")
+  descripcion String?   // Información adicional sobre el tipo de servicio
+  estado      EstadoServicio @default(ACTIVO)  // Activo o inactivo
+
+  creadoEn    DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  servicios   Servicio[]
+}
+
+model Servicio {
+  id            Int       @id @default(autoincrement())
+  nombre        String    // Ejemplo: "Plan Básico Q150", "IPTV Full", "Cámara HD"
+  descripcion   String?
+  precio        Float     // Precio del servicio
+  estado        EstadoServicio @default(ACTIVO) 
+
+  tipoServicioId Int  // Relación con TipoServicio
+  tipoServicio   TipoServicio @relation(fields: [tipoServicioId], references: [id], onDelete: Restrict)
+
+  empresaId     Int
+  empresa       Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  clientes      ClienteServicio[]
+
+  FacturaServicio FacturaServicio[]
+}
+
+model Proveedor {
+  id          Int        @id @default(autoincrement())
+  nombre      String
+  correo      String?
+  telefono    String?
+  direccion   String?
+  empresaId   Int
+  empresa     Empresa    @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+}
+
+model ServicioInternet {
+  //VERDADERO SERVICIO
+  id            Int       @id @default(autoincrement())
+  nombre        String    // Ejemplo: "Plan Básico Q150", "Plan Premium Q250"
+  velocidad     String?   // Ejemplo: "20 Mbps", "50 Mbps"
+  precio        Float     // Precio del servicio
+  estado        EstadoServicio @default(ACTIVO)
+  creadoEn      DateTime  @default(now())
+  actualizadoEn DateTime  @updatedAt
+  empresaId     Int
+  empresa       Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  // Relación con la tabla intermedia
+  clienteInternet ClienteInternet? @relation() // Relación 1:1 inversa
+}
+
+
+model SaldoEmpresa {
+  id Int @id @default(autoincrement())
+  saldo Float @default(0)
+  egresos Float @default(0)
+  totalIngresos Float 
+  empresaId Int @unique
+  empresa Empresa @relation(references: [id], fields: [empresaId], onDelete: Cascade)
+  creadoEn DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+}
+
+model SaldoCaja {
+  id Int @id @default(autoincrement())
+  saldo Float @default(0)
+  egreso Float @default(0)
+  totalIngresos Float 
+  totalEgresos Float 
+
+  empresaId Int @unique
+  empresa Empresa @relation(references: [id], fields: [empresaId], onDelete: Cascade)
+
+  creadoEn DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+  registrosCaja RegistroCaja[]
+}
+
+model RegistroCaja {
+  id           Int       @id @default(autoincrement())
+  saldoInicial Float
+  saldoFinal   Float
+
+  usuarioId    Int?      // Clave foránea opcional
+  usuario      Usuario?  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)  // Relación opcional
+
+  cajaId       Int?      // Clave foránea opcional
+  caja         SaldoCaja? @relation(fields: [cajaId], references: [id], onDelete: SetNull)  // Relación opcional
+
+  creadoEn     DateTime  @default(now())
+  actualizadoEn DateTime @updatedAt
+}
+
+model ClienteServicio {
+  //TABLA INTERMEDIA PARA SERVICIOS QUE NO SON WIFI
+  id            Int       @id @default(autoincrement())
+  
+  clienteId     Int
+  cliente       ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  servicioId    Int
+  servicio      Servicio @relation(fields: [servicioId], references: [id], onDelete: Cascade)
+
+  fechaInicio   DateTime @default(now())
+  fechaFin      DateTime?
+  estado        EstadoClienteServicio @default(ACTIVO)
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+}
+
+
+model Factura {
+  id              Int       @id @default(autoincrement())
+  empresaId       Int
+  empresa         Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  clienteId       Int
+  cliente         ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  tipoFactura     TipoFactura  // Define si es una factura de Internet u otro servicio
+  montoTotal      Float    
+  saldoPendiente  Float @default(0) 
+  fechaEmision    DateTime @default(now())
+  fechaVencimiento DateTime?
+  estado          EstadoFactura @default(PENDIENTE) 
+
+  servicios       FacturaServicio[]
+  pagos           PagoFactura[] 
+
+  creadoEn        DateTime @default(now())
+  actualizadoEn   DateTime @updatedAt
+}
+
+
+model PagoFactura {
+  id            Int       @id @default(autoincrement())
+  
+  facturaId     Int
+  factura       Factura @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+
+  clienteId     Int
+  cliente       ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  montoPagado   Float    
+  metodoPago    MetodoPago  
+  fechaPago     DateTime  @default(now())
+
+  creadoEn      DateTime @default(now())
+}
+//ESTO ES LO QUE SE GENERARÁ Y MATARÁ
+model FacturaInternet {
+  id                Int       @id @default(autoincrement())
+  fechaPagoEsperada DateTime? //[EDITABLE] 
+  fechaPagada       DateTime? //EDITABLE
+  montoPago         Float?  // Monto total de la factura mensual[TIENE QUE SER EDITABLE]
+  saldoPendiente    Float? @default(0)  // Nuevo campo: lo que queda por pagar [EDITABLE]
+  empresaId         Int
+  empresa           Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  // metodoPago        MetodoPagoFacturaInternet//PARA EL ESTADO DEL PAGO [quitarlo]
+  clienteId         Int
+  cliente           ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  estadoFacturaInternet StateFacturaInternet @default(PENDIENTE)//ESTADO DE LA FACTURA, PENDIENTE, ETC. NO REFIRIENDOSE AL PAGO
+  pagos             PagoFacturaInternet[]  // Relación 1:N, puede tener múltiples pagos
+  creadoEn          DateTime @default(now())
+  actualizadoEn     DateTime @updatedAt
+  //CAMPOS PARA QUE PUEDAN EDITAR LA FACTURA
+  nombreClienteFactura     String?
+  detalleFactura           String?
+  //
+  facturacionZonaId Int? // 🔹 Hacerlo opcional para permitir `NULL`
+  facturacionZona   FacturacionZona? @relation(fields: [facturacionZonaId], references: [id], onDelete: SetNull)
+  //ARRAY DE RECORDATORIOS
+  RecordatorioPago RecordatorioPago[]
+  // estadoFacturaInternet StateFacturaInternet
+}
+
+enum StateFacturaInternet {
+  PENDIENTE 
+  PAGADA 
+  VENCIDA 
+  ANULADA 
+  PARCIAL
+}
+
+model FacturacionZona {
+  id              Int      @id @default(autoincrement())
+  nombre          String   // Nombre de la zona (Ej: "Jacaltenango Corte 5")
+  empresaId       Int
+  empresa         Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  diaGeneracionFactura  Int  // Día del mes en que se genera la factura
+  diaPago               Int  // Día del mes en que se espera el pago
+  diaRecordatorio       Int?  // Día del mes en que se envía el recordatorio
+  diaSegundoRecordatorio Int?  // Día del mes en que se envia el segundo recordatorio
+  horaRecordatorio      String? // Hora específica para enviar la notificación (ej: "08:00:00")
+
+  enviarRecordatorio    Boolean @default(true)
+  // mediosNotificacion    String  // "WhatsApp, Email, SMS" (métodos de notificación permitidos)
+
+  whatsapp Boolean      @default(true)
+  email Boolean         @default(false)
+  sms Boolean           @default(false)
+  llamada Boolean       @default(false)
+  telegram Boolean      @default(true)
+
+  diaCorte              Int? // Día del mes en que se corta el servicio si no paga
+  suspenderTrasFacturas Int? // Cantidad de facturas vencidas antes de cortar servicio
+
+  clientes              ClienteInternet[] // Relación 1:N (una zona tiene múltiples clientes)
+  facturas              FacturaInternet[] // Relación 1:N (una zona tiene múltiples facturas)
+
+  creadoEn             DateTime @default(now())
+  actualizadoEn        DateTime @updatedAt
+}
+// TABLAS PARA LOS REQUERIMIENTOS TI
+// model Pago {
+//   id            Int       @id @default(autoincrement())
+//   clienteId     Int       // Relación con ClienteInternet
+//   facturaId     Int       // Relación con FacturaInternet
+//   monto         Float     // Monto pagado
+//   fechaPago     DateTime  // Fecha en que se realiza el pago
+//   metodoPago    String    // Ej: "Transferencia", "Efectivo", "Tarjeta"
+//   createdAt     DateTime  @default(now())  // Fecha de creación del pago
+//   updatedAt     DateTime  @updatedAt       // Fecha de actualización del pago
+
+//   cliente       ClienteInternet @relation(fields: [clienteId], references: [id])
+//   factura       FacturaInternet @relation(fields: [facturaId], references: [id])
+// }
+
+model RecordatorioPago {
+  id            Int       @id @default(autoincrement())
+  clienteId     Int       // Relación con ClienteInternet
+  facturaInternetId Int   // Relación con FacturaInternet
+  tipo          String    // Ej: "WhatsApp", "Llamada"
+  mensaje       String    // Texto del mensaje de recordatorio
+  fechaEnviado  DateTime  // Fecha y hora en que se envió el recordatorio
+  resultado     ResultadoRecordatorioPago    // Ej: "Pendiente", "Pagado", "No respondido"
+  creadoEn      DateTime  @default(now())
+  actualizadoEn DateTime  @updatedAt
+
+  cliente       ClienteInternet @relation(fields: [clienteId], references: [id])  // Cliente asociado
+  facturaInternet FacturaInternet @relation(fields: [facturaInternetId], references: [id], onDelete: Cascade)  // Factura correspondiente
+}
+
+enum  ResultadoRecordatorioPago {
+  PENDIENTE
+  PAGADO
+  OTRO
+}
+
+
+
+model Lead {
+  id            Int       @id @default(autoincrement())
+  nombre        String    // Nombre del prospecto
+  correo        String?   // Correo electrónico
+  telefono      String?   // Teléfono de contacto
+  fuente        String    // Fuente del lead (Ej: "Redes sociales", "Referido", etc.)
+  estado        String    // Ej: "Nuevo", "Convertido", "No interesado"
+  creadoEn      DateTime  @default(now())
+
+  cliente       ClienteInternet? @relation(fields: [clienteId], references: [id])
+  clienteId     Int?
+}
+
+
+// CAMPOS PARA REQUERIMIENTOS TI
+
+
+
+model PagoFacturaInternet {
+  id            Int       @id @default(autoincrement())
+  facturaInternetId  Int
+  facturaInternet    FacturaInternet @relation(fields: [facturaInternetId], references: [id], onDelete: Cascade)
+  clienteId     Int
+  cliente       ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  montoPagado   Float    
+  metodoPago    MetodoPagoFacturaInternet  
+  fechaPago     DateTime  @default(now())
+  creadoEn      DateTime @default(now())
+  // Relación con el cobrador
+  cobradorId        Int
+  cobrador          Usuario @relation(fields: [cobradorId], references: [id])
+}
+
+model FacturaServicio {
+  id           Int       @id @default(autoincrement())
+  
+  facturaId    Int
+  factura      Factura @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+
+  servicioId   Int
+  servicio     Servicio @relation(fields: [servicioId], references: [id], onDelete: Cascade)
+
+  cantidad     Int       @default(1)
+  precioUnitario Float
+  total        Float
+  
+  creadoEn     DateTime  @default(now())
+  actualizadoEn DateTime @updatedAt
+}
+// Estudiar esto
+model IP {
+  id          Int           @id @default(autoincrement())
+  direccionIp String?       @default("192.168.1.1")// La dirección IP es opcional
+  gateway     String?       @default("192.168.1.1")
+  mascara     String?       @default("255.255.255.0")
+  clienteId   Int?          @unique // Relación uno a uno, asegura que un cliente solo pueda tener una IP
+  cliente     ClienteInternet? @relation(fields: [clienteId], references: [id], onDelete: Cascade) // Relación opcional
+}
+
+model Fotos{
+  id Int @id @default(autoincrement())
+  nombreFoto String
+  url String?
+
+  clienteId Int
+  cliente ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  creadoEn DateTime @default(now())
+  actualizadoEn  DateTime @updatedAt
+}
+// Estudiar esta relacion uno a uno
+model ClienteInternet {
+  id              Int       @id() @default(autoincrement())
+  nombre          String
+  apellidos       String?
+  telefono        String?
+  direccion       String?
+  dpi             String?  // Campo DPI opcional
+  observaciones   String?
+  //otros datos referncia
+  contactoReferenciaNombre  String?
+  contactoReferenciaTelefono String?
+  estadoCliente EstadoCliente
+  //DATOS DEL SERVICIO
+  contrasenaWifi String?
+  ssidRouter String?
+  fechaInstalacion DateTime?
+  asesorId Int?
+  asesor Usuario? @relation(references: [id], fields: [asesorId], onDelete: SetNull)
+
+  municipioId     Int?
+  municipio       Municipio? @relation(fields: [municipioId], references: [id], onDelete: SetNull)
+  departamentoId  Int?
+  departamento    Departamento? @relation(fields: [departamentoId], references: [id], onDelete: SetNull)
+  empresaId       Int?//esto
+  empresa         Empresa? @relation(fields: [empresaId], references: [id], onDelete: SetNull)//moví esto
+  IP              IP? @relation()  // Relación opcional con IP, un solo cliente puede tener una IP
+  ubicacion Ubicacion?
+  //SOPORTE
+  ticketSoporte TicketSoporte[]
+  saldoCliente saldoCliente? 
+  //TIMESTAMPS
+  creadoEn        DateTime @default(now())
+  actualizadoEn   DateTime @updatedAt
+  //fotos y referencias del cliente
+  fotos Fotos[]
+  // Relación con la tabla intermedia
+  // Relación uno a uno con ServicioInternet (opcional)
+  servicioInternetId  Int?             @unique // Campo único para relación 1:1
+  servicioInternet    ServicioInternet? @relation(fields: [servicioInternetId], references: [id])
+  //OTROS SERVICIOS COMO IPTV, CAMÁRAS, SASS, ETC.
+  clienteServicios ClienteServicio[]
+  //facturas que generamos mes a mes internet
+  facturaInternet FacturaInternet[]
+  PagoFacturaInternet PagoFacturaInternet[]
+  // Facturas y pagos del cliente
+  factura Factura[]
+  pagoFactura PagoFactura[]
+  //relacion con la zona
+  facturacionZonaId Int?       // Relación con la zona de facturación
+  facturacionZona   FacturacionZona? @relation(fields: [facturacionZonaId], references: [id], onDelete: SetNull)
+  // RecordatorioPago RecordatorioPago[]
+  Lead Lead[]
+  //SUS RECORDATORIOS
+  RecordatorioPago RecordatorioPago[]
+  //UN CLIENTE PUEDE TENER VARIOS COBROS DE RUTA
+  ruta            Ruta[]//rutas a las que puede ser referenciado
+  CobroRuta CobroRuta[]
+  //ID DE CONTRATO
+
+  ContratoFisico ContratoFisico?
+}
+
+model ContratoFisico {
+  id            Int           @id @default(autoincrement())
+  clienteId     Int?          @unique  
+  cliente       ClienteInternet?  @relation(fields: [clienteId], references: [id], onDelete: Cascade)  
+  idContrato    String        @unique// El ID del contrato físico
+  fechaFirma    DateTime?     @default(now())      // Fecha de firma del contrato
+  archivoContrato String?     // Aquí podrías almacenar la URL del archivo o el nombre del archivo digitalizado del contrato
+  observaciones String?
+  creadoEn DateTime? @default(now())
+  actualizadoEn DateTime @updatedAt
+}
+
+
+
+
+
+
+
+model saldoCliente {
+  id Int @id @default(autoincrement())
+  saldoPendiente Float? @default(0)
+  saldoFavor Float?     @default(0)
+  totalPagos Float?     @default(0)
+  ultimoPago DateTime?
+
+  clienteId Int @unique
+  cliente ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  creadoEn DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+}
+
+model Ubicacion {
+  id        Int       @id @default(autoincrement())
+  creadoEn  DateTime  @default(now())
+  latitud   Float?
+  longitud  Float?
+  clienteId Int?       @unique // Necesitas especificar UNIQUE para que sea uno a uno
+  cliente   ClienteInternet? @relation(references: [id], fields: [clienteId], onDelete: SetNull)
+  empresaId Int
+  empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+}
+
+
+
+
+model Departamento {
+  id         Int         @id @default(autoincrement())
+  nombre     String      @unique
+  municipios Municipio[] // Relación con municipios
+  clientes   ClienteInternet[]   // Relación con los clientes
+}
+
+model Municipio {
+  id             Int         @id @default(autoincrement())
+  nombre         String      @unique
+  departamento   Departamento @relation(fields: [departamentoId], references: [id], onDelete: Cascade)
+  departamentoId Int
+  clientes       ClienteInternet[]    // Relación con los clientes
+}
+
+model Ruta {
+  id            Int        @id @default(autoincrement())
+  nombreRuta    String
+  cobradorId    Int
+  cobrador      Usuario    @relation(fields: [cobradorId], references: [id], onDelete: Cascade)
+  cobrados      Int         @default(0)
+  montoCobrado  Int         @default(0)
+  clientes      ClienteInternet[]  // Relación con clientes asignados a la ruta
+  estadoRuta    EstadoRuta      @default(ACTIVO)
+  empresaId     Int
+  empresa       Empresa    @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  CobroRuta CobroRuta[]  // Relación con los cobros realizados en esta ruta
+  observaciones String?
+
+  creadoEn DateTime @default(now())
+  actualizadoEn DateTime @updatedAt()
+}
+
+model CobroRuta {
+  id          Int       @id @default(autoincrement())
+  clienteId   Int
+  rutaId      Int
+  montoCobrado Int
+  estadoCobro EstadoCobro
+  fechaCobro  DateTime @default(now())
+  cliente     ClienteInternet @relation(fields: [clienteId], references: [id])
+  ruta        Ruta @relation(fields: [rutaId], references: [id])
+  observaciones String?
+
+  creadoEn DateTime @default(now())
+  actualizadoEn DateTime @updatedAt()
+}
+
+enum EstadoCobro {
+  COBRADO
+  SIN_COBRAR
+}
+
+model TicketSoporte {
+  id              Int       @id @default(autoincrement())
+  clienteId       Int       // Cliente que solicita el soporte | cliente asignado
+  cliente         ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  empresaId       Int
+  empresa         Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  tecnicoId       Int?      // Técnico asignado
+  tecnico         Usuario?  @relation("TicketTecnico", fields: [tecnicoId], references: [id], onDelete: SetNull)
+
+  creadoPorId     Int?      // Usuario que creó el ticket
+  creadoPor       Usuario?  @relation("TicketCreador", fields: [creadoPorId], references: [id], onDelete: SetNull)
+
+  estado          EstadoTicketSoporte @default(ABIERTA)
+  prioridad       PrioridadTicketSoporte @default(MEDIA)
+  titulo          String?
+  descripcion     String?   
+
+  SeguimientoTicket SeguimientoTicket[]
+
+  etiquetas TicketEtiqueta[]
+  //CAMPOS PARA GRAFICOS
+  fechaApertura DateTime @default(now())  // Fecha de apertura del ticket
+  fechaCierre   DateTime? // Fecha de cierre del ticket
+}
+
+model EtiquetaTicket {
+  id    Int    @id @default(autoincrement())
+  nombre String @unique
+
+  tickets TicketEtiqueta[]
+}
+model TicketEtiqueta {
+  id           Int           @id @default(autoincrement())
+  ticketId     Int
+  etiquetaId   Int
+  
+  ticket       TicketSoporte @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  etiqueta     EtiquetaTicket @relation(fields: [etiquetaId], references: [id], onDelete: Cascade)
+
+  @@unique([ticketId, etiquetaId]) // Evita duplicados de la misma etiqueta en un ticket
+}
+
+
+model SeguimientoTicket {
+  id              Int       @id @default(autoincrement())
+  ticketId        Int
+  ticket          TicketSoporte @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  usuarioId       Int  // Usuario que realizó el soporte (técnico)
+  usuario         Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  descripcion     String // Acción realizada (o más bien comentarios que iremos dejando como en el crm)
+  fechaRegistro   DateTime @default(now())
+  // estadoNuevo     EstadoTicketSoporte
+}
+
+model Usuario {
+  id              Int       @id @default(autoincrement())
+  empresaId       Int       // Relación con la empresa
+  empresa         Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  // sucursalId      Int?      // Relación opcional con una sucursal
+  nombre          String
+  correo          String @unique
+  contrasena      String
+  telefono        String?
+  rol             RolUsuario    // Enum para roles (ADMIN, COBRADOR, TECNICO, etc.)
+  activo          Boolean @default(true)
+  creadoEn        DateTime @default(now())
+  actualizadoEn   DateTime @updatedAt
+  Ruta            Ruta[]
+  // Relación con tickets donde el usuario es el técnico asignado
+  ticketsAsignados TicketSoporte[] @relation("TicketTecnico")
+  // Relación con tickets donde el usuario creó el ticket
+  ticketsCreados   TicketSoporte[] @relation("TicketCreador")
+  //usuarios que pueden comentar los tickets
+  SeguimientoTicket SeguimientoTicket[]
+
+  //referencia a los clientes que le dimos asesoramiento, o bien que fueron creados por nosotros
+  clientesAsesorados  ClienteInternet[]
+
+  //Registros de caja chica
+  RegistroCaja RegistroCaja[]
+
+  //PUEDE TENER VARIAS METAS ASIGNADAS
+  MetaTickets MetaTickets[]
+  //un usuario puede haber pagado varias facturas
+  PagoFacturaInternet PagoFacturaInternet[]
+}
+
+model MetaTickets {
+  id Int @id @default(autoincrement())
+  tituloMetaTicket String 
+  fechaInicio DateTime @default(now()) 
+  fechaFin DateTime? 
+  ticketsMeta Int 
+  ticketsAvance Int @default(0) 
+
+  estado EstadoMetaTickets @default(ACTIVO) 
+
+  usuarioId Int? 
+  usuario Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull) // Relación con Usuario (técnico)
+
+  cumplida Boolean @default(false) 
+  fechaCompletada DateTime?
+}
+
+enum EstadoRuta {
+  ACTIVO
+  CERRADO
+  CANCELADO
+  EN_CURSO
+}
+
+enum EstadoMetaTickets {
+  ACTIVO
+  CERRADO
+  CANCELADO
+}
+
+enum EstadoCliente {
+  ACTIVO
+  MOROSO
+  SUSPENDIDO
+  DESINSTALADO
+}
+
+
+enum EstadoServicio {
+  ACTIVO
+  INACTIVO
+}
+
+enum EstadoFacturaInternet {
+  PENDIENTE
+  PAGADA
+  ATRASADA
+  CANCELADA
+}
+
+enum EstadoTicketSoporte {
+  NUEVO
+  ABIERTA
+  EN_PROCESO
+  PENDIENTE
+  PENDIENTE_CLIENTE
+  PENDIENTE_TECNICO
+  RESUELTA
+  CANCELADA
+  ARCHIVADA
+}
+enum TipoFactura {
+  INTERNET
+  SERVICIO_ADICIONAL
+}
+
+enum PrioridadTicketSoporte {
+  BAJA
+  MEDIA
+  ALTA
+  URGENTE
+}
+
+enum RolUsuario {
+ TECNICO
+ OFICINA
+ ADMIN
+ SUPER_ADMIN
+}
+
+enum EstadoClienteServicio {
+  ACTIVO
+  SUSPENDIDO
+  CANCELADO
+}
+
+
+enum MetodoPago {
+  EFECTIVO
+  TARJETA
+  TRANSFERENCIA
+  PAYPAL
+}
+
+enum EstadoFactura {
+  PENDIENTE
+  PAGADA
+  ATRASADA
+  CANCELADA
+}
+
+enum MetodoPagoFacturaInternet {
+  EFECTIVO
+  TARJETA
+  DEPOSITO
+  PAYPAL
+  PENDIENTE
+  OTRO
+}
+
+
+
