@@ -17,7 +17,6 @@ import { TagsTicketModule } from './tags-ticket/tags-ticket.module';
 import { TicketsSoporteModule } from './tickets-soporte/tickets-soporte.module';
 import { TicketSeguimientoModule } from './ticket-seguimiento/ticket-seguimiento.module';
 import { ScheduleModule } from '@nestjs/schedule';
-import { TerminusModule } from '@nestjs/terminus';
 import { ZonaFacturacionCronModule } from './zona-facturacion-cron/zona-facturacion-cron.module';
 import { IdContratoModule } from './id-contrato/id-contrato.module';
 import { RutaCobroModule } from './ruta-cobro/ruta-cobro.module';
