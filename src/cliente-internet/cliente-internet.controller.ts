@@ -13,7 +13,7 @@ import {
 import { ClienteInternetService } from './cliente-internet.service';
 import { CreateClienteInternetDto } from './dto/create-cliente-internet.dto';
 import { UpdateClienteInternetDto } from './dto/update-cliente-internet.dto';
-import { JwtAuthGuard } from 'src/auth/JwtGuard/JwtAuthGuard';
+// import { JwtAuthGuard } from 'src/auth/JwtGuard/JwtAuthGuard';
 import { GetUserAuthToken } from 'src/CustomDecoratorAuthToken/GetUserAuthToken';
 import { GetToken } from 'src/auth/JwtGuard/getUserDecorator';
 import { updateCustomerService } from './dto/update-customer-service';

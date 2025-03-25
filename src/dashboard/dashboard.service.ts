@@ -11,38 +11,6 @@ export class DashboardService {
 
   async findAll(tecnicoId: number) {
     try {
-      const dataUsuarios = await this.prisma.clienteInternet.findMany({
-        include: {
-          saldoCliente: true,
-          servicioInternet: true,
-        },
-      });
-      const serviciosConClientes = await this.prisma.servicioInternet.findMany({
-        include: {
-          clienteInternet: true,
-        },
-      });
-
-      const clientesActivos = dataUsuarios.filter((c) => {
-        return c.estadoCliente === 'ACTIVO';
-      });
-
-      const clientesMorosos = dataUsuarios.filter((c) => {
-        c.saldoCliente.saldoPendiente >= 1;
-      });
-
-      const clientesSuspendidos = dataUsuarios.filter(
-        (c) => c.estadoCliente === 'SUSPENDIDO',
-      );
-
-      const clientesDesconectados = dataUsuarios.filter(
-        (c) => c.estadoCliente === 'DESINSTALADO',
-      );
-
-      // const serviciosActivos = serviciosConClientes.filter(
-      //   (s) => s.clienteInternet.estadoCliente === 'ACTIVO',
-      // );
-
       const myTickets = await this.prisma.ticketSoporte.findMany({
         where: {
           tecnicoId: tecnicoId,
@@ -70,6 +38,57 @@ export class DashboardService {
     } catch (error) {
       console.log(error);
     }
+  }
+
+  async getDashboardData() {
+    // Get the number of active clients
+    const activeClientsCount = await this.prisma.clienteInternet.count({
+      where: { estadoCliente: 'ACTIVO' },
+    });
+
+    // Get the number of delinquent clients
+    const delinquentClientsCount = await this.prisma.clienteInternet.count({
+      where: { estadoCliente: 'MOROSO' },
+    });
+
+    // Get the number of suspended clients
+    const suspendedClientsCount = await this.prisma.clienteInternet.count({
+      where: { estadoCliente: 'SUSPENDIDO' },
+    });
+
+    // Get the number of active services
+    const activeServicesCount = await this.prisma.servicioInternet.count({
+      where: { estado: 'ACTIVO' },
+    });
+
+    // Get the number of suspended services
+    const suspendedServicesCount = await this.prisma.servicioInternet.count({
+      where: { estado: 'INACTIVO' },
+    });
+
+    // Get the number of clients added this month
+    const clientsAddedThisMonthCount = await this.prisma.clienteInternet.count({
+      where: {
+        creadoEn: {
+          gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+        },
+      },
+    });
+
+    // Get the last ticket
+    const lastTicket = await this.prisma.ticketSoporte.findFirst({
+      orderBy: { fechaApertura: 'desc' },
+    });
+
+    return {
+      activeClients: activeClientsCount,
+      delinquentClients: delinquentClientsCount,
+      suspendedClients: suspendedClientsCount,
+      activeServices: activeServicesCount,
+      suspendedServices: suspendedServicesCount,
+      clientsAddedThisMonth: clientsAddedThisMonthCount,
+      lastTicket,
+    };
   }
 
   findOne(id: number) {

@@ -26,6 +26,11 @@ export class DashboardController {
     return this.dashboardService.findAll(id);
   }
 
+  @Get('/get-dashboard-data')
+  getDashboardData() {
+    return this.dashboardService.getDashboardData();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.dashboardService.findOne(+id);

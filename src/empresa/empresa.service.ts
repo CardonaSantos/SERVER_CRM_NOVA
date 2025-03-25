@@ -37,19 +37,18 @@ export class EmpresaService {
     }
   }
 
-  findAll() {
-    return `This action returns all empresa`;
+  // Obtener empresa por ID
+  async findOne(id: number) {
+    return this.prisma.empresa.findUnique({
+      where: { id },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} empresa`;
-  }
-
-  update(id: number, updateEmpresaDto: UpdateEmpresaDto) {
-    return `This action updates a #${id} empresa`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} empresa`;
+  // Actualizar empresa
+  async update(id: number, updateEmpresaDto: UpdateEmpresaDto) {
+    return this.prisma.empresa.update({
+      where: { id },
+      data: updateEmpresaDto,
+    });
   }
 }

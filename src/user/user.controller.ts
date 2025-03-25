@@ -11,7 +11,7 @@ import {
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { JwtAuthGuard } from 'src/auth/JwtGuard/JwtAuthGuard';
+// import { JwtAuthGuard } from 'src/auth/JwtGuard/JwtAuthGuard';
 import { UserTokenAuth } from 'src/auth/dto/userToken.dto';
 import { GetUserAuthToken } from 'src/CustomDecoratorAuthToken/GetUserAuthToken';
 
@@ -25,7 +25,7 @@ export class UserController {
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard) // Protege la ruta con JWT
+  // @UseGuards(JwtAuthGuard) // Protege la ruta con JWT
   findAll(@GetUserAuthToken() userAuth) {
     console.log('Usuario autenticado:', userAuth);
     return this.userService.findAll(userAuth);
