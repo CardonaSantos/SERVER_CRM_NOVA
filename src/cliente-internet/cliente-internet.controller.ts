@@ -9,6 +9,8 @@ import {
   UseGuards,
   Req,
   Request,
+  Put,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ClienteInternetService } from './cliente-internet.service';
 import { CreateClienteInternetDto } from './dto/create-cliente-internet.dto';
@@ -45,6 +47,11 @@ export class ClienteInternetController {
     return this.clienteInternetService.getDetallesClienteInternet2(Number(id));
   }
 
+  @Get('/get-customer-to-edit/:id')
+  getCustomerToEdit(@Param('id') id: number) {
+    return this.clienteInternetService.getCustomerToEdit(Number(id));
+  }
+
   @Get('/get-customers-to-ticket')
   findCustomersToTicket() {
     return this.clienteInternetService.findCustomersToTicket();
@@ -68,6 +75,17 @@ export class ClienteInternetController {
   @Patch('/customer-update-service')
   updateCustomerService(@Body() updateCustomerService: updateCustomerService) {
     return this.clienteInternetService.updateClienteAddService(
+      updateCustomerService,
+    );
+  }
+
+  @Patch('/update-customer/:id')
+  updateClienteInternet(
+    @Body() updateCustomerService: UpdateClienteInternetDto,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.clienteInternetService.updateClienteInternet(
+      id,
       updateCustomerService,
     );
   }

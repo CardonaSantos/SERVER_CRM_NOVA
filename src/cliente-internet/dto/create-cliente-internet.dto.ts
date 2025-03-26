@@ -17,6 +17,10 @@ export class CreateClienteInternetDto {
   @IsString()
   @IsNotEmpty()
   ip: string;
+  @IsString()
+  gateway: string;
+  @IsString()
+  mascara: string;
 
   @IsString()
   @IsNotEmpty()

@@ -321,226 +321,22 @@ export class FacturacionService {
     }
   }
 
-  // async createNewPaymentFacturacion(
-  //   createFacturacionPaymentDto: CreateFacturacionPaymentDto,
-  // ) {
-  //   console.log('Datos del pago:', createFacturacionPaymentDto);
-
-  //   try {
-  //     const newFacturacionPayment = await this.prisma.$transaction(
-  //       async (tx) => {
-  //         // 1. Crear el nuevo pago
-  //         const newPayment = await tx.pagoFacturaInternet.create({
-  //           data: {
-  //             cliente: {
-  //               connect: { id: createFacturacionPaymentDto.clienteId },
-  //             },
-  //             montoPagado: createFacturacionPaymentDto.montoPagado,
-  //             facturaInternet: {
-  //               connect: { id: createFacturacionPaymentDto.facturaInternetId },
-  //             },
-  //             metodoPago: createFacturacionPaymentDto.metodoPago,
-  //             cobrador: {
-  //               connect: { id: createFacturacionPaymentDto.cobradorId },
-  //             },
-  //           },
-  //         });
-  //         console.log('Nuevo pago creado:', newPayment);
-
-  //         // 2. Calcular el total pagado (incluyendo el nuevo pago)
-  //         const totalPagado = await tx.pagoFacturaInternet.aggregate({
-  //           _sum: { montoPagado: true },
-  //           where: {
-  //             facturaInternetId: createFacturacionPaymentDto.facturaInternetId,
-  //           },
-  //         });
-  //         const cantidadTotalPagada = totalPagado._sum.montoPagado || 0;
-  //         console.log('Total pagado:', cantidadTotalPagada);
-
-  //         // 3. Obtener datos actuales de la factura
-  //         const facturaActual = await tx.facturaInternet.findUnique({
-  //           where: { id: createFacturacionPaymentDto.facturaInternetId },
-  //         });
-  //         console.log('Factura actual:', facturaActual);
-
-  //         // 4. Calcular nuevo saldo pendiente
-  //         const montoTotalFactura = facturaActual.montoPago;
-  //         const newSaldoPendiente = Math.max(
-  //           0,
-  //           montoTotalFactura - cantidadTotalPagada,
-  //         );
-  //         console.log('Nuevo saldo pendiente:', newSaldoPendiente);
-
-  //         // 5. Determinar el estado basado en el saldo
-  //         let nuevoEstado: StateFacturaInternet;
-  //         let fechaPagada: Date | null = null; // Inicializamos como null en caso de que no haya pago
-  //         if (newSaldoPendiente <= 0) {
-  //           nuevoEstado = StateFacturaInternet.PAGADA;
-  //           fechaPagada = new Date();
-  //         } else if (cantidadTotalPagada > 0) {
-  //           nuevoEstado = StateFacturaInternet.PARCIAL;
-  //         } else {
-  //           nuevoEstado = StateFacturaInternet.PENDIENTE;
-  //         }
-  //         console.log('Nuevo estado:', nuevoEstado);
-
-  //         // 6. Actualizar la factura
-  //         const updatedFactura = await tx.facturaInternet.update({
-  //           where: { id: createFacturacionPaymentDto.facturaInternetId },
-  //           data: {
-  //             saldoPendiente: newSaldoPendiente,
-  //             estadoFacturaInternet: nuevoEstado,
-  //             fechaPagada: fechaPagada,
-  //           },
-  //         });
-  //         console.log('Factura actualizada:', updatedFactura);
-
-  //         // 7. SUBIRLE EL SALDO AL CLIENTE Y EL PENDIENTE ACTUALIZARLO
-  //         const nuevoSaldoCliente = await tx.saldoCliente.update({
-  //           where: {
-  //             id: createFacturacionPaymentDto.clienteId,
-  //           },
-  //           data: {
-  //             saldoFavor: {
-  //               increment: createFacturacionPaymentDto.montoPagado,
-  //             },
-  //             totalPagos: {
-  //               increment: createFacturacionPaymentDto.montoPagado,
-  //             },
-  //             // saldoPendiente: createFacturacionPaymentDto.montoPagado > ,
-  //             ultimoPago: new Date(),
-  //           },
-  //         });
-
-  //         // Validar y actualizar el saldo pendiente
-  //         if (
-  //           createFacturacionPaymentDto.montoPagado >=
-  //           nuevoSaldoCliente.saldoPendiente
-  //         ) {
-  //           await this.prisma.saldoCliente.update({
-  //             where: {
-  //               id: nuevoSaldoCliente.clienteId,
-  //             },
-  //             data: {
-  //               saldoPendiente: 0, // No permitimos que el saldo pendiente sea negativo
-  //             },
-  //           });
-  //         } else {
-  //           await this.prisma.saldoCliente.update({
-  //             where: {
-  //               id: nuevoSaldoCliente.clienteId,
-  //             },
-  //             data: {
-  //               saldoPendiente: {
-  //                 decrement: createFacturacionPaymentDto.montoPagado, // Decrementamos el saldo pendiente
-  //               },
-  //             },
-  //           });
-  //         }
-  //         const facturaPagada = await tx.facturaInternet.findUnique({
-  //           where: {
-  //             id: newPayment.facturaInternetId,
-  //           },
-  //           select: {
-  //             id: true,
-  //             estadoFacturaInternet: true,
-  //             montoPago: true,
-  //             detalleFactura: true,
-  //             creadoEn: true,
-  //             fechaPagoEsperada: true,
-  //             nombreClienteFactura: true,
-  //             saldoPendiente: true,
-  //             cliente: {
-  //               select: {
-  //                 id: true,
-  //                 nombre: true,
-  //                 apellidos: true,
-  //                 dpi: true,
-  //               },
-  //             },
-  //             empresa: {
-  //               select: {
-  //                 id: true,
-  //                 nombre: true,
-  //                 direccion: true,
-  //                 correo: true,
-  //                 pbx: true,
-  //                 sitioWeb: true,
-  //                 telefono: true,
-  //                 nit: true,
-  //               },
-  //             },
-  //             pagos: {
-  //               select: {
-  //                 id: true,
-  //                 metodoPago: true,
-  //                 fechaPago: true,
-  //                 montoPagado: true,
-  //                 creadoEn: true,
-  //               },
-  //             },
-  //           },
-  //         });
-
-  //         const pagos = facturaPagada.pagos.map((pago) => ({
-  //           id: pago.id,
-  //           metodoPago: pago.metodoPago,
-  //           montoPagado: pago.montoPagado,
-  //           fechaPago: pago.fechaPago.toISOString(),
-  //           creadoEn: pago.creadoEn.toISOString(),
-  //         }));
-
-  //         const totalPagados = pagos.reduce(
-  //           (total, pago) => total + pago.montoPagado,
-  //           0,
-  //         );
-  //         const saldoPendiente = facturaPagada.montoPago - totalPagados;
-
-  //         // Estructurar la data de la factura
-  //         const facturaData = {
-  //           id: facturaPagada.id,
-  //           estadoFacturaInternet: facturaPagada.estadoFacturaInternet,
-  //           montoPago: facturaPagada.montoPago,
-  //           detalleFactura: facturaPagada.detalleFactura,
-  //           creadoEn: facturaPagada.creadoEn.toISOString(),
-  //           fechaPagoEsperada: facturaPagada.fechaPagoEsperada?.toISOString(),
-  //           saldoPendiente,
-  //           cliente: {
-  //             id: facturaPagada.cliente.id,
-  //             nombre: facturaPagada.cliente.nombre,
-  //             apellidos: facturaPagada.cliente.apellidos,
-  //             dpi: facturaPagada.cliente.dpi,
-  //           },
-  //           empresa: {
-  //             id: facturaPagada.empresa.id,
-  //             nombre: facturaPagada.empresa.nombre,
-  //             direccion: facturaPagada.empresa.direccion,
-  //             correo: facturaPagada.empresa.correo,
-  //             pbx: facturaPagada.empresa.pbx,
-  //             sitioWeb: facturaPagada.empresa.sitioWeb,
-  //             telefono: facturaPagada.empresa.telefono,
-  //             nit: facturaPagada.empresa.nit,
-  //           },
-  //           pagos,
-  //         };
-
-  //         console.log('Factura con pagos:', facturaData);
-  //         return { newPayment, facturaData };
-  //       },
-  //     );
-
-  //     console.log('Pago registrado:', newFacturacionPayment);
-  //     return newFacturacionPayment;
-  //   } catch (error) {
-  //     console.error('Error al crear el pago:', error);
-  //     throw new Error('Error al procesar el pago');
-  //   }
-  // }
-
   async createNewPaymentFacturacion(
     createFacturacionPaymentDto: CreateFacturacionPaymentDto,
   ) {
     console.log('Datos del pago:', createFacturacionPaymentDto);
+
+    const { metodoPago, numeroBoleta } = createFacturacionPaymentDto;
+    let numeroBoletaReal: string | null = null;
+
+    // Si el método de pago es DEPOSITO, y el número de boleta es no vacío, asignar el número de boleta
+    if (
+      metodoPago === 'DEPOSITO' &&
+      numeroBoleta &&
+      numeroBoleta.trim() !== ''
+    ) {
+      numeroBoletaReal = numeroBoleta;
+    }
 
     try {
       const newFacturacionPayment = await this.prisma.$transaction(
@@ -559,6 +355,7 @@ export class FacturacionService {
               cobrador: {
                 connect: { id: createFacturacionPaymentDto.cobradorId },
               },
+              numeroBoleta: numeroBoletaReal,
             },
           });
 

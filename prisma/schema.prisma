@@ -116,7 +116,8 @@ model ServicioInternet {
   empresaId     Int
   empresa       Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   // Relación con la tabla intermedia
-  clienteInternet ClienteInternet? @relation() // Relación 1:1 inversa
+  // clienteInternet ClienteInternet? @relation() // Relación 1:1 inversa
+    clientes      ClienteInternet[] // This allows multiple clients to link to one service
 }
 
 
@@ -167,7 +168,7 @@ model ClienteServicio {
   
   clienteId     Int
   cliente       ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-
+//SERVICIO COMO tal
   servicioId    Int
   servicio      Servicio @relation(fields: [servicioId], references: [id], onDelete: Cascade)
 
@@ -352,6 +353,8 @@ model PagoFacturaInternet {
   // Relación con el cobrador
   cobradorId        Int
   cobrador          Usuario @relation(fields: [cobradorId], references: [id])
+  //NUMERO DE BOLETA
+  numeroBoleta String? @unique // Campo único solo cuando se proporciona
 }
 
 model FacturaServicio {
@@ -429,7 +432,10 @@ model ClienteInternet {
   fotos Fotos[]
   // Relación con la tabla intermedia
   // Relación uno a uno con ServicioInternet (opcional)
-  servicioInternetId  Int?             @unique // Campo único para relación 1:1
+  // servicioInternetId  Int?             @unique // Campo único para relación 1:1
+  // servicioInternet    ServicioInternet? @relation(fields: [servicioInternetId], references: [id])
+
+  servicioInternetId  Int?
   servicioInternet    ServicioInternet? @relation(fields: [servicioInternetId], references: [id])
   //OTROS SERVICIOS COMO IPTV, CAMÁRAS, SASS, ETC.
   clienteServicios ClienteServicio[]

@@ -35,7 +35,8 @@ export class ServicioInternetService {
       return await prisma.servicioInternet.findMany({
         include: {
           // Relación 1:1 con clienteInternet
-          clienteInternet: true, // Relacionado 1:1 con el cliente
+          // clienteInternet: true, // Relacionado 1:1 con el cliente
+          clientes: true,
         },
       });
     });

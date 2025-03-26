@@ -24,6 +24,8 @@ export class ClienteInternetService {
       servicesIds,
       asesorId,
       ip,
+      mascara,
+      gateway,
       servicioWifiId, // Ahora usamos directamente este ID para la relación 1:1
       zonaFacturacionId,
       //
@@ -109,6 +111,8 @@ export class ClienteInternetService {
       const ipRecord = await prisma.iP.create({
         data: {
           direccionIp: ip,
+          gateway: gateway,
+          mascara: mascara,
           cliente: { connect: { id: cliente.id } },
         },
       });
@@ -904,5 +908,216 @@ export class ClienteInternetService {
       console.error('Error al eliminar los clientes y sus relaciones:', error);
       throw new Error('No se pudo eliminar a los clientes y sus relaciones');
     }
+  }
+
+  async getCustomerToEdit(clienteInternetId: number) {
+    try {
+      const customer = await this.prisma.clienteInternet.findUnique({
+        where: { id: clienteInternetId },
+        include: {
+          IP: true,
+          ubicacion: true,
+          municipio: true,
+          departamento: true,
+          servicioInternet: true,
+          clienteServicios: {
+            include: {
+              servicio: true,
+            },
+          },
+          facturacionZona: true,
+          ContratoFisico: true, // Incluye los datos del contrato si existe
+        },
+      });
+
+      // Verifica si el cliente existe
+      if (!customer) {
+        throw new Error('Cliente no encontrado');
+      }
+
+      const dataToEdit = {
+        id: customer.id,
+        nombre: customer.nombre,
+        apellidos: customer.apellidos,
+        telefono: customer.telefono,
+        direccion: customer.direccion,
+        dpi: customer.dpi,
+        observaciones: customer.observaciones,
+        contactoReferenciaNombre: customer.contactoReferenciaNombre,
+        contactoReferenciaTelefono: customer.contactoReferenciaTelefono,
+        // coordenadas: `${customer.ubicacion.longitud} ${customer.ubicacion.latitud}`,
+        coordenadas:
+          `${customer.ubicacion.longitud}, ${customer.ubicacion.latitud}`.split(
+            ',',
+          ),
+
+        ip: customer.IP.direccionIp,
+        gateway: customer.IP.gateway,
+        mascara: customer.IP.mascara,
+        contrasenaWifi: customer.contrasenaWifi,
+        ssidRouter: customer.ssidRouter,
+        fechaInstalacion: customer.fechaInstalacion,
+        departamento: customer.departamento,
+        municipio: customer.municipio,
+        servicios: customer.clienteServicios.map((s) => ({
+          id: s.servicio.id,
+          nombre: s.servicio.nombre,
+        })),
+        zonaFacturacion: {
+          id: customer.facturacionZona.id,
+          nombre: customer.facturacionZona.nombre,
+          // velocidad: customer.facturacionZona.
+        },
+        servicioWifi: {
+          id: customer.servicioInternet.id,
+          nombre: customer.servicioInternet.nombre,
+          velocidad: customer.servicioInternet.velocidad,
+        },
+        // Revisa si ContratoFisico existe antes de acceder a sus campos
+        contrato: customer.ContratoFisico
+          ? {
+              idContrato: customer.ContratoFisico.idContrato,
+              fechaFirma: customer.ContratoFisico.fechaFirma,
+              archivoContrato: customer.ContratoFisico.archivoContrato,
+              observaciones: customer.ContratoFisico.observaciones,
+            }
+          : null, // Si no existe, lo asigna como null
+      };
+
+      return dataToEdit;
+    } catch (error) {
+      console.error('Error al obtener los datos del cliente:', error);
+      throw new Error('No se pudo obtener la información del cliente.');
+    }
+  }
+
+  async updateClienteInternet(
+    id: number,
+    updateCustomerService: UpdateClienteInternetDto,
+  ) {
+    const {
+      coordenadas,
+      municipioId,
+      departamentoId,
+      empresaId,
+      servicesIds,
+      asesorId,
+      ip,
+      mascara,
+      gateway,
+      servicioWifiId,
+      zonaFacturacionId,
+      archivoContrato,
+      fechaFirma,
+      idContrato,
+      observacionesContrato,
+    } = updateCustomerService;
+
+    // Validación de coordenadas
+    if (!coordenadas || coordenadas.length !== 2) {
+      throw new Error('Coordenadas inválidas');
+    }
+
+    const serviceIds: number[] = servicesIds;
+    const latitud = Number(coordenadas[0]);
+    const longitud = Number(coordenadas[1]);
+
+    const result = await this.prisma.$transaction(async (prisma) => {
+      const cliente = await prisma.clienteInternet.findUnique({
+        where: { id: id },
+      });
+
+      if (!cliente) {
+        throw new Error('Cliente no encontrado');
+      }
+
+      // Actualizar ubicación
+      const ubicacion = await prisma.ubicacion.upsert({
+        where: { clienteId: id },
+        update: { latitud, longitud },
+        create: {
+          latitud,
+          longitud,
+          empresa: { connect: { id: 1 } },
+        },
+      });
+
+      // Actualizar cliente
+      const updatedCliente = await prisma.clienteInternet.update({
+        where: { id: id },
+        data: {
+          nombre: updateCustomerService.nombre,
+          apellidos: updateCustomerService.apellidos || null,
+          telefono: updateCustomerService.telefono || null,
+          direccion: updateCustomerService.direccion || null,
+          dpi: updateCustomerService.dpi || null,
+          observaciones: updateCustomerService.observaciones || null,
+          contactoReferenciaNombre:
+            updateCustomerService.contactoReferenciaNombre || null,
+          contactoReferenciaTelefono:
+            updateCustomerService.contactoReferenciaTelefono || null,
+          contrasenaWifi: updateCustomerService.contrasenaWifi,
+          ssidRouter: updateCustomerService.ssidRouter,
+          fechaInstalacion: updateCustomerService.fechaInstalacion || null,
+          estadoCliente: 'ACTIVO',
+
+          // Relaciones
+          servicioInternet: servicioWifiId
+            ? { connect: { id: servicioWifiId } }
+            : undefined,
+          municipio: municipioId ? { connect: { id: municipioId } } : undefined,
+          departamento: departamentoId
+            ? { connect: { id: departamentoId } }
+            : undefined,
+          empresa: { connect: { id: empresaId } },
+          asesor: asesorId ? { connect: { id: asesorId } } : undefined,
+          ubicacion: { connect: { id: ubicacion.id } },
+          facturacionZona: { connect: { id: zonaFacturacionId } },
+
+          // Servicios
+          clienteServicios: {
+            deleteMany: {},
+            create: serviceIds.map((serviceId) => ({
+              servicio: { connect: { id: serviceId } },
+              fechaInicio: updateCustomerService.fechaInstalacion,
+              estado: 'ACTIVO',
+            })),
+          },
+        },
+      });
+
+      // Actualizar IP
+      const ipRecord = await prisma.iP.upsert({
+        where: { clienteId: id },
+        update: { direccionIp: ip, gateway, mascara },
+        create: {
+          direccionIp: ip,
+          gateway,
+          mascara,
+          cliente: { connect: { id: id } },
+        },
+      });
+
+      // Actualizar contrato si existe
+      if (idContrato) {
+        await prisma.contratoFisico.update({
+          where: { clienteId: id },
+          data: {
+            archivoContrato,
+            fechaFirma: new Date(fechaFirma),
+            idContrato,
+            observaciones: observacionesContrato,
+          },
+        });
+      }
+
+      return {
+        cliente: updatedCliente,
+        ubicacion,
+        ip: ipRecord,
+      };
+    });
+
+    return result;
   }
 }
