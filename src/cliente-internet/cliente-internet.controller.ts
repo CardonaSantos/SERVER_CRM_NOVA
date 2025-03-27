@@ -67,9 +67,9 @@ export class ClienteInternetController {
     return this.clienteInternetService.deleteClientsWithRelations();
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.clienteInternetService.remove(+id);
+  @Delete('/delete-one-customer/:id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.clienteInternetService.removeOneCustomer(id);
   }
 
   @Patch('/customer-update-service')

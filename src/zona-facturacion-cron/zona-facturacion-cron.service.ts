@@ -5,6 +5,11 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import * as dayjs from 'dayjs';
 
+const formatearFecha = (fecha: string) => {
+  // Formateo en UTC sin conversión a local
+  return dayjs(fecha).format('DD/MM/YYYY hh:mm A');
+};
+
 interface DatosFacturaGenerate {
   fechaPagoEsperada: string;
 

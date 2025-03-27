@@ -65,7 +65,7 @@ export class RutaCobroService {
       },
     });
 
-    return rutas.map((ruta) => ({
+    const x = rutas.map((ruta) => ({
       id: ruta.id,
       nombreRuta: ruta.nombreRuta,
       cobradorId: ruta.cobradorId,
@@ -114,7 +114,7 @@ export class RutaCobroService {
         ),
         facturacionZona: cliente.facturacionZonaId,
       })),
-      cobrados: ruta.cobrados,
+      // cobrados: ruta.cobrados,
       montoCobrado: ruta.montoCobrado,
       estadoRuta: ruta.estadoRuta,
       fechaCreacion: ruta.creadoEn,
@@ -122,6 +122,9 @@ export class RutaCobroService {
       observaciones: ruta.observaciones,
       diasCobro: ['MARTES'],
     }));
+
+    console.log('RUTAS: ', x);
+    return x;
   }
 
   async finRutaCobro(rutaId: number) {
@@ -151,6 +154,7 @@ export class RutaCobroService {
               telefono: true,
               contactoReferenciaTelefono: true,
               contactoReferenciaNombre: true,
+              direccion: true,
               ubicacion: {
                 select: {
                   latitud: true,
@@ -195,6 +199,8 @@ export class RutaCobroService {
           id: cliente.id,
           nombreCompleto: `${cliente.nombre} ${cliente.apellidos}`,
           telefono: cliente.telefono,
+          direccion: cliente.direccion,
+          imagenes: [],
           contactoReferencia: {
             telefono: cliente.contactoReferenciaTelefono,
             nombre: cliente.contactoReferenciaNombre,

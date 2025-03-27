@@ -42,12 +42,9 @@ export class FacturacionZonaController {
     return this.facturacionZonaService.findOne(+id);
   }
 
-  @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() updateFacturacionZonaDto: UpdateFacturacionZonaDto,
-  ) {
-    return this.facturacionZonaService.update(+id, updateFacturacionZonaDto);
+  @Patch('/update-zona-facturacion')
+  update(@Body() updateFacturacionZonaDto: UpdateFacturacionZonaDto) {
+    return this.facturacionZonaService.update(updateFacturacionZonaDto);
   }
 
   @Delete(':id')

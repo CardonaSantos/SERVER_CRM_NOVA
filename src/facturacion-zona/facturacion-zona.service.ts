@@ -199,8 +199,42 @@ export class FacturacionZonaService {
     return `This action returns a #${id} facturacionZona`;
   }
 
-  update(id: number, updateFacturacionZonaDto: UpdateFacturacionZonaDto) {
-    return `This action updates a #${id} facturacionZona`;
+  async update(updateFacturacionZonaDto: UpdateFacturacionZonaDto) {
+    return await this.prisma.$transaction(async (tx) => {
+      console.log('La data actualizando es: ', updateFacturacionZonaDto);
+
+      const updatedFacturacionZona = await tx.facturacionZona.update({
+        where: { id: updateFacturacionZonaDto.id },
+        data: {
+          nombre: updateFacturacionZonaDto.nombre,
+          empresaId: updateFacturacionZonaDto.empresaId,
+          diaGeneracionFactura: updateFacturacionZonaDto.diaGeneracionFactura,
+          diaPago: updateFacturacionZonaDto.diaPago,
+          diaRecordatorio: updateFacturacionZonaDto.diaRecordatorio,
+          diaSegundoRecordatorio:
+            updateFacturacionZonaDto.diaSegundoRecordatorio,
+          horaRecordatorio: updateFacturacionZonaDto.horaRecordatorio,
+          enviarRecordatorio: updateFacturacionZonaDto.enviarRecordatorio,
+          // BOLEANOS DE RECORDATORIOS
+          whatsapp: updateFacturacionZonaDto.whatsapp,
+          email: updateFacturacionZonaDto.email,
+          llamada: updateFacturacionZonaDto.llamada,
+          sms: updateFacturacionZonaDto.sms,
+          telegram: updateFacturacionZonaDto.telegram,
+          diaCorte: updateFacturacionZonaDto.diaCorte,
+          suspenderTrasFacturas: updateFacturacionZonaDto.suspenderTrasFacturas,
+        },
+      });
+
+      if (!updatedFacturacionZona) {
+        throw new InternalServerErrorException(
+          'Error al actualizar zona de facturacion',
+        );
+      }
+      console.log(updatedFacturacionZona);
+
+      return updatedFacturacionZona;
+    });
   }
 
   remove(id: number) {

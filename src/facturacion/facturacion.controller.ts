@@ -12,6 +12,7 @@ import { FacturacionService } from './facturacion.service';
 import { CreateFacturacionDto } from './dto/create-facturacion.dto';
 import { UpdateFacturacionDto } from './dto/update-facturacion.dto';
 import { CreateFacturacionPaymentDto } from './dto/createFacturacionPayment.dto';
+import { CreatePaymentOnRuta } from './dto/createPaymentOnRuta.dto';
 
 @Controller('facturacion')
 export class FacturacionController {
@@ -27,6 +28,15 @@ export class FacturacionController {
     @Body() createFacturacionPaymentDto: CreateFacturacionPaymentDto,
   ) {
     return this.facturacionService.createNewPaymentFacturacion(
+      createFacturacionPaymentDto,
+    );
+  }
+
+  @Post('/create-new-payment-for-ruta')
+  createNewPaymentFacturacionForRuta(
+    @Body() createFacturacionPaymentDto: CreatePaymentOnRuta,
+  ) {
+    return this.facturacionService.createNewPaymentFacturacionForRuta(
       createFacturacionPaymentDto,
     );
   }

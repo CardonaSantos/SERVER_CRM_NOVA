@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateClienteInternetDto } from './dto/create-cliente-internet.dto';
 import { UpdateClienteInternetDto } from './dto/update-cliente-internet.dto';
 import { UserTokenAuth } from 'src/auth/dto/userToken.dto';
@@ -7,6 +11,12 @@ import { updateCustomerService } from './dto/update-customer-service';
 import { ClienteInternet } from '@prisma/client';
 import * as dayjs from 'dayjs';
 import { IdContratoService } from 'src/id-contrato/id-contrato.service';
+import { DeleteClienteInternetDto } from './dto/DeleteClienteInternetDto .dto';
+
+const formatearFecha = (fecha: string) => {
+  // Formateo en UTC sin conversión a local
+  return dayjs(fecha).format('DD/MM/YYYY');
+};
 
 @Injectable()
 export class ClienteInternetService {
@@ -380,9 +390,23 @@ export class ClienteInternetService {
             },
           },
           nombreClienteFactura: `${cliente.nombre}  ${cliente.apellidos}`,
-          detalleFactura: `Pago por suscripción mensual al servicio de internet, plan ${servicioClienteInternet.nombre} (${servicioClienteInternet.velocidad}), precio: ${servicioClienteInternet.precio} Fecha: ${fechaPrimerPagoInicial}`,
+          detalleFactura: `Pago por suscripción mensual al servicio de internet, plan ${servicioClienteInternet.nombre} (${servicioClienteInternet.velocidad}), precio: ${servicioClienteInternet.precio} Fecha: ${formatearFecha(fechaPrimerPagoInicial.format())}`,
         },
       });
+
+      //ponerle el sado pendiente de la primera factura:
+
+      const nuevoSaldoCliente = await prisma.saldoCliente.update({
+        where: {
+          clienteId: cliente.id,
+        },
+        data: {
+          saldoPendiente: {
+            increment: newFacturaInternetPrimerPago.montoPago,
+          },
+        },
+      });
+      console.log('EL saldo inicial del nuevo cliente es: ', nuevoSaldoCliente);
 
       const recordatorioPrimerPago = await prisma.recordatorioPago.create({
         data: {
@@ -1091,6 +1115,69 @@ export class ClienteInternetService {
 
   remove(id: number) {
     return `This action removes a #${id} clienteInternet`;
+  }
+
+  async removeOneCustomer(id: number) {
+    const clienteId = id;
+    console.log('entrando a eliminar: ', id);
+
+    return await this.prisma.$transaction(async (tx) => {
+      // Verificamos si existe el cliente
+      const cliente = await tx.clienteInternet.findUnique({
+        where: { id: clienteId },
+      });
+
+      if (!cliente) {
+        throw new InternalServerErrorException(
+          `No se encontró un cliente con el id: ${clienteId}`,
+        );
+      }
+
+      // 1. Eliminar recordatorios de pago relacionados
+      await tx.recordatorioPago.deleteMany({
+        where: { clienteId },
+      });
+
+      // 2. Eliminar facturas relacionadas
+      await tx.facturaInternet.deleteMany({
+        where: { clienteId },
+      });
+
+      // 3. Eliminar IP(s) asociada(s)
+      await tx.iP.deleteMany({
+        where: { clienteId },
+      });
+
+      // 4. Eliminar saldo del cliente
+      await tx.saldoCliente.deleteMany({
+        where: { clienteId },
+      });
+
+      // 5. Eliminar clienteServicios (servicios contratados)
+      await tx.clienteServicio.deleteMany({
+        where: { clienteId },
+      });
+
+      // 6. Eliminar posible contrato asociado
+      // Ajusta el nombre de la tabla/servicio si es diferente
+      await tx.contratoFisico.deleteMany({
+        where: { clienteId },
+      });
+
+      // 7. Eliminar ubicación asociada
+      await tx.ubicacion.deleteMany({
+        where: { clienteId },
+      });
+
+      // 8. Finalmente, eliminar el cliente
+      await tx.clienteInternet.delete({
+        where: { id: clienteId },
+      });
+
+      return {
+        message: `Cliente con id ${clienteId} y todas sus relaciones han sido eliminados correctamente.`,
+      };
+    });
   }
 
   async deleteClientsWithRelations() {

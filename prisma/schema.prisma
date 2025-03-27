@@ -525,7 +525,7 @@ model Ruta {
   nombreRuta    String
   cobradorId    Int
   cobrador      Usuario    @relation(fields: [cobradorId], references: [id], onDelete: Cascade)
-  cobrados      Int         @default(0)
+  // cobrados      Int         @default(0)
   montoCobrado  Int         @default(0)
   clientes      ClienteInternet[]  // Relación con clientes asignados a la ruta
   estadoRuta    EstadoRuta      @default(ACTIVO)
