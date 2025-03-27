@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateFacturacionZonaDto } from './dto/create-facturacion-zona.dto';
 import { UpdateFacturacionZonaDto } from './dto/update-facturacion-zona.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -237,7 +241,30 @@ export class FacturacionZonaService {
     });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} facturacionZona`;
+  // remove(id: number) {}
+
+  async remove(zonaFacturacionId: number) {
+    console.log('entrando a eliminar: ', zonaFacturacionId);
+
+    return await this.prisma.$transaction(async (tx) => {
+      // Verificamos si existe el cliente
+      const facturacionZona = await tx.facturacionZona.findUnique({
+        where: { id: zonaFacturacionId },
+      });
+
+      if (!facturacionZona) {
+        throw new NotFoundException('No se encontró el registro');
+      }
+
+      const x = await tx.facturacionZona.delete({
+        where: {
+          id: zonaFacturacionId,
+        },
+      });
+
+      console.log('La zona de facturacion es: ', x);
+
+      return x;
+    });
   }
 }

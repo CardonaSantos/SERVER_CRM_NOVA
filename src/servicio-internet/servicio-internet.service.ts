@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateServicioInternetDto } from './dto/create-servicio-internet.dto';
 import { UpdateServicioInternetDto } from './dto/update-servicio-internet.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -101,11 +101,44 @@ export class ServicioInternetService {
     return `This action returns a #${id} servicioInternet`;
   }
 
-  update(id: number, updateServicioInternetDto: UpdateServicioInternetDto) {
-    return `This action updates a #${id} servicioInternet`;
+  async update(
+    id: number,
+    updateServicioInternetDto: UpdateServicioInternetDto,
+  ): Promise<ServicioInternet> {
+    return await this.prisma.$transaction(async (prisma) => {
+      const servicio = await prisma.servicioInternet.update({
+        where: { id },
+        data: {
+          nombre: updateServicioInternetDto.nombre,
+          velocidad: updateServicioInternetDto.velocidad,
+          precio: updateServicioInternetDto.precio,
+          estado: updateServicioInternetDto.estado,
+          empresa: { connect: { id: updateServicioInternetDto.empresaId } },
+        },
+      });
+      console.log('El servicio actualizado es:', servicio);
+      return servicio;
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} servicioInternet`;
+  async remove(id: number): Promise<ServicioInternet> {
+    return await this.prisma.$transaction(async (prisma) => {
+      // Verificamos si existe el servicio
+      const servicioExistente = await prisma.servicioInternet.findUnique({
+        where: { id },
+      });
+      if (!servicioExistente) {
+        throw new NotFoundException(
+          `Servicio de internet con id ${id} no encontrado`,
+        );
+      }
+
+      // Eliminamos el servicio
+      const servicioEliminado = await prisma.servicioInternet.delete({
+        where: { id },
+      });
+      console.log('El servicio eliminado es:', servicioEliminado);
+      return servicioEliminado;
+    });
   }
 }

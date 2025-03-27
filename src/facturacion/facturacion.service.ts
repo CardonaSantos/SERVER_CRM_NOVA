@@ -642,6 +642,9 @@ export class FacturacionService {
   async facturacionToTable() {
     try {
       const facturas = await this.prisma.facturaInternet.findMany({
+        orderBy: {
+          creadoEn: 'desc',
+        },
         select: {
           id: true,
           // estadoFacturaInternet: true,

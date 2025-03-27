@@ -1,7 +1,12 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateServicioDto } from './dto/create-servicio.dto';
 import { UpdateServicioDto } from './dto/update-servicio.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { Servicio } from '@prisma/client';
 
 @Injectable()
 export class ServicioService {
@@ -105,11 +110,48 @@ export class ServicioService {
     return `This action returns a #${id} servicio`;
   }
 
-  update(id: number, updateServicioDto: UpdateServicioDto) {
-    return `This action updates a #${id} servicio`;
+  async update(
+    id: number,
+    updateServicioDto: UpdateServicioDto,
+  ): Promise<Servicio> {
+    return await this.prisma.$transaction(async (tx) => {
+      const updatedServicio = await tx.servicio.update({
+        where: { id },
+        data: {
+          nombre: updateServicioDto.nombre,
+          descripcion: updateServicioDto.descripcion,
+          precio: updateServicioDto.precio,
+          estado: updateServicioDto.estado,
+          tipoServicio: {
+            connect: { id: updateServicioDto.tipoServicioId },
+          },
+          empresa: {
+            connect: { id: updateServicioDto.empresaId },
+          },
+        },
+      });
+
+      console.log('El servicio actualizado es:', updatedServicio);
+      return updatedServicio;
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} servicio`;
+  async remove(id: number): Promise<Servicio> {
+    return await this.prisma.$transaction(async (tx) => {
+      // Verificamos si el servicio existe
+      const servicioExistente = await tx.servicio.findUnique({
+        where: { id },
+      });
+      if (!servicioExistente) {
+        throw new NotFoundException(`Servicio con id ${id} no encontrado`);
+      }
+
+      const servicioEliminado = await tx.servicio.delete({
+        where: { id },
+      });
+
+      console.log('El servicio eliminado es:', servicioEliminado);
+      return servicioEliminado;
+    });
   }
 }

@@ -546,7 +546,14 @@ export class ClienteInternetService {
             municipio: { select: { id: true, nombre: true } },
             departamento: { select: { id: true, nombre: true } },
             empresa: { select: { id: true, nombre: true } },
-            IP: { select: { id: true, direccionIp: true } },
+            IP: {
+              select: {
+                id: true,
+                direccionIp: true,
+                gateway: true,
+                mascara: true,
+              },
+            },
             ubicacion: { select: { id: true, latitud: true, longitud: true } },
             saldoCliente: {
               select: {
@@ -676,8 +683,8 @@ export class ClienteInternetService {
           ? {
               id: clienteInternetWithRelations.IP.id,
               direccion: clienteInternetWithRelations.IP.direccionIp,
-              mascara: '255.255.255.0', // Ejemplo de máscara de red
-              gateway: '192.168.1.1', // Ejemplo de gateway
+              mascara: clienteInternetWithRelations.IP.mascara, // Ejemplo de máscara de red
+              gateway: clienteInternetWithRelations.IP.gateway, // Ejemplo de gateway
             }
           : null,
         ubicacion: clienteInternetWithRelations.ubicacion
@@ -838,6 +845,9 @@ export class ClienteInternetService {
 
     return await this.prisma.$transaction(async (tx) => {
       const customers = await tx.clienteInternet.findMany({
+        orderBy: {
+          creadoEn: 'desc',
+        },
         select: {
           id: true,
           nombre: true,
@@ -902,10 +912,9 @@ export class ClienteInternetService {
         direccion: customer.direccion,
         creadoEn: customer.creadoEn,
         actualizadoEn: customer.actualizadoEn,
-        departamento: customer.departamento.nombre,
-        municipio: customer.municipio.nombre,
+        departamento: customer.departamento?.nombre || 'No disponible',
+        municipio: customer.municipio?.nombre || 'No disponible',
         direccionIp: customer.IP?.direccionIp || 'No disponible',
-        // Servicios de internet (relación 1:1)
         servicios: customer.servicioInternet
           ? [
               {
@@ -919,7 +928,7 @@ export class ClienteInternetService {
               },
             ]
           : [],
-        facturacionZona: customer.facturacionZona.nombre,
+        facturacionZona: customer.facturacionZona?.nombre || 'Sin zona',
       }));
 
       return formattedCustomers;
@@ -1189,6 +1198,86 @@ export class ClienteInternetService {
     }
   }
 
+  // async getCustomerToEdit(clienteInternetId: number) {
+  //   try {
+  //     const customer = await this.prisma.clienteInternet.findUnique({
+  //       where: { id: clienteInternetId },
+  //       include: {
+  //         IP: true,
+  //         ubicacion: true,
+  //         municipio: true,
+  //         departamento: true,
+  //         servicioInternet: true,
+  //         clienteServicios: {
+  //           include: {
+  //             servicio: true,
+  //           },
+  //         },
+  //         facturacionZona: true,
+  //         ContratoFisico: true, // Incluye los datos del contrato si existe
+  //       },
+  //     });
+
+  //     // Verifica si el cliente existe
+  //     if (!customer) {
+  //       throw new Error('Cliente no encontrado');
+  //     }
+
+  //     const dataToEdit = {
+  //       id: customer.id,
+  //       nombre: customer.nombre,
+  //       apellidos: customer.apellidos,
+  //       telefono: customer.telefono,
+  //       direccion: customer.direccion,
+  //       dpi: customer.dpi,
+  //       observaciones: customer.observaciones,
+  //       contactoReferenciaNombre: customer.contactoReferenciaNombre,
+  //       contactoReferenciaTelefono: customer.contactoReferenciaTelefono,
+  //       // coordenadas: `${customer.ubicacion.longitud} ${customer.ubicacion.latitud}`,
+  //       coordenadas: customer.ubicacion
+  //         ? [`${customer.ubicacion.longitud}`, `${customer.ubicacion.latitud}`]
+  //         : [],
+
+  //       ip: customer.IP.direccionIp,
+  //       gateway: customer.IP.gateway,
+  //       mascara: customer.IP.mascara,
+  //       contrasenaWifi: customer.contrasenaWifi,
+  //       ssidRouter: customer.ssidRouter,
+  //       fechaInstalacion: customer.fechaInstalacion,
+  //       departamento: customer.departamento,
+  //       municipio: customer.municipio,
+  //       servicios: customer.clienteServicios.map((s) => ({
+  //         id: s.servicio.id,
+  //         nombre: s.servicio.nombre,
+  //       })),
+  //       zonaFacturacion: {
+  //         id: customer.facturacionZona.id,
+  //         nombre: customer.facturacionZona.nombre,
+  //         // velocidad: customer.facturacionZona.
+  //       },
+  //       servicioWifi: {
+  //         id: customer.servicioInternet.id,
+  //         nombre: customer.servicioInternet.nombre,
+  //         velocidad: customer.servicioInternet.velocidad,
+  //       },
+  //       // Revisa si ContratoFisico existe antes de acceder a sus campos
+  //       contrato: customer.ContratoFisico
+  //         ? {
+  //             idContrato: customer.ContratoFisico.idContrato,
+  //             fechaFirma: customer.ContratoFisico.fechaFirma,
+  //             archivoContrato: customer.ContratoFisico.archivoContrato,
+  //             observaciones: customer.ContratoFisico.observaciones,
+  //           }
+  //         : null, // Si no existe, lo asigna como null
+  //     };
+
+  //     return dataToEdit;
+  //   } catch (error) {
+  //     console.error('Error al obtener los datos del cliente:', error);
+  //     throw new Error('No se pudo obtener la información del cliente.');
+  //   }
+  // }
+
   async getCustomerToEdit(clienteInternetId: number) {
     try {
       const customer = await this.prisma.clienteInternet.findUnique({
@@ -1224,14 +1313,12 @@ export class ClienteInternetService {
         observaciones: customer.observaciones,
         contactoReferenciaNombre: customer.contactoReferenciaNombre,
         contactoReferenciaTelefono: customer.contactoReferenciaTelefono,
-        // coordenadas: `${customer.ubicacion.longitud} ${customer.ubicacion.latitud}`,
         coordenadas: customer.ubicacion
           ? [`${customer.ubicacion.longitud}`, `${customer.ubicacion.latitud}`]
           : [],
-
-        ip: customer.IP.direccionIp,
-        gateway: customer.IP.gateway,
-        mascara: customer.IP.mascara,
+        ip: customer.IP?.direccionIp || '',
+        gateway: customer.IP?.gateway || '',
+        mascara: customer.IP?.mascara || '',
         contrasenaWifi: customer.contrasenaWifi,
         ssidRouter: customer.ssidRouter,
         fechaInstalacion: customer.fechaInstalacion,
@@ -1241,17 +1328,19 @@ export class ClienteInternetService {
           id: s.servicio.id,
           nombre: s.servicio.nombre,
         })),
-        zonaFacturacion: {
-          id: customer.facturacionZona.id,
-          nombre: customer.facturacionZona.nombre,
-          // velocidad: customer.facturacionZona.
-        },
-        servicioWifi: {
-          id: customer.servicioInternet.id,
-          nombre: customer.servicioInternet.nombre,
-          velocidad: customer.servicioInternet.velocidad,
-        },
-        // Revisa si ContratoFisico existe antes de acceder a sus campos
+        zonaFacturacion: customer.facturacionZona
+          ? {
+              id: customer.facturacionZona.id,
+              nombre: customer.facturacionZona.nombre,
+            }
+          : null, // Si no existe, se asigna null
+        servicioWifi: customer.servicioInternet
+          ? {
+              id: customer.servicioInternet.id,
+              nombre: customer.servicioInternet.nombre,
+              velocidad: customer.servicioInternet.velocidad,
+            }
+          : null, // Maneja el caso en que no exista servicio de internet
         contrato: customer.ContratoFisico
           ? {
               idContrato: customer.ContratoFisico.idContrato,
@@ -1259,7 +1348,7 @@ export class ClienteInternetService {
               archivoContrato: customer.ContratoFisico.archivoContrato,
               observaciones: customer.ContratoFisico.observaciones,
             }
-          : null, // Si no existe, lo asigna como null
+          : null,
       };
 
       return dataToEdit;
@@ -1291,14 +1380,11 @@ export class ClienteInternetService {
       observacionesContrato,
     } = updateCustomerService;
 
-    // Validación de coordenadas
-    if (!coordenadas || coordenadas.length !== 2) {
-      throw new Error('Coordenadas inválidas');
-    }
+    // Si se envían coordenadas, las parseamos; de lo contrario, asignamos null
+    const latitud = coordenadas?.[0] ? Number(coordenadas[0]) : null;
+    const longitud = coordenadas?.[1] ? Number(coordenadas[1]) : null;
 
     const serviceIds: number[] = servicesIds;
-    const latitud = Number(coordenadas[0]);
-    const longitud = Number(coordenadas[1]);
 
     const result = await this.prisma.$transaction(async (prisma) => {
       const cliente = await prisma.clienteInternet.findUnique({
@@ -1309,16 +1395,20 @@ export class ClienteInternetService {
         throw new Error('Cliente no encontrado');
       }
 
-      // Actualizar ubicación
-      const ubicacion = await prisma.ubicacion.upsert({
-        where: { clienteId: id },
-        update: { latitud, longitud },
-        create: {
-          latitud,
-          longitud,
-          empresa: { connect: { id: 1 } },
-        },
-      });
+      // Si se proporcionaron coordenadas válidas, actualizamos/creamos la ubicación;
+      // de lo contrario, dejamos la ubicación sin modificar.
+      let ubicacion;
+      if (latitud !== null && longitud !== null) {
+        ubicacion = await prisma.ubicacion.upsert({
+          where: { clienteId: id },
+          update: { latitud, longitud },
+          create: {
+            latitud,
+            longitud,
+            empresa: { connect: { id: 1 } },
+          },
+        });
+      }
 
       // Actualizar cliente
       const updatedCliente = await prisma.clienteInternet.update({
@@ -1349,10 +1439,13 @@ export class ClienteInternetService {
             : undefined,
           empresa: { connect: { id: empresaId } },
           asesor: asesorId ? { connect: { id: asesorId } } : undefined,
-          ubicacion: { connect: { id: ubicacion.id } },
-          facturacionZona: { connect: { id: zonaFacturacionId } },
+          // Actualizamos la ubicación solo si se actualizaron coordenadas
+          ubicacion: ubicacion ? { connect: { id: ubicacion.id } } : undefined,
+          facturacionZona: zonaFacturacionId
+            ? { connect: { id: zonaFacturacionId } }
+            : undefined,
 
-          // Servicios
+          // Actualizamos los servicios (borramos los existentes y creamos nuevos)
           clienteServicios: {
             deleteMany: {},
             create: serviceIds.map((serviceId) => ({

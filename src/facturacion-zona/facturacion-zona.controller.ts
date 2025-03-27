@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { FacturacionZonaService } from './facturacion-zona.service';
 import { CreateFacturacionZonaDto } from './dto/create-facturacion-zona.dto';
@@ -48,7 +49,7 @@ export class FacturacionZonaController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.facturacionZonaService.remove(+id);
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.facturacionZonaService.remove(id);
   }
 }

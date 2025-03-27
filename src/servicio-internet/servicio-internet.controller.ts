@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ServicioInternetService } from './servicio-internet.service';
 import { CreateServicioInternetDto } from './dto/create-servicio-internet.dto';
@@ -42,16 +43,16 @@ export class ServicioInternetController {
     return this.servicioInternetService.findOne(+id);
   }
 
-  @Patch(':id')
+  @Patch('/update-servicio-wifi/:id')
   update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateServicioInternetDto: UpdateServicioInternetDto,
   ) {
     return this.servicioInternetService.update(+id, updateServicioInternetDto);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.servicioInternetService.remove(+id);
+  @Delete('/remove-servicio/:id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.servicioInternetService.remove(id);
   }
 }
