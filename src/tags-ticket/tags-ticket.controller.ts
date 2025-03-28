@@ -43,7 +43,7 @@ export class TagsTicketController {
     return this.tagsTicketService.update(+id, updateTagsTicketDto);
   }
 
-  @Delete(':id')
+  @Delete('/delete-ticket/:id')
   remove(@Param('id') id: string) {
     return this.tagsTicketService.remove(+id);
   }

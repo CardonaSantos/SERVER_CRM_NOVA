@@ -665,6 +665,7 @@ export class FacturacionService {
           montoPago: true,
           creadoEn: true,
           fechaPagoEsperada: true,
+          facturacionZonaId: true,
           pagos: {
             select: {
               cobrador: {
@@ -693,6 +694,7 @@ export class FacturacionService {
           factura.pagos.map((pago) => pago.cobrador.nombre).join(', ') ||
           'No especificado',
         telefono: factura.cliente.telefono || 0,
+        facturacionZonaId: factura.facturacionZonaId,
       }));
 
       const cobrados = facturas.filter((fac) => {

@@ -115,14 +115,27 @@ export class TicketsSoporteService {
     });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} ticketsSoporte`;
+  async delete(ticketId: number) {
+    return await this.prisma.$transaction(async (tx) => {
+      // Luego, eliminamos el ticket
+      const deletedTicket = await tx.ticketSoporte.delete({
+        where: {
+          id: ticketId,
+        },
+      });
+      console.log('El ticket eliminado es: ', deletedTicket);
+
+      return deletedTicket;
+    });
   }
 
   // Obtener todos los tickets con sus detalles y comentarios
   async getTickets() {
     try {
       const tickets = await this.prisma.ticketSoporte.findMany({
+        orderBy: {
+          fechaApertura: 'desc',
+        },
         select: {
           id: true,
           titulo: true,

@@ -590,7 +590,10 @@ model EtiquetaTicket {
   nombre String @unique
 
   tickets TicketEtiqueta[]
+  creadoEn  DateTime?        @default(now())
+  actualizadoEn DateTime?   @updatedAt
 }
+
 model TicketEtiqueta {
   id           Int           @id @default(autoincrement())
   ticketId     Int
@@ -599,9 +602,11 @@ model TicketEtiqueta {
   ticket       TicketSoporte @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   etiqueta     EtiquetaTicket @relation(fields: [etiquetaId], references: [id], onDelete: Cascade)
 
+  creadoEn     DateTime?     @default(now())
+  actualizadoEn DateTime?    @updatedAt
+  
   @@unique([ticketId, etiquetaId]) // Evita duplicados de la misma etiqueta en un ticket
 }
-
 
 model SeguimientoTicket {
   id              Int       @id @default(autoincrement())

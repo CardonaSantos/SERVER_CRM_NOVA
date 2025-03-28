@@ -929,6 +929,7 @@ export class ClienteInternetService {
             ]
           : [],
         facturacionZona: customer.facturacionZona?.nombre || 'Sin zona',
+        facturacionZonaId: customer.facturacionZona.id,
       }));
 
       return formattedCustomers;

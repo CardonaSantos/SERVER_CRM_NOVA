@@ -44,8 +44,8 @@ export class TicketsSoporteController {
     return this.ticketsSoporteService.removeAll();
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.ticketsSoporteService.remove(+id);
+  @Delete('/delete-ticket/:id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.ticketsSoporteService.delete(id);
   }
 }

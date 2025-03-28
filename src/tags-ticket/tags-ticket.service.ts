@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateTagsTicketDto } from './dto/create-tags-ticket.dto';
 import { UpdateTagsTicketDto } from './dto/update-tags-ticket.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -25,6 +25,9 @@ export class TagsTicketService {
     try {
       // Obtener todas las etiquetas
       const etiquetas = await this.prisma.etiquetaTicket.findMany({
+        orderBy: {
+          creadoEn: 'desc',
+        },
         select: {
           id: true,
           nombre: true,
@@ -69,7 +72,29 @@ export class TagsTicketService {
     return `This action updates a #${id} tagsTicket`;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} tagsTicket`;
+  async remove(id: number) {
+    // return `This action removes a #${id} tagsTicket`;
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const tagEliminada = tx.etiquetaTicket.findUnique({
+          where: {
+            id: id,
+          },
+        });
+
+        if (!tagEliminada) {
+          throw new NotFoundException('Error al encontrar el tag');
+        }
+
+        const x = await tx.etiquetaTicket.delete({
+          where: {
+            id: id,
+          },
+        });
+
+        console.log('El tag eliminado es:', x);
+        return x;
+      });
+    } catch (error) {}
   }
 }
