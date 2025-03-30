@@ -173,75 +173,91 @@ export class FacturacionService {
     try {
       console.log('El id es: ', id);
 
+      const dataToSelect = {
+        id: true,
+        montoPago: true,
+        saldoPendiente: true,
+        // metodoPago: true,
+        creadoEn: true,
+        fechaPagoEsperada: true,
+        estadoFacturaInternet: true,
+        fechaPagada: true,
+        cliente: {
+          select: {
+            id: true,
+            nombre: true,
+            apellidos: true,
+            telefono: true,
+            direccion: true,
+            dpi: true,
+            estadoCliente: true,
+            servicioInternet: {
+              select: {
+                id: true,
+                nombre: true,
+                velocidad: true,
+                precio: true,
+              },
+            },
+            facturacionZona: {
+              select: {
+                id: true,
+                nombre: true,
+              },
+            },
+            empresa: {
+              select: {
+                id: true,
+                nombre: true,
+              },
+            },
+          },
+        },
+
+        pagos: {
+          select: {
+            cobrador: {
+              select: {
+                id: true,
+                nombre: true,
+              },
+            },
+            montoPagado: true,
+            fechaPago: true,
+            creadoEn: true,
+            metodoPago: true,
+            cobradorId: true,
+          },
+        },
+        RecordatorioPago: {
+          select: {
+            id: true,
+            creadoEn: true,
+            tipo: true,
+          },
+        },
+      };
+
       const factura = await this.prisma.facturaInternet.findUnique({
         where: {
           id: id,
         },
-        select: {
-          id: true,
-          montoPago: true,
-          saldoPendiente: true,
-          // metodoPago: true,
-          creadoEn: true,
-          fechaPagoEsperada: true,
-          estadoFacturaInternet: true,
-          fechaPagada: true,
-          cliente: {
-            select: {
-              id: true,
-              nombre: true,
-              apellidos: true,
-              telefono: true,
-              direccion: true,
-              dpi: true,
-              estadoCliente: true,
-              servicioInternet: {
-                select: {
-                  id: true,
-                  nombre: true,
-                  velocidad: true,
-                  precio: true,
-                },
-              },
-              facturacionZona: {
-                select: {
-                  id: true,
-                  nombre: true,
-                },
-              },
-              empresa: {
-                select: {
-                  id: true,
-                  nombre: true,
-                },
-              },
-            },
-          },
-
-          pagos: {
-            select: {
-              cobrador: {
-                select: {
-                  id: true,
-                  nombre: true,
-                },
-              },
-              montoPagado: true,
-              fechaPago: true,
-              creadoEn: true,
-              metodoPago: true,
-              cobradorId: true,
-            },
-          },
-          RecordatorioPago: {
-            select: {
-              id: true,
-              creadoEn: true,
-              tipo: true,
-            },
-          },
-        },
+        select: dataToSelect,
       });
+
+      const otrasFacturasPendientes =
+        await this.prisma.facturaInternet.findMany({
+          where: {
+            clienteId: factura.cliente.id,
+            estadoFacturaInternet: {
+              in: ['PARCIAL', 'PENDIENTE', 'VENCIDA'],
+            },
+            id: {
+              not: factura.id,
+            },
+          },
+          select: dataToSelect,
+        });
 
       if (!factura) {
         throw new Error('Factura no encontrada');
@@ -313,6 +329,17 @@ export class FacturacionService {
           fechaEnvio: recordatorio.creadoEn.toISOString(),
           medioEnvio: recordatorio.tipo,
         })),
+        facturasPendientes: otrasFacturasPendientes
+          .sort(
+            (a, b) =>
+              new Date(b.creadoEn).getTime() - new Date(a.creadoEn).getTime(),
+          )
+          .map((factura) => ({
+            id: factura.id,
+            fechaPagoEsperada: factura.fechaPagoEsperada,
+            montoPago: factura.montoPago,
+            estadoFacturaInternet: factura.estadoFacturaInternet,
+          })),
       };
 
       return resultado;

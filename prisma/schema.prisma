@@ -714,6 +714,7 @@ enum EstadoTicketSoporte {
   RESUELTA
   CANCELADA
   ARCHIVADA
+  CERRADO
 }
 enum TipoFactura {
   INTERNET

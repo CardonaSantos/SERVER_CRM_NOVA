@@ -1,7 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateTicketsSoporteDto } from './dto/create-tickets-soporte.dto';
 import { UpdateTicketsSoporteDto } from './dto/update-tickets-soporte.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { CloseTicketDto } from './dto/CloseTicketDto .dto';
 
 @Injectable()
 export class TicketsSoporteService {
@@ -113,6 +118,60 @@ export class TicketsSoporteService {
 
       return updatedTicket;
     });
+  }
+
+  async closeTickets(id: number, dto: CloseTicketDto) {
+    try {
+      const ticketToClose = await this.prisma.ticketSoporte.findUnique({
+        where: { id },
+      });
+
+      if (!ticketToClose) {
+        throw new NotFoundException('Ticket no encontrado');
+      }
+
+      const ticketClosed = await this.prisma.ticketSoporte.update({
+        where: { id },
+        data: {
+          titulo: dto.title,
+          descripcion: dto.description,
+          estado: 'RESUELTA',
+          prioridad: dto.priority,
+          etiquetas: {
+            set: [], // Primero limpiamos
+            connect: dto.tags?.map((tag) => ({ id: tag.value })) || [],
+          },
+          tecnico: dto.assignee?.id
+            ? {
+                connect: {
+                  id: dto.assignee.id,
+                },
+              }
+            : undefined,
+        },
+      });
+
+      // Creamos el comentario de cierre como seguimiento
+      await this.prisma.seguimientoTicket.create({
+        data: {
+          descripcion: dto.comentario,
+          ticket: {
+            connect: { id: dto.ticketId },
+          },
+          usuario: {
+            connect: { id: dto.usuarioId },
+          },
+        },
+      });
+
+      return {
+        message: 'Ticket cerrado con éxito',
+        ticket: ticketClosed,
+      };
+    } catch (error) {
+      console.error('Error al cerrar ticket: ', error);
+      throw new InternalServerErrorException('No se pudo cerrar el ticket');
+    }
   }
 
   async delete(ticketId: number) {

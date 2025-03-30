@@ -11,6 +11,7 @@ import {
 import { TicketsSoporteService } from './tickets-soporte.service';
 import { CreateTicketsSoporteDto } from './dto/create-tickets-soporte.dto';
 import { UpdateTicketsSoporteDto } from './dto/update-tickets-soporte.dto';
+import { CloseTicketDto } from './dto/CloseTicketDto .dto';
 
 @Controller('tickets-soporte')
 export class TicketsSoporteController {
@@ -37,6 +38,14 @@ export class TicketsSoporteController {
     @Body() updateTicketsSoporteDto: UpdateTicketsSoporteDto,
   ) {
     return this.ticketsSoporteService.update(id, updateTicketsSoporteDto);
+  }
+
+  @Patch('/close-ticket-soporte/:id')
+  closeTickets(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateTicketsSoporteDto: CloseTicketDto,
+  ) {
+    return this.ticketsSoporteService.closeTickets(id, updateTicketsSoporteDto);
   }
 
   @Delete('/delete-all')

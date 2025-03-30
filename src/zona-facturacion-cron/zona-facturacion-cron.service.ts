@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateZonaFacturacionCronDto } from './dto/create-zona-facturacion-cron.dto';
 import { UpdateZonaFacturacionCronDto } from './dto/update-zona-facturacion-cron.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -131,6 +131,27 @@ export class ZonaFacturacionCronService {
           },
         },
       });
+
+      const nuevoEstadoCliente = await this.prisma.clienteInternet.findUnique({
+        where: {
+          id: nuevoEstadoSaldoCliente.clienteId,
+        },
+      });
+
+      if (!nuevoEstadoCliente) {
+        throw new NotFoundException('Error al encontrar cliente');
+      }
+
+      const newStateCustomer = await this.prisma.clienteInternet.update({
+        where: {
+          id: nuevoEstadoCliente.id,
+        },
+        data: {
+          estadoCliente: 'MOROSO',
+        },
+      });
+
+      console.log('el nuevo state del cliente es: ', newStateCustomer);
 
       console.log(
         'el nuevo estado de cuenta del cliente es: ',
