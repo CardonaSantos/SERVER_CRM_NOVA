@@ -57,13 +57,13 @@ export class DashboardService {
     });
 
     // Get the number of active services
-    const activeServicesCount = await this.prisma.servicioInternet.count({
-      where: { estado: 'ACTIVO' },
+    const activeServicesCount = await this.prisma.clienteInternet.count({
+      where: { estadoCliente: 'ACTIVO' },
     });
 
     // Get the number of suspended services
-    const suspendedServicesCount = await this.prisma.servicioInternet.count({
-      where: { estado: 'INACTIVO' },
+    const suspendedServicesCount = await this.prisma.clienteInternet.count({
+      where: { estadoCliente: 'SUSPENDIDO' },
     });
 
     // Get the number of clients added this month

@@ -431,9 +431,6 @@ model ClienteInternet {
   //fotos y referencias del cliente
   fotos Fotos[]
   // Relación con la tabla intermedia
-  // Relación uno a uno con ServicioInternet (opcional)
-  // servicioInternetId  Int?             @unique // Campo único para relación 1:1
-  // servicioInternet    ServicioInternet? @relation(fields: [servicioInternetId], references: [id])
 
   servicioInternetId  Int?
   servicioInternet    ServicioInternet? @relation(fields: [servicioInternetId], references: [id])

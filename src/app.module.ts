@@ -21,6 +21,8 @@ import { ZonaFacturacionCronModule } from './zona-facturacion-cron/zona-facturac
 import { IdContratoModule } from './id-contrato/id-contrato.module';
 import { RutaCobroModule } from './ruta-cobro/ruta-cobro.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { TwilioModule } from './twilio/twilio.module';
+import { CustomerPayloadModule } from './customer-payload/customer-payload.module';
 
 @Module({
   imports: [
@@ -48,6 +50,8 @@ import { DashboardModule } from './dashboard/dashboard.module';
     IdContratoModule,
     RutaCobroModule,
     DashboardModule,
+    TwilioModule,
+    CustomerPayloadModule,
   ],
   controllers: [AppController],
   providers: [AppService],

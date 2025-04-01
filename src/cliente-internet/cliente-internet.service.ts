@@ -25,223 +25,6 @@ export class ClienteInternetService {
     private readonly idContradoService: IdContratoService,
   ) {}
 
-  // async create(createClienteInternetDto: CreateClienteInternetDto) {
-  //   const {
-  //     coordenadas,
-  //     municipioId,
-  //     departamentoId,
-  //     empresaId,
-  //     servicesIds,
-  //     asesorId,
-  //     ip,
-  //     mascara,
-  //     gateway,
-  //     servicioWifiId, // Ahora usamos directamente este ID para la relación 1:1
-  //     zonaFacturacionId,
-  //     //
-  //     archivoContrato,
-  //     fechaFirma,
-  //     idContrato,
-  //     observacionesContrato,
-  //     ...restoData
-  //   } = createClienteInternetDto;
-
-  //   if (!coordenadas || coordenadas.length !== 2) {
-  //     throw new Error('Coordenadas inválidas');
-  //   }
-
-  //   const serviceIds: number[] = createClienteInternetDto.servicesIds;
-  //   const latitud = Number(coordenadas[0]);
-  //   const longitud = Number(coordenadas[1]);
-
-  //   const result = await this.prisma.$transaction(async (prisma) => {
-  //     const ubicacion = await prisma.ubicacion.create({
-  //       data: {
-  //         latitud,
-  //         longitud,
-  //         empresa: {
-  //           connect: { id: 1 },
-  //         },
-  //       },
-  //     });
-
-  //     // Crear cliente con la nueva relación 1:1
-  //     const cliente = await prisma.clienteInternet.create({
-  //       data: {
-  //         ...restoData,
-  //         // NUEVA RELACIÓN 1:1 DIRECTA
-  //         servicioInternet: servicioWifiId
-  //           ? { connect: { id: servicioWifiId } }
-  //           : undefined,
-
-  //         // Mantenemos relaciones existentes
-  //         municipio: municipioId ? { connect: { id: municipioId } } : undefined,
-  //         departamento: departamentoId
-  //           ? { connect: { id: departamentoId } }
-  //           : undefined,
-  //         empresa: { connect: { id: empresaId } },
-
-  //         // [MANTENEMOS SERVICIOS NO WIFI]
-  //         clienteServicios: {
-  //           create: serviceIds.map((id) => ({
-  //             servicio: { connect: { id } },
-  //             fechaInicio: createClienteInternetDto.fechaInstalacion,
-  //             estado: 'ACTIVO',
-  //           })),
-  //         },
-
-  //         asesor: asesorId ? { connect: { id: asesorId } } : undefined,
-  //         ubicacion: { connect: { id: ubicacion.id } },
-  //         apellidos: restoData.apellidos || null,
-  //         telefono: restoData.telefono || null,
-  //         direccion: restoData.direccion || null,
-  //         dpi: restoData.dpi || null,
-  //         observaciones: restoData.observaciones || null,
-  //         contactoReferenciaNombre: restoData.contactoReferenciaNombre || null,
-  //         contactoReferenciaTelefono:
-  //           restoData.contactoReferenciaTelefono || null,
-  //         ssidRouter: restoData.ssidRouter || null,
-  //         fechaInstalacion: restoData.fechaInstalacion || null,
-  //         estadoCliente: 'ACTIVO',
-  //         facturacionZona: {
-  //           connect: {
-  //             id: zonaFacturacionId,
-  //           },
-  //         },
-  //       },
-  //     });
-
-  //     // Actualizar ubicación con el clienteId
-  //     await prisma.ubicacion.update({
-  //       where: { id: ubicacion.id },
-  //       data: { clienteId: cliente.id },
-  //     });
-
-  //     // Crear IP usando el clienteId
-  //     const ipRecord = await prisma.iP.create({
-  //       data: {
-  //         direccionIp: ip,
-  //         gateway: gateway,
-  //         mascara: mascara,
-  //         cliente: { connect: { id: cliente.id } },
-  //       },
-  //     });
-
-  //     const saldoClienteInternet = await prisma.saldoCliente.create({
-  //       data: {
-  //         cliente: {
-  //           connect: {
-  //             id: cliente.id,
-  //           },
-  //         },
-  //       },
-  //     });
-  //     console.log('El saldo del cliente creado es: ', saldoClienteInternet);
-
-  //     console.log('================CLIENTE NUEVO===========');
-  //     console.log(cliente);
-
-  //     console.log('==================EMPEZANDO FACTURACION=========');
-
-  //     const fechaFacturacionZona = await prisma.facturacionZona.findUnique({
-  //       where: {
-  //         id: createClienteInternetDto.zonaFacturacionId,
-  //       },
-  //     });
-
-  //     // Verificamos que el servicio existe
-  //     const servicioClienteInternet = await prisma.servicioInternet.findUnique({
-  //       where: {
-  //         id: servicioWifiId, // Usamos directamente el ID del servicio
-  //       },
-  //     });
-
-  //     if (!servicioClienteInternet) {
-  //       throw new Error('Servicio de internet no encontrado');
-  //     }
-
-  //     console.log('La zona de facturacion es: ', fechaFacturacionZona);
-  //     const fechaPrimerPago = fechaFacturacionZona.diaPago;
-
-  //     const fechaPrimerPagoInicial = dayjs().date(fechaPrimerPago);
-  //     console.log(
-  //       'La fecha inicial a pagar es: ',
-  //       fechaPrimerPagoInicial.format('YYYY-MM-DD'),
-  //     );
-
-  //     const siguientePago = fechaPrimerPagoInicial.add(1, 'month');
-  //     console.log(
-  //       'El siguiente pago el día: ',
-  //       siguientePago.format('YYYY-MM-DD'),
-  //     );
-
-  //     const newFacturaInternetPrimerPago = await prisma.facturaInternet.create({
-  //       data: {
-  //         fechaPagoEsperada: fechaPrimerPagoInicial.toDate(),
-  //         montoPago: servicioClienteInternet.precio,
-  //         saldoPendiente: servicioClienteInternet.precio,
-  //         empresa: {
-  //           connect: {
-  //             id: createClienteInternetDto.empresaId,
-  //           },
-  //         },
-  //         estadoFacturaInternet: 'PENDIENTE',
-  //         cliente: {
-  //           connect: {
-  //             id: cliente.id,
-  //           },
-  //         },
-  //         facturacionZona: {
-  //           connect: {
-  //             id: fechaFacturacionZona.id,
-  //           },
-  //         },
-  //         nombreClienteFactura: `${cliente.nombre}  ${cliente.apellidos}`,
-  //         detalleFactura: `Pago por suscripción mensual al servicio de internet, plan ${servicioClienteInternet.nombre} (${servicioClienteInternet.velocidad}), precio: ${servicioClienteInternet.precio} Fecha: ${fechaPrimerPagoInicial}`,
-  //       },
-  //     });
-
-  //     const recordatorioPrimerPago = await prisma.recordatorioPago.create({
-  //       data: {
-  //         cliente: {
-  //           connect: {
-  //             id: cliente.id,
-  //           },
-  //         },
-  //         facturaInternet: {
-  //           connect: {
-  //             id: newFacturaInternetPrimerPago.id,
-  //           },
-  //         },
-  //         tipo: 'Sistema Auto',
-  //         mensaje: 'Recordatorio de primer pago de servicio',
-  //         fechaEnviado: fechaPrimerPagoInicial.toDate(),
-  //         resultado: 'PENDIENTE',
-  //       },
-  //     });
-
-  //     return {
-  //       cliente,
-  //       ubicacion,
-  //       ip: ipRecord,
-  //       newFacturaInternetPrimerPago,
-  //     };
-  //   });
-
-  //   if (createClienteInternetDto.idContrato) {
-  //     const clienteConcontratro = await this.idContradoService.create({
-  //       archivoContrato: archivoContrato,
-  //       clienteId: result.cliente.id,
-  //       fechaFirma: fechaFirma,
-  //       idContrato: idContrato,
-  //       observaciones: observacionesContrato,
-  //     });
-  //     console.log('el contrato del cliente es: ', clienteConcontratro);
-  //   }
-
-  //   return result;
-  // }
-
   async create(createClienteInternetDto: CreateClienteInternetDto) {
     const {
       coordenadas,
@@ -406,7 +189,7 @@ export class ClienteInternetService {
           },
         },
       });
-      console.log('EL saldo inicial del nuevo cliente es: ', nuevoSaldoCliente);
+      // console.log('EL saldo inicial del nuevo cliente es: ', nuevoSaldoCliente);
 
       const recordatorioPrimerPago = await prisma.recordatorioPago.create({
         data: {
@@ -449,10 +232,10 @@ export class ClienteInternetService {
   }
 
   async updateClienteAddService(updateCustomerService: updateCustomerService) {
-    console.log(
-      'Entrando al servicio de actualizar con servicio',
-      updateCustomerService,
-    );
+    // console.log(
+    //   'Entrando al servicio de actualizar con servicio',
+    //   updateCustomerService,
+    // );
 
     return await this.prisma.$transaction(async (tx) => {
       const { customerId, serviceId } = updateCustomerService;
@@ -903,10 +686,10 @@ export class ClienteInternetService {
         );
       }
 
-      // Formatear la respuesta de clientes
       const formattedCustomers = customers.map((customer) => ({
         id: customer.id,
         nombreCompleto: `${customer.nombre} ${customer.apellidos}`,
+
         telefono: customer.telefono,
         dpi: customer.dpi,
         direccion: customer.direccion,
@@ -1192,9 +975,30 @@ export class ClienteInternetService {
 
   async deleteClientsWithRelations() {
     try {
-      return await this.prisma.clienteInternet.deleteMany({});
+      return await this.prisma.$transaction(async (tx) => {
+        console.log(
+          '🚨 Eliminando relaciones relacionadas a clienteInternet...',
+        );
+
+        await tx.recordatorioPago.deleteMany({});
+        await tx.facturaInternet.deleteMany({});
+        await tx.iP.deleteMany({});
+        await tx.saldoCliente.deleteMany({});
+        await tx.clienteServicio.deleteMany({});
+        await tx.contratoFisico.deleteMany({});
+        await tx.ubicacion.deleteMany({});
+
+        console.log('🧨 Eliminando clientes...');
+        const result = await tx.clienteInternet.deleteMany({});
+
+        console.log(`✅ ${result.count} clientes eliminados correctamente`);
+
+        return {
+          message: `Se eliminaron ${result.count} clientes y todas sus relaciones`,
+        };
+      });
     } catch (error) {
-      console.error('Error al eliminar los clientes y sus relaciones:', error);
+      console.error('❌ Error al eliminar masivamente:', error);
       throw new Error('No se pudo eliminar a los clientes y sus relaciones');
     }
   }
