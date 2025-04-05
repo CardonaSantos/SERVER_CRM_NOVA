@@ -13,6 +13,8 @@ import { CreateFacturacionDto } from './dto/create-facturacion.dto';
 import { UpdateFacturacionDto } from './dto/update-facturacion.dto';
 import { CreateFacturacionPaymentDto } from './dto/createFacturacionPayment.dto';
 import { CreatePaymentOnRuta } from './dto/createPaymentOnRuta.dto';
+import { GenerateFactura } from './dto/generateFactura.dto';
+import { GenerateFacturaMultipleDto } from './dto/generateMultipleFactura.dto';
 
 @Controller('facturacion')
 export class FacturacionController {
@@ -38,6 +40,22 @@ export class FacturacionController {
   ) {
     return this.facturacionService.createNewPaymentFacturacionForRuta(
       createFacturacionPaymentDto,
+    );
+  }
+
+  @Post('/generate-factura-internet')
+  generateFacturaInternet(@Body() createGenerateFactura: GenerateFactura) {
+    return this.facturacionService.generateFacturaInternet(
+      createGenerateFactura,
+    );
+  }
+
+  @Post('/generate-factura-internet-multiple')
+  generateFacturaMultiple(
+    @Body() createFacturaMultipleDto: GenerateFacturaMultipleDto,
+  ) {
+    return this.facturacionService.generateFacturaMultiple(
+      createFacturaMultipleDto,
     );
   }
 

@@ -205,10 +205,15 @@ export class RutaCobroService {
             telefono: cliente.contactoReferenciaTelefono,
             nombre: cliente.contactoReferenciaNombre,
           },
-          ubicacion: {
-            latitud: cliente.ubicacion.latitud,
-            longitud: cliente.ubicacion.longitud,
-          },
+          ubicacion:
+            cliente.ubicacion &&
+            cliente.ubicacion.latitud &&
+            cliente.ubicacion.longitud
+              ? {
+                  latitud: cliente.ubicacion.latitud,
+                  longitud: cliente.ubicacion.longitud,
+                }
+              : [], // Si no existe ubicacion, devuelve un array vacío
           facturas: cliente.facturaInternet.map((factura) => ({
             id: factura.id,
             montoPago: factura.montoPago,

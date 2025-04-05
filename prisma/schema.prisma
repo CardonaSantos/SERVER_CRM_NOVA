@@ -469,12 +469,6 @@ model ContratoFisico {
   actualizadoEn DateTime @updatedAt
 }
 
-
-
-
-
-
-
 model saldoCliente {
   id Int @id @default(autoincrement())
   saldoPendiente Float? @default(0)

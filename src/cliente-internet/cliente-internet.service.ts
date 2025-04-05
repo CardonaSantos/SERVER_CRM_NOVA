@@ -95,7 +95,7 @@ export class ClienteInternetService {
             restoData.contactoReferenciaTelefono || null,
           ssidRouter: restoData.ssidRouter || null,
           fechaInstalacion: restoData.fechaInstalacion || null,
-          estadoCliente: 'ACTIVO',
+          estadoCliente: 'MOROSO',
           facturacionZona: {
             connect: {
               id: zonaFacturacionId,
@@ -179,7 +179,7 @@ export class ClienteInternetService {
 
       //ponerle el sado pendiente de la primera factura:
 
-      const nuevoSaldoCliente = await prisma.saldoCliente.update({
+      await prisma.saldoCliente.update({
         where: {
           clienteId: cliente.id,
         },
@@ -409,8 +409,6 @@ export class ClienteInternetService {
         throw new Error('Cliente no encontrado');
       }
 
-      console.log('El cliente encontrado es: ', clienteInternetWithRelations);
-
       // Mapeamos los datos del cliente con el formato requerido
       const clienteEjemplo = {
         id: clienteInternetWithRelations.id,
@@ -499,6 +497,7 @@ export class ClienteInternetService {
             fechaCierre: ticket.fechaCierre,
           }),
         ),
+        // FECHA DE VENCIMINEOTO AQUI
         facturaInternet: clienteInternetWithRelations.facturaInternet.map(
           (factura) => ({
             id: factura.id,

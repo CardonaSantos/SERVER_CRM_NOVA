@@ -13,40 +13,62 @@ export class CustomerPayloadService {
   ) {}
 
   asignarZonaPorRouter(router: string): number {
-    const r = router.toLowerCase();
+    const nombreNormalizado = router.trim().toLowerCase();
 
-    switch (true) {
-      case r.includes('corte 5') ||
-        r.includes('san antonio corte 5') ||
-        r.includes('jacaltenango corte5'):
-        return 8;
+    const zonas = new Map<string, number>([
+      ['san antonio corte 30', 1],
+      ['san antonio corte 20', 2],
+      ['san antonio corte 25', 3],
+      ['san antonio corte 15', 4],
+      ['san antonio corte 10', 5],
+      ['san antonio corte 5', 6],
+      ['router san antonio corte', 7],
+      ['router san antonio', 8],
+      ['jacaltenango corte5', 9],
+      ['jacaltenango corte10', 10],
+      ['jacaltenango corte15', 11],
+      ['jacaltenango corte20', 12],
+      ['jacaltenango corte25', 13],
+      ['jacaltenango corte30', 14],
+      ['jacaltenango corte1', 15],
+      ['generico', 16],
+    ]);
 
-      case r.includes('corte 10') ||
-        r.includes('san antonio corte 10') ||
-        r.includes('jacaltenango corte10'):
-        return 16;
-
-      case r.includes('corte 15') ||
-        r.includes('san antonio corte 15') ||
-        r.includes('jacaltenango corte15'):
-        return 18;
-
-      case r.includes('corte 20') ||
-        r.includes('san antonio corte 20') ||
-        r.includes('jacaltenango corte20'):
-        return 19;
-
-      case r.includes('corte 16') || r.includes('jacaltenango corte16'):
-        return 22;
-
-      case r.includes('corte 30') ||
-        r.includes('san antonio corte 30') ||
-        r.includes('jacaltenango corte30'):
-        return 25;
-
-      default:
-        return 8; // Por defecto: CORTE 5
+    for (const [clave, id] of zonas.entries()) {
+      if (nombreNormalizado.includes(clave)) {
+        return id;
+      }
     }
+
+    return 16; // valor por defecto
+  }
+
+  asignarServicioWifi(plan: string): number {
+    const nombre = plan.trim().toLowerCase();
+
+    const servicios = new Map<string, number>([
+      ['plan basico q150', 1],
+      ['avanzado q200', 2],
+      ['plan premium q300', 3],
+      ['3m/3m', 4],
+      ['50m/50m', 5],
+      ['plan basico 2 q175', 6],
+      ['plan gratis', 7],
+      ['13m/3m', 8],
+      ['6500k/6500k', 9],
+      ['5m/4m', 10],
+      ['8m/4m', 11],
+      ['10m/10m', 12],
+      ['8m/8m', 13],
+    ]);
+
+    for (const [clave, id] of servicios.entries()) {
+      if (nombre.includes(clave)) {
+        return id;
+      }
+    }
+
+    return 14; // valor por defecto (
   }
 
   async importarYFormatearClientes(rutaArchivo: string): Promise<void> {
@@ -91,8 +113,7 @@ export class CustomerPayloadService {
         fechaInstalacion: null,
         asesorId: null,
         servicesIds: [],
-        servicioWifiId:
-          plan === 'Plan Basico Q150' ? 3 : plan === 'Avanzado Q200' ? 4 : 5,
+        servicioWifiId: this.asignarServicioWifi(plan),
 
         municipioId: 97,
         departamentoId: 8,
@@ -116,11 +137,18 @@ export class CustomerPayloadService {
       );
     }
 
-    const chunks = chunkArray(clientesFormateados.slice(0, 50), 10);
-    for (const chunk of chunks) {
-      await Promise.all(
-        chunk.map((cliente) => this.clienteInternetService.create(cliente)),
-      );
+    // const chunks = chunkArray(clientesFormateados, 10);
+    for (const cliente of clientesFormateados.slice(0, 20)) {
+      try {
+        const created = await this.clienteInternetService.create(cliente);
+        // console.log('✅ Cliente creado:', created.cliente.nombre);
+      } catch (error) {
+        console.error(
+          '❌ Error al crear cliente:',
+          cliente.nombre,
+          error.message,
+        );
+      }
     }
 
     console.log('Clientes añadidos');
