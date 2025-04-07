@@ -15,6 +15,7 @@ import { CreateFacturacionPaymentDto } from './dto/createFacturacionPayment.dto'
 import { CreatePaymentOnRuta } from './dto/createPaymentOnRuta.dto';
 import { GenerateFactura } from './dto/generateFactura.dto';
 import { GenerateFacturaMultipleDto } from './dto/generateMultipleFactura.dto';
+import { DeleteFacturaDto } from './dto/delete-one-factura.dto';
 
 @Controller('facturacion')
 export class FacturacionController {
@@ -97,8 +98,8 @@ export class FacturacionController {
     return this.facturacionService.update(+id, updateFacturacionDto);
   }
 
-  @Delete('/delete-all')
-  remove() {
-    return this.facturacionService.remove();
+  @Delete('/delete-one-factura')
+  remove(@Body() deleteFacturaDto: DeleteFacturaDto) {
+    return this.facturacionService.removeOneFactura(deleteFacturaDto);
   }
 }

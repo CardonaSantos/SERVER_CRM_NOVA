@@ -4,11 +4,20 @@ import { UpdateZonaFacturacionCronDto } from './dto/update-zona-facturacion-cron
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import * as dayjs from 'dayjs';
+import * as utc from 'dayjs/plugin/utc';
+import * as timezone from 'dayjs/plugin/timezone';
+
+// Extiende dayjs con los plugins
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const formatearFecha = (fecha: string) => {
   // Formateo en UTC sin conversión a local
   return dayjs(fecha).format('DD/MM/YYYY hh:mm A');
 };
+
+// Al comparar fechas, ajustamos las fechas de UTC a Guatemala (UTC-6)
+const hoylocal = dayjs().tz('America/Guatemala');
 
 interface DatosFacturaGenerate {
   fechaPagoEsperada: string;
@@ -25,9 +34,17 @@ interface DatosFacturaGenerate {
 @Injectable()
 export class ZonaFacturacionCronService {
   constructor(private readonly prisma: PrismaService) {}
-
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  // '0 6 * * *'
+  // @Cron(CronExpression.EVERY_10_MINUTES)
+  @Cron('0 0 0 * * *', {
+    timeZone: 'America/Guatemala',
+  })
   async gerarFacturacionAutomaticaCron() {
+    console.log(
+      'Fecha ajustada a Guatemala:',
+      hoylocal.format('YYYY-MM-DD HH:mm:ss'),
+    );
+
     const zonasFacturaciones = await this.prisma.facturacionZona.findMany({
       include: {
         clientes: {
@@ -35,6 +52,16 @@ export class ZonaFacturacionCronService {
             id: true,
             nombre: true,
             apellidos: true,
+            facturaInternet: {
+              select: {
+                id: true,
+                creadoEn: true,
+                fechaPagoEsperada: true,
+                actualizadoEn: true,
+                fechaPagada: true,
+                pagos: true,
+              },
+            },
             servicioInternet: {
               select: {
                 id: true,
@@ -54,26 +81,39 @@ export class ZonaFacturacionCronService {
       },
     });
 
-    console.log('Las zonas de facturacion son: ', zonasFacturaciones);
-
+    // Iterar por cada zona de facturación
     for (const zona of zonasFacturaciones) {
-      const today = dayjs();
       const fechaGeneracion = dayjs().date(zona.diaGeneracionFactura);
-      // Compara las fechas
-      if (today.isSame(fechaGeneracion, 'day')) {
+
+      // Compara las fechas ajustadas a Guatemala
+      if (hoylocal.isSame(fechaGeneracion, 'day')) {
         for (const cliente of zona.clientes) {
-          // Verifica si el cliente tiene servicio de internet
-          if (cliente.servicioInternet) {
+          const facturasEsteMes = cliente.facturaInternet.filter((fact) => {
+            const creadoEn = dayjs(fact.creadoEn).tz('America/Guatemala');
+            const fechaPagoEsperada = dayjs(fact.fechaPagoEsperada).tz(
+              'America/Guatemala',
+            );
+
+            return (
+              creadoEn.isSame(hoylocal, 'month') &&
+              creadoEn.isSame(hoylocal, 'year') &&
+              fechaPagoEsperada.isSame(hoylocal, 'month') &&
+              fechaPagoEsperada.isSame(hoylocal, 'year')
+            );
+          });
+
+          // Verifica si el cliente tiene servicio de internet y no tiene facturas generadas este mes
+          if (cliente.servicioInternet && facturasEsteMes.length <= 0) {
             console.log('El cliente es: ', cliente);
             const dataFactura: DatosFacturaGenerate = {
               datalleFactura: `Pago por suscripción mensual al servicio de internet, plan ${cliente.servicioInternet.nombre} (${cliente.servicioInternet.velocidad}), precio: ${cliente.servicioInternet.precio} Fecha: ${zona.diaPago}`,
-              fechaPagoEsperada: dayjs()
+              fechaPagoEsperada: hoylocal
                 .date(zona.diaPago) // Establece el día de la fecha
-                .month(dayjs().month()) // Establece el mes actual
-                .year(dayjs().year()) // Establece el año actual
-                .isBefore(dayjs(), 'day') // Si la fecha es antes de hoy, pasa al siguiente mes
-                ? dayjs().add(1, 'month').date(zona.diaPago).format() // Si es antes, agregamos un mes
-                : dayjs().date(zona.diaPago).format(), // Si no es antes, usa el mes actual
+                .month(hoylocal.month()) // Usa el mes actual de Guatemala
+                .year(hoylocal.year()) // Usa el año actual de Guatemala
+                .isBefore(hoylocal, 'day') // Si la fecha es antes de hoy, pasa al siguiente mes
+                ? hoylocal.add(1, 'month').date(zona.diaPago).format() // Si es antes, agrega un mes
+                : hoylocal.date(zona.diaPago).format(), // Si no es antes, usa el mes actual
               montoPago: cliente.servicioInternet.precio,
               saldoPendiente: cliente.servicioInternet.precio,
               estadoFacturaInternet: 'PENDIENTE',
@@ -82,12 +122,13 @@ export class ZonaFacturacionCronService {
               nombreClienteFactura: `${cliente.nombre} ${cliente.apellidos}`,
             };
 
-            // Ahora pasamos el objeto dataFactura al servicio para crear la factura
-            await this.generarFacturaClientePorZona(dataFactura); // Pasa el objeto creado
+            // Llama al servicio para crear la factura
+            await this.generarFacturaClientePorZona(dataFactura);
           } else {
             console.error(
-              `El cliente ${cliente.nombre} ${cliente.apellidos} no tiene servicio de internet asociado.`,
+              `El cliente ${cliente.nombre} ${cliente.apellidos} no tiene servicio de internet asociado o ya tiene una factura creada.`,
             );
+            console.log('Facturas creadas previas: ', facturasEsteMes);
           }
         }
       } else {

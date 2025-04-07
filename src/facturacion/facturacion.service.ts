@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateFacturacionDto } from './dto/create-facturacion.dto';
 import { UpdateFacturacionDto } from './dto/update-facturacion.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -14,6 +14,7 @@ import { CreatePaymentOnRuta } from './dto/createPaymentOnRuta.dto';
 import { GenerateFactura } from './dto/generateFactura.dto';
 import 'dayjs/locale/es'; // Carga el idioma español
 import { GenerateFacturaMultipleDto } from './dto/generateMultipleFactura.dto';
+import { DeleteFacturaDto } from './dto/delete-one-factura.dto';
 
 dayjs.locale('es'); // Establece español como idioma predeterminado
 const formatearFecha = (fecha: string) => {
@@ -471,181 +472,21 @@ export class FacturacionService {
     });
   }
 
-  //ACTUALIZAR EL ESTADO DE LA FACTURA
-  // ACTUALIZAR EL ESTADO DE LA FACTURA
-  // ACTUALIZAR EL ESTADO DE LA FACTURA
-  private async updateFacturaState(
-    tx: Prisma.TransactionClient,
-    facturaId: number,
-    montoPagado: number,
-  ) {
-    console.log('El monto pagado es. ', montoPagado);
-
-    // El total de pagos realizados para esta factura
-    const totalPagado = await tx.pagoFacturaInternet.aggregate({
-      _sum: { montoPagado: true },
-      where: { facturaInternetId: facturaId },
-    });
-    console.log('El total pagado es: ', totalPagado);
-
-    const facturaActual = await tx.facturaInternet.findUnique({
-      where: { id: facturaId },
-      select: { montoPago: true, id: true },
-    });
-
-    const cantidadTotalPagada = totalPagado._sum.montoPagado || 0;
-
-    // Si el pago actual es menor que el saldo pendiente, no restes más de lo que se ha pagado en esta ocasión
-    const newSaldoPendiente = Math.max(
-      0,
-      facturaActual.montoPago - montoPagado, // Restamos solo el monto actual pagado
-    );
-    console.log(
-      'El saldo pendiente de esta factura es: ',
-      newSaldoPendiente,
-      facturaActual.id,
-    );
-
-    let nuevoEstado: StateFacturaInternet;
-    let fechaPagada: Date | null = null;
-
-    // Si el saldo pendiente es 0, la factura se considera pagada
-    if (newSaldoPendiente <= 0) {
-      nuevoEstado = StateFacturaInternet.PAGADA;
-      fechaPagada = new Date();
-    } else {
-      // Si hay algún pago, se marca como parcial
-      nuevoEstado =
-        montoPagado > 0
-          ? StateFacturaInternet.PARCIAL
-          : StateFacturaInternet.PENDIENTE;
-    }
-
-    return tx.facturaInternet.update({
-      where: { id: facturaId },
-      data: {
-        saldoPendiente: newSaldoPendiente,
-        estadoFacturaInternet: nuevoEstado,
-        fechaPagada,
-      },
-    });
-  }
-
-  // ACTUALIZAR EL SALDO DEL CLIENTE Y SU ESTADO
-  private async updateClienteSaldoPagoUnico(
-    tx: Prisma.TransactionClient,
-    clienteId: number,
-    montoPagado: number,
-    facturaInternetId: number, // Recibimos el ID de la factura que se está pagando
-  ) {
-    // Obtener la factura específica que se está pagando
-    const facturaPendiente = await tx.facturaInternet.findUnique({
-      where: { id: facturaInternetId },
-      select: { saldoPendiente: true, montoPago: true },
-    });
-
-    if (!facturaPendiente) throw new Error('Factura no encontrada');
-
-    const saldoPendienteFactura = facturaPendiente.saldoPendiente;
-    console.log(
-      'El saldo pendiente de esta factura es: ',
-      saldoPendienteFactura,
-    );
-
-    // Calcular el nuevo saldo pendiente de la factura específica
-    const nuevoSaldoPendienteFactura = Math.max(
-      0,
-      saldoPendienteFactura - montoPagado,
-    );
-    console.log(
-      'El nuevo saldo pendiente de esta factura es: ',
-      nuevoSaldoPendienteFactura,
-    );
-
-    // Calcular el saldo total pendiente del cliente solo con facturas que estén pendientes o parciales
-    const totalSaldo = await tx.facturaInternet.aggregate({
-      _sum: { saldoPendiente: true },
-      where: {
-        clienteId,
-        estadoFacturaInternet: {
-          in: [StateFacturaInternet.PENDIENTE, StateFacturaInternet.PARCIAL],
-        },
-      },
-    });
-
-    const saldoPendienteClienteActual = totalSaldo._sum.saldoPendiente || 0;
-    const nuevoSaldoPendienteTotalCliente = Math.max(
-      0,
-      saldoPendienteClienteActual - montoPagado,
-    );
-
-    // Calcular el saldo a favor si se pagó más de lo que se debía en la factura
-    const saldoFavor = Math.max(0, montoPagado - saldoPendienteFactura);
-
-    return tx.saldoCliente.upsert({
-      where: { clienteId },
-      create: {
-        saldoPendiente: nuevoSaldoPendienteTotalCliente,
-        saldoFavor,
-        totalPagos: montoPagado,
-        ultimoPago: new Date(),
-        cliente: { connect: { id: clienteId } },
-      },
-      update: {
-        saldoPendiente: nuevoSaldoPendienteTotalCliente,
-        saldoFavor: { increment: saldoFavor },
-        totalPagos: { increment: montoPagado },
-        ultimoPago: new Date(),
-      },
-    });
-  }
-
-  // ACTUALIZAR EL ESTADO DEL CLIENTE
-  private async updateClienteState(
-    tx: Prisma.TransactionClient,
-    clienteId: number,
-    montoPagado: number,
-  ) {
-    // Verificar si alguna factura del cliente está pendiente o parcialmente pagada
-    const facturasPendientes = await tx.facturaInternet.findMany({
-      where: {
-        clienteId,
-        estadoFacturaInternet: {
-          in: [StateFacturaInternet.PENDIENTE, StateFacturaInternet.PARCIAL],
-        },
-      },
-    });
-
-    // Si alguna factura sigue pendiente o parcial, el cliente debe seguir siendo MOROSO
-    const newState =
-      facturasPendientes.length > 0
-        ? EstadoCliente.MOROSO
-        : EstadoCliente.ACTIVO;
-
-    await tx.clienteInternet.update({
-      where: { id: clienteId },
-      data: { estadoCliente: newState },
-    });
-    return newState; // Lo retornamos para usarlo en el de ruta
-  }
-
-  private handlePaymentError(error: any) {
-    console.error('Error en el pago:', error);
-    throw new Error(
-      error.code === 'P2002'
-        ? 'Error de duplicación en los datos'
-        : 'Error al procesar el pago',
-    );
-  }
-
-  //REGISTRAR PAGO EN RUTA
   //REGISTRAR PAGO EN RUTA
   async createNewPaymentFacturacionForRuta(
     createFacturacionPaymentDto: CreatePaymentOnRuta,
   ) {
+    const {
+      facturaInternetId,
+      clienteId,
+      montoPagado,
+      metodoPago,
+      cobradorId,
+      numeroBoleta,
+    } = createFacturacionPaymentDto;
+
     console.log('Datos del pago:', createFacturacionPaymentDto);
 
-    const { metodoPago, numeroBoleta } = createFacturacionPaymentDto;
     let numeroBoletaReal: string | null = null;
 
     // Si el método de pago es DEPOSITO, y el número de boleta es no vacío, asignar el número de boleta
@@ -658,70 +499,20 @@ export class FacturacionService {
     }
 
     try {
+      const data = {
+        facturaInternetId,
+        clienteId,
+        montoPagado,
+        metodoPago,
+        cobradorId,
+        numeroBoleta,
+      };
+
+      const newPAgo = await this.createNewPaymentFacturacion(data);
+      console.log('el pago en la ruta es: ', newPAgo);
+
       const newFacturacionPayment = await this.prisma.$transaction(
         async (tx) => {
-          // 1. Crear el nuevo pago
-          const newPayment = await tx.pagoFacturaInternet.create({
-            data: {
-              cliente: {
-                connect: { id: createFacturacionPaymentDto.clienteId },
-              },
-              montoPagado: createFacturacionPaymentDto.montoPagado,
-              facturaInternet: {
-                connect: { id: createFacturacionPaymentDto.facturaInternetId },
-              },
-              metodoPago: createFacturacionPaymentDto.metodoPago,
-              cobrador: {
-                connect: { id: createFacturacionPaymentDto.cobradorId },
-              },
-              numeroBoleta: numeroBoletaReal,
-            },
-          });
-
-          console.log('Nuevo pago creado:', newPayment);
-
-          // 2. Calcular el total pagado (incluyendo el nuevo pago)
-          const totalPagado = await tx.pagoFacturaInternet.aggregate({
-            _sum: { montoPagado: true },
-            where: {
-              facturaInternetId: createFacturacionPaymentDto.facturaInternetId,
-            },
-          });
-          const cantidadTotalPagada = totalPagado._sum.montoPagado || 0;
-
-          // 3. Obtener datos actuales de la factura
-          const facturaActual = await tx.facturaInternet.findUnique({
-            where: { id: createFacturacionPaymentDto.facturaInternetId },
-          });
-
-          // 4. Calcular nuevo saldo pendiente y actualizar factura
-          const montoTotalFactura = facturaActual.montoPago;
-          const newSaldoPendiente = Math.max(
-            0,
-            montoTotalFactura - cantidadTotalPagada,
-          );
-
-          let nuevoEstado: StateFacturaInternet;
-          let fechaPagada: Date | null = null;
-
-          if (newSaldoPendiente <= 0) {
-            nuevoEstado = StateFacturaInternet.PAGADA;
-            fechaPagada = new Date();
-          } else if (cantidadTotalPagada > 0) {
-            nuevoEstado = StateFacturaInternet.PARCIAL;
-          } else {
-            nuevoEstado = StateFacturaInternet.PENDIENTE;
-          }
-
-          const updatedFactura = await tx.facturaInternet.update({
-            where: { id: createFacturacionPaymentDto.facturaInternetId },
-            data: {
-              saldoPendiente: newSaldoPendiente,
-              estadoFacturaInternet: nuevoEstado,
-              fechaPagada: fechaPagada,
-            },
-          });
-
           const rutaUpdated = await tx.ruta.update({
             where: {
               id: createFacturacionPaymentDto.rutaId,
@@ -732,84 +523,11 @@ export class FacturacionService {
           });
 
           console.log('La nueva ruta actualizada es: ', rutaUpdated);
-
-          // 5. Actualizar el saldo del cliente
-          const saldoClienteActualizado = await tx.saldoCliente.update({
-            where: {
-              id: createFacturacionPaymentDto.clienteId,
-            },
-            data: {
-              saldoFavor: {
-                increment: createFacturacionPaymentDto.montoPagado,
-              },
-              totalPagos: {
-                increment: createFacturacionPaymentDto.montoPagado,
-              },
-              ultimoPago: new Date(),
-            },
-          });
-
-          // 6. Validar y actualizar el saldo pendiente del cliente
-          if (
-            createFacturacionPaymentDto.montoPagado >=
-            saldoClienteActualizado.saldoPendiente
-          ) {
-            // Si el monto pagado es mayor o igual al saldo pendiente, el saldo pendiente se pone a 0
-            await tx.saldoCliente.update({
-              where: {
-                id: saldoClienteActualizado.clienteId,
-              },
-              data: {
-                saldoPendiente: 0, // No permitimos que el saldo pendiente sea negativo
-              },
-            });
-          } else {
-            // Si el monto pagado es menor al saldo pendiente, decrementamos el saldo pendiente correctamente
-            await tx.saldoCliente.update({
-              where: {
-                id: saldoClienteActualizado.clienteId,
-              },
-              data: {
-                saldoPendiente: {
-                  decrement: createFacturacionPaymentDto.montoPagado, // Decrementamos el saldo pendiente
-                },
-              },
-            });
-          }
-
-          // 7. Actualizar el estado del cliente según el saldo pendiente
-          let newStateCliente: EstadoCliente;
-
-          if (saldoClienteActualizado.saldoPendiente <= 0) {
-            newStateCliente = 'ACTIVO';
-          } else {
-            newStateCliente = 'MOROSO';
-          }
-
-          await tx.clienteInternet.update({
-            where: {
-              id: createFacturacionPaymentDto.clienteId,
-            },
-            data: {
-              estadoCliente: newStateCliente,
-            },
-          });
-
-          return { newPayment, updatedFactura };
         },
         { timeout: 10000 }, // Aumentamos el tiempo de la transacción a 10 segundos
       );
 
-      // const facturaPdfPagoData = this.getFacturaToPDf(
-      //   createFacturacionPaymentDto.facturaInternetId,
-      // );
-      const dataToPdfSucces = {
-        facturaInternetId: newFacturacionPayment.newPayment.facturaInternetId,
-        clienteId: newFacturacionPayment.newPayment.clienteId,
-      };
-
       console.log('Pago registrado:', newFacturacionPayment);
-      return dataToPdfSucces;
     } catch (error) {
       console.error('Error al crear el pago:', error);
       throw new Error('Error al procesar el pago');
@@ -1313,5 +1031,95 @@ export class FacturacionService {
     } catch (error) {
       console.log(error);
     }
+  }
+
+  async removeOneFactura(dto: DeleteFacturaDto) {
+    const { facturaId, estadoFactura, fechaEmision, fechaVencimiento } = dto;
+
+    // 1. Buscar la factura a eliminar junto con los pagos asociados
+    const facturaToDelete = await this.prisma.facturaInternet.findUnique({
+      where: { id: facturaId },
+      include: { pagos: true }, // Incluir los pagos asociados a la factura
+    });
+
+    if (!facturaToDelete) {
+      throw new NotFoundException('Factura no encontrada');
+    }
+
+    // 2. Calcular el monto total de los pagos asociados a la factura eliminada
+    const pagosAsociados = facturaToDelete.pagos;
+    let montoTotalPagos = 0;
+    for (const pago of pagosAsociados) {
+      montoTotalPagos += pago.montoPagado;
+    }
+
+    // 3. Eliminar la factura
+    await this.prisma.facturaInternet.delete({
+      where: { id: facturaToDelete.id },
+    });
+
+    // 4. Obtener el saldo del cliente
+    const saldoCliente = await this.prisma.saldoCliente.findUnique({
+      where: { clienteId: facturaToDelete.clienteId },
+    });
+
+    if (saldoCliente) {
+      // 5. Recalcular el saldo pendiente real del cliente después de eliminar la factura
+      // Obtener todas las facturas pendientes restantes (sin la eliminada)
+      const facturasRestantes = await this.prisma.facturaInternet.findMany({
+        where: {
+          clienteId: facturaToDelete.clienteId,
+          estadoFacturaInternet: { in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'] },
+        },
+      });
+
+      // Calcular el nuevo saldo pendiente sumando los montos de las facturas restantes
+      let nuevoSaldoPendiente = 0;
+      for (const factura of facturasRestantes) {
+        nuevoSaldoPendiente += factura.montoPago;
+      }
+
+      // 6. Ajustar el saldo pendiente después de eliminar la factura y restar los pagos asociados
+      const saldoPendienteAjustado = Math.max(nuevoSaldoPendiente, 0); // Evitar que el saldo pendiente sea negativo
+
+      // Si el pago realizado es mayor que la factura eliminada, se genera un saldo a favor
+      const saldoFavor = Math.max(
+        saldoCliente.saldoFavor + (montoTotalPagos - facturaToDelete.montoPago),
+        0,
+      );
+
+      // 7. Actualizar el saldo del cliente
+      await this.prisma.saldoCliente.update({
+        where: { clienteId: facturaToDelete.clienteId },
+        data: {
+          saldoPendiente: saldoPendienteAjustado,
+          saldoFavor: saldoFavor, // Actualizar saldo a favor
+          totalPagos: saldoCliente.totalPagos - montoTotalPagos, // Restamos los pagos asociados
+        },
+      });
+    }
+
+    // 8. Recalcular el estado del cliente
+    const facturasPendientes = await this.prisma.facturaInternet.findMany({
+      where: {
+        clienteId: facturaToDelete.clienteId,
+        estadoFacturaInternet: { in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'] },
+      },
+    });
+
+    // Si hay facturas pendientes, el cliente pasa a MOROSO
+    const estadoCliente = facturasPendientes.length > 0 ? 'MOROSO' : 'ACTIVO';
+
+    // 9. Actualizar el estado del cliente
+    await this.prisma.clienteInternet.update({
+      where: { id: facturaToDelete.clienteId },
+      data: { estadoCliente: estadoCliente },
+    });
+
+    console.log(
+      `Factura ${facturaId} eliminada y estado de cliente actualizado.`,
+    );
+
+    return `Factura ${facturaId} eliminada y estado de cliente actualizado.`;
   }
 }

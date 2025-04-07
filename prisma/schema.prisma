@@ -724,6 +724,7 @@ enum RolUsuario {
  OFICINA
  ADMIN
  SUPER_ADMIN
+ COBRADOR
 }
 
 enum EstadoClienteServicio {

@@ -138,7 +138,7 @@ export class CustomerPayloadService {
     }
 
     // const chunks = chunkArray(clientesFormateados, 10);
-    for (const cliente of clientesFormateados.slice(0, 20)) {
+    for (const cliente of clientesFormateados) {
       try {
         const created = await this.clienteInternetService.create(cliente);
         // console.log('✅ Cliente creado:', created.cliente.nombre);
