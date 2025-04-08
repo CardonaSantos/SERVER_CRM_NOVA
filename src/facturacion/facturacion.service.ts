@@ -16,6 +16,13 @@ import 'dayjs/locale/es'; // Carga el idioma español
 import { GenerateFacturaMultipleDto } from './dto/generateMultipleFactura.dto';
 import { DeleteFacturaDto } from './dto/delete-one-factura.dto';
 
+import * as utc from 'dayjs/plugin/utc';
+import * as timezone from 'dayjs/plugin/timezone';
+
+// Extiende dayjs con los plugins
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
 dayjs.locale('es'); // Establece español como idioma predeterminado
 const formatearFecha = (fecha: string) => {
   // Formateo en UTC sin conversión a local
@@ -676,12 +683,14 @@ export class FacturacionService {
       },
     });
 
+    // Establecer la zona horaria de Guatemala al generar la factura
     const dataFactura: DatosFacturaGenerate = {
       datalleFactura: `Pago por suscripción mensual al servicio de internet, plan ${cliente.servicioInternet.nombre} (${cliente.servicioInternet.velocidad}), precio: ${cliente.servicioInternet.precio} Fecha: ${cliente.facturacionZona.diaPago}`,
       fechaPagoEsperada: dayjs()
         .date(cliente.facturacionZona.diaPago) // Establece el día de la fecha
         .month(createGenerateFactura.mes - 1) // Establece el mes de la UI
         .year(createGenerateFactura.anio) // Establece el año de la UI
+        .tz('America/Guatemala') // Establece la zona horaria de Guatemala
         .format('YYYY-MM-DD'),
       montoPago: cliente.servicioInternet.precio,
       saldoPendiente: cliente.servicioInternet.precio,
@@ -797,6 +806,7 @@ export class FacturacionService {
         .year(anio)
         .month(mes - 1) // Ajustamos el mes para que sea 0-indexed
         .date(cliente.facturacionZona.diaPago)
+        .tz('America/Guatemala', true) // Establece la zona horaria de Guatemala
         .format('YYYY-MM-DD');
 
       const mesNombre = dayjs()
@@ -1136,5 +1146,124 @@ export class FacturacionService {
     );
 
     return `Factura ${facturaId} eliminada y estado de cliente actualizado.`;
+  }
+
+  async removeManyFacturasMarch() {
+    console.log('Entrando al service de facturas marzo');
+
+    // 1. Define date boundaries for March.
+    // Note: In JavaScript Date, months are 0-indexed (0 = January, so 2 = March).
+    const currentYear = new Date().getFullYear();
+    const startDate = new Date(currentYear, 2, 1); // March 1st
+    // For the end date, get the last moment of March.
+    const endDate = new Date(currentYear, 3, 0, 23, 59, 59, 999); // March 31st
+
+    // 2. Retrieve all facturas in March with their associated pagos.
+    const facturasToDelete = await this.prisma.facturaInternet.findMany({
+      where: {
+        fechaPagoEsperada: { gte: startDate, lte: endDate },
+      },
+      include: { pagos: true },
+    });
+
+    if (!facturasToDelete.length) {
+      throw new NotFoundException('No facturas found for March');
+    }
+
+    // 3. Group facturas by clienteId and compute totals.
+    const clienteAdjustments = new Map<
+      number,
+      { totalDeletedPagos: number; totalDeletedMontoPago: number }
+    >();
+
+    for (const factura of facturasToDelete) {
+      const clienteId = factura.clienteId;
+      let montoTotalPagosForFactura = 0;
+      for (const pago of factura.pagos) {
+        montoTotalPagosForFactura += pago.montoPagado;
+      }
+      if (!clienteAdjustments.has(clienteId)) {
+        clienteAdjustments.set(clienteId, {
+          totalDeletedPagos: 0,
+          totalDeletedMontoPago: 0,
+        });
+      }
+      const adjustment = clienteAdjustments.get(clienteId);
+      adjustment.totalDeletedPagos += montoTotalPagosForFactura;
+      adjustment.totalDeletedMontoPago += factura.montoPago;
+    }
+
+    // 4. Delete all matching facturas (those issued in March) using deleteMany.
+    const deleteResult = await this.prisma.facturaInternet.deleteMany({
+      where: {
+        fechaPagoEsperada: { gte: startDate, lte: endDate },
+      },
+    });
+
+    // 5. For each affected cliente, update their balance.
+    // Iterate over each cliente that had at least one factura deleted.
+    for (const [clienteId, adjustment] of clienteAdjustments.entries()) {
+      // Recalculate the new total pending balance based on the remaining pending facturas.
+      const facturasRestantes = await this.prisma.facturaInternet.findMany({
+        where: {
+          clienteId: clienteId,
+          estadoFacturaInternet: { in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'] },
+        },
+      });
+
+      let nuevoSaldoPendiente = 0;
+      for (const factura of facturasRestantes) {
+        nuevoSaldoPendiente += factura.montoPago;
+      }
+
+      // Get the current balance record of the client.
+      const saldoCliente = await this.prisma.saldoCliente.findUnique({
+        where: { clienteId },
+      });
+
+      if (saldoCliente) {
+        // Adjust the pending balance (making sure it doesn't become negative).
+        const saldoPendienteAjustado = Math.max(nuevoSaldoPendiente, 0);
+        // Compute new 'saldoFavor' in case the payments deleted exceeded the invoice amount.
+        const nuevoSaldoFavor = Math.max(
+          saldoCliente.saldoFavor +
+            (adjustment.totalDeletedPagos - adjustment.totalDeletedMontoPago),
+          0,
+        );
+        // Update total payments (subtracting the deleted payments).
+        const updatedTotalPagos =
+          saldoCliente.totalPagos - adjustment.totalDeletedPagos;
+
+        await this.prisma.saldoCliente.update({
+          where: { clienteId },
+          data: {
+            saldoPendiente: saldoPendienteAjustado,
+            saldoFavor: nuevoSaldoFavor,
+            totalPagos: updatedTotalPagos,
+          },
+        });
+      }
+
+      // 6. Recalculate the estadoCliente based on any remaining pending facturas.
+      const facturasPendientes = await this.prisma.facturaInternet.findMany({
+        where: {
+          clienteId,
+          estadoFacturaInternet: { in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'] },
+        },
+      });
+      const estadoCliente = facturasPendientes.length > 0 ? 'MOROSO' : 'ACTIVO';
+
+      await this.prisma.clienteInternet.update({
+        where: { id: clienteId },
+        data: { estadoCliente },
+      });
+    }
+
+    console.log(
+      `
+      Deleted ${deleteResult.count} facturas from March and updated cliente balances.,
+      `,
+    );
+    return `Deleted ${deleteResult.count} facturas from March and updated cliente balances`;
   }
 }

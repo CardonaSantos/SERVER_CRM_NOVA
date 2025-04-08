@@ -98,6 +98,11 @@ export class FacturacionController {
     return this.facturacionService.update(+id, updateFacturacionDto);
   }
 
+  @Delete('/delete-all-march')
+  removeAllFacturasMarzo() {
+    return this.facturacionService.removeManyFacturasMarch();
+  }
+
   @Delete('/delete-one-factura')
   remove(@Body() deleteFacturaDto: DeleteFacturaDto) {
     return this.facturacionService.removeOneFactura(deleteFacturaDto);
