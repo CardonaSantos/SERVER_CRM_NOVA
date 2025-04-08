@@ -687,11 +687,13 @@ export class FacturacionService {
     const dataFactura: DatosFacturaGenerate = {
       datalleFactura: `Pago por suscripción mensual al servicio de internet, plan ${cliente.servicioInternet.nombre} (${cliente.servicioInternet.velocidad}), precio: ${cliente.servicioInternet.precio} Fecha: ${cliente.facturacionZona.diaPago}`,
       fechaPagoEsperada: dayjs()
-        .date(cliente.facturacionZona.diaPago) // Establece el día de la fecha
-        .month(createGenerateFactura.mes - 1) // Establece el mes de la UI
-        .year(createGenerateFactura.anio) // Establece el año de la UI
-        .tz('America/Guatemala') // Establece la zona horaria de Guatemala
+        .tz('America/Guatemala') // Primero establece la zona horaria
+        .year(createGenerateFactura.anio)
+        .month(createGenerateFactura.mes - 1)
+        .date(cliente.facturacionZona.diaPago)
+        .startOf('day') // Establece la hora a 00:00:00 en Guatemala
         .format('YYYY-MM-DD'),
+
       montoPago: cliente.servicioInternet.precio,
       saldoPendiente: cliente.servicioInternet.precio,
       estadoFacturaInternet: 'PENDIENTE',
