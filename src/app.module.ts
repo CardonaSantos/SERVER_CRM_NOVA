@@ -23,6 +23,7 @@ import { RutaCobroModule } from './ruta-cobro/ruta-cobro.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { TwilioModule } from './twilio/twilio.module';
 import { CustomerPayloadModule } from './customer-payload/customer-payload.module';
+import { SectorModule } from './sector/sector.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { CustomerPayloadModule } from './customer-payload/customer-payload.modul
     DashboardModule,
     TwilioModule,
     CustomerPayloadModule,
+    SectorModule,
   ],
   controllers: [AppController],
   providers: [AppService],

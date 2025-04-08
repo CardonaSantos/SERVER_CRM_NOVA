@@ -563,6 +563,16 @@ export class FacturacionService {
               id: true,
               apellidos: true,
               telefono: true,
+              municipio: {
+                select: {
+                  id: true,
+                },
+              },
+              departamento: {
+                select: {
+                  id: true,
+                },
+              },
               IP: {
                 select: {
                   direccionIp: true,
@@ -592,6 +602,11 @@ export class FacturacionService {
         // metodo: factura.metodoPago,
         estado: factura.estadoFacturaInternet,
         cliente: `${factura.cliente.nombre} ${factura.cliente.apellidos || ''}`,
+        clienteObj: {
+          nombre: `${factura.cliente.nombre} ${factura.cliente.apellidos || ''}`,
+          departamento: factura.cliente.departamento.id,
+          municipio: factura.cliente.municipio.id,
+        },
         clienteId: factura.cliente.id,
         direccionIp: factura.cliente.IP.direccionIp || 'No disponible',
         cantidad: factura.montoPago || 0,

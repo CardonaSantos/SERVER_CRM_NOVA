@@ -455,7 +455,24 @@ model ClienteInternet {
   //ID DE CONTRATO
 
   ContratoFisico ContratoFisico?
+  //RELACION CON SECTOR 
+    // Relación con el sector
+  sectorId        Int?       // opcional para no romper la db
+  sector          Sector?    @relation(fields: [sectorId], references: [id], onDelete: SetNull) // Relación con la tabla Sector
 }
+
+model Sector {
+  id          Int           @id @default(autoincrement()) // Identificador único
+  nombre      String        // Nombre del sector (ej. "Sector 1", "Zona Norte", etc.)
+  descripcion String?       // Descripción opcional del sector
+  municipioId Int           // Relación con Municipio
+  municipio   Municipio     @relation(fields: [municipioId], references: [id], onDelete: Cascade) // Relación con la tabla Municipio
+  clientes    ClienteInternet[] // Relación con los clientes en este sector
+  // Timestamps
+  creadoEn    DateTime      @default(now())
+  actualizadoEn DateTime    @updatedAt
+}
+
 
 model ContratoFisico {
   id            Int           @id @default(autoincrement())
@@ -509,6 +526,8 @@ model Municipio {
   departamento   Departamento @relation(fields: [departamentoId], references: [id], onDelete: Cascade)
   departamentoId Int
   clientes       ClienteInternet[]    // Relación con los clientes
+
+  Sector Sector[]
 }
 
 model Ruta {

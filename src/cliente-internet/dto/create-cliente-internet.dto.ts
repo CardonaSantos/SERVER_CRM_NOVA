@@ -48,6 +48,9 @@ export class CreateClienteInternetDto {
   @IsPhoneNumber()
   contactoReferenciaTelefono: string;
 
+  @IsOptional()
+  sectorId: number;
+
   // Datos del servicio
   @IsString()
   @IsNotEmpty()

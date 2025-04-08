@@ -11,7 +11,6 @@ import { updateCustomerService } from './dto/update-customer-service';
 import { ClienteInternet } from '@prisma/client';
 import * as dayjs from 'dayjs';
 import { IdContratoService } from 'src/id-contrato/id-contrato.service';
-import { DeleteClienteInternetDto } from './dto/DeleteClienteInternetDto .dto';
 
 const formatearFecha = (fecha: string) => {
   // Formateo en UTC sin conversión a local
@@ -42,6 +41,7 @@ export class ClienteInternetService {
       fechaFirma,
       idContrato,
       observacionesContrato,
+      sectorId,
       ...restoData
     } = createClienteInternetDto;
 
@@ -209,6 +209,26 @@ export class ClienteInternetService {
           resultado: 'PENDIENTE',
         },
       });
+      // if (sectorId) {
+      // Vincular sector dentro de la transacción
+      // if (sectorId) {
+      // const sector = await prisma.sector.findUnique({
+      //   where: { id: 1 },
+      // });
+
+      // if (!sector) {
+      //   throw new Error('Sector no encontrado');
+      // }
+
+      // await prisma.clienteInternet.update({
+      //   where: { id: cliente.id },
+      //   data: {
+      //     sector: { connect: { id: 1 } },
+      //   },
+      // });
+      // }
+
+      // }
 
       return {
         cliente,
@@ -229,6 +249,53 @@ export class ClienteInternetService {
     }
 
     return result;
+  }
+
+  async linkSector(clienteId: number, sectorId: number) {
+    try {
+      // Verificar si el cliente existe
+      const cliente = await this.prisma.clienteInternet.findUnique({
+        where: {
+          id: clienteId,
+        },
+      });
+
+      if (!cliente) {
+        throw new Error('Cliente no encontrado');
+      }
+
+      // Verificar si el sector existe
+      const sector = await this.prisma.sector.findUnique({
+        where: {
+          id: sectorId,
+        },
+      });
+
+      if (!sector) {
+        throw new Error('Sector no encontrado');
+      }
+
+      // Vincular el cliente al sector
+      const newCustomerLinked = await this.prisma.clienteInternet.update({
+        where: {
+          id: clienteId,
+        },
+        data: {
+          sector: {
+            connect: {
+              id: sectorId, // Vincula con el sectorID proporcionado
+            },
+          },
+        },
+      });
+
+      console.log('El cliente fue vinculado al sector: ', newCustomerLinked);
+
+      return newCustomerLinked;
+    } catch (error) {
+      console.log('Error al vincular cliente al sector:', error);
+      throw new Error('Error al vincular cliente al sector');
+    }
   }
 
   async updateClienteAddService(updateCustomerService: updateCustomerService) {
@@ -639,6 +706,7 @@ export class ClienteInternetService {
           direccion: true,
           creadoEn: true,
           actualizadoEn: true,
+
           // Relación 1:1 con el servicio de internet
           servicioInternet: {
             select: {
@@ -697,6 +765,9 @@ export class ClienteInternetService {
         departamento: customer.departamento?.nombre || 'No disponible',
         municipio: customer.municipio?.nombre || 'No disponible',
         direccionIp: customer.IP?.direccionIp || 'No disponible',
+        //IDS DE ZONAS
+        municipioId: customer.municipio.id,
+        departamentoId: customer.departamento.id,
         servicios: customer.servicioInternet
           ? [
               {
