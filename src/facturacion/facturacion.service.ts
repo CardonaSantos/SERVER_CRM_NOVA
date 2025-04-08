@@ -683,34 +683,21 @@ export class FacturacionService {
       },
     });
 
-    // Crear una nueva fecha con el año, mes y día proporcionados
-    const fechaPagoEsperada = new Date(
-      createGenerateFactura.anio, // Año
-      createGenerateFactura.mes - 1, // Mes (en JavaScript, los meses son 0-indexados)
-      cliente.facturacionZona.diaPago, // Día del mes
-      0,
-      0,
-      0,
-      0, // Hora, minuto, segundo, milisegundo, todos a 0 (00:00:00)
-    );
+    const fechaPagoEsperada = dayjs()
+      .month(createGenerateFactura.mes - 1) // Establecer el mes
+      .year(createGenerateFactura.anio) // Establecer el año
+      .date(cliente.facturacionZona.diaPago) // Establecer el día
+      .tz('America/Guatemala', true) // Asegurarnos de que esté en la zona horaria de Guatemala
+      .startOf('day') // Asegurarnos de que la hora sea a las 00:00:00
+      .format('YYYY-MM-DD'); // Convertir a string con el formato adecuado
 
-    // Convertir la fecha a la zona horaria de Guatemala (offset UTC-6)
-    const offsetGuatemala = -6 * 60; // Offset para Guatemala (UTC-6)
-    const guatemalaTime = new Date(
-      fechaPagoEsperada.getTime() + offsetGuatemala * 60000,
-    );
-
-    // Formatear la fecha a 'YYYY-MM-DD'
-    const fechaPagoEsperadaFormatted = guatemalaTime
-      .toISOString()
-      .split('T')[0]; // Tomamos solo la fecha (sin la hora)
-
-    console.log('Fecha de pago esperada:', fechaPagoEsperadaFormatted);
+    // Ahora, 'fechaPagoEsperada' es una cadena y se puede asignar a la propiedad
+    console.log('Fecha de pago esperada:', fechaPagoEsperada);
 
     // Establecer la zona horaria de Guatemala al generar la factura
     const dataFactura: DatosFacturaGenerate = {
       datalleFactura: `Pago por suscripción mensual al servicio de internet, plan ${cliente.servicioInternet.nombre} (${cliente.servicioInternet.velocidad}), precio: ${cliente.servicioInternet.precio} Fecha: ${cliente.facturacionZona.diaPago}`,
-      fechaPagoEsperada: fechaPagoEsperadaFormatted,
+      fechaPagoEsperada: fechaPagoEsperada,
 
       montoPago: cliente.servicioInternet.precio,
       saldoPendiente: cliente.servicioInternet.precio,
