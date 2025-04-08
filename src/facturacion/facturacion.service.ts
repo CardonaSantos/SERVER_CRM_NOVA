@@ -683,15 +683,15 @@ export class FacturacionService {
       },
     });
 
+    // Asegurarte de que la fecha esté ajustada correctamente a la zona horaria de Guatemala
     const fechaPagoEsperada = dayjs()
-      .month(createGenerateFactura.mes - 1) // Establecer el mes
-      .year(createGenerateFactura.anio) // Establecer el año
-      .date(cliente.facturacionZona.diaPago) // Establecer el día
-      .tz('America/Guatemala', true) // Asegurarnos de que esté en la zona horaria de Guatemala
-      .startOf('day') // Asegurarnos de que la hora sea a las 00:00:00
-      .format('YYYY-MM-DD'); // Convertir a string con el formato adecuado
+      .month(createGenerateFactura.mes - 1)
+      .year(createGenerateFactura.anio)
+      .date(cliente.facturacionZona.diaPago)
+      .tz('America/Guatemala', true) // Esto asegura que la fecha esté en la zona horaria correcta
+      .startOf('day')
+      .format(); // Esto generará la fecha en formato ISO 8601 (sin zona horaria explícita)
 
-    // Ahora, 'fechaPagoEsperada' es una cadena y se puede asignar a la propiedad
     console.log('Fecha de pago esperada:', fechaPagoEsperada);
 
     // Establecer la zona horaria de Guatemala al generar la factura
