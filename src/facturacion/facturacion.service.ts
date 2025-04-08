@@ -823,7 +823,7 @@ export class FacturacionService {
         .format('MMMM YYYY'); // Obtiene el nombre del mes y el año
 
       const detalleFactura = `Pago por suscripción mensual al servicio de internet, plan ${cliente.servicioInternet.nombre} (${cliente.servicioInternet.velocidad}), precio: ${cliente.servicioInternet.precio} Fecha: ${cliente.facturacionZona.diaPago} de ${mesNombre}`;
-
+      //nuevo ajuste
       const nuevaFactura = await this.prisma.facturaInternet.create({
         data: {
           fechaPagoEsperada: fechaPagoEsperada,
