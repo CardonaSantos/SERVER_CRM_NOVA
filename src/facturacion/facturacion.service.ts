@@ -814,7 +814,8 @@ export class FacturacionService {
         .month(mes - 1) // Ajustamos el mes para que sea 0-indexed
         .date(cliente.facturacionZona.diaPago)
         .tz('America/Guatemala', true) // Establece la zona horaria de Guatemala
-        .format('YYYY-MM-DD');
+        // .format('YYYY-MM-DD');
+        .format(); // Esto generará la fecha en formato ISO 8601 (sin zona horaria explícita)
 
       const mesNombre = dayjs()
         .month(mes - 1)
@@ -825,7 +826,7 @@ export class FacturacionService {
 
       const nuevaFactura = await this.prisma.facturaInternet.create({
         data: {
-          fechaPagoEsperada: dayjs(fechaPagoEsperada).toDate(),
+          fechaPagoEsperada: fechaPagoEsperada,
           montoPago: cliente.servicioInternet.precio,
           saldoPendiente: cliente.servicioInternet.precio,
           estadoFacturaInternet: 'PENDIENTE',
