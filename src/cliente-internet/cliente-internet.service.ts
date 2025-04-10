@@ -45,6 +45,8 @@ export class ClienteInternetService {
       ...restoData
     } = createClienteInternetDto;
 
+    console.log('el sector id es: ', sectorId);
+
     const serviceIds: number[] = createClienteInternetDto.servicesIds;
     const latitud = coordenadas?.[0] ? Number(coordenadas[0]) : null;
     const longitud = coordenadas?.[1] ? Number(coordenadas[1]) : null;
@@ -209,26 +211,26 @@ export class ClienteInternetService {
           resultado: 'PENDIENTE',
         },
       });
-      // if (sectorId) {
-      // Vincular sector dentro de la transacción
-      // if (sectorId) {
-      // const sector = await prisma.sector.findUnique({
-      //   where: { id: 1 },
-      // });
 
-      // if (!sector) {
-      //   throw new Error('Sector no encontrado');
-      // }
+      if (sectorId) {
+        if (sectorId) {
+          const sector = await prisma.sector.findUnique({
+            where: { id: sectorId },
+          });
 
-      // await prisma.clienteInternet.update({
-      //   where: { id: cliente.id },
-      //   data: {
-      //     sector: { connect: { id: 1 } },
-      //   },
-      // });
-      // }
+          if (!sector) {
+            throw new Error('Sector no encontrado');
+          }
 
-      // }
+          await prisma.clienteInternet.update({
+            where: { id: cliente.id },
+            data: {
+              sector: { connect: { id: sectorId } },
+            },
+          });
+        }
+      }
+      console.log('el cliente creado es: ', cliente);
 
       return {
         cliente,
@@ -395,6 +397,7 @@ export class ClienteInternetService {
             asesor: { select: { id: true, nombre: true } },
             municipio: { select: { id: true, nombre: true } },
             departamento: { select: { id: true, nombre: true } },
+            sector: { select: { id: true, nombre: true } },
             empresa: { select: { id: true, nombre: true } },
             IP: {
               select: {
@@ -521,6 +524,14 @@ export class ClienteInternetService {
               nombre: clienteInternetWithRelations.departamento.nombre,
             }
           : null,
+
+        sector: clienteInternetWithRelations.sector
+          ? {
+              id: clienteInternetWithRelations.sector.id,
+              nombre: clienteInternetWithRelations.sector.nombre,
+            }
+          : null,
+
         empresa: clienteInternetWithRelations.empresa
           ? {
               id: clienteInternetWithRelations.empresa.id,
@@ -706,6 +717,12 @@ export class ClienteInternetService {
           direccion: true,
           creadoEn: true,
           actualizadoEn: true,
+          sector: {
+            select: {
+              id: true,
+              nombre: true,
+            },
+          },
 
           // Relación 1:1 con el servicio de internet
           servicioInternet: {
@@ -767,9 +784,12 @@ export class ClienteInternetService {
         direccionIp: customer.IP?.direccionIp || 'No disponible',
         //IDS DE ZONAS
         municipioId: customer.municipio.id,
+        sector: customer.sector || null,
+        sectorId: customer.sector ? customer.sector.id : null, // Evitar error si sector es null
         departamentoId: customer.departamento.id,
         servicios: customer.servicioInternet
           ? [
+              //
               {
                 id: customer.servicioInternet.id,
                 nombreServicio: customer.servicioInternet.nombre,
@@ -1161,6 +1181,7 @@ export class ClienteInternetService {
           IP: true,
           ubicacion: true,
           municipio: true,
+          sector: true,
           departamento: true,
           servicioInternet: true,
           clienteServicios: {
@@ -1209,6 +1230,14 @@ export class ClienteInternetService {
               nombre: customer.facturacionZona.nombre,
             }
           : null, // Si no existe, se asigna null
+
+        sector: customer.sector
+          ? {
+              id: customer.sector.id,
+              nombre: customer.sector.nombre,
+            }
+          : null, // Si no existe, se asigna null
+
         servicioWifi: customer.servicioInternet
           ? {
               id: customer.servicioInternet.id,
@@ -1253,6 +1282,7 @@ export class ClienteInternetService {
       fechaFirma,
       idContrato,
       observacionesContrato,
+      sectorId,
     } = updateCustomerService;
 
     // Si se envían coordenadas, las parseamos; de lo contrario, asignamos null
@@ -1309,6 +1339,9 @@ export class ClienteInternetService {
             ? { connect: { id: servicioWifiId } }
             : undefined,
           municipio: municipioId ? { connect: { id: municipioId } } : undefined,
+
+          sector: sectorId ? { connect: { id: sectorId } } : undefined,
+
           departamento: departamentoId
             ? { connect: { id: departamentoId } }
             : undefined,

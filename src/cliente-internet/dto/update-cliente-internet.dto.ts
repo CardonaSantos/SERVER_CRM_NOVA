@@ -14,6 +14,9 @@ export class UpdateClienteInternetDto {
   @IsNotEmpty()
   nombre: string;
 
+  @IsOptional()
+  sectorId?: number;
+
   @IsString()
   @IsNotEmpty()
   ip: string;

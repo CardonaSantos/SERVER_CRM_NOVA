@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   Put,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { SectorService } from './sector.service';
 import { CreateSectorDto } from './dto/create-sector.dto';
@@ -26,6 +27,16 @@ export class SectorController {
     return this.sectorService.findAll();
   }
 
+  @Get('/sectores-to-select')
+  async findAllSectoresToSelect() {
+    return this.sectorService.findAllSectoresToSelect();
+  }
+
+  @Get('/get-municipios-to-sector')
+  async getSectoresToEdit() {
+    return this.sectorService.getSectoresToEdit();
+  }
+
   @Put(':id')
   async update(
     @Param('id') id: number,
@@ -34,8 +45,16 @@ export class SectorController {
     return this.sectorService.update(id, updateSectorDto);
   }
 
-  @Delete(':id')
-  async delete(@Param('id') id: number) {
+  @Patch('/update-sector/:id')
+  async updateSector(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateSectorDto: UpdateSectorDto,
+  ) {
+    return this.sectorService.updateSector(id, updateSectorDto);
+  }
+
+  @Delete('/:id')
+  async delete(@Param('id', ParseIntPipe) id: number) {
     return this.sectorService.delete(id);
   }
 }

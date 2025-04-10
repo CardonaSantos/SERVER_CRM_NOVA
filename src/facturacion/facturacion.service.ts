@@ -570,6 +570,7 @@ export class FacturacionService {
               id: true,
               apellidos: true,
               telefono: true,
+              sector: true,
               municipio: {
                 select: {
                   id: true,
@@ -613,6 +614,8 @@ export class FacturacionService {
           nombre: `${factura.cliente.nombre} ${factura.cliente.apellidos || ''}`,
           departamento: factura.cliente.departamento.id,
           municipio: factura.cliente.municipio.id,
+          sector: factura.cliente.sector || null,
+          sectorId: factura.cliente.sector?.id || null,
         },
         clienteId: factura.cliente.id,
         direccionIp: factura.cliente.IP.direccionIp || 'No disponible',
@@ -1169,7 +1172,7 @@ export class FacturacionService {
     // 2. Retrieve all facturas in March with their associated pagos.
     const facturasToDelete = await this.prisma.facturaInternet.findMany({
       where: {
-        fechaPagoEsperada: { gte: startDate, lte: endDate },
+        creadoEn: { gte: startDate, lte: endDate },
       },
       include: { pagos: true },
     });
@@ -1204,7 +1207,7 @@ export class FacturacionService {
     // 4. Delete all matching facturas (those issued in March) using deleteMany.
     const deleteResult = await this.prisma.facturaInternet.deleteMany({
       where: {
-        fechaPagoEsperada: { gte: startDate, lte: endDate },
+        creadoEn: { gte: startDate, lte: endDate },
       },
     });
 

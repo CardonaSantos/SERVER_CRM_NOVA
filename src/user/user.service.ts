@@ -125,6 +125,23 @@ export class UserService {
     }
   }
 
+  async getTecnicosToTicket() {
+    try {
+      const tecs = await this.prisma.usuario.findMany({
+        where: {
+          rol: 'TECNICO',
+        },
+        select: {
+          id: true,
+          nombre: true,
+        },
+      });
+      return tecs;
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
   async setSaldo0(id: number) {
     try {
       const setSaldo = await this.prisma.saldoCliente.update({

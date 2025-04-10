@@ -41,6 +41,11 @@ export class UserController {
     return this.userService.getUserByRole();
   }
 
+  @Get('/get-tecnicos-to-ticket')
+  getTecnicosToTicket() {
+    return this.userService.getTecnicosToTicket();
+  }
+
   @Get('/set-saldo-0/:id')
   setSaldo0(@Param('id') id: string) {
     return this.userService.setSaldo0(+id);

@@ -50,7 +50,7 @@ export class LocationService {
           departamentoId: Number(id),
         },
       });
-      console.log('encontrado: ', muni);
+      // console.log('encontrado: ', muni);
 
       return muni;
     } catch (error) {

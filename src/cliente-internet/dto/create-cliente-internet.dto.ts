@@ -10,6 +10,7 @@ import {
 
 export class CreateClienteInternetDto {
   // Datos básicos
+
   @IsString()
   @IsNotEmpty()
   nombre: string;
@@ -49,7 +50,7 @@ export class CreateClienteInternetDto {
   contactoReferenciaTelefono: string;
 
   @IsOptional()
-  sectorId: number;
+  sectorId?: number;
 
   // Datos del servicio
   @IsString()
