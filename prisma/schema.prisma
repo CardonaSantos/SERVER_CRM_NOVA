@@ -47,6 +47,65 @@ model Empresa {
   //PODEMOS TENER VARIAS
   FacturacionZona FacturacionZona[]
   ConfiguracionGlobal ConfiguracionGlobal[]
+  //ARRAY DE MENSAJES A USAR EN LAS NOTIFICACIONES
+  plantillas PlantillaMensaje[] // Opposite relation field for PlantillaMensaje
+}
+
+model PlantillaMensaje {
+  id          Int      @id @default(autoincrement())
+  nombre      String   // nombre interno o título visible
+  tipo        TipoPlantilla // ENUM que indica si es recordatorio1, recordatorio2, aviso_pago, etc.
+  body        String
+  empresaId   Int
+  empresa     Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  creadoEn    DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+}
+
+enum TipoPlantilla {
+  GENERACION_FACTURA
+  RECORDATORIO_1
+  RECORDATORIO_2
+  AVISO_PAGO
+  SUSPENSION
+  CORTE
+}
+
+model FacturacionZona {
+  id              Int      @id @default(autoincrement())
+  nombre          String   // Nombre de la zona (Ej: "Jacaltenango Corte 5")
+  empresaId       Int
+  empresa         Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  enviarRecordatorioGeneracion   Boolean @default(true)
+  diaGeneracionFactura  Int  // Día del mes en que se genera la factura#GENERO UNA NOTI
+
+  enviarRecordatorio1   Boolean @default(true)
+  diaRecordatorio       Int?  // Día del mes en que se envía el recordatorio# GENERO UNA NOTI
+
+  enviarRecordatorio2   Boolean @default(true)
+  diaSegundoRecordatorio Int?  // Día del mes en que se envia el segundo recordatorio# GENERO UNA NOTI
+
+  enviarAvisoPago       Boolean @default(true)
+  diaPago               Int  // Día del mes en que se espera el pago# GENERO UNA NOTI
+
+  horaRecordatorio      String? // Hora específica para enviar la notificación (ej: "08:00:00")#NO VALIDO POR EL MOMENTO
+
+  suspenderTrasFacturas Int? // Cantidad de facturas vencidas antes de cortar servicio
+  enviarSiTieneFacturasVencidas  Boolean @default(false)
+
+  enviarRecordatorio    Boolean @default(true)
+
+  whatsapp Boolean      @default(true)
+  email Boolean         @default(false)
+  sms Boolean           @default(false)
+  llamada Boolean       @default(false)
+  telegram Boolean      @default(true)
+  diaCorte              Int? // Día del mes en que se corta el servicio si no paga
+  clientes              ClienteInternet[] // Relación 1:N (una zona tiene múltiples clientes)
+  facturas              FacturaInternet[] // Relación 1:N (una zona tiene múltiples facturas)
+  creadoEn             DateTime @default(now())
+  actualizadoEn        DateTime @updatedAt
 }
 
 model ConfiguracionGlobal {
@@ -253,51 +312,6 @@ enum StateFacturaInternet {
   ANULADA 
   PARCIAL
 }
-
-model FacturacionZona {
-  id              Int      @id @default(autoincrement())
-  nombre          String   // Nombre de la zona (Ej: "Jacaltenango Corte 5")
-  empresaId       Int
-  empresa         Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-
-  diaGeneracionFactura  Int  // Día del mes en que se genera la factura
-  diaPago               Int  // Día del mes en que se espera el pago
-  diaRecordatorio       Int?  // Día del mes en que se envía el recordatorio
-  diaSegundoRecordatorio Int?  // Día del mes en que se envia el segundo recordatorio
-  horaRecordatorio      String? // Hora específica para enviar la notificación (ej: "08:00:00")
-
-  enviarRecordatorio    Boolean @default(true)
-  // mediosNotificacion    String  // "WhatsApp, Email, SMS" (métodos de notificación permitidos)
-
-  whatsapp Boolean      @default(true)
-  email Boolean         @default(false)
-  sms Boolean           @default(false)
-  llamada Boolean       @default(false)
-  telegram Boolean      @default(true)
-
-  diaCorte              Int? // Día del mes en que se corta el servicio si no paga
-  suspenderTrasFacturas Int? // Cantidad de facturas vencidas antes de cortar servicio
-
-  clientes              ClienteInternet[] // Relación 1:N (una zona tiene múltiples clientes)
-  facturas              FacturaInternet[] // Relación 1:N (una zona tiene múltiples facturas)
-
-  creadoEn             DateTime @default(now())
-  actualizadoEn        DateTime @updatedAt
-}
-// TABLAS PARA LOS REQUERIMIENTOS TI
-// model Pago {
-//   id            Int       @id @default(autoincrement())
-//   clienteId     Int       // Relación con ClienteInternet
-//   facturaId     Int       // Relación con FacturaInternet
-//   monto         Float     // Monto pagado
-//   fechaPago     DateTime  // Fecha en que se realiza el pago
-//   metodoPago    String    // Ej: "Transferencia", "Efectivo", "Tarjeta"
-//   createdAt     DateTime  @default(now())  // Fecha de creación del pago
-//   updatedAt     DateTime  @updatedAt       // Fecha de actualización del pago
-
-//   cliente       ClienteInternet @relation(fields: [clienteId], references: [id])
-//   factura       FacturaInternet @relation(fields: [facturaId], references: [id])
-// }
 
 model RecordatorioPago {
   id            Int       @id @default(autoincrement())

@@ -17,19 +17,24 @@ export class TwilioService {
       return this.client.messages.create({
         body,
         from: process.env.TWILIO_WHATSAPP_FROM,
-        to: `whatsapp:${to}`,
+        to, // Ya está formateado como whatsapp:+502...
       });
     } catch (error) {
-      console.log(error);
+      console.log('Error al enviar mensaje con Twilio:', error);
       throw error;
     }
   }
 
-  create(createTwilioDto: CreateTwilioDto) {
-    return 'This action adds a new twilio';
-  }
-
-  findAll() {
-    return `This action returns all twilio`;
-  }
+  // async sendWhatsApp(to: string, body: string) {
+  //   try {
+  //     return this.client.messages.create({
+  //       body,
+  //       from: process.env.TWILIO_WHATSAPP_FROM,
+  //       to,
+  //     });
+  //   } catch (error) {
+  //     console.log('Error al enviar WhatsApp:', error);
+  //     throw error;
+  //   }
+  // }
 }

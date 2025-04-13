@@ -16,9 +16,4 @@ export class ZonaFacturacionCronController {
   constructor(
     private readonly zonaFacturacionCronService: ZonaFacturacionCronService,
   ) {}
-
-  @Post()
-  create(@Body() createZonaFacturacionCronDto: CreateZonaFacturacionCronDto) {
-    return this.zonaFacturacionCronService.create(createZonaFacturacionCronDto);
-  }
 }

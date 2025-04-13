@@ -6,6 +6,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import * as dayjs from 'dayjs';
 import * as utc from 'dayjs/plugin/utc';
 import * as timezone from 'dayjs/plugin/timezone';
+import { TwilioService } from 'src/twilio/twilio.service';
 
 // Extiende dayjs con los plugins
 dayjs.extend(utc);
@@ -29,12 +30,20 @@ interface DatosFacturaGenerate {
   cliente: number;
   facturacionZona: number;
   nombreClienteFactura: string;
+  // Otros campos para el mensaje
+  datalleFacturaParaMensaje?: string;
+  numerosTelefono?: string[];
 }
 
 @Injectable()
 export class ZonaFacturacionCronService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly twilioService: TwilioService,
+  ) {}
   // '0 6 * * *'
+  //'0 0 0 * * *'
+  // '0 0 0 * * *'
   // @Cron(CronExpression.EVERY_10_MINUTES)
   @Cron('0 0 0 * * *', {
     timeZone: 'America/Guatemala',
@@ -52,6 +61,8 @@ export class ZonaFacturacionCronService {
             id: true,
             nombre: true,
             apellidos: true,
+            telefono: true,
+            contactoReferenciaTelefono: true,
             facturaInternet: {
               select: {
                 id: true,
@@ -104,9 +115,18 @@ export class ZonaFacturacionCronService {
 
           // Verifica si el cliente tiene servicio de internet y no tiene facturas generadas este mes
           if (cliente.servicioInternet && facturasEsteMes.length <= 0) {
-            console.log('El cliente es: ', cliente);
+            const numerosTelefono = [
+              ...(cliente.telefono ?? '').split(',').map((num) => num.trim()),
+              ...(cliente.contactoReferenciaTelefono ?? '')
+                .split(',')
+                .map((num) => num.trim()),
+            ];
+
             const dataFactura: DatosFacturaGenerate = {
               datalleFactura: `Pago por suscripción mensual al servicio de internet, plan ${cliente.servicioInternet.nombre} (${cliente.servicioInternet.velocidad}), precio: ${cliente.servicioInternet.precio} Fecha: ${zona.diaPago}`,
+
+              datalleFacturaParaMensaje: `Pago por suscripción mensual al servicio de internet, Plan: ${cliente.servicioInternet.nombre} (${cliente.servicioInternet.velocidad})`,
+
               fechaPagoEsperada: hoylocal
                 .date(zona.diaPago) // Establece el día de la fecha
                 .month(hoylocal.month()) // Usa el mes actual de Guatemala
@@ -120,10 +140,13 @@ export class ZonaFacturacionCronService {
               cliente: cliente.id,
               facturacionZona: zona.id,
               nombreClienteFactura: `${cliente.nombre} ${cliente.apellidos}`,
+              //NUMERO DE TELEFONO PARA TWILIO
+              numerosTelefono: numerosTelefono,
             };
 
             // Llama al servicio para crear la factura
             await this.generarFacturaClientePorZona(dataFactura);
+            // await this.generarFacturaClientePorZona(dataFactura);
           } else {
             console.error(
               `El cliente ${cliente.nombre} ${cliente.apellidos} no tiene servicio de internet asociado o ya tiene una factura creada.`,
@@ -191,22 +214,181 @@ export class ZonaFacturacionCronService {
           estadoCliente: 'MOROSO',
         },
       });
-
-      console.log('el nuevo state del cliente es: ', newStateCustomer);
-
-      console.log(
-        'el nuevo estado de cuenta del cliente es: ',
-        nuevoEstadoSaldoCliente,
-      );
-
-      console.log('Factura creada con éxito:', newFacturaInternet);
+      //COMENTADO POR EL MOMENTO, HASTA QUE TENGA EL NUMERO DE TWILIO Y LAS DEMAS IMPLEMENTADAS
+      // await this.generarMensajeGeneracionFactura(dataFactura);
     } catch (error) {
       console.error('Error al generar la factura:', error);
     }
   }
 
-  async generarRutaCobro() {}
-  create(createZonaFacturacionCronDto: CreateZonaFacturacionCronDto) {
-    return 'This action adds a new zonaFacturacionCron';
+  async generarMensajeGeneracionFactura(dataFactura: DatosFacturaGenerate) {
+    try {
+      const infoEmpresa = await this.prisma.empresa.findFirst({
+        select: {
+          id: true,
+          nombre: true,
+          telefono: true,
+        },
+      });
+
+      const infoCliente = await this.prisma.clienteInternet.findUnique({
+        where: {
+          id: dataFactura.cliente,
+        },
+      });
+
+      const templateMensaje = await this.prisma.plantillaMensaje.findFirst({
+        where: {
+          tipo: 'GENERACION_FACTURA',
+        },
+        select: {
+          body: true,
+        },
+      });
+
+      if (!templateMensaje) {
+        throw new NotFoundException(
+          'Error al encontrar plantilla de mensaje, no se pueden crear los mensajes',
+        );
+      }
+
+      const dataToTemplate = {
+        nombre_cliente: `${infoCliente.nombre} ${infoCliente.apellidos}`,
+        empresa_nombre: infoEmpresa.nombre,
+        fecha_pago: formatearFecha(dataFactura.fechaPagoEsperada),
+        monto_pago: dataFactura.montoPago,
+        detalle_factura: dataFactura.datalleFacturaParaMensaje,
+      };
+
+      const bodyMensaje = this.renderTemplate(
+        templateMensaje.body,
+        dataToTemplate,
+      );
+
+      const numerosValidos = dataFactura.numerosTelefono
+        .map((n) => {
+          try {
+            return this.formatearNumeroWhatsApp(n);
+          } catch (err) {
+            console.warn(`Número descartado: ${n} -> ${err.message}`);
+            return null;
+          }
+        })
+        .filter(Boolean); // elimina nulls
+
+      // Enviar el mensaje a través de Twilio
+      for (const numero of numerosValidos) {
+        try {
+          await this.twilioService.sendWhatsApp(numero, bodyMensaje);
+          console.log('Mensaje enviado a:', numero);
+        } catch (err) {
+          console.warn('Error al enviar mensaje a', numero, err.message);
+        }
+      }
+
+      console.log('El mensaje a enviar es: ', bodyMensaje);
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  //GENERAR EL PRIMER RECORDATORIO DE PAGO, NO ES LA GENERACION DE FACTURA
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
+    timeZone: 'America/Guatemala',
+  })
+  async generarMesnajePrimerRecordatorio() {
+    try {
+      const hoylocal = dayjs().tz('America/Guatemala');
+      //usa el mismo hoylocal, para definir el fin e inicio de mes
+      const inicioMesLocal = hoylocal.startOf('month');
+      const finMesLocal = hoylocal.endOf('month');
+
+      const zonasDeFacturacion = await this.prisma.facturacionZona.findMany({
+        select: {
+          id: true,
+          diaRecordatorio: true,
+          clientes: {
+            select: {
+              id: true,
+              nombre: true,
+              apellidos: true,
+              telefono: true,
+              contactoReferenciaTelefono: true,
+            },
+          },
+        },
+      });
+
+      for (const zona of zonasDeFacturacion) {
+        if (!zona.diaRecordatorio) continue;
+
+        const fechaRecordatorio = hoylocal.date(zona.diaRecordatorio);
+
+        if (hoylocal.isSame(fechaRecordatorio, 'day')) {
+          for (const cliente of zona.clientes) {
+            const factura = await this.prisma.facturaInternet.findFirst({
+              where: {
+                clienteId: cliente.id,
+                estadoFacturaInternet: {
+                  in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'],
+                },
+                facturacionZonaId: zona.id,
+                fechaPagoEsperada: {
+                  gte: inicioMesLocal.toDate(),
+                  lte: finMesLocal.endOf('month').toDate(),
+                },
+              },
+              select: {
+                id: true,
+                fechaPagoEsperada: true,
+                detalleFactura: true,
+                montoPago: true,
+              },
+            });
+
+            const numerosTelefono = [
+              ...(cliente.telefono ?? '').split(',').map((num) => num.trim()),
+              ...(cliente.contactoReferenciaTelefono ?? '')
+                .split(',')
+                .map((num) => num.trim()),
+            ];
+
+            console.log('los numeros de telefono son: ', numerosTelefono);
+          }
+        }
+      }
+    } catch (error) {
+      console.log('❌ Error en CRON primer recordatorio:', error);
+    }
+  }
+
+  renderTemplate(template: string, data: Record<string, any>): string {
+    return template.replace(/\[([^\]]+)\]/g, (_, key) => {
+      const value = data[key];
+      return value !== undefined ? String(value) : `[${key}]`;
+    });
+  }
+
+  formatearNumeroWhatsApp(numero: string): string {
+    // Limpiar caracteres no numéricos
+    const limpio = numero.trim().replace(/\D/g, '');
+
+    // Si ya tiene el código completo
+    if (limpio.startsWith('502') && limpio.length === 11) {
+      return `whatsapp:+${limpio}`;
+    }
+
+    // Si es número nacional (8 dígitos)
+    if (limpio.length === 8) {
+      return `whatsapp:+502${limpio}`;
+    }
+
+    // Si ya viene con prefijo internacional completo (ej: +502)
+    if (numero.startsWith('+')) {
+      return `whatsapp:${numero}`;
+    }
+
+    // Número inválido
+    throw new Error(`Número no válido o mal formateado: "${numero}"`);
   }
 }

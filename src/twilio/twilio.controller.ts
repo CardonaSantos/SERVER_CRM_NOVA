@@ -19,9 +19,4 @@ export class TwilioController {
   async sendMessage(@Body() body: { to: string; message: string }) {
     return this.twilioService.sendWhatsApp(body.to, body.message);
   }
-
-  @Get()
-  findAll() {
-    return this.twilioService.findAll();
-  }
 }
