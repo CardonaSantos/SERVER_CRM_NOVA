@@ -73,24 +73,22 @@ export class ServicioInternetService {
         },
       });
 
-      // Obtener la cantidad de clientes por cada servicio de internet
-      const resultado = await Promise.all(
-        response.map(async (servicio) => {
-          // Contar los clientes que tienen asignado este servicio de internet (1:1)
-          const clientesCount = await this.prisma.clienteInternet.count({
-            where: {
-              servicioInternetId: servicio.id, // Relación 1:1 con servicioInternetId
-            },
-          });
+      // Obtenemos conteo de clientes por servicio usando groupBy
+      const counts = await this.prisma.clienteInternet.groupBy({
+        by: ['servicioInternetId'],
+        _count: { servicioInternetId: true },
+      });
 
-          return {
-            ...servicio, // El servicio original
-            clientesCount, // El conteo de clientes asociados a este servicio
-          };
-        }),
-      );
+      // Mezclamos el conteo con los servicios
+      const resultado = response.map((servicio) => {
+        const match = counts.find((c) => c.servicioInternetId === servicio.id);
+        return {
+          ...servicio,
+          clientesCount: match?._count.servicioInternetId || 0,
+        };
+      });
 
-      return resultado; // Resultado final con los servicios y la cantidad de clientes
+      return resultado;
     } catch (error) {
       console.error('Error al obtener servicios de Internet:', error);
       throw new Error('No se pudo obtener los servicios de Internet.');

@@ -625,10 +625,12 @@ export class ClienteInternetService {
               fechaPago: pago.fechaPago,
               metodoPago: pago.metodoPago,
               montoPagado: pago.montoPagado,
-              cobrador: {
-                id: pago.cobrador.id,
-                nombreCobrador: pago.cobrador.nombre,
-              },
+              cobrador: pago.cobrador
+                ? {
+                    id: pago.cobrador.id,
+                    nombreCobrador: pago.cobrador.nombre,
+                  }
+                : null,
             })),
           }),
         ),

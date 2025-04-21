@@ -297,7 +297,8 @@ export class CustomerPayloadService {
           montoPagado: montoPagado,
           facturaInternet: { connect: { id: factura.id } },
           metodoPago: 'EFECTIVO',
-          cobrador: { connect: { id: 1 } }, // cambiar según lógica real si aplica
+          // 👇 OMITIMOS cobrador si no tenemos uno válido
+          // cobrador: { connect: { id: 1 } },
         },
       });
 

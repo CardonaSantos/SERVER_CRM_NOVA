@@ -338,13 +338,14 @@ export class FacturacionService {
         },
         estadoFacturaInternet: factura.estadoFacturaInternet,
         pagos: factura.pagos.map((pago) => ({
-          cobrador: pago.cobrador.nombre,
+          cobrador: pago.cobrador ? pago.cobrador.nombre : null,
           montoPagado: pago.montoPagado,
           metodoPago: pago.metodoPago,
           fechaPago: pago.fechaPago.toISOString(),
           cobradorId: pago.cobradorId,
           creadoEn: pago.creadoEn.toISOString(),
         })),
+
         creadoEn: factura.creadoEn.toISOString(),
         actualizadoEn: factura.creadoEn?.toISOString() || null,
         nombreClienteFactura: `${factura.cliente.nombre} ${factura.cliente.apellidos}`,
@@ -624,8 +625,11 @@ export class FacturacionService {
         fechaPago:
           factura.fechaPagoEsperada?.toISOString() || 'No especificada',
         por:
-          factura.pagos.map((pago) => pago.cobrador.nombre).join(', ') ||
-          'No especificado',
+          factura.pagos
+            .map((pago) => pago.cobrador?.nombre)
+            .filter(Boolean)
+            .join(', ') || 'No especificado',
+
         telefono: factura.cliente.telefono || 0,
         facturacionZonaId: factura.facturacionZonaId,
       }));

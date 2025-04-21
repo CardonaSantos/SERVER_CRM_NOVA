@@ -41,44 +41,41 @@ export class DashboardService {
   }
 
   async getDashboardData() {
-    // Get the number of active clients
-    const activeClientsCount = await this.prisma.clienteInternet.count({
-      where: { estadoCliente: 'ACTIVO' },
-    });
-
-    // Get the number of delinquent clients
-    const delinquentClientsCount = await this.prisma.clienteInternet.count({
-      where: { estadoCliente: 'MOROSO' },
-    });
-
-    // Get the number of suspended clients
-    const suspendedClientsCount = await this.prisma.clienteInternet.count({
-      where: { estadoCliente: 'SUSPENDIDO' },
-    });
-
-    // Get the number of active services
-    const activeServicesCount = await this.prisma.clienteInternet.count({
-      where: { estadoCliente: 'ACTIVO' },
-    });
-
-    // Get the number of suspended services
-    const suspendedServicesCount = await this.prisma.clienteInternet.count({
-      where: { estadoCliente: 'SUSPENDIDO' },
-    });
-
-    // Get the number of clients added this month
-    const clientsAddedThisMonthCount = await this.prisma.clienteInternet.count({
-      where: {
-        creadoEn: {
-          gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    const [
+      activeClientsCount,
+      delinquentClientsCount,
+      suspendedClientsCount,
+      activeServicesCount,
+      suspendedServicesCount,
+      clientsAddedThisMonthCount,
+      lastTicket,
+    ] = await Promise.all([
+      this.prisma.clienteInternet.count({
+        where: { estadoCliente: 'ACTIVO' },
+      }),
+      this.prisma.clienteInternet.count({
+        where: { estadoCliente: 'MOROSO' },
+      }),
+      this.prisma.clienteInternet.count({
+        where: { estadoCliente: 'SUSPENDIDO' },
+      }),
+      this.prisma.clienteInternet.count({
+        where: { estadoCliente: 'ACTIVO' },
+      }),
+      this.prisma.clienteInternet.count({
+        where: { estadoCliente: 'SUSPENDIDO' },
+      }),
+      this.prisma.clienteInternet.count({
+        where: {
+          creadoEn: {
+            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+          },
         },
-      },
-    });
-
-    // Get the last ticket
-    const lastTicket = await this.prisma.ticketSoporte.findFirst({
-      orderBy: { fechaApertura: 'desc' },
-    });
+      }),
+      this.prisma.ticketSoporte.findFirst({
+        orderBy: { fechaApertura: 'desc' },
+      }),
+    ]);
 
     return {
       activeClients: activeClientsCount,

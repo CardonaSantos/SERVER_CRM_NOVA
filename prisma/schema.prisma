@@ -398,8 +398,10 @@ model PagoFacturaInternet {
   fechaPago     DateTime  @default(now())
   creadoEn      DateTime @default(now())
   // Relación con el cobrador
-  cobradorId        Int
-  cobrador          Usuario @relation(fields: [cobradorId], references: [id])
+  
+  // Hacer cobrador opcional
+  cobradorId         Int?
+  cobrador           Usuario? @relation(fields: [cobradorId], references: [id])
   //NUMERO DE BOLETA
   numeroBoleta String? @unique // Campo único solo cuando se proporciona
 }
