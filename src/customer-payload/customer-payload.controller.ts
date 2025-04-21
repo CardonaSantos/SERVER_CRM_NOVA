@@ -18,4 +18,12 @@ export class CustomerPayloadController {
     console.log('📂 Usando ruta:', ruta);
     return await this.customerPayloadService.importarYFormatearClientes(ruta);
   }
+
+  // Ejemplo de controlador que usa la función:
+  @Get('/importar-csv')
+  async importarDesdeCSV() {
+    const ruta = join(process.cwd(), 'src', 'assets', 'BASE_JACAL_NUEVA.csv');
+    console.log('📂 Usando ruta:', ruta);
+    return await this.customerPayloadService.importarClientesDesdeCSV(ruta);
+  }
 }

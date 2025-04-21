@@ -25,6 +25,7 @@ import { TwilioModule } from './twilio/twilio.module';
 import { CustomerPayloadModule } from './customer-payload/customer-payload.module';
 import { SectorModule } from './sector/sector.module';
 import { MensajeModule } from './mensaje/mensaje.module';
+import { ContratoClienteModule } from './contrato-cliente/contrato-cliente.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { MensajeModule } from './mensaje/mensaje.module';
     CustomerPayloadModule,
     SectorModule,
     MensajeModule,
+    ContratoClienteModule,
   ],
   controllers: [AppController],
   providers: [AppService],

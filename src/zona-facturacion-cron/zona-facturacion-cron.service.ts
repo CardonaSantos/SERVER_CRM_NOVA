@@ -14,7 +14,7 @@ dayjs.extend(timezone);
 
 const formatearFecha = (fecha: string) => {
   // Formateo en UTC sin conversión a local
-  return dayjs(fecha).format('DD/MM/YYYY hh:mm A');
+  return dayjs(fecha).format('DD/MM/YYYY');
 };
 
 // Al comparar fechas, ajustamos las fechas de UTC a Guatemala (UTC-6)
@@ -292,6 +292,9 @@ export class ZonaFacturacionCronService {
     }
   }
 
+  //EVERY_10_MINUTES
+  //EVERY_5_SECONDS
+
   //GENERAR EL PRIMER RECORDATORIO DE PAGO, NO ES LA GENERACION DE FACTURA
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
     timeZone: 'America/Guatemala',
@@ -299,14 +302,38 @@ export class ZonaFacturacionCronService {
   async generarMesnajePrimerRecordatorio() {
     try {
       const hoylocal = dayjs().tz('America/Guatemala');
-      //usa el mismo hoylocal, para definir el fin e inicio de mes
       const inicioMesLocal = hoylocal.startOf('month');
       const finMesLocal = hoylocal.endOf('month');
+
+      const infoEmpresa = await this.prisma.empresa.findFirst({
+        select: {
+          id: true,
+          nombre: true,
+          telefono: true,
+        },
+      });
+
+      if (!infoEmpresa) {
+        console.warn('Empresa no encontrada. Abortando ejecución.');
+        return;
+      }
+
+      const bodyTemplate = await this.prisma.plantillaMensaje.findFirst({
+        where: {
+          tipo: 'RECORDATORIO_1',
+        },
+      });
+
+      if (!bodyTemplate) {
+        console.warn('Plantilla RECORDATORIO_1 no encontrada.');
+        return;
+      }
 
       const zonasDeFacturacion = await this.prisma.facturacionZona.findMany({
         select: {
           id: true,
           diaRecordatorio: true,
+          enviarRecordatorio1: true,
           clientes: {
             select: {
               id: true,
@@ -314,6 +341,12 @@ export class ZonaFacturacionCronService {
               apellidos: true,
               telefono: true,
               contactoReferenciaTelefono: true,
+              servicioInternet: {
+                select: {
+                  nombre: true,
+                  velocidad: true,
+                },
+              },
             },
           },
         },
@@ -321,11 +354,14 @@ export class ZonaFacturacionCronService {
 
       for (const zona of zonasDeFacturacion) {
         if (!zona.diaRecordatorio) continue;
+        if (zona.enviarRecordatorio1 === false) continue;
 
         const fechaRecordatorio = hoylocal.date(zona.diaRecordatorio);
 
-        if (hoylocal.isSame(fechaRecordatorio, 'day')) {
-          for (const cliente of zona.clientes) {
+        if (!hoylocal.isSame(fechaRecordatorio, 'day')) continue;
+
+        for (const cliente of zona.clientes) {
+          try {
             const factura = await this.prisma.facturaInternet.findFirst({
               where: {
                 clienteId: cliente.id,
@@ -335,30 +371,367 @@ export class ZonaFacturacionCronService {
                 facturacionZonaId: zona.id,
                 fechaPagoEsperada: {
                   gte: inicioMesLocal.toDate(),
-                  lte: finMesLocal.endOf('month').toDate(),
+                  lte: finMesLocal.toDate(),
                 },
               },
               select: {
-                id: true,
                 fechaPagoEsperada: true,
                 detalleFactura: true,
                 montoPago: true,
               },
             });
 
+            if (!factura) continue;
+
             const numerosTelefono = [
               ...(cliente.telefono ?? '').split(',').map((num) => num.trim()),
               ...(cliente.contactoReferenciaTelefono ?? '')
                 .split(',')
                 .map((num) => num.trim()),
-            ];
+            ].filter((num) => num);
 
-            console.log('los numeros de telefono son: ', numerosTelefono);
+            const dataToTemplate = {
+              nombre_cliente: `${cliente.nombre} ${cliente.apellidos}`,
+              empresa_nombre: infoEmpresa.nombre,
+              fecha_pago: formatearFecha(
+                factura.fechaPagoEsperada.toISOString(),
+              ),
+              monto_pago: factura.montoPago,
+              detalle_factura: `Pago por suscripción mensual al servicio de internet, Plan: ${cliente.servicioInternet.nombre} (${cliente.servicioInternet.velocidad})`,
+            };
+
+            const bodyMensaje = this.renderTemplate(
+              bodyTemplate.body,
+              dataToTemplate,
+            );
+
+            console.log('Mensaje a enviar:', bodyMensaje);
+
+            const numerosValidos = numerosTelefono
+              .map((n) => {
+                try {
+                  return this.formatearNumeroWhatsApp(n);
+                } catch (err) {
+                  console.warn(`Número descartado: ${n} -> ${err.message}`);
+                  return null;
+                }
+              })
+              .filter(Boolean);
+
+            for (const numero of numerosValidos) {
+              try {
+                await this.twilioService.sendWhatsApp(numero, bodyMensaje);
+                // console.log(`✉️ Mensaje enviado a ${numero}`);
+              } catch (error) {
+                console.warn(
+                  `❌ Error al enviar mensaje a ${numero}:`,
+                  error.message,
+                );
+              }
+            }
+          } catch (clienteError) {
+            console.warn(
+              `Error procesando cliente ${cliente.id}:`,
+              clienteError,
+            );
           }
         }
       }
     } catch (error) {
-      console.log('❌ Error en CRON primer recordatorio:', error);
+      console.error('❌ Error general en CRON primer recordatorio:', error);
+    }
+  }
+
+  // ENVIAR EL SEGUNDO RECORDATORIO DE PAGO, NO ES GENERACION DE FACTURA
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
+    timeZone: 'America/Guatemala',
+  })
+  async generarMensajeSegundoRecordatorio() {
+    try {
+      const hoylocal = dayjs().tz('America/Guatemala');
+      const inicioMesLocal = hoylocal.startOf('month');
+      const finMesLocal = hoylocal.endOf('month');
+
+      const infoEmpresa = await this.prisma.empresa.findFirst({
+        select: {
+          id: true,
+          nombre: true,
+          telefono: true,
+        },
+      });
+
+      if (!infoEmpresa) {
+        console.warn('Empresa no encontrada. Abortando ejecución.');
+        return;
+      }
+
+      const bodyTemplate = await this.prisma.plantillaMensaje.findFirst({
+        where: {
+          tipo: 'RECORDATORIO_2',
+        },
+      });
+
+      if (!bodyTemplate) {
+        console.warn('Plantilla RECORDATORIO_2 no encontrada.');
+        return;
+      }
+
+      const zonasDeFacturacion = await this.prisma.facturacionZona.findMany({
+        select: {
+          id: true,
+          diaSegundoRecordatorio: true,
+          enviarRecordatorio2: true,
+          clientes: {
+            select: {
+              id: true,
+              nombre: true,
+              apellidos: true,
+              telefono: true,
+              contactoReferenciaTelefono: true,
+              servicioInternet: {
+                select: {
+                  nombre: true,
+                  velocidad: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      for (const zona of zonasDeFacturacion) {
+        if (!zona.diaSegundoRecordatorio) continue;
+        if (zona.enviarRecordatorio2 === false) continue;
+
+        const fechaRecordatorio = hoylocal.date(zona.diaSegundoRecordatorio);
+
+        if (!hoylocal.isSame(fechaRecordatorio, 'day')) continue;
+
+        for (const cliente of zona.clientes) {
+          try {
+            const factura = await this.prisma.facturaInternet.findFirst({
+              where: {
+                clienteId: cliente.id,
+                estadoFacturaInternet: {
+                  in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'],
+                },
+                facturacionZonaId: zona.id,
+                fechaPagoEsperada: {
+                  gte: inicioMesLocal.toDate(),
+                  lte: finMesLocal.toDate(),
+                },
+              },
+              select: {
+                fechaPagoEsperada: true,
+                detalleFactura: true,
+                montoPago: true,
+              },
+            });
+
+            if (!factura) continue;
+
+            const numerosTelefono = [
+              ...(cliente.telefono ?? '').split(',').map((num) => num.trim()),
+              ...(cliente.contactoReferenciaTelefono ?? '')
+                .split(',')
+                .map((num) => num.trim()),
+            ].filter((num) => num);
+
+            const dataToTemplate = {
+              nombre_cliente: `${cliente.nombre} ${cliente.apellidos}`,
+              empresa_nombre: infoEmpresa.nombre,
+              fecha_pago: formatearFecha(
+                factura.fechaPagoEsperada.toISOString(),
+              ),
+              monto_pago: factura.montoPago,
+              detalle_factura: `Pago por suscripción mensual al servicio de internet, Plan: ${cliente.servicioInternet.nombre} (${cliente.servicioInternet.velocidad})`,
+            };
+
+            const bodyMensaje = this.renderTemplate(
+              bodyTemplate.body,
+              dataToTemplate,
+            );
+            console.log('Mensaje a enviar:', bodyMensaje);
+
+            const numerosValidos = numerosTelefono
+              .map((n) => {
+                try {
+                  return this.formatearNumeroWhatsApp(n);
+                } catch (err) {
+                  console.warn(`Número descartado: ${n} -> ${err.message}`);
+                  return null;
+                }
+              })
+              .filter(Boolean);
+
+            for (const numero of numerosValidos) {
+              try {
+                await this.twilioService.sendWhatsApp(numero, bodyMensaje);
+                // console.log(`✉️ Mensaje enviado a ${numero}`);
+              } catch (error) {
+                console.warn(
+                  `❌ Error al enviar mensaje a ${numero}:`,
+                  error.message,
+                );
+              }
+            }
+          } catch (clienteError) {
+            console.warn(
+              `Error procesando cliente ${cliente.id}:`,
+              clienteError,
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error general en CRON primer recordatorio:', error);
+    }
+  }
+
+  // ENVIAR MENSAJE DIA DE PAGO
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
+    timeZone: 'America/Guatemala',
+  })
+  async generarMensajeDiaDePago() {
+    try {
+      const hoylocal = dayjs().tz('America/Guatemala');
+      const inicioMesLocal = hoylocal.startOf('month');
+      const finMesLocal = hoylocal.endOf('month');
+
+      const infoEmpresa = await this.prisma.empresa.findFirst({
+        select: {
+          id: true,
+          nombre: true,
+          telefono: true,
+        },
+      });
+
+      if (!infoEmpresa) {
+        console.warn('Empresa no encontrada. Abortando ejecución.');
+        return;
+      }
+
+      const bodyTemplate = await this.prisma.plantillaMensaje.findFirst({
+        where: {
+          tipo: 'AVISO_PAGO',
+        },
+      });
+
+      if (!bodyTemplate) {
+        console.warn('Plantilla AVISO_PAGO no encontrada.');
+        return;
+      }
+
+      const zonasDeFacturacion = await this.prisma.facturacionZona.findMany({
+        select: {
+          id: true,
+          diaPago: true,
+          enviarAvisoPago: true,
+          clientes: {
+            select: {
+              id: true,
+              nombre: true,
+              apellidos: true,
+              telefono: true,
+              contactoReferenciaTelefono: true,
+              servicioInternet: {
+                select: {
+                  nombre: true,
+                  velocidad: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      for (const zona of zonasDeFacturacion) {
+        if (!zona.diaPago) continue;
+        if (zona.enviarAvisoPago === false) continue;
+
+        const fechaRecordatorio = hoylocal.date(zona.diaPago);
+
+        if (!hoylocal.isSame(fechaRecordatorio, 'day')) continue;
+
+        for (const cliente of zona.clientes) {
+          try {
+            const factura = await this.prisma.facturaInternet.findFirst({
+              where: {
+                clienteId: cliente.id,
+                estadoFacturaInternet: {
+                  in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'],
+                },
+                facturacionZonaId: zona.id,
+                fechaPagoEsperada: {
+                  gte: inicioMesLocal.toDate(),
+                  lte: finMesLocal.toDate(),
+                },
+              },
+              select: {
+                fechaPagoEsperada: true,
+                detalleFactura: true,
+                montoPago: true,
+              },
+            });
+
+            if (!factura) continue;
+
+            const numerosTelefono = [
+              ...(cliente.telefono ?? '').split(',').map((num) => num.trim()),
+              ...(cliente.contactoReferenciaTelefono ?? '')
+                .split(',')
+                .map((num) => num.trim()),
+            ].filter((num) => num);
+
+            const dataToTemplate = {
+              nombre_cliente: `${cliente.nombre} ${cliente.apellidos}`,
+              empresa_nombre: infoEmpresa.nombre,
+              fecha_pago: formatearFecha(
+                factura.fechaPagoEsperada.toISOString(),
+              ),
+              monto_pago: factura.montoPago,
+              detalle_factura: `Pago por suscripción mensual al servicio de internet, Plan: ${cliente.servicioInternet.nombre} (${cliente.servicioInternet.velocidad})`,
+            };
+
+            const bodyMensaje = this.renderTemplate(
+              bodyTemplate.body,
+              dataToTemplate,
+            );
+
+            // console.log('Mensaje a enviar:', bodyMensaje);
+
+            const numerosValidos = numerosTelefono
+              .map((n) => {
+                try {
+                  return this.formatearNumeroWhatsApp(n);
+                } catch (err) {
+                  console.warn(`Número descartado: ${n} -> ${err.message}`);
+                  return null;
+                }
+              })
+              .filter(Boolean);
+
+            for (const numero of numerosValidos) {
+              try {
+                await this.twilioService.sendWhatsApp(numero, bodyMensaje);
+                // console.log(`✉️ Mensaje enviado a ${numero}`);
+              } catch (error) {
+                console.warn(
+                  `❌ Error al enviar mensaje a ${numero}:`,
+                  error.message,
+                );
+              }
+            }
+          } catch (clienteError) {
+            console.warn(
+              `Error procesando cliente ${cliente.id}:`,
+              clienteError,
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error general en CRON primer recordatorio:', error);
     }
   }
 

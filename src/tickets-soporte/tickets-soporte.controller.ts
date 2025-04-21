@@ -32,6 +32,11 @@ export class TicketsSoporteController {
     return this.ticketsSoporteService.findOne(+id);
   }
 
+  @Get('/get-ticket-boleta/:id')
+  getTicketToBoleta(@Param('id', ParseIntPipe) id: number) {
+    return this.ticketsSoporteService.getTicketToBoleta(id);
+  }
+
   @Patch('/update-ticket-soporte/:id')
   update(
     @Param('id', ParseIntPipe) id: number,

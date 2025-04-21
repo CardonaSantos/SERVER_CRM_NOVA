@@ -51,6 +51,39 @@ model Empresa {
   plantillas PlantillaMensaje[] // Opposite relation field for PlantillaMensaje
 }
 
+model ContratoServicioInternet {
+  id             Int      @id @default(autoincrement())
+
+  clienteId      Int             @unique
+  cliente        ClienteInternet @relation(name: "ContratoCliente", fields: [clienteId], references: [id], onDelete: Cascade)
+
+  fechaInstalacionProgramada DateTime?
+
+  costoInstalacion Float?       // editable
+
+  fechaPago        DateTime?
+
+  observaciones    String?
+  // ssid             String?
+  // wifiPassword     String?
+
+
+  creadoEn         DateTime    @default(now())
+  actualizadoEn    DateTime    @updatedAt
+}
+
+model PlantillaContrato {
+  id Int @id @default(autoincrement())
+  nombre String // nombre interno o título visible
+  body String // cuerpo del contrato
+  empresaId Int
+  creadoEn DateTime @default(now()) 
+  actualizadoEn DateTime @updatedAt()
+
+  // ContratoServicioInternet ContratoServicioInternet[]
+}
+
+
 model PlantillaMensaje {
   id          Int      @id @default(autoincrement())
   nombre      String   // nombre interno o título visible
@@ -139,8 +172,8 @@ model Servicio {
   precio        Float     // Precio del servicio
   estado        EstadoServicio @default(ACTIVO) 
 
-  tipoServicioId Int  // Relación con TipoServicio
-  tipoServicio   TipoServicio @relation(fields: [tipoServicioId], references: [id], onDelete: Restrict)
+  tipoServicioId Int?  // Relación con TipoServicio
+  tipoServicio   TipoServicio? @relation(fields: [tipoServicioId], references: [id], onDelete: Restrict)
 
   empresaId     Int
   empresa       Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
@@ -473,6 +506,9 @@ model ClienteInternet {
     // Relación con el sector
   sectorId        Int?       // opcional para no romper la db
   sector          Sector?    @relation(fields: [sectorId], references: [id], onDelete: SetNull) // Relación con la tabla Sector
+
+  // Relación con el contrato generado opcinal, algunos pueden no tener
+  ContratoServicioInternet ContratoServicioInternet? @relation(name: "ContratoCliente")
 }
 
 model Sector {
@@ -607,7 +643,28 @@ model TicketSoporte {
   //CAMPOS PARA GRAFICOS
   fechaApertura DateTime @default(now())  // Fecha de apertura del ticket
   fechaCierre   DateTime? // Fecha de cierre del ticket
+
+  //para la boleta
+  boleta      BoletaSoporte?
 }
+
+model BoletaSoporte {
+  id             Int      @id @default(autoincrement())
+  
+  ticketId    Int?          @unique
+  ticket      TicketSoporte? @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  conforme       Boolean  @default(false)
+  firmadoPor     String?  // nombre del cliente que firmó o confirmó
+  observaciones  String?  // opcional, puede ser para notas técnicas o del cliente
+  fechaFirma     DateTime?  // cuándo se firmó la conformidad
+  generadoPorId  Int?       // técnico que generó la boleta
+  generadoPor    Usuario?   @relation(fields: [generadoPorId], references: [id], onDelete: SetNull)
+
+  creadoEn       DateTime @default(now())
+  actualizadoEn DateTime  @updatedAt()
+}
+
 
 model EtiquetaTicket {
   id    Int    @id @default(autoincrement())
@@ -676,6 +733,8 @@ model Usuario {
   MetaTickets MetaTickets[]
   //un usuario puede haber pagado varias facturas
   PagoFacturaInternet PagoFacturaInternet[]
+//puede tener varias boletas generadas
+  BoletaSoporte BoletaSoporte[]
 }
 
 model MetaTickets {
@@ -709,11 +768,26 @@ enum EstadoMetaTickets {
 }
 
 enum EstadoCliente {
-  ACTIVO
-  MOROSO
-  SUSPENDIDO
-  DESINSTALADO
+  ACTIVO//pagoa al dia
+  PENDIENTE_ACTIVO//TIENE UN RECIBO PENDIENTE
+  PAGO_PENDIENTE//tiene un pago pendiente vencido
+  MOROSO//mas de ciertos pagos 3 MESES SIN PAGAR Y CORTADO
+  ATRASADO//DOS FACTURAS
+  SUSPENDIDO //servicio cortado
+  DESINSTALADO//desintalado
+  EN_INSTALACION
 }
+
+
+// enum EstadoCliente {
+//   EN_INSTALACION = "EN_INSTALACION",    // Cliente creado, aún en proceso de instalación.
+//   ACTIVO = "ACTIVO",                    // Cliente con pagos al día y servicio funcionando.
+//   PAGO_PENDIENTE = "PAGO_PENDIENTE",    // Cliente con un mes vencido, servicio activo.
+//   ATRASADO = "ATRASADO",                // Cliente con dos meses vencidos, aún con servicio.
+//   MOROSO = "MOROSO",                    // Cliente con tres meses vencidos, servicio cortado.
+//   SUSPENDIDO = "SUSPENDIDO",            // Servicio suspendido por solicitud o falta de pago.
+//   DESINSTALADO = "DESINSTALADO"         // Cliente dado de baja, equipo recuperado.
+// }
 
 
 enum EstadoServicio {

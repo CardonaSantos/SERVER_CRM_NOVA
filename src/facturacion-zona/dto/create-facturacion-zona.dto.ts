@@ -1,11 +1,10 @@
 import {
-  IsString,
-  IsInt,
-  Min,
-  Max,
-  IsOptional,
   IsBoolean,
-  IsDateString,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
 } from 'class-validator';
 
 export class CreateFacturacionZonaDto {
@@ -19,49 +18,62 @@ export class CreateFacturacionZonaDto {
   @IsInt()
   @Min(1)
   @Max(31)
-  diaGeneracionFactura: number; // Día del mes en que se genera la factura (1-31)
-
-  @IsInt()
-  @Min(1)
-  @Max(31)
-  diaPago: number; // Día del mes en que se espera el pago (1-31)
-
-  @IsInt()
-  @Min(1)
-  @Max(31)
-  diaRecordatorio: number; // Día del mes en que se envía el recordatorio (1-31)
-
-  @IsInt()
-  @Min(1)
-  @Max(31)
-  diaSegundoRecordatorio: number; // Día del mes en que se envía el recordatorio (1-31)
-
-  @IsString()
-  horaRecordatorio: string; // Hora específica para enviar la notificación (Ej: "08:00:00")
+  diaGeneracionFactura: number;
 
   @IsBoolean()
-  @IsOptional()
-  enviarRecordatorio?: boolean; // Indica si se enviarán recordatorios. Por defecto es true.
+  enviarRecordatorioGeneracion: boolean;
+
+  @IsInt()
+  @Min(1)
+  @Max(31)
+  diaPago: number;
+
+  @IsBoolean()
+  enviarAvisoPago: boolean;
+
+  @IsInt()
+  @Min(1)
+  @Max(31)
+  diaRecordatorio: number;
+
+  @IsBoolean()
+  enviarRecordatorio1: boolean;
+
+  @IsInt()
+  @Min(1)
+  @Max(31)
+  diaSegundoRecordatorio: number;
+
+  @IsBoolean()
+  enviarRecordatorio2: boolean;
+
+  @IsString()
+  horaRecordatorio: string;
+
+  @IsBoolean()
+  enviarRecordatorio: boolean;
 
   @IsBoolean()
   whatsapp: boolean;
+
   @IsBoolean()
   email: boolean;
+
   @IsBoolean()
   sms: boolean;
+
   @IsBoolean()
   llamada: boolean;
+
   @IsBoolean()
   telegram: boolean;
 
   @IsInt()
   @IsOptional()
   @Min(1)
-  diaCorte?: number; // Día del mes en que se corta el servicio si no paga (opcional)
+  diaCorte?: number;
 
   @IsInt()
   @IsOptional()
-  suspenderTrasFacturas?: number; // Cantidad de facturas vencidas antes de cortar servicio (opcional)
-  @IsInt()
-  zonaFacturacionId: number;
+  suspenderTrasFacturas?: number;
 }

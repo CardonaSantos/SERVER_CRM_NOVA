@@ -64,6 +64,86 @@ export class TicketsSoporteService {
     return `This action returns a #${id} ticketsSoporte`;
   }
 
+  async getTicketToBoleta(ticketId: number) {
+    try {
+      const ticketInfo = await this.prisma.ticketSoporte.findUnique({
+        where: { id: ticketId },
+        include: {
+          cliente: {
+            select: {
+              id: true,
+              nombre: true,
+              apellidos: true,
+              telefono: true,
+              direccion: true,
+            },
+          },
+          empresa: {
+            select: {
+              id: true,
+              nombre: true,
+              correo: true,
+              telefono: true,
+              direccion: true,
+              pbx: true,
+            },
+          },
+          tecnico: {
+            select: {
+              id: true,
+              nombre: true,
+            },
+          },
+        },
+      });
+
+      if (!ticketInfo) {
+        throw new NotFoundException('Ticket no encontrado');
+      }
+
+      const boletaData = {
+        ticketId: ticketInfo.id,
+        titulo: ticketInfo.titulo ?? 'Sin título',
+        descripcion: ticketInfo.descripcion ?? 'Sin descripción',
+        estado: ticketInfo.estado,
+        prioridad: ticketInfo.prioridad,
+        fechaApertura: ticketInfo.fechaApertura,
+        fechaCierre: ticketInfo.fechaCierre ?? null,
+
+        cliente: {
+          id: ticketInfo.cliente.id,
+          nombreCompleto: `${ticketInfo.cliente.nombre} ${ticketInfo.cliente.apellidos}`,
+          telefono: ticketInfo.cliente.telefono,
+          direccion: ticketInfo.cliente.direccion,
+        },
+
+        tecnico: ticketInfo.tecnico
+          ? {
+              id: ticketInfo.tecnico.id,
+              nombre: ticketInfo.tecnico.nombre,
+            }
+          : null,
+
+        empresa: {
+          id: ticketInfo.empresa.id,
+          nombre: ticketInfo.empresa.nombre,
+
+          direccion: ticketInfo.empresa.direccion,
+          correo: ticketInfo.empresa.correo,
+          telefono: ticketInfo.empresa.telefono,
+          pbx: ticketInfo.empresa.pbx,
+        },
+
+        fechaGeneracionBoleta: new Date(),
+      };
+
+      return boletaData;
+    } catch (error) {
+      console.error('Error al generar boleta de ticket:', error);
+      throw new InternalServerErrorException('Error al generar boleta');
+    }
+  }
+
   async update(id: number, updateTicketsSoporteDto: UpdateTicketsSoporteDto) {
     console.log('ID: ', id);
     console.log('Los datos entrantes son: ', updateTicketsSoporteDto);
@@ -130,6 +210,28 @@ export class TicketsSoporteService {
         throw new NotFoundException('Ticket no encontrado');
       }
 
+      // 1. Eliminar etiquetas actuales
+      await this.prisma.ticketEtiqueta.deleteMany({
+        where: {
+          ticketId: id,
+        },
+      });
+
+      // 2. Asignar nuevas etiquetas
+      const etiquetasToAssign =
+        dto.tags?.map((tag) => ({
+          ticketId: id,
+          etiquetaId: tag.value,
+        })) ?? [];
+
+      if (etiquetasToAssign.length > 0) {
+        await this.prisma.ticketEtiqueta.createMany({
+          data: etiquetasToAssign,
+          skipDuplicates: true,
+        });
+      }
+
+      // 3. Actualizar ticket
       const ticketClosed = await this.prisma.ticketSoporte.update({
         where: { id },
         data: {
@@ -137,30 +239,19 @@ export class TicketsSoporteService {
           descripcion: dto.description,
           estado: 'RESUELTA',
           prioridad: dto.priority,
-          etiquetas: {
-            set: [], // Primero limpiamos
-            connect: dto.tags?.map((tag) => ({ id: tag.value })) || [],
-          },
+          fechaCierre: new Date(),
           tecnico: dto.assignee?.id
-            ? {
-                connect: {
-                  id: dto.assignee.id,
-                },
-              }
+            ? { connect: { id: dto.assignee.id } }
             : undefined,
         },
       });
 
-      // Creamos el comentario de cierre como seguimiento
+      // 4. Agregar seguimiento
       await this.prisma.seguimientoTicket.create({
         data: {
           descripcion: dto.comentario,
-          ticket: {
-            connect: { id: dto.ticketId },
-          },
-          usuario: {
-            connect: { id: dto.usuarioId },
-          },
+          ticket: { connect: { id: dto.ticketId } },
+          usuario: { connect: { id: dto.usuarioId } },
         },
       });
 

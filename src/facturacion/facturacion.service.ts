@@ -583,7 +583,7 @@ export class FacturacionService {
               },
               IP: {
                 select: {
-                  direccionIp: true,
+                  direccionIp: true || null,
                 },
               },
             },
@@ -618,7 +618,7 @@ export class FacturacionService {
           sectorId: factura.cliente.sector?.id || null,
         },
         clienteId: factura.cliente.id,
-        direccionIp: factura.cliente.IP.direccionIp || 'No disponible',
+        direccionIp: factura?.cliente?.IP?.direccionIp || 'No disponible',
         cantidad: factura.montoPago || 0,
         fechaCreado: factura.creadoEn.toISOString(),
         fechaPago:

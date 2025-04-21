@@ -23,11 +23,13 @@ export class ServicioService {
           precio: createServicioDto.precio,
           descripcion: createServicioDto.descripcion,
           estado: 'ACTIVO',
-          tipoServicio: {
-            connect: {
-              id: createServicioDto.tipoServicioId,
+          ...(createServicioDto.tipoServicioId && {
+            tipoServicio: {
+              connect: {
+                id: createServicioDto.tipoServicioId,
+              },
             },
-          },
+          }),
           empresa: {
             connect: {
               id: createServicioDto.empresaId,

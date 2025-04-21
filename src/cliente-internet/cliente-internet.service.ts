@@ -472,6 +472,19 @@ export class ClienteInternetService {
                 precio: true,
               },
             },
+            ContratoServicioInternet: {
+              select: {
+                id: true,
+                fechaInstalacionProgramada: true,
+                costoInstalacion: true,
+                fechaPago: true,
+                observaciones: true,
+                // ssid: true,
+                // wifiPassword: true,
+                actualizadoEn: true,
+                creadoEn: true,
+              },
+            },
           },
         });
 
@@ -553,6 +566,30 @@ export class ClienteInternetService {
               longitud: clienteInternetWithRelations.ubicacion.longitud,
             }
           : null,
+
+        contratoServicioInternet:
+          clienteInternetWithRelations.ContratoServicioInternet
+            ? {
+                id: clienteInternetWithRelations.ContratoServicioInternet.id,
+                creadoEn:
+                  clienteInternetWithRelations.ContratoServicioInternet
+                    .creadoEn,
+                actualizadoEn:
+                  clienteInternetWithRelations.ContratoServicioInternet
+                    .actualizadoEn,
+
+                costoInstalacion:
+                  clienteInternetWithRelations.ContratoServicioInternet
+                    .costoInstalacion,
+                fechaInstalacionProgramada:
+                  clienteInternetWithRelations.ContratoServicioInternet
+                    .fechaInstalacionProgramada,
+                fechaPago:
+                  clienteInternetWithRelations.ContratoServicioInternet
+                    .fechaPago,
+              }
+            : null,
+
         saldoCliente: clienteInternetWithRelations.saldoCliente
           ? {
               id: clienteInternetWithRelations.saldoCliente.id,
@@ -717,6 +754,7 @@ export class ClienteInternetService {
           direccion: true,
           creadoEn: true,
           actualizadoEn: true,
+          estadoCliente: true,
           sector: {
             select: {
               id: true,
@@ -773,7 +811,7 @@ export class ClienteInternetService {
       const formattedCustomers = customers.map((customer) => ({
         id: customer.id,
         nombreCompleto: `${customer.nombre} ${customer.apellidos}`,
-
+        estado: customer.estadoCliente,
         telefono: customer.telefono,
         dpi: customer.dpi,
         direccion: customer.direccion,

@@ -20,30 +20,41 @@ export class FacturacionZonaService {
         data: {
           nombre: createFacturacionZonaDto.nombre,
           empresaId: createFacturacionZonaDto.empresaId,
-          diaGeneracionFactura: createFacturacionZonaDto.diaGeneracionFactura, // Día del mes cuando se genera la factura
-          diaPago: createFacturacionZonaDto.diaPago, // Día del mes cuando se espera el pago
-          diaRecordatorio: createFacturacionZonaDto.diaRecordatorio, // Día del mes cuando se enviará el recordatorio
+
+          // Fechas clave
+          diaGeneracionFactura: createFacturacionZonaDto.diaGeneracionFactura,
+          diaPago: createFacturacionZonaDto.diaPago,
+          diaRecordatorio: createFacturacionZonaDto.diaRecordatorio,
+          diaSegundoRecordatorio:
+            createFacturacionZonaDto.diaSegundoRecordatorio,
           horaRecordatorio: createFacturacionZonaDto.horaRecordatorio,
-          // BOLEANOS DE RECORDATORIOS
+          diaCorte: createFacturacionZonaDto.diaCorte,
+          suspenderTrasFacturas: createFacturacionZonaDto.suspenderTrasFacturas,
+
+          // Flags de envío de recordatorios
+          enviarRecordatorioGeneracion:
+            createFacturacionZonaDto.enviarRecordatorioGeneracion,
+          enviarAvisoPago: createFacturacionZonaDto.enviarAvisoPago,
+          enviarRecordatorio1: createFacturacionZonaDto.enviarRecordatorio1,
+          enviarRecordatorio2: createFacturacionZonaDto.enviarRecordatorio2,
+          enviarRecordatorio: createFacturacionZonaDto.enviarRecordatorio,
+
+          // Canales de notificación
           whatsapp: createFacturacionZonaDto.whatsapp,
           email: createFacturacionZonaDto.email,
           llamada: createFacturacionZonaDto.llamada,
           sms: createFacturacionZonaDto.sms,
           telegram: createFacturacionZonaDto.telegram,
-          diaCorte: createFacturacionZonaDto.diaCorte,
-          suspenderTrasFacturas: createFacturacionZonaDto.suspenderTrasFacturas,
-          diaSegundoRecordatorio:
-            createFacturacionZonaDto.diaSegundoRecordatorio,
         },
       });
 
       if (!newFacturacionZona) {
         throw new InternalServerErrorException(
-          'Error al generar zona de facturacion',
+          'Error al generar zona de facturación',
         );
       }
-      console.log(newFacturacionZona);
 
+      console.log(newFacturacionZona);
       return newFacturacionZona;
     });
   }
@@ -55,70 +66,65 @@ export class FacturacionZonaService {
           id: true,
           nombre: true,
           empresaId: true,
+
+          // Generación de factura
           diaGeneracionFactura: true,
+          enviarRecordatorioGeneracion: true,
+
+          // Aviso de pago
           diaPago: true,
+          enviarAvisoPago: true,
+
+          // Recordatorios
           diaRecordatorio: true,
+          enviarRecordatorio1: true,
+          diaSegundoRecordatorio: true,
+          enviarRecordatorio2: true,
           horaRecordatorio: true,
           enviarRecordatorio: true,
-          // mediosNotificacion: true,
+
+          // Corte y suspensión
           diaCorte: true,
           suspenderTrasFacturas: true,
+
+          // Timestamps
           creadoEn: true,
           actualizadoEn: true,
-          // Relacionado con el conteo de clientes y facturas
-          clientes: true,
-          facturas: true,
+
+          // Medios de notificación
+          whatsapp: true,
           email: true,
           llamada: true,
-          sms: true,
-          whatsapp: true,
-          diaSegundoRecordatorio: true,
+          sms: true, // solo si realmente usás sms, si no, lo podés quitar
+
+          // Relaciones (aunque no se usan aquí directamente)
+          clientes: false,
+          facturas: false,
         },
       });
 
       const result = await Promise.all(
         zonas.map(async (zona) => {
-          const clientesCount = await this.prisma.clienteInternet.count({
-            where: {
-              facturacionZonaId: zona.id, // Filtramos los clientes por la zona
-            },
-          });
-
-          const facturasCount = await this.prisma.facturaInternet.count({
-            where: {
-              facturacionZonaId: zona.id, // Filtramos las facturas por la zona
-            },
-          });
+          const [clientesCount, facturasCount] = await Promise.all([
+            this.prisma.clienteInternet.count({
+              where: { facturacionZonaId: zona.id },
+            }),
+            this.prisma.facturaInternet.count({
+              where: { facturacionZonaId: zona.id },
+            }),
+          ]);
 
           return {
-            id: zona.id,
-            nombre: zona.nombre,
-            empresaId: zona.empresaId,
-            diaGeneracionFactura: zona.diaGeneracionFactura,
-            diaPago: zona.diaPago,
-            diaRecordatorio: zona.diaRecordatorio,
-            horaRecordatorio: zona.horaRecordatorio,
-            enviarRecordatorio: zona.enviarRecordatorio,
-            // mediosNotificacion: zona.mediosNotificacion,
-            diaCorte: zona.diaCorte,
-            suspenderTrasFacturas: zona.suspenderTrasFacturas,
-            creadoEn: zona.creadoEn,
-            actualizadoEn: zona.actualizadoEn,
-            whatsapp: zona.whatsapp,
-            email: zona.email,
-            llamada: zona.llamada,
-            diaSegundoRecordatorio: zona.diaSegundoRecordatorio,
-
-            clientesCount, // Añadimos el conteo de clientes
-            facturasCount, // Añadimos el conteo de facturas
+            ...zona,
+            clientesCount,
+            facturasCount,
           };
         }),
       );
 
       return result;
     } catch (error) {
-      // Manejo de errores
-      console.error('Error al obtener las zonas de facturación', error);
+      console.error('Error al obtener las zonas de facturación:', error);
       throw new Error('Error al obtener las zonas de facturación');
     }
   }
@@ -211,32 +217,42 @@ export class FacturacionZonaService {
         where: { id: updateFacturacionZonaDto.id },
         data: {
           nombre: updateFacturacionZonaDto.nombre,
-          empresaId: updateFacturacionZonaDto.empresaId,
+          // empresaId: updateFacturacionZonaDto.empresaId, // Si no se modifica, mejor no incluir
+
+          // Fechas clave
           diaGeneracionFactura: updateFacturacionZonaDto.diaGeneracionFactura,
           diaPago: updateFacturacionZonaDto.diaPago,
           diaRecordatorio: updateFacturacionZonaDto.diaRecordatorio,
           diaSegundoRecordatorio:
             updateFacturacionZonaDto.diaSegundoRecordatorio,
           horaRecordatorio: updateFacturacionZonaDto.horaRecordatorio,
+          diaCorte: updateFacturacionZonaDto.diaCorte,
+          suspenderTrasFacturas: updateFacturacionZonaDto.suspenderTrasFacturas,
+
+          // Flags de recordatorios
+          enviarRecordatorioGeneracion:
+            updateFacturacionZonaDto.enviarRecordatorioGeneracion,
+          enviarAvisoPago: updateFacturacionZonaDto.enviarAvisoPago,
+          enviarRecordatorio1: updateFacturacionZonaDto.enviarRecordatorio1,
+          enviarRecordatorio2: updateFacturacionZonaDto.enviarRecordatorio2,
           enviarRecordatorio: updateFacturacionZonaDto.enviarRecordatorio,
-          // BOLEANOS DE RECORDATORIOS
+
+          // Medios de notificación
           whatsapp: updateFacturacionZonaDto.whatsapp,
           email: updateFacturacionZonaDto.email,
           llamada: updateFacturacionZonaDto.llamada,
           sms: updateFacturacionZonaDto.sms,
           telegram: updateFacturacionZonaDto.telegram,
-          diaCorte: updateFacturacionZonaDto.diaCorte,
-          suspenderTrasFacturas: updateFacturacionZonaDto.suspenderTrasFacturas,
         },
       });
 
       if (!updatedFacturacionZona) {
         throw new InternalServerErrorException(
-          'Error al actualizar zona de facturacion',
+          'Error al actualizar zona de facturación',
         );
       }
-      console.log(updatedFacturacionZona);
 
+      console.log(updatedFacturacionZona);
       return updatedFacturacionZona;
     });
   }
