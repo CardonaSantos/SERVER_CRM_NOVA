@@ -247,7 +247,6 @@ export class CustomerPayloadService {
       },
     });
 
-    // 🕒 Calcular la fecha esperada de pago
     const fechaPagoEsperada = dayjs()
       .month(mes - 1)
       .year(anio)
@@ -256,16 +255,13 @@ export class CustomerPayloadService {
       .startOf('day')
       .toDate();
 
-    // 🧾 Detalle de la factura
     const detalleFactura = `Pago por suscripción mensual al servicio de internet, plan ${cliente.servicioInternet.nombre} (${cliente.servicioInternet.velocidad}), precio: ${cliente.servicioInternet.precio} Fecha: ${cliente.facturacionZona.diaPago} de ${dayjs(fechaPagoEsperada).format('MMMM YYYY')}`;
 
-    // 💡 Asegurar que el monto no sea mayor al precio real del plan
     const montoPagado = Math.min(
       montoDesdeCSV,
       cliente.servicioInternet.precio,
     );
 
-    // 🧮 Determinar estado de la factura
     let estadoFactura: 'PAGADA' | 'PARCIAL' | 'PENDIENTE' = 'PENDIENTE';
     if (montoPagado >= cliente.servicioInternet.precio) {
       estadoFactura = 'PAGADA';
@@ -273,7 +269,6 @@ export class CustomerPayloadService {
       estadoFactura = 'PARCIAL';
     }
 
-    // 🧾 Crear factura
     const factura = await this.prisma.facturaInternet.create({
       data: {
         creadoEn: new Date(),
@@ -286,32 +281,34 @@ export class CustomerPayloadService {
         nombreClienteFactura: `${cliente.nombre} ${cliente.apellidos}`,
         detalleFactura,
         empresa: { connect: { id: empresaId } },
+        fechaPagada: estadoFactura === 'PAGADA' ? new Date() : null,
       },
     });
 
-    // 💵 Si hay monto pagado, registrar pago
     if (montoPagado > 0) {
+      const cobradorId = 1; // opcional o asignable dinámicamente
+      const pagoData: any = {
+        cliente: { connect: { id: cliente.id } },
+        montoPagado: montoPagado,
+        facturaInternet: { connect: { id: factura.id } },
+        metodoPago: 'EFECTIVO',
+        fechaPago: new Date(),
+      };
+
+      // Solo conectamos si el ID es válido
+      if (cobradorId) {
+        pagoData.cobrador = { connect: { id: cobradorId } };
+      }
+
       await this.prisma.pagoFacturaInternet.create({
-        data: {
-          cliente: { connect: { id: cliente.id } },
-          montoPagado: montoPagado,
-          facturaInternet: { connect: { id: factura.id } },
-          metodoPago: 'EFECTIVO',
-          // 👇 OMITIMOS cobrador si no tenemos uno válido
-          // cobrador: { connect: { id: 1 } },
-        },
+        data: pagoData,
       });
 
-      // 🔄 Actualizar saldo del cliente
       await this.prisma.saldoCliente.updateMany({
         where: { clienteId },
         data: {
-          saldoPendiente: {
-            decrement: montoPagado,
-          },
-          totalPagos: {
-            increment: montoPagado,
-          },
+          saldoPendiente: { decrement: montoPagado },
+          totalPagos: { increment: montoPagado },
           ultimoPago: new Date(),
         },
       });
@@ -328,9 +325,9 @@ export class CustomerPayloadService {
 
       for (const row of rows) {
         try {
-          const nombreCompleto = (row['Nombre y Apellido'] || '').trim();
+          // Acceder a todas las propiedades con claves en mayúsculas
+          const nombreCompleto = (row['NOMBRE Y APELLIDO'] || '').trim();
 
-          // 🚫 Evitar registros vacíos o filas en blanco
           if (!nombreCompleto) {
             console.warn('⚠️ Fila omitida por falta de nombre completo.');
             continue;
@@ -340,13 +337,13 @@ export class CustomerPayloadService {
           const nombre = tokens.slice(0, 2).join(' ');
           const apellidos = tokens.length > 2 ? tokens.slice(2).join(' ') : '';
 
-          const observaciones = [row['Comentarios']]
+          const observaciones = [row['COMENTARIOS']]
             .filter(Boolean)
             .map((x) => x.trim())
             .join(' ');
 
           let fechaInstalacion: Date | null = null;
-          const fechaRaw = row['Fecha de instalacion'];
+          const fechaRaw = row['FECHA DE INSTALACION'];
           if (fechaRaw) {
             if (!isNaN(Number(fechaRaw))) {
               const serial = parseInt(fechaRaw);
@@ -362,8 +359,8 @@ export class CustomerPayloadService {
           const direccion = (row['RESIDENCIA'] || '').trim();
 
           let ubicacion = undefined;
-          if (row['COORDENADAS ']?.includes(',')) {
-            const parts = row['COORDENADAS '].split(',');
+          if (row['COORDENADAS']?.includes(',')) {
+            const parts = row['COORDENADAS'].split(',');
             const lat = parseFloat(parts[0]?.trim());
             const lng = parseFloat(parts[1]?.trim());
             if (!isNaN(lat) && !isNaN(lng)) {
@@ -376,14 +373,14 @@ export class CustomerPayloadService {
 
           const telefono = (row['TELEFONO'] || '').trim();
           const contactoReferenciaTelefono = (
-            row['Contacto Referencia'] || ''
+            row['CONTACTO REFERENCIA'] || ''
           ).trim();
 
           const precioPlan = parseFloat(row['PLAN'] || '0');
           const servicioInternet =
             await this.getOrCreateServicioInternet(precioPlan);
 
-          const nombreZona = (row['Zona de Corte'] || '').trim();
+          const nombreZona = (row['ZONA DE CORTE'] || '').trim();
           const facturacionZonaId =
             await this.getOrCreateZonaFacturacion(nombreZona);
 
@@ -404,10 +401,10 @@ export class CustomerPayloadService {
             : 'SUSPENDIDO';
 
           const facturas = {
-            enero: row['enero'] || null,
-            febrero: row['febrero'] || null,
-            marzo: row['marzo'] || null,
-            abril: row['abril'] || null,
+            enero: row['ENERO'] || null,
+            febrero: row['FEBRERO'] || null,
+            marzo: row['MARZO'] || null,
+            abril: row['ABRIL'] || null,
           };
 
           const clienteDto: any = {

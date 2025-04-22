@@ -22,7 +22,12 @@ export class CustomerPayloadController {
   // Ejemplo de controlador que usa la función:
   @Get('/importar-csv')
   async importarDesdeCSV() {
-    const ruta = join(process.cwd(), 'src', 'assets', 'BASE_JACAL_NUEVA.csv');
+    const ruta = join(
+      process.cwd(),
+      'src',
+      'assets',
+      'SAN_ANTONIO_FORMATTED.csv',
+    );
     console.log('📂 Usando ruta:', ruta);
     return await this.customerPayloadService.importarClientesDesdeCSV(ruta);
   }

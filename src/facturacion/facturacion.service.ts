@@ -63,6 +63,7 @@ export class FacturacionService {
           id: true,
           montoPago: true,
           saldoPendiente: true,
+          fechaPagada: true,
           // metodoPago: true,
           creadoEn: true,
           fechaPagoEsperada: true,
@@ -128,7 +129,7 @@ export class FacturacionService {
       const resultado = facturas.map((fac) => ({
         id: fac.id,
         fechaPagoEsperada: fac.fechaPagoEsperada?.toISOString() || null,
-        fechaPagada: null, // Asumimos que aún no ha sido pagada, ajusta según tu lógica
+        fechaPagada: fac.fechaPagada, // Asumimos que aún no ha sido pagada, ajusta según tu lógica
         montoPago: fac.montoPago,
         saldoPendiente: fac.saldoPendiente,
         empresaId: fac.cliente.empresa?.id || 0,
@@ -443,6 +444,7 @@ export class FacturacionService {
         await tx.facturaInternet.update({
           where: { id: facturaInternetId },
           data: {
+            fechaPagada: new Date(),
             saldoPendiente: saldoPendienteFacturaAjustado,
             estadoFacturaInternet:
               saldoPendienteFacturaAjustado <= 0
@@ -479,6 +481,124 @@ export class FacturacionService {
       return newPayment;
     });
   }
+
+  //REGISTRAR UN PAGO [NO-EN-RUTA] AJUSTAR EL PAGO
+  // async createNewPaymentFacturacion(
+  //   createFacturacionPaymentDto: CreateFacturacionPaymentDto,
+  // ) {
+  //   const {
+  //     facturaInternetId,
+  //     clienteId,
+  //     montoPagado,
+  //     metodoPago,
+  //     cobradorId,
+  //     numeroBoleta,
+  //   } = createFacturacionPaymentDto;
+
+  //   const numeroBoletaReal =
+  //     metodoPago === 'DEPOSITO' && numeroBoleta?.trim() ? numeroBoleta : null;
+
+  //   return await this.prisma.$transaction(async (tx) => {
+  //     // 1. Crear nuevo pago
+  //     const newPayment = await tx.pagoFacturaInternet.create({
+  //       data: {
+  //         cliente: { connect: { id: clienteId } },
+  //         montoPagado,
+  //         facturaInternet: { connect: { id: facturaInternetId } },
+  //         metodoPago,
+  //         cobrador: { connect: { id: cobradorId } },
+  //         numeroBoleta: numeroBoletaReal,
+  //       },
+  //     });
+
+  //     // 2. Actualizar saldo del cliente
+  //     const clienteSaldo = await tx.saldoCliente.findUnique({
+  //       where: { clienteId },
+  //     });
+
+  //     if (clienteSaldo) {
+  //       const nuevoSaldoPendiente = clienteSaldo.saldoPendiente - montoPagado;
+  //       const saldoPendienteAjustado = Math.max(nuevoSaldoPendiente, 0);
+
+  //       await tx.saldoCliente.update({
+  //         where: { clienteId },
+  //         data: {
+  //           saldoPendiente: saldoPendienteAjustado,
+  //           totalPagos: clienteSaldo.totalPagos + montoPagado,
+  //           ultimoPago: new Date(),
+  //         },
+  //       });
+  //     }
+
+  //     // 3. Actualizar la factura de internet
+  //     const factura = await tx.facturaInternet.findUnique({
+  //       where: { id: facturaInternetId },
+  //     });
+
+  //     if (factura) {
+  //       const saldoPendienteFacturaAjustado = Math.max(
+  //         factura.saldoPendiente - montoPagado,
+  //         0,
+  //       );
+
+  //       await tx.facturaInternet.update({
+  //         where: { id: facturaInternetId },
+  //         data: {
+  //           fechaPagada: new Date(),
+  //           saldoPendiente: saldoPendienteFacturaAjustado,
+  //           estadoFacturaInternet:
+  //             saldoPendienteFacturaAjustado <= 0
+  //               ? 'PAGADA'
+  //               : saldoPendienteFacturaAjustado < factura.montoPago
+  //                 ? 'PARCIAL'
+  //                 : 'PENDIENTE',
+  //         },
+  //       });
+  //     }
+
+  //     // 4. Calcular el estado del cliente con lógica extendida
+  //     const facturasPendientes = await tx.facturaInternet.findMany({
+  //       where: {
+  //         clienteId,
+  //         estadoFacturaInternet: {
+  //           in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'],
+  //         },
+  //       },
+  //       select: {
+  //         estadoFacturaInternet: true,
+  //       },
+  //     });
+
+  //     const vencidas = facturasPendientes.filter(
+  //       (f) => f.estadoFacturaInternet === 'VENCIDA',
+  //     ).length;
+  //     const totalPendientes = facturasPendientes.length;
+
+  //     let estadoCliente: EstadoCliente = 'ACTIVO';
+
+  //     if (vencidas >= 3) {
+  //       estadoCliente = 'MOROSO';
+  //     } else if (vencidas === 2) {
+  //       estadoCliente = 'ATRASADO';
+  //     } else if (vencidas === 1 && totalPendientes === 1) {
+  //       estadoCliente = 'PAGO_PENDIENTE';
+  //     } else if (vencidas === 1 && totalPendientes > 1) {
+  //       estadoCliente = 'PENDIENTE_ACTIVO';
+  //     } else {
+  //       estadoCliente = 'ACTIVO';
+  //     }
+
+  //     // 5. Actualizar el estado del cliente
+  //     await tx.clienteInternet.update({
+  //       where: { id: clienteId },
+  //       data: {
+  //         estadoCliente,
+  //       },
+  //     });
+
+  //     return newPayment;
+  //   });
+  // }
 
   //REGISTRAR PAGO EN RUTA
   async createNewPaymentFacturacionForRuta(
