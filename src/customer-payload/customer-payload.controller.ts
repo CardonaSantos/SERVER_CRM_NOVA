@@ -26,9 +26,10 @@ export class CustomerPayloadController {
       process.cwd(),
       'src',
       'assets',
-      'SAN_ANTONIO_FORMATTED.csv',
+      'BASE_ALDEAS_PETATAN_FORMATTED.csv',
     );
     console.log('📂 Usando ruta:', ruta);
     return await this.customerPayloadService.importarClientesDesdeCSV(ruta);
   }
 }
+// 'BASE_SAN_MARCOS_FORMATTED.csv',

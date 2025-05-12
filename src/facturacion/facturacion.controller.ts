@@ -16,6 +16,7 @@ import { CreatePaymentOnRuta } from './dto/createPaymentOnRuta.dto';
 import { GenerateFactura } from './dto/generateFactura.dto';
 import { GenerateFacturaMultipleDto } from './dto/generateMultipleFactura.dto';
 import { DeleteFacturaDto } from './dto/delete-one-factura.dto';
+import { UpdateFacturaDto } from './dto/update-factura.dto';
 
 @Controller('facturacion')
 export class FacturacionController {
@@ -85,9 +86,22 @@ export class FacturacionController {
     return this.facturacionService.facturacionToTable();
   }
 
+  @Get('/get-factura-to-edit/:id')
+  find_factura_to_edit(@Param('id', ParseIntPipe) id: number) {
+    return this.facturacionService.find_factura_to_edit(id);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.facturacionService.findOne(+id);
+  }
+
+  @Patch('/update-factura/:id')
+  updateFactura(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateFacturacionDto: UpdateFacturaDto,
+  ) {
+    return this.facturacionService.updateFactura(id, updateFacturacionDto);
   }
 
   @Patch(':id')

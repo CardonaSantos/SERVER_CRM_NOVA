@@ -18,6 +18,8 @@ import { DeleteFacturaDto } from './dto/delete-one-factura.dto';
 
 import * as utc from 'dayjs/plugin/utc';
 import * as timezone from 'dayjs/plugin/timezone';
+import { log } from 'console';
+import { UpdateFacturaDto } from './dto/update-factura.dto';
 
 // Extiende dayjs con los plugins
 dayjs.extend(utc);
@@ -467,8 +469,29 @@ export class FacturacionService {
         },
       });
 
-      // Si hay facturas pendientes, el cliente pasa a MOROSO
-      const estadoCliente = facturasPendientes.length > 0 ? 'MOROSO' : 'ACTIVO';
+      const estadoPendiente = facturasPendientes.length;
+      let estadoCliente: EstadoCliente;
+
+      switch (estadoPendiente) {
+        case 0:
+          estadoCliente = 'ACTIVO';
+          break;
+
+        case 1:
+          estadoCliente = 'PENDIENTE_ACTIVO';
+          break;
+
+        case 2:
+          estadoCliente = 'ATRASADO';
+          break;
+
+        case 3:
+          estadoCliente = 'MOROSO';
+          break;
+
+        default:
+          break;
+      }
 
       // 5. Actualizar el estado del cliente
       await tx.clienteInternet.update({
@@ -611,54 +634,42 @@ export class FacturacionService {
       metodoPago,
       cobradorId,
       numeroBoleta,
+      rutaId,
+      observaciones,
     } = createFacturacionPaymentDto;
 
-    console.log('Datos del pago:', createFacturacionPaymentDto);
-
-    let numeroBoletaReal: string | null = null;
-
-    // Si el método de pago es DEPOSITO, y el número de boleta es no vacío, asignar el número de boleta
-    if (
-      metodoPago === 'DEPOSITO' &&
-      numeroBoleta &&
-      numeroBoleta.trim() !== ''
-    ) {
-      numeroBoletaReal = numeroBoleta;
-    }
-
     try {
-      const data = {
+      const newPago = await this.createNewPaymentFacturacion({
         facturaInternetId,
         clienteId,
         montoPagado,
         metodoPago,
         cobradorId,
         numeroBoleta,
-      };
+      });
 
-      const newPAgo = await this.createNewPaymentFacturacion(data);
-      console.log('el pago en la ruta es: ', newPAgo);
+      const result = await this.prisma.$transaction(async (tx) => {
+        const ruta = await tx.ruta.findUnique({
+          where: { id: rutaId },
+          select: { montoCobrado: true },
+        });
 
-      const newFacturacionPayment = await this.prisma.$transaction(
-        async (tx) => {
-          const rutaUpdated = await tx.ruta.update({
-            where: {
-              id: createFacturacionPaymentDto.rutaId,
-            },
-            data: {
-              montoCobrado: createFacturacionPaymentDto.montoPagado,
-            },
-          });
+        if (!ruta) {
+          throw new Error(`Ruta con id ${rutaId} no encontrada`);
+        }
 
-          console.log('La nueva ruta actualizada es: ', rutaUpdated);
-        },
-        { timeout: 10000 }, // Aumentamos el tiempo de la transacción a 10 segundos
-      );
+        await tx.ruta.update({
+          where: { id: rutaId },
+          data: {
+            montoCobrado: ruta.montoCobrado + montoPagado,
+          },
+        });
+      });
 
-      console.log('Pago registrado:', newFacturacionPayment);
+      return result;
     } catch (error) {
-      console.error('Error al crear el pago:', error);
-      throw new Error('Error al procesar el pago');
+      console.error('Error al registrar pago en ruta:', error);
+      throw new Error('Error al registrar el pago en la ruta');
     }
   }
 
@@ -775,6 +786,44 @@ export class FacturacionService {
     }
   }
 
+  async find_factura_to_edit(facturaId: number) {
+    try {
+      const factura = await this.prisma.facturaInternet.findUnique({
+        where: {
+          id: facturaId,
+        },
+
+        select: {
+          id: true,
+          montoPago: true,
+          saldoPendiente: true,
+          fechaPagada: true,
+          creadoEn: true,
+          fechaPagoEsperada: true,
+          estadoFacturaInternet: true,
+          detalleFactura: true,
+          actualizadoEn: true,
+          cliente: {
+            select: {
+              id: true,
+              nombre: true,
+              apellidos: true,
+              estadoCliente: true,
+            },
+          },
+        },
+      });
+
+      if (!factura) {
+        throw new NotFoundException('Factura no encontrada');
+      }
+      console.log('La factura es: ', factura);
+      return factura;
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
   //GENERAR MANUALMENTE UNA FACTURA DE INTERNET, FUTURA O PASADA
   async generateFacturaInternet(createGenerateFactura: GenerateFactura) {
     console.log('La data es  : ', createGenerateFactura);
@@ -871,12 +920,47 @@ export class FacturacionService {
         });
 
         // Actualizamos el estado del cliente
+
+        const facturas = await prisma.facturaInternet.findMany({
+          where: {
+            clienteId: cliente.id,
+            estadoFacturaInternet: {
+              in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'],
+            },
+          },
+        });
+
+        const facturasPendientes = facturas.length;
+
+        let estadoCliente: EstadoCliente;
+
+        switch (facturasPendientes) {
+          case 0:
+            estadoCliente = 'ACTIVO';
+            break;
+
+          case 1:
+            estadoCliente = 'PENDIENTE_ACTIVO';
+            break;
+
+          case 2:
+            estadoCliente = 'ATRASADO';
+            break;
+
+          case 3:
+            estadoCliente = 'MOROSO';
+            break;
+
+          default:
+            break;
+        }
+
         await prisma.clienteInternet.update({
           where: {
             id: cliente.id,
           },
           data: {
-            estadoCliente: 'MOROSO',
+            estadoCliente: estadoCliente,
             saldoCliente: {
               update: {
                 data: {
@@ -967,12 +1051,45 @@ export class FacturacionService {
       facturas.push(nuevaFactura);
     }
 
+    const facturasPendientes = await this.prisma.facturaInternet.findMany({
+      where: {
+        clienteId,
+        estadoFacturaInternet: {
+          in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'],
+        },
+      },
+    });
+
+    const estadoPendiente = facturasPendientes.length;
+    let estadoCliente: EstadoCliente;
+
+    switch (estadoPendiente) {
+      case 0:
+        estadoCliente = 'ACTIVO';
+        break;
+
+      case 1:
+        estadoCliente = 'PENDIENTE_ACTIVO';
+        break;
+
+      case 2:
+        estadoCliente = 'ATRASADO';
+        break;
+
+      case 3:
+        estadoCliente = 'MOROSO';
+        break;
+
+      default:
+        break;
+    }
+
     const newSaldo = await this.prisma.clienteInternet.update({
       where: {
         id: cliente.id,
       },
       data: {
-        estadoCliente: 'MOROSO',
+        estadoCliente: estadoCliente,
         saldoCliente: {
           update: {
             saldoPendiente: {
@@ -1081,6 +1198,104 @@ export class FacturacionService {
 
   findOne(id: number) {
     return `This action returns a #${id} facturacion`;
+  }
+
+  async updateFactura(id: number, dto: UpdateFacturaDto) {
+    try {
+      console.log('actualizando la factura', dto);
+
+      const facturaToUpdate = await this.prisma.facturaInternet.findUnique({
+        where: { id },
+      });
+      if (!facturaToUpdate)
+        throw new NotFoundException('Factura no encontrada');
+
+      const saldoOriginalFactura = facturaToUpdate.saldoPendiente;
+
+      const nuevoSaldoFactura = dto.montoPago;
+
+      const facturaUpdated = await this.prisma.facturaInternet.update({
+        where: { id },
+        data: {
+          montoPago: dto.montoPago,
+          saldoPendiente: nuevoSaldoFactura,
+          detalleFactura: dto.detalleFactura,
+          fechaPagada: dto.fechaPagada ? new Date(dto.fechaPagada) : null,
+          fechaPagoEsperada: dto.fechaPagoEsperada
+            ? new Date(dto.fechaPagoEsperada)
+            : null,
+          estadoFacturaInternet:
+            dto.estadoFacturaInternet as StateFacturaInternet,
+        },
+      });
+
+      const clienteSaldo = await this.prisma.saldoCliente.findUnique({
+        where: { clienteId: facturaToUpdate.clienteId },
+      });
+      if (clienteSaldo) {
+        // si disminuyó el pendiente, diferencia > 0 => restamos menos;
+        // si aumentó, diferencia < 0 => restamos negativo => sumamos
+        const diferencia = saldoOriginalFactura - nuevoSaldoFactura;
+        const saldoClienteAjustado = Math.max(
+          clienteSaldo.saldoPendiente - diferencia,
+          0,
+        );
+
+        await this.prisma.saldoCliente.update({
+          where: { clienteId: clienteSaldo.clienteId },
+          data: { saldoPendiente: saldoClienteAjustado },
+        });
+      }
+
+      const facturasPendientes = await this.prisma.facturaInternet.findMany({
+        where: {
+          clienteId: facturaToUpdate.clienteId,
+          estadoFacturaInternet: {
+            in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'],
+          },
+        },
+      });
+
+      console.log('Las facturas pendientes son: ', facturasPendientes);
+
+      const estadoPendiente = facturasPendientes.length;
+
+      let estadoCliente: EstadoCliente;
+
+      switch (estadoPendiente) {
+        case 0:
+          estadoCliente = 'ACTIVO';
+          break;
+
+        case 1:
+          estadoCliente = 'PENDIENTE_ACTIVO';
+          break;
+
+        case 2:
+          estadoCliente = 'ATRASADO';
+          break;
+
+        case 3:
+          estadoCliente = 'MOROSO';
+          break;
+
+        default:
+          break;
+      }
+
+      await this.prisma.clienteInternet.update({
+        where: {
+          id: facturaToUpdate.clienteId,
+        },
+        data: {
+          estadoCliente: estadoCliente,
+        },
+      });
+
+      return facturaUpdated;
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   update(id: number, updateFacturacionDto: UpdateFacturacionDto) {
@@ -1267,8 +1482,29 @@ export class FacturacionService {
       },
     });
 
-    // Si hay facturas pendientes, el cliente pasa a MOROSO
-    const estadoCliente = facturasPendientes.length > 0 ? 'MOROSO' : 'ACTIVO';
+    const estadoPendiente = facturasPendientes.length;
+    let estadoCliente: EstadoCliente;
+
+    switch (estadoPendiente) {
+      case 0:
+        estadoCliente = 'ACTIVO';
+        break;
+
+      case 1:
+        estadoCliente = 'PENDIENTE_ACTIVO';
+        break;
+
+      case 2:
+        estadoCliente = 'ATRASADO';
+        break;
+
+      case 3:
+        estadoCliente = 'MOROSO';
+        break;
+
+      default:
+        break;
+    }
 
     // 9. Actualizar el estado del cliente
     await this.prisma.clienteInternet.update({

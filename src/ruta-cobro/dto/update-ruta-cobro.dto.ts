@@ -1,8 +1,11 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { ClienteInternet, Empresa, EstadoRuta, Usuario } from '@prisma/client';
-import { IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
 
 export class UpdateRutaDto {
+  @IsInt()
+  id: number;
+
   @IsOptional()
   @IsString()
   nombreRuta?: string;
@@ -25,14 +28,21 @@ export class UpdateRutaDto {
   @IsOptional()
   Clientes?: ClienteInternet[];
 
+  @IsArray()
+  clientes: number[];
+
   @IsOptional()
   @IsEnum(EstadoRuta)
   estadoRuta?: EstadoRuta;
 
   @IsOptional()
   @IsInt()
-  EmpresaId?: number;
+  empresaId?: number;
 
   @IsOptional()
   Empresa?: Empresa;
+
+  @IsString()
+  @IsOptional()
+  observaciones?: string;
 }

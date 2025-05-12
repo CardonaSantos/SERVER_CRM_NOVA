@@ -26,6 +26,7 @@ import { CustomerPayloadModule } from './customer-payload/customer-payload.modul
 import { SectorModule } from './sector/sector.module';
 import { MensajeModule } from './mensaje/mensaje.module';
 import { ContratoClienteModule } from './contrato-cliente/contrato-cliente.module';
+import { MikroTikModule } from './mikro-tik/mikro-tik.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { ContratoClienteModule } from './contrato-cliente/contrato-cliente.modul
     SectorModule,
     MensajeModule,
     ContratoClienteModule,
+    MikroTikModule,
   ],
   controllers: [AppController],
   providers: [AppService],

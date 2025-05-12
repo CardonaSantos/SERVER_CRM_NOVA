@@ -1,5 +1,11 @@
 import { MetodoPagoFacturaInternet } from '@prisma/client';
-import { IsEnum, IsInt, IsNotEmpty, IsString } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class CreatePaymentOnRuta {
   @IsInt()
@@ -23,4 +29,8 @@ export class CreatePaymentOnRuta {
   @IsInt()
   @IsNotEmpty()
   rutaId: number;
+
+  @IsString()
+  @IsOptional()
+  observaciones?: string;
 }

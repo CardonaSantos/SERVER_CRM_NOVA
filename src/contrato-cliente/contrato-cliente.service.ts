@@ -56,10 +56,27 @@ export class ContratoClienteService {
   async getOneContrato(contratoId: number, plantillaId: number) {
     try {
       // 1. Obtener el contrato (sin plantilla incluida porque ya no tiene relación)
-      const contrato = await this.prisma.contratoServicioInternet.findUnique({
+      const contratox = await this.prisma.contratoServicioInternet.findUnique({
         where: { id: contratoId },
         include: {
-          cliente: true,
+          cliente: {
+            select: {
+              id: true,
+              nombre: true,
+              apellidos: true,
+              telefono: true,
+              // correo: true,
+              direccion: true,
+              servicioInternet: {
+                select: {
+                  id: true,
+                  nombre: true,
+                  precio: true,
+                  velocidad: true,
+                },
+              },
+            },
+          },
         },
       });
 
@@ -79,7 +96,7 @@ export class ContratoClienteService {
         throw new NotFoundException('Empresa no encontrado');
       }
 
-      if (!contrato) {
+      if (!contratox) {
         throw new NotFoundException('Contrato no encontrado');
       }
 
@@ -92,16 +109,36 @@ export class ContratoClienteService {
         throw new NotFoundException('Plantilla no encontrada');
       }
 
+      const contrato = {
+        id: contratox.id,
+        clienteId: contratox.cliente.id,
+        fechaInstalacionProgramada: contratox.fechaInstalacionProgramada,
+        costoInstalacion: contratox.costoInstalacion,
+        fechaPago: contratox.fechaPago,
+        observaciones: contratox.observaciones,
+        // ssid: contratox.ssid,
+        // wifiPassword: contratox.wifiPassword,
+        creadoEn: contratox.creadoEn,
+        actualizadoEn: contratox.actualizadoEn,
+        cliente: {
+          id: contratox.cliente.id,
+          nombre: contratox.cliente.nombre,
+          apellidos: contratox.cliente.apellidos,
+          telefono: contratox.cliente.telefono,
+          direccion: contratox.cliente.direccion,
+          plan: `${contratox.cliente.servicioInternet.nombre}, precio: Q${contratox.cliente.servicioInternet.precio}`,
+        },
+      };
+
       // 3. Preparar datos para la plantilla
       const dataToTemplate = {
-        nombre_cliente: `${contrato.cliente.nombre} ${contrato.cliente.apellidos ?? ''}`,
+        nombre_cliente: `${contratox.cliente.nombre} ${contratox.cliente.apellidos ?? ''}`,
+        plan: `${contratox.cliente.servicioInternet.nombre}, precio: Q${contratox.cliente.servicioInternet.precio}, `,
         fecha_instalacion_programada:
-          contrato.fechaInstalacionProgramada?.toLocaleDateString('es-GT') ??
+          contratox.fechaInstalacionProgramada?.toLocaleDateString('es-GT') ??
           '',
-        fecha_pago: contrato.fechaPago?.toLocaleDateString('es-GT') ?? '',
-        costo_instalacion: contrato.costoInstalacion ?? '',
-        // ssid: contrato.ssid ?? '',
-        // wifiPassword: contrato.wifiPassword ?? '',
+        fecha_pago: contratox.fechaPago?.toLocaleDateString('es-GT') ?? '',
+        costo_instalacion: contratox.costoInstalacion ?? '',
         fecha_actual: new Date().toLocaleDateString('es-GT'),
       };
 

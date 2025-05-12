@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateRutaDto } from './dto/create-ruta-cobro.dto';
 import { UpdateRutaDto } from './dto/update-ruta-cobro.dto';
 import { CreateNewRutaDto } from './dto/create-new-ruta.dto';
+import { Ruta } from '@prisma/client';
 
 @Injectable()
 export class RutaCobroService {
@@ -42,6 +43,54 @@ export class RutaCobroService {
       console.log('La nueva ruta es: ', newRutaCobro);
 
       return newRutaCobro; // Retornar la ruta recién creada
+    });
+  }
+
+  async updateOneRutaCobro(id: number, updateRuta: UpdateRutaDto) {
+    const {
+      nombreRuta,
+      cobradorId,
+      empresaId,
+      estadoRuta,
+      observaciones,
+      clientes,
+    } = updateRuta;
+
+    return await this.prisma.$transaction(async (tx) => {
+      await tx.ruta.update({
+        where: { id },
+        data: {
+          clientes: {
+            set: [],
+          },
+        },
+      });
+
+      const rutaActualizada = await tx.ruta.update({
+        where: { id },
+        data: {
+          nombreRuta,
+          observaciones,
+          estadoRuta,
+          cobrador: cobradorId
+            ? {
+                connect: { id: cobradorId },
+              }
+            : {
+                disconnect: true,
+              },
+          empresa: empresaId
+            ? {
+                connect: { id: empresaId },
+              }
+            : undefined,
+          clientes: {
+            connect: clientes.map((id) => ({ id })),
+          },
+        },
+      });
+
+      return rutaActualizada;
     });
   }
 
@@ -123,7 +172,7 @@ export class RutaCobroService {
       diasCobro: ['MARTES'],
     }));
 
-    console.log('RUTAS: ', x);
+    // console.log('RUTAS: ', x);
     return x;
   }
 
@@ -163,6 +212,11 @@ export class RutaCobroService {
                 },
               },
               facturaInternet: {
+                where: {
+                  estadoFacturaInternet: {
+                    in: ['PENDIENTE', 'VENCIDA', 'PARCIAL'],
+                  },
+                },
                 select: {
                   id: true,
                   montoPago: true,
@@ -237,6 +291,100 @@ export class RutaCobroService {
     }
   }
 
+  // rutas-cobro.service.ts
+
+  async getRutaCobroToEdit(rutaId: number) {
+    const ruta = await this.prisma.ruta.findUnique({
+      where: { id: rutaId },
+      select: {
+        id: true,
+        nombreRuta: true,
+        cobradorId: true,
+        cobrador: {
+          select: {
+            id: true,
+            nombre: true,
+            // apellidos: true,
+            correo: true,
+            telefono: true,
+            rol: true,
+          },
+        },
+        empresaId: true,
+        empresa: {
+          select: { id: true, nombre: true },
+        },
+        clientes: {
+          select: {
+            id: true,
+            nombre: true,
+            apellidos: true,
+            telefono: true,
+            direccion: true,
+            dpi: true,
+            estadoCliente: true,
+            empresaId: true,
+            empresa: { select: { id: true, nombre: true } },
+            ubicacion: { select: { id: true, latitud: true, longitud: true } },
+            facturacionZonaId: true,
+            // Solo contamos facturas pendientes
+            facturaInternet: {
+              where: {
+                estadoFacturaInternet: {
+                  in: ['PENDIENTE', 'VENCIDA', 'PARCIAL'],
+                },
+              },
+              select: { id: true },
+            },
+            // Si tienes una relación de saldoCliente
+            saldoCliente: {
+              select: { saldoPendiente: true },
+            },
+          },
+        },
+        montoCobrado: true,
+        estadoRuta: true,
+        observaciones: true,
+        creadoEn: true,
+        actualizadoEn: true,
+        CobroRuta: { select: { id: true } }, // para contar cuántos cobros hay
+      },
+    });
+
+    if (!ruta) throw new NotFoundException('Ruta no encontrada');
+
+    return {
+      id: ruta.id,
+      nombreRuta: ruta.nombreRuta,
+      cobradorId: ruta.cobradorId,
+      cobrador: ruta.cobrador,
+      empresaId: ruta.empresaId,
+      empresa: ruta.empresa,
+      clientes: ruta.clientes.map((c) => ({
+        id: c.id,
+        nombre: c.nombre,
+        apellidos: c.apellidos,
+        telefono: c.telefono,
+        direccion: c.direccion,
+        dpi: c.dpi,
+        estadoCliente: c.estadoCliente,
+        empresaId: c.empresaId,
+        empresa: c.empresa,
+        ubicacion: c.ubicacion ?? undefined,
+        saldoPendiente: c.saldoCliente?.saldoPendiente ?? 0,
+        facturasPendientes: c.facturaInternet.length,
+        facturacionZona: c.facturacionZonaId!,
+      })),
+      cobrados: ruta.CobroRuta.length,
+      montoCobrado: ruta.montoCobrado,
+      estadoRuta: ruta.estadoRuta,
+      fechaCreacion: ruta.creadoEn.toISOString(),
+      fechaActualizacion: ruta.actualizadoEn.toISOString(),
+      observaciones: ruta.observaciones ?? undefined,
+      diasCobro: [], // si tienes lógica para días, inclúyelos aquí
+    };
+  }
+
   findOne(id: number) {
     return `This action returns a #${id} rutaCobro`;
   }
@@ -249,9 +397,58 @@ export class RutaCobroService {
     return `This action removes a #${id} rutaCobro`;
   }
 
+  async removeOneRuta(rutaId: number) {
+    try {
+      const rutaToDelete = await this.prisma.ruta.findUnique({
+        where: {
+          id: rutaId,
+        },
+      });
+
+      if (!rutaToDelete) {
+        throw new NotFoundException('Error al encontrar ruta de eliminación');
+      }
+
+      return await this.prisma.ruta.delete({
+        where: {
+          id: rutaToDelete.id,
+        },
+      });
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
   async removeAll() {
     try {
       return await this.prisma.ruta.deleteMany({});
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async closeRuta(rutaId: number) {
+    try {
+      const rutaToClose = await this.prisma.ruta.findUnique({
+        where: {
+          id: rutaId,
+        },
+      });
+
+      if (!rutaToClose) {
+        throw new NotFoundException('Ruta no encontrada');
+      }
+
+      const rutaclosed = await this.prisma.ruta.update({
+        where: {
+          id: rutaId,
+        },
+        data: {
+          estadoRuta: 'CERRADO',
+        },
+      });
+
+      return rutaclosed;
     } catch (error) {
       console.log(error);
     }

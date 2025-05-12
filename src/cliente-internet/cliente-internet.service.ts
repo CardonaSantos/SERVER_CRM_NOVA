@@ -685,9 +685,22 @@ export class ClienteInternetService {
           telefono: true,
           direccion: true,
           estadoCliente: true,
+
           saldoCliente: {
             select: {
               saldoPendiente: true, // Seleccionamos el saldo pendiente del cliente
+            },
+          },
+          municipio: {
+            select: {
+              id: true,
+              nombre: true,
+            },
+          },
+          sector: {
+            select: {
+              id: true,
+              nombre: true,
             },
           },
           facturacionZona: {
@@ -702,25 +715,30 @@ export class ClienteInternetService {
             //   },
             // },
             select: {
-              id: true, // Seleccionamos el ID de las facturas pendientes
+              id: true,
             },
           },
         },
       });
 
-      // Mapeamos los datos de los clientes y formateamos la respuesta
       const customersSet = customers.map((c) => ({
         id: c.id,
         nombre: `${c.nombre} ${c.apellidos}`,
         telefono: c.telefono,
         direccion: c.direccion,
         estadoCliente: c.estadoCliente,
-        saldoPendiente: c.saldoCliente.saldoPendiente,
-        facturacionZona: c.facturacionZona.id,
-        facturasPendientes: c.facturaInternet.length, // Contamos cuántas facturas pendientes tiene
+        saldoPendiente: c.saldoCliente?.saldoPendiente ?? 0,
+        facturacionZona: c.facturacionZona?.id ?? null,
+        facturasPendientes: c.facturaInternet.length,
+        sector: {
+          id: c.sector?.id ?? null,
+          nombre: c.sector?.nombre ?? '',
+        },
+        municipio: {
+          id: c.municipio?.id ?? null,
+          nombre: c.municipio?.nombre ?? '',
+        },
       }));
-
-      console.log('Los datos son: ', customersSet);
 
       return customersSet;
     } catch (error) {

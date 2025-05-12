@@ -44,7 +44,7 @@ export class ZonaFacturacionCronService {
   // '0 6 * * *'
   //'0 0 0 * * *'
   // '0 0 0 * * *'
-  // @Cron(CronExpression.EVERY_10_MINUTES)
+  // @Cron(CronExpression.EVERY_5_SECONDS)
   @Cron('0 0 0 * * *', {
     timeZone: 'America/Guatemala',
   })
@@ -122,8 +122,16 @@ export class ZonaFacturacionCronService {
                 .map((num) => num.trim()),
             ];
 
+            // pull out the raw name
+            const rawName = cliente.servicioInternet.nombre;
+
+            // strip any leading “plan ” (case-insensitive)
+            const cleanName = rawName.replace(/^plan\s*/i, '');
+
             const dataFactura: DatosFacturaGenerate = {
-              datalleFactura: `Pago por suscripción mensual al servicio de internet, plan ${cliente.servicioInternet.nombre} (${cliente.servicioInternet.velocidad}), precio: ${cliente.servicioInternet.precio} Fecha: ${zona.diaPago}`,
+              datalleFactura:
+                `Pago por suscripción mensual al servicio de internet: ${cleanName} ` +
+                ` Q${cliente.servicioInternet.precio} — Fecha de pago: ${zona.diaPago}`,
 
               datalleFacturaParaMensaje: `Pago por suscripción mensual al servicio de internet, Plan: ${cliente.servicioInternet.nombre} (${cliente.servicioInternet.velocidad})`,
 

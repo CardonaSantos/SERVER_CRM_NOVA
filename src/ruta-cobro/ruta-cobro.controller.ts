@@ -30,8 +30,12 @@ export class RutaCobroController {
   @Get('/get-one-ruta-cobro/:rutaId')
   finRutaCobro(@Param('rutaId', ParseIntPipe) rutaId: number) {
     console.log('Visitando la ruta');
-
     return this.rutaCobroService.finRutaCobro(rutaId);
+  }
+
+  @Get('/get-one-ruta-to-edit/:rutaId')
+  getOneRutaEdit(@Param('rutaId', ParseIntPipe) rutaId: number) {
+    return this.rutaCobroService.getRutaCobroToEdit(rutaId);
   }
 
   @Get('/get-rutas-cobros')
@@ -39,17 +43,31 @@ export class RutaCobroController {
     return this.rutaCobroService.findAllRutas();
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateRutaCobroDto: UpdateRutaDto) {
-    return this.rutaCobroService.update(+id, updateRutaCobroDto);
+  @Patch('/update-one-ruta/:id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateRutaCobroDto: UpdateRutaDto,
+  ) {
+    return this.rutaCobroService.updateOneRutaCobro(id, updateRutaCobroDto);
   }
+
+  @Patch('/close-one-ruta/:id')
+  closeRuta(
+    @Param('id', ParseIntPipe) id: number,
+    // @Body() updateRutaCobroDto: UpdateRutaDto,
+  ) {
+    console.log('controlador de ruta');
+
+    return this.rutaCobroService.closeRuta(id);
+  }
+
   @Delete('/delete-all')
   removeAll() {
     return this.rutaCobroService.removeAll();
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.rutaCobroService.remove(+id);
+  @Delete('/delete-one-ruta/:id')
+  removeOneRuta(@Param('id', ParseIntPipe) id: number) {
+    return this.rutaCobroService.removeOneRuta(id);
   }
 }

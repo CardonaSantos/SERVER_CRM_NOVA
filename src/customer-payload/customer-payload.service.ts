@@ -286,7 +286,6 @@ export class CustomerPayloadService {
     });
 
     if (montoPagado > 0) {
-      const cobradorId = 1; // opcional o asignable dinámicamente
       const pagoData: any = {
         cliente: { connect: { id: cliente.id } },
         montoPagado: montoPagado,
@@ -294,11 +293,6 @@ export class CustomerPayloadService {
         metodoPago: 'EFECTIVO',
         fechaPago: new Date(),
       };
-
-      // Solo conectamos si el ID es válido
-      if (cobradorId) {
-        pagoData.cobrador = { connect: { id: cobradorId } };
-      }
 
       await this.prisma.pagoFacturaInternet.create({
         data: pagoData,
@@ -376,7 +370,16 @@ export class CustomerPayloadService {
             row['CONTACTO REFERENCIA'] || ''
           ).trim();
 
-          const precioPlan = parseFloat(row['PLAN'] || '0');
+          // const precioPlan = parseFloat(row['PLAN'] || '0');
+
+          const rawPlan = row['PLAN'] || '';
+          const precioPlan = parseFloat(rawPlan);
+
+          if (isNaN(precioPlan)) {
+            console.warn(`⚠️ Fila omitida por plan inválido: "${rawPlan}"`);
+            continue;
+          }
+
           const servicioInternet =
             await this.getOrCreateServicioInternet(precioPlan);
 

@@ -42,6 +42,7 @@
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.0",
+    "routeros-client": "^1.1.1",
     "rxjs": "^7.8.2",
     "twilio": "^5.5.1"
   },
