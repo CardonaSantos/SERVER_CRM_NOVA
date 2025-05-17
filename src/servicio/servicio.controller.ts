@@ -26,6 +26,11 @@ export class ServicioController {
     return this.servicioService.findAll();
   }
 
+  @Get('/get-servicios-to-invoice/:id')
+  finServiciosToInvoice(@Param('id', ParseIntPipe) id: number) {
+    return this.servicioService.finServiciosToInvoice(id);
+  }
+
   @Get('/get-servicios-to-customer')
   findAllServicios() {
     return this.servicioService.findAllServicios();

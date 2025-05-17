@@ -165,26 +165,7 @@ model TipoServicio {
   servicios   Servicio[]
 }
 
-model Servicio {
-  id            Int       @id @default(autoincrement())
-  nombre        String    // Ejemplo: "Plan Básico Q150", "IPTV Full", "Cámara HD"
-  descripcion   String?
-  precio        Float     // Precio del servicio
-  estado        EstadoServicio @default(ACTIVO) 
 
-  tipoServicioId Int?  // Relación con TipoServicio
-  tipoServicio   TipoServicio? @relation(fields: [tipoServicioId], references: [id], onDelete: Restrict)
-
-  empresaId     Int
-  empresa       Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-
-  creadoEn      DateTime @default(now())
-  actualizadoEn DateTime @updatedAt
-
-  clientes      ClienteServicio[]
-
-  FacturaServicio FacturaServicio[]
-}
 
 model Proveedor {
   id          Int        @id @default(autoincrement())
@@ -260,7 +241,7 @@ model ClienteServicio {
   
   clienteId     Int
   cliente       ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-//SERVICIO COMO tal
+  //SERVICIO COMO tal
   servicioId    Int
   servicio      Servicio @relation(fields: [servicioId], references: [id], onDelete: Cascade)
 
@@ -270,6 +251,27 @@ model ClienteServicio {
 
   creadoEn      DateTime @default(now())
   actualizadoEn DateTime @updatedAt
+}
+
+model Servicio {
+  id            Int       @id @default(autoincrement())
+  nombre        String    // Ejemplo: "Plan Básico Q150", "IPTV Full", "Cámara HD"
+  descripcion   String?
+  precio        Float     // Precio del servicio
+  estado        EstadoServicio @default(ACTIVO) 
+
+  tipoServicioId Int?  // Relación con TipoServicio
+  tipoServicio   TipoServicio? @relation(fields: [tipoServicioId], references: [id], onDelete: Restrict)
+
+  empresaId     Int
+  empresa       Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  clientes      ClienteServicio[]
+
+  FacturaServicio FacturaServicio[]
 }
 
 
@@ -293,6 +295,9 @@ model Factura {
 
   creadoEn        DateTime @default(now())
   actualizadoEn   DateTime @updatedAt
+    // ← Aquí la FK opcional
+  facturaInternetId   Int?              
+  facturaInternet     FacturaInternet?  @relation("ServiciosPorInternet", fields: [facturaInternetId], references: [id])
 }
 
 
@@ -336,6 +341,10 @@ model FacturaInternet {
   //ARRAY DE RECORDATORIOS
   RecordatorioPago RecordatorioPago[]
   // estadoFacturaInternet StateFacturaInternet
+
+  // Factura Factura[] @relation("ServiciosPorInternet")
+    // ← Aquí expones el array inverso
+  serviciosAdicionales Factura[] @relation("ServiciosPorInternet")
 }
 
 enum StateFacturaInternet {

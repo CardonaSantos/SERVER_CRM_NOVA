@@ -1,3 +1,4 @@
+import { EstadoCliente } from '@prisma/client';
 import {
   IsString,
   IsOptional,
@@ -6,6 +7,7 @@ import {
   IsDate,
   IsInt,
   IsArray,
+  IsEnum,
 } from 'class-validator';
 
 export class UpdateClienteInternetDto {
@@ -13,6 +15,11 @@ export class UpdateClienteInternetDto {
   @IsString()
   @IsNotEmpty()
   nombre: string;
+
+  @IsEnum(EstadoCliente)
+  @IsNotEmpty()
+  // @IsOptional()
+  estado: EstadoCliente;
 
   @IsOptional()
   sectorId?: number;

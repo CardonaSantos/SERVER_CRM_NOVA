@@ -42,6 +42,7 @@ export class ClienteInternetService {
       idContrato,
       observacionesContrato,
       sectorId,
+      estado,
       ...restoData
     } = createClienteInternetDto;
 
@@ -97,7 +98,7 @@ export class ClienteInternetService {
             restoData.contactoReferenciaTelefono || null,
           ssidRouter: restoData.ssidRouter || null,
           fechaInstalacion: restoData.fechaInstalacion || null,
-          estadoCliente: 'MOROSO',
+          estadoCliente: estado || 'ACTIVO',
           facturacionZona: {
             connect: {
               id: zonaFacturacionId,
@@ -1267,6 +1268,7 @@ export class ClienteInternetService {
         observaciones: customer.observaciones,
         contactoReferenciaNombre: customer.contactoReferenciaNombre,
         contactoReferenciaTelefono: customer.contactoReferenciaTelefono,
+        estado: customer.estadoCliente,
         coordenadas: customer.ubicacion
           ? [`${customer.ubicacion.longitud}`, `${customer.ubicacion.latitud}`]
           : [],
@@ -1383,6 +1385,7 @@ export class ClienteInternetService {
           direccion: updateCustomerService.direccion || null,
           dpi: updateCustomerService.dpi || null,
           observaciones: updateCustomerService.observaciones || null,
+
           contactoReferenciaNombre:
             updateCustomerService.contactoReferenciaNombre || null,
           contactoReferenciaTelefono:
@@ -1390,7 +1393,7 @@ export class ClienteInternetService {
           contrasenaWifi: updateCustomerService.contrasenaWifi,
           ssidRouter: updateCustomerService.ssidRouter,
           fechaInstalacion: updateCustomerService.fechaInstalacion || null,
-          estadoCliente: 'ACTIVO',
+          estadoCliente: updateCustomerService.estado || 'ACTIVO',
 
           // Relaciones
           servicioInternet: servicioWifiId

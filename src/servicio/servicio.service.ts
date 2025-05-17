@@ -60,32 +60,26 @@ export class ServicioService {
           empresaId: true,
           creadoEn: true,
           actualizadoEn: true,
+          _count: {
+            select: {
+              clientes: true,
+            },
+          },
         },
       });
 
       // Obtener el número de clientes por servicio
       const serviciosConClientesCount = await Promise.all(
         servicios.map(async (servicio) => {
-          // Contar los clientes asociados a este servicio
-          const clientesCount = await this.prisma.clienteInternet.count({
-            where: {
-              clienteServicios: {
-                some: {
-                  id: servicio.id, // Buscar clientes con este servicio
-                },
-              },
-            },
-          });
+          const { _count, ...rest } = servicio;
 
           // Devolver cada servicio con su respectivo número de clientes
           return {
-            ...servicio, // Incluimos los detalles del servicio
-            clientesCount, // Incluimos el conteo de clientes
+            ...rest,
+            clientesCount: _count.clientes, // Incluimos los detalles del servicio
           };
         }),
       );
-
-      console.log('Lo que devolveremos al UI:', serviciosConClientesCount);
 
       // Devolver los servicios con el conteo de clientes
       return serviciosConClientesCount;
@@ -108,6 +102,52 @@ export class ServicioService {
     });
   }
 
+  async finServiciosToInvoice(id: number) {
+    try {
+      if (!id) {
+        throw new NotFoundException('El id del cliente no puede ser nulo');
+      }
+
+      const servicios = await this.prisma.clienteServicio.findMany({
+        where: {
+          clienteId: id,
+        },
+        select: {
+          creadoEn: true,
+          actualizadoEn: true,
+          servicio: {
+            select: {
+              id: true,
+              nombre: true,
+              precio: true,
+              descripcion: true,
+              estado: true,
+              tipoServicioId: true,
+              creadoEn: true,
+              actualizadoEn: true,
+            },
+          },
+        },
+      });
+
+      const formattedServicios = servicios.map((servicio) => ({
+        id: servicio.servicio.id,
+        nombre: servicio.servicio.nombre,
+        precio: servicio.servicio.precio,
+        descripcion: servicio.servicio.descripcion,
+        estado: servicio.servicio.estado,
+        tipoServicioId: servicio.servicio.tipoServicioId,
+        creadoEn: servicio.creadoEn,
+        actualizadoEn: servicio.actualizadoEn,
+      }));
+
+      return formattedServicios;
+    } catch (error) {
+      console.error('Error al obtener los servicios:', error);
+      throw new Error('No se pudo obtener la información de los servicios.');
+    }
+  }
+
   findOne(id: number) {
     return `This action returns a #${id} servicio`;
   }
@@ -124,9 +164,9 @@ export class ServicioService {
           descripcion: updateServicioDto.descripcion,
           precio: updateServicioDto.precio,
           estado: updateServicioDto.estado,
-          tipoServicio: {
-            connect: { id: updateServicioDto.tipoServicioId },
-          },
+          // tipoServicio: {
+          //   connect: { id: updateServicioDto.tipoServicioId },
+          // },
           empresa: {
             connect: { id: updateServicioDto.empresaId },
           },

@@ -200,6 +200,27 @@ export class FacturacionService {
       throw new Error('No se pudo obtener la información de las facturas.');
     }
   }
+  async finAllRelaciones() {
+    try {
+      const find = await this.prisma.facturaInternet.findMany({
+        orderBy: {
+          creadoEn: 'desc',
+        },
+        include: {
+          serviciosAdicionales: {
+            include: {
+              servicios: {
+                include: {
+                  servicio: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      return find.slice(0, 5);
+    } catch (error) {}
+  }
 
   async findOneFacturaWithPayments(id: number) {
     try {
@@ -393,6 +414,7 @@ export class FacturacionService {
       metodoPago,
       cobradorId,
       numeroBoleta,
+      serviciosAdicionales,
     } = createFacturacionPaymentDto;
 
     const numeroBoletaReal =
@@ -501,127 +523,58 @@ export class FacturacionService {
         },
       });
 
+      await Promise.all(
+        serviciosAdicionales.map(async (servicioId) => {
+          const svc = await tx.servicio.findUnique({
+            where: { id: servicioId },
+          });
+          if (!svc) throw new Error(`Servicio ${servicioId} no existe`);
+
+          // 5.1 Crear factura genérica (“item”)
+          const facturaServicio = await tx.factura.create({
+            data: {
+              empresa: { connect: { id: factura.empresaId } },
+              cliente: { connect: { id: clienteId } },
+              tipoFactura: 'SERVICIO_ADICIONAL',
+              montoTotal: svc.precio,
+              saldoPendiente: svc.precio,
+              estado: 'PENDIENTE',
+              facturaInternet: { connect: { id: facturaInternetId } },
+
+              servicios: {
+                create: [
+                  {
+                    servicioId: svc.id,
+                    precioUnitario: svc.precio,
+                    total: svc.precio,
+                  },
+                ],
+              },
+            },
+          });
+
+          console.log(
+            'La factura del servicio adicional es: ',
+            facturaServicio,
+          );
+
+          // 5.2 Registrar pago de ese ítem
+          const pago = await tx.pagoFactura.create({
+            data: {
+              metodoPago: 'EFECTIVO',
+              montoPagado: facturaServicio.montoTotal,
+              cliente: { connect: { id: clienteId } },
+              factura: { connect: { id: facturaServicio.id } },
+            },
+          });
+
+          console.log('El pago del servicio es: ', pago);
+        }),
+      );
+
       return newPayment;
     });
   }
-
-  //REGISTRAR UN PAGO [NO-EN-RUTA] AJUSTAR EL PAGO
-  // async createNewPaymentFacturacion(
-  //   createFacturacionPaymentDto: CreateFacturacionPaymentDto,
-  // ) {
-  //   const {
-  //     facturaInternetId,
-  //     clienteId,
-  //     montoPagado,
-  //     metodoPago,
-  //     cobradorId,
-  //     numeroBoleta,
-  //   } = createFacturacionPaymentDto;
-
-  //   const numeroBoletaReal =
-  //     metodoPago === 'DEPOSITO' && numeroBoleta?.trim() ? numeroBoleta : null;
-
-  //   return await this.prisma.$transaction(async (tx) => {
-  //     // 1. Crear nuevo pago
-  //     const newPayment = await tx.pagoFacturaInternet.create({
-  //       data: {
-  //         cliente: { connect: { id: clienteId } },
-  //         montoPagado,
-  //         facturaInternet: { connect: { id: facturaInternetId } },
-  //         metodoPago,
-  //         cobrador: { connect: { id: cobradorId } },
-  //         numeroBoleta: numeroBoletaReal,
-  //       },
-  //     });
-
-  //     // 2. Actualizar saldo del cliente
-  //     const clienteSaldo = await tx.saldoCliente.findUnique({
-  //       where: { clienteId },
-  //     });
-
-  //     if (clienteSaldo) {
-  //       const nuevoSaldoPendiente = clienteSaldo.saldoPendiente - montoPagado;
-  //       const saldoPendienteAjustado = Math.max(nuevoSaldoPendiente, 0);
-
-  //       await tx.saldoCliente.update({
-  //         where: { clienteId },
-  //         data: {
-  //           saldoPendiente: saldoPendienteAjustado,
-  //           totalPagos: clienteSaldo.totalPagos + montoPagado,
-  //           ultimoPago: new Date(),
-  //         },
-  //       });
-  //     }
-
-  //     // 3. Actualizar la factura de internet
-  //     const factura = await tx.facturaInternet.findUnique({
-  //       where: { id: facturaInternetId },
-  //     });
-
-  //     if (factura) {
-  //       const saldoPendienteFacturaAjustado = Math.max(
-  //         factura.saldoPendiente - montoPagado,
-  //         0,
-  //       );
-
-  //       await tx.facturaInternet.update({
-  //         where: { id: facturaInternetId },
-  //         data: {
-  //           fechaPagada: new Date(),
-  //           saldoPendiente: saldoPendienteFacturaAjustado,
-  //           estadoFacturaInternet:
-  //             saldoPendienteFacturaAjustado <= 0
-  //               ? 'PAGADA'
-  //               : saldoPendienteFacturaAjustado < factura.montoPago
-  //                 ? 'PARCIAL'
-  //                 : 'PENDIENTE',
-  //         },
-  //       });
-  //     }
-
-  //     // 4. Calcular el estado del cliente con lógica extendida
-  //     const facturasPendientes = await tx.facturaInternet.findMany({
-  //       where: {
-  //         clienteId,
-  //         estadoFacturaInternet: {
-  //           in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'],
-  //         },
-  //       },
-  //       select: {
-  //         estadoFacturaInternet: true,
-  //       },
-  //     });
-
-  //     const vencidas = facturasPendientes.filter(
-  //       (f) => f.estadoFacturaInternet === 'VENCIDA',
-  //     ).length;
-  //     const totalPendientes = facturasPendientes.length;
-
-  //     let estadoCliente: EstadoCliente = 'ACTIVO';
-
-  //     if (vencidas >= 3) {
-  //       estadoCliente = 'MOROSO';
-  //     } else if (vencidas === 2) {
-  //       estadoCliente = 'ATRASADO';
-  //     } else if (vencidas === 1 && totalPendientes === 1) {
-  //       estadoCliente = 'PAGO_PENDIENTE';
-  //     } else if (vencidas === 1 && totalPendientes > 1) {
-  //       estadoCliente = 'PENDIENTE_ACTIVO';
-  //     } else {
-  //       estadoCliente = 'ACTIVO';
-  //     }
-
-  //     // 5. Actualizar el estado del cliente
-  //     await tx.clienteInternet.update({
-  //       where: { id: clienteId },
-  //       data: {
-  //         estadoCliente,
-  //       },
-  //     });
-
-  //     return newPayment;
-  //   });
-  // }
 
   //REGISTRAR PAGO EN RUTA
   async createNewPaymentFacturacionForRuta(
@@ -1318,6 +1271,37 @@ export class FacturacionService {
           id: id,
         },
         select: {
+          //añadir la factura pagada
+          // …tu selección actual…
+          serviciosAdicionales: {
+            select: {
+              id: true,
+              montoTotal: true,
+              tipoFactura: true,
+              saldoPendiente: true,
+              fechaEmision: true,
+              estado: true,
+              servicios: {
+                select: {
+                  servicio: {
+                    select: {
+                      id: true,
+                      nombre: true,
+                      descripcion: true,
+                      precio: true,
+                    },
+                  },
+                },
+              },
+              pagos: {
+                select: {
+                  id: true,
+                  montoPagado: true,
+                },
+              },
+            },
+          },
+
           id: true,
           estadoFacturaInternet: true,
           montoPago: true,
@@ -1375,6 +1359,20 @@ export class FacturacionService {
       );
       const saldoPendiente = facturaPagada.montoPago - totalPagados;
 
+      // Esto da un array plano con solo el nombre y monto
+      const servicios = facturaPagada.serviciosAdicionales.flatMap((sa) =>
+        sa.servicios.map((item) => ({
+          facturaId: sa.id,
+          nombre: item.servicio.nombre,
+          monto: sa.montoTotal,
+          pagado: sa.pagos.reduce((suma, pago) => suma + pago.montoPagado, 0),
+          fecha: sa.fechaEmision,
+          estado: sa.estado,
+        })),
+      );
+
+      console.log('Los servicios adicionales con sus nombres son: ', servicios);
+
       // Estructurar la data de la factura
       const facturaData = {
         id: facturaPagada.id,
@@ -1401,6 +1399,7 @@ export class FacturacionService {
           nit: facturaPagada.empresa.nit,
         },
         pagos,
+        servicios,
       };
       return facturaData;
     } catch (error) {

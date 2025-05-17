@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -75,6 +76,97 @@ export class UserService {
 
   async findAll(userAuth: UserTokenAuth) {
     return this.prisma.usuario.findMany({});
+  }
+
+  async findUserInfo(id: number) {
+    try {
+      console.log('el id es: ', id);
+
+      if (!id) {
+        throw new NotFoundException('Error id no disponible');
+      }
+      const usuario = await this.prisma.usuario.findUnique({
+        where: {
+          id: id,
+        },
+      });
+
+      console.log('el suuario es: ', usuario);
+
+      return usuario;
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async getUsersToProfileConfig() {
+    try {
+      const users = await this.prisma.usuario.findMany({
+        select: {
+          id: true,
+          nombre: true,
+          telefono: true,
+          activo: true,
+          actualizadoEn: true,
+          creadoEn: true,
+          correo: true,
+          rol: true,
+        },
+      });
+
+      if (!users) {
+        throw new NotFoundException('Error al conseguir clientes');
+      }
+
+      return users;
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async updateUser(id: number, data: UpdateUserDto) {
+    const user = await this.prisma.usuario.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    if (data.contrasena) {
+      const salt = await bcrypt.genSalt(10);
+      data.contrasena = await bcrypt.hash(data.contrasena, salt);
+    }
+
+    return this.prisma.usuario.update({
+      where: { id },
+      data,
+    });
+  }
+
+  async updateOneUser(id: number, updateUserDto: UpdateUserDto) {
+    const userExist = await this.prisma.usuario.findUnique({ where: { id } });
+    if (!userExist)
+      throw new NotFoundException(`Usuario con id ${id} no encontrado`);
+
+    if (updateUserDto.contrasena) {
+      const salt = await bcrypt.genSalt(10);
+      updateUserDto.contrasena = await bcrypt.hash(
+        updateUserDto.contrasena,
+        salt,
+      );
+    }
+
+    const updatedUser = await this.prisma.usuario.update({
+      where: { id },
+      data: updateUserDto,
+    });
+
+    return updatedUser;
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    const userExist = await this.prisma.usuario.findUnique({ where: { id } });
+    if (!userExist) {
+      throw new NotFoundException(`Usuario con id ${id} no encontrado`);
+    }
+
+    await this.prisma.usuario.delete({ where: { id } });
   }
 
   async getUsersToCreateTickets() {

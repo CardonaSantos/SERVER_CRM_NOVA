@@ -60,7 +60,7 @@ export class FacturacionController {
       createFacturaMultipleDto,
     );
   }
-
+  //reemplazar todo esto
   @Get()
   findAll() {
     return this.facturacionService.findAll();

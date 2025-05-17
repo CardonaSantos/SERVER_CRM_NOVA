@@ -1,5 +1,6 @@
 import { MetodoPagoFacturaInternet } from '@prisma/client';
 import {
+  IsArray,
   IsEnum,
   IsInt,
   IsNotEmpty,
@@ -8,6 +9,10 @@ import {
 } from 'class-validator';
 
 export class CreateFacturacionPaymentDto {
+  @IsArray()
+  @IsOptional()
+  serviciosAdicionales?: number[];
+
   @IsInt()
   @IsNotEmpty()
   facturaInternetId: number;

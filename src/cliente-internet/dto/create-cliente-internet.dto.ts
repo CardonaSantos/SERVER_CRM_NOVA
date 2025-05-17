@@ -1,3 +1,4 @@
+import { EstadoCliente } from '@prisma/client';
 import {
   IsString,
   IsOptional,
@@ -6,6 +7,7 @@ import {
   IsDate,
   IsInt,
   IsArray,
+  IsEnum,
 } from 'class-validator';
 
 export class CreateClienteInternetDto {
@@ -14,6 +16,10 @@ export class CreateClienteInternetDto {
   @IsString()
   @IsNotEmpty()
   nombre: string;
+
+  @IsEnum(EstadoCliente)
+  @IsOptional()
+  estado: EstadoCliente;
 
   @IsString()
   @IsNotEmpty()
