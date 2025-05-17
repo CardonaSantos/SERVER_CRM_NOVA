@@ -524,7 +524,7 @@ export class FacturacionService {
       });
 
       await Promise.all(
-        serviciosAdicionales.map(async (servicioId) => {
+        (serviciosAdicionales ?? []).map(async (servicioId) => {
           const svc = await tx.servicio.findUnique({
             where: { id: servicioId },
           });
