@@ -12,29 +12,21 @@ export class TwilioService {
     this.client = Twilio(accountSid, authToken);
   }
 
-  async sendWhatsApp(to: string, body: string) {
+  async sendWhatsAppTemplate(
+    to: string,
+    templateSid: string,
+    variables: Record<string, any>,
+  ) {
     try {
-      return this.client.messages.create({
-        body,
+      return await this.client.messages.create({
         from: process.env.TWILIO_WHATSAPP_FROM,
-        to, // Ya está formateado como whatsapp:+502...
+        to,
+        contentSid: templateSid,
+        contentVariables: JSON.stringify(variables),
       });
     } catch (error) {
       console.log('Error al enviar mensaje con Twilio:', error);
       throw error;
     }
   }
-
-  // async sendWhatsApp(to: string, body: string) {
-  //   try {
-  //     return this.client.messages.create({
-  //       body,
-  //       from: process.env.TWILIO_WHATSAPP_FROM,
-  //       to,
-  //     });
-  //   } catch (error) {
-  //     console.log('Error al enviar WhatsApp:', error);
-  //     throw error;
-  //   }
-  // }
 }

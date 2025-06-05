@@ -7,15 +7,19 @@ import { CreateTicketsSoporteDto } from './dto/create-tickets-soporte.dto';
 import { UpdateTicketsSoporteDto } from './dto/update-tickets-soporte.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CloseTicketDto } from './dto/CloseTicketDto .dto';
+import { GenerarMensajeSoporteService } from './generar-mensaje-soporte/generar-mensaje-soporte.service';
 
 @Injectable()
 export class TicketsSoporteService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly twilioMessageSuport: GenerarMensajeSoporteService,
+  ) {}
   //Crear ticket soporte
   async create(createTicketsSoporteDto: CreateTicketsSoporteDto) {
     console.log('La data del ticket soporte: ', createTicketsSoporteDto);
 
-    return await this.prisma.$transaction(async (tx) => {
+    const newTicketSoporte = await this.prisma.$transaction(async (tx) => {
       const newTicketSoporte = await tx.ticketSoporte.create({
         data: {
           cliente: {
@@ -50,10 +54,13 @@ export class TicketsSoporteService {
         },
       });
 
-      console.log('El ticket es: ', newTicketSoporte);
-
       return newTicketSoporte;
     });
+
+    await this.twilioMessageSuport.GenerarMensajeTicketSoporte(
+      createTicketsSoporteDto.clienteId,
+      newTicketSoporte.id,
+    );
   }
 
   findAll() {
