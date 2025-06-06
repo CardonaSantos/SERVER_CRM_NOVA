@@ -5,6 +5,7 @@ import * as dayjs from 'dayjs';
 import * as utc from 'dayjs/plugin/utc';
 import * as timezone from 'dayjs/plugin/timezone';
 import { TwilioService } from 'src/twilio/twilio.service';
+import { EstadoCliente } from '@prisma/client';
 
 // Extiende dayjs con los plugins
 dayjs.extend(utc);
@@ -14,9 +15,6 @@ const formatearFecha = (fecha: string) => {
   // Formateo en UTC sin conversión a local
   return dayjs(fecha).format('DD/MM/YYYY');
 };
-
-// Al comparar fechas, ajustamos las fechas de UTC a Guatemala (UTC-6)
-const hoylocal = dayjs().tz('America/Guatemala');
 
 interface DatosFacturaGenerate {
   fechaPagoEsperada: string;
@@ -42,11 +40,19 @@ export class ZonaFacturacionCronService {
   // '0 6 * * *'
   //'0 0 0 * * *'
   // '0 0 0 * * *'
-  // @Cron(CronExpression.EVERY_10_SECONDS)
-  @Cron('0 0 0 * * *', {
-    timeZone: 'America/Guatemala',
-  })
+  @Cron(CronExpression.EVERY_MINUTE)
+  // @Cron('0 0 0 * * *', {
+  //   timeZone: 'America/Guatemala',
+  // })
   async gerarFacturacionAutomaticaCron() {
+    // 1) Cada vez que entra el cron, recalculamos “hoy en GMT-6”
+    const hoylocal = dayjs().tz('America/Guatemala');
+    console.log(
+      '▶️  Fecha en Guatemala (hoylocal):',
+      hoylocal.format('YYYY-MM-DD HH:mm:ss'),
+    );
+
+    // 2) Traemos las zonas y sus clientes
     const zonasFacturaciones = await this.prisma.facturacionZona.findMany({
       include: {
         clientes: {
@@ -85,22 +91,25 @@ export class ZonaFacturacionCronService {
       },
     });
 
-    // Iterar por cada zona de facturación
+    // 3) Iteramos cada zona de facturación
     for (const zona of zonasFacturaciones) {
-      const fechaGeneracion = dayjs()
-        .tz('America/Guatemala') // forzar hora Guatemala
-        .date(zona.diaGeneracionFactura) // poner el día del mes especificado
-        .startOf('day'); // y normalizar a 00:00:00
+      const fechaGeneracion = hoylocal
+        .date(zona.diaGeneracionFactura) // día del mes
+        .startOf('day'); // 00:00:00 de ese día GMT-6
 
-      // Compara las fechas ajustadas a Guatemala
+      console.log(
+        `→ Zona ${zona.id}: díaGeneración = ${zona.diaGeneracionFactura}, fechaGeneracion = ${fechaGeneracion.format('YYYY-MM-DD HH:mm:ss')}`,
+      );
+
       if (hoylocal.isSame(fechaGeneracion, 'day')) {
+        // Si coincide el día → crear factura y notificar
         for (const cliente of zona.clientes) {
+          // ---- Lógica para filtrar facturas de este mes ----
           const facturasEsteMes = cliente.facturaInternet.filter((fact) => {
             const creadoEn = dayjs(fact.creadoEn).tz('America/Guatemala');
             const fechaPagoEsperada = dayjs(fact.fechaPagoEsperada).tz(
               'America/Guatemala',
             );
-
             return (
               creadoEn.isSame(hoylocal, 'month') &&
               creadoEn.isSame(hoylocal, 'year') &&
@@ -109,30 +118,33 @@ export class ZonaFacturacionCronService {
             );
           });
 
-          // Verifica si el cliente tiene servicio de internet y no tiene facturas generadas este mes
+          // Si el cliente tiene servicio y todavía no existe factura este mes:
           if (cliente.servicioInternet && facturasEsteMes.length <= 0) {
+            // Armar números de teléfono, cálculo de dataFactura, etc.
             const numerosTelefono = [
-              ...(cliente.telefono ?? '').split(',').map((num) => num.trim()),
+              ...(cliente.telefono ?? '').split(',').map((n) => n.trim()),
               ...(cliente.contactoReferenciaTelefono ?? '')
                 .split(',')
-                .map((num) => num.trim()),
+                .map((n) => n.trim()),
             ];
 
-            const rawName = cliente.servicioInternet.nombre;
-            const cleanName = rawName.replace(/^plan\s*/i, '');
+            const cleanName = cliente.servicioInternet.nombre.replace(
+              /^plan\s*/i,
+              '',
+            );
 
+            // Preparar el objeto a enviar a la creación de factura
             const dataFactura: DatosFacturaGenerate = {
               datalleFactura:
                 `Pago por suscripción mensual al servicio de internet: ${cleanName} ` +
-                ` Q${cliente.servicioInternet.precio} — Fecha de pago: ${zona.diaPago}`,
-              // datalleFacturaParaMensaje: `Pago por suscripción mensual al servicio de internet, Plan: ${cliente.servicioInternet.nombre} (${cliente.servicioInternet.velocidad})`,
+                `Q${cliente.servicioInternet.precio} — Fecha de pago: ${zona.diaPago}`,
               fechaPagoEsperada: hoylocal
-                .date(zona.diaPago) // Establece el día de la fecha
-                .month(hoylocal.month()) // Usa el mes actual de Guatemala
-                .year(hoylocal.year()) // Usa el año actual de Guatemala
-                .isBefore(hoylocal, 'day') // Si la fecha es antes de hoy, pasa al siguiente mes
-                ? hoylocal.add(1, 'month').date(zona.diaPago).format() // Si es antes, agrega un mes
-                : hoylocal.date(zona.diaPago).format(), // Si no es antes, usa el mes actual
+                .date(zona.diaPago)
+                .month(hoylocal.month())
+                .year(hoylocal.year())
+                .isBefore(hoylocal, 'day')
+                ? hoylocal.add(1, 'month').date(zona.diaPago).format()
+                : hoylocal.date(zona.diaPago).format(),
               montoPago: cliente.servicioInternet.precio,
               saldoPendiente: cliente.servicioInternet.precio,
               estadoFacturaInternet: 'PENDIENTE',
@@ -141,10 +153,12 @@ export class ZonaFacturacionCronService {
               nombreClienteFactura: `${cliente.nombre} ${cliente.apellidos}`,
               numerosTelefono: numerosTelefono,
             };
+
+            // Llamar a la función que crea en BD y notifica por WhatsApp
             await this.generarFacturaClientePorZona(dataFactura);
           } else {
             console.error(
-              `El cliente ${cliente.nombre} ${cliente.apellidos} no tiene servicio de internet asociado o ya tiene una factura creada.`,
+              `El cliente ${cliente.nombre} ${cliente.apellidos} no tiene servicio o ya tiene factura este mes.`,
             );
           }
         }
@@ -185,16 +199,46 @@ export class ZonaFacturacionCronService {
         data: { saldoPendiente: { increment: newFactura.montoPago } },
       });
 
+      const facturasPendientes = await this.prisma.facturaInternet.findMany({
+        where: {
+          clienteId: newFactura.clienteId,
+          estadoFacturaInternet: {
+            in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'],
+          },
+        },
+      });
+
+      const estadoPendiente = facturasPendientes.length;
+      let estadoCliente: EstadoCliente;
+
+      switch (estadoPendiente) {
+        case 0:
+          estadoCliente = 'ACTIVO';
+          break;
+
+        case 1:
+          estadoCliente = 'PENDIENTE_ACTIVO';
+          break;
+
+        case 2:
+          estadoCliente = 'ATRASADO';
+          break;
+
+        case 3:
+          estadoCliente = 'MOROSO';
+          break;
+
+        default:
+          break;
+      }
+
       // 3) Marcar al cliente como “MOROSO” (o el estado que corresponda)
       await this.prisma.clienteInternet.update({
         where: { id: newFactura.clienteId },
-        data: { estadoCliente: 'MOROSO' },
+        data: { estadoCliente: estadoCliente },
       });
 
       // 4) Ahora recuperamos datos necesarios para el mensaje
-      //    - Nombre del cliente
-      //    - Nombre de la empresa
-      //    - Fecha límite de pago y monto generado
       const cliente = await this.prisma.clienteInternet.findUnique({
         where: { id: newFactura.clienteId },
         select: {
@@ -211,6 +255,7 @@ export class ZonaFacturacionCronService {
           },
         },
       });
+
       if (!cliente) {
         throw new NotFoundException(
           `Cliente con ID ${newFactura.clienteId} no encontrado`,
@@ -290,77 +335,6 @@ export class ZonaFacturacionCronService {
     } catch (error) {
       console.error('Error al generar la factura y notificar:', error);
       throw error;
-    }
-  }
-
-  async generarMensajeGeneracionFactura(dataFactura: DatosFacturaGenerate) {
-    try {
-      const infoEmpresa = await this.prisma.empresa.findFirst({
-        select: {
-          id: true,
-          nombre: true,
-          telefono: true,
-        },
-      });
-
-      const infoCliente = await this.prisma.clienteInternet.findUnique({
-        where: {
-          id: dataFactura.cliente,
-        },
-      });
-
-      const templateMensaje = await this.prisma.plantillaMensaje.findFirst({
-        where: {
-          tipo: 'GENERACION_FACTURA',
-        },
-        select: {
-          body: true,
-        },
-      });
-
-      if (!templateMensaje) {
-        throw new NotFoundException(
-          'Error al encontrar plantilla de mensaje, no se pueden crear los mensajes',
-        );
-      }
-
-      const dataToTemplate = {
-        nombre_cliente: `${infoCliente.nombre} ${infoCliente.apellidos}`,
-        empresa_nombre: infoEmpresa.nombre,
-        fecha_pago: formatearFecha(dataFactura.fechaPagoEsperada),
-        monto_pago: dataFactura.montoPago,
-        detalle_factura: dataFactura.datalleFacturaParaMensaje,
-      };
-
-      const bodyMensaje = this.renderTemplate(
-        templateMensaje.body,
-        dataToTemplate,
-      );
-
-      const numerosValidos = dataFactura.numerosTelefono
-        .map((n) => {
-          try {
-            return this.formatearNumeroWhatsApp(n);
-          } catch (err) {
-            console.warn(`Número descartado: ${n} -> ${err.message}`);
-            return null;
-          }
-        })
-        .filter(Boolean); // elimina nulls
-
-      // Enviar el mensaje a través de Twilio
-      for (const numero of numerosValidos) {
-        try {
-          // await this.twilioService.sendWhatsApp(numero, bodyMensaje);
-          console.log('Mensaje enviado a:', numero);
-        } catch (err) {
-          console.warn('Error al enviar mensaje a', numero, err.message);
-        }
-      }
-
-      console.log('El mensaje a enviar es: ', bodyMensaje);
-    } catch (error) {
-      console.log(error);
     }
   }
 
