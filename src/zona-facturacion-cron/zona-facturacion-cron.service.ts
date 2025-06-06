@@ -41,11 +41,14 @@ export class ZonaFacturacionCronService {
   //'0 0 0 * * *'
   // '0 0 0 * * *'
 
-  @Cron(CronExpression.EVERY_MINUTE)
+  // @Cron(CronExpression.EVERY_MINUTE)
   // @Cron('0 0 0 * * *', {
   //   timeZone: 'America/Guatemala',
   // })
   //ejecutar cada minuto
+  @Cron('0 11 * * *', {
+    timeZone: 'America/Guatemala',
+  })
   async gerarFacturacionAutomaticaCron() {
     // 1) Cada vez que entra el cron, recalculamos “hoy en GMT-6”
     const hoylocal = dayjs().tz('America/Guatemala');
