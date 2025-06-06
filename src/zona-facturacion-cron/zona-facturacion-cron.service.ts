@@ -42,10 +42,10 @@ export class ZonaFacturacionCronService {
   // '0 6 * * *'
   //'0 0 0 * * *'
   // '0 0 0 * * *'
-  @Cron(CronExpression.EVERY_10_SECONDS)
-  // @Cron('0 0 0 * * *', {
-  //   timeZone: 'America/Guatemala',
-  // })
+  // @Cron(CronExpression.EVERY_10_SECONDS)
+  @Cron('0 0 0 * * *', {
+    timeZone: 'America/Guatemala',
+  })
   async gerarFacturacionAutomaticaCron() {
     const zonasFacturaciones = await this.prisma.facturacionZona.findMany({
       include: {
