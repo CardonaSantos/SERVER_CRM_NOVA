@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { TwilioService } from 'src/twilio/twilio.service';
 
@@ -11,9 +12,20 @@ export class GenerarMensajeSoporteService {
   constructor(
     private readonly twilio: TwilioService,
     private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
   ) {}
 
   async GenerarMensajeTicketSoporte(clienteId: number, ticketId: number) {
+    const TEMPLATE_SID = this.configService.get<string>(
+      'TICKET_SOPORTE_CREADO_SID',
+    );
+
+    if (!TEMPLATE_SID) {
+      throw new BadRequestException(
+        'No se ha configurado el SID del template de WhatsApp para tickets de soporte',
+      );
+    }
+
     // 1) Primero verificar que llegue un clienteId válido
     if (!clienteId) {
       throw new BadRequestException('Sin id del cliente');
@@ -37,8 +49,6 @@ export class GenerarMensajeSoporteService {
       );
     }
 
-    console.log('El cliente encontrado es: ', cliente);
-
     // 3) Buscar el ticket y validar
     const ticket = await this.prisma.ticketSoporte.findUnique({
       where: { id: ticketId },
@@ -49,7 +59,6 @@ export class GenerarMensajeSoporteService {
         `No se encontró ticketSoporte con id ${ticketId}`,
       );
     }
-    console.log('El ticket encontrado es: ', ticket);
 
     // 4) Buscar la empresa asociada al cliente y validar
     const empresax = await this.prisma.empresa.findUnique({
@@ -61,7 +70,6 @@ export class GenerarMensajeSoporteService {
         `No se encontró empresa con id ${cliente.empresaId}`,
       );
     }
-    console.log('El empresax encontrado es: ', empresax);
 
     // Ahora sí podemos usar cliente.id, cliente.nombre, etc., sabiendo que no son null
     const clientInfo = {
@@ -91,20 +99,19 @@ export class GenerarMensajeSoporteService {
       })
       .filter((v): v is string => !!v);
 
-    console.log('los usuarios son: ', numerosValidos);
-
     for (const numero of numerosValidos) {
-      await this.twilio.sendWhatsAppTemplate(
-        numero,
-        'HXa378866e77e2a975cc526248d8a7bea7',
-        {
-          '1': `${clientInfo.nombres} ${clientInfo.apellidos}`,
-          '2': `${empresaInfo.nombre}`,
-          '3': `${ticketInfo.titulo}`,
-          '4': `${ticketInfo.id}`,
-          '5': `${ticketInfo.descripcion}`,
-        },
-      );
+      await this.twilio.sendWhatsAppTemplate(numero, TEMPLATE_SID, {
+        '1':
+          clientInfo.nombres && clientInfo.apellidos
+            ? `${clientInfo.nombres} ${clientInfo.apellidos}`
+            : 'Sin nombre',
+        '2': empresaInfo.nombre ? empresaInfo.nombre : 'Nova Sistemas S.A.',
+        '3': ticketInfo.titulo ? ticketInfo.titulo : 'Título no disponible',
+        '4': ticketInfo.id ? `${ticketInfo.id}` : 'ID no disponible',
+        '5': ticketInfo.descripcion
+          ? ticketInfo.descripcion
+          : 'Sin descripción',
+      });
     }
 
     console.log('El usuario ha sido notificado.');

@@ -23,10 +23,10 @@ export class GeneracionFacturaCronService {
     private readonly configService: ConfigService,
   ) {}
   //   GENERADOR DE FACTURAS PRIMER PASO
-  @Cron('0 23 * * *', {
-    timeZone: 'America/Guatemala',
-  })
-  //   @Cron(CronExpression.EVERY_10_SECONDS)
+  // @Cron('0 23 * * *', {
+  //   timeZone: 'America/Guatemala',
+  // })
+  @Cron(CronExpression.EVERY_10_SECONDS)
   async gerarFacturacionAutomaticaCron() {
     const hoylocal = dayjs().tz('America/Guatemala');
     console.log(
@@ -289,11 +289,24 @@ export class GeneracionFacturaCronService {
       for (const destino of destinos) {
         try {
           await this.twilioService.sendWhatsAppTemplate(destino, Template_SID, {
-            '1': `${cliente.nombre} ${cliente.apellidos}`, // "Cardona López"
-            '2': empresa.nombre, // "Nova Sistemas S.A."
-            '3': mesFactura, // "junio 2025"
-            '4': newFactura.montoPago.toFixed(2), // e.g. "200.00"
-            '5': dayjs(newFactura.fechaPagoEsperada).format('DD/MM/YYYY'), // "10/06/2025"
+            '1':
+              cliente.nombre && cliente.apellidos
+                ? `${cliente.nombre} ${cliente.apellidos}`
+                : 'Nombre no disponible',
+
+            '2': empresa.nombre || 'Nova Sistemas S.A.',
+
+            '3': mesFactura || '00/00/0000',
+
+            '4':
+              newFactura.montoPago !== undefined &&
+              newFactura.montoPago !== null
+                ? newFactura.montoPago.toFixed(2)
+                : 0.0,
+
+            '5': newFactura.fechaPagoEsperada
+              ? dayjs(newFactura.fechaPagoEsperada).format('DD/MM/YYYY')
+              : '00/00/0000',
           });
           console.log(`Factura notificada a ${destino}`);
         } catch (err) {

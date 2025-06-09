@@ -24,10 +24,10 @@ export class SegundoRecordatorioCronService {
     private readonly configService: ConfigService,
   ) {}
 
-  @Cron('0 23 * * *', {
-    timeZone: 'America/Guatemala',
-  })
-  // @Cron(CronExpression.EVERY_MINUTE)
+  // @Cron('0 23 * * *', {
+  //   timeZone: 'America/Guatemala',
+  // })
+  @Cron(CronExpression.EVERY_10_SECONDS)
   async generarMensajeSegundoRecordatorio() {
     try {
       const Template_SID = this.configService.get<string>(
@@ -145,12 +145,22 @@ export class SegundoRecordatorioCronService {
                   numero,
                   Template_SID,
                   {
-                    '1': `${cliente.nombre} ${cliente.apellidos}`,
-                    '2': factura.montoPago.toString(),
-                    '3': formatearFecha(
-                      factura.fechaPagoEsperada.toISOString(),
-                    ),
-                    '4': infoEmpresa.nombre,
+                    '1':
+                      cliente.nombre && cliente.apellidos
+                        ? `${cliente.nombre} ${cliente.apellidos}`
+                        : 'Nombre no disponible',
+
+                    '2':
+                      factura.montoPago !== undefined &&
+                      factura.montoPago !== null
+                        ? factura.montoPago.toString()
+                        : 0.0,
+
+                    '3': factura.fechaPagoEsperada
+                      ? formatearFecha(factura.fechaPagoEsperada.toISOString())
+                      : '00/00/0000',
+
+                    '4': infoEmpresa.nombre || 'Nova Sistemas S.A.',
                   },
                 );
               } catch (error) {

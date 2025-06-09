@@ -20,10 +20,10 @@ export class RecordatorioDiaPagoService {
     private readonly configService: ConfigService,
     private readonly twilioService: TwilioService,
   ) {}
-  @Cron('0 23 * * *', {
-    timeZone: 'America/Guatemala',
-  })
-  // @Cron(CronExpression.EVERY_5_SECONDS)
+  // @Cron('0 23 * * *', {
+  //   timeZone: 'America/Guatemala',
+  // })
+  @Cron(CronExpression.EVERY_10_SECONDS)
   async generarMensajeDiaDePago() {
     try {
       const Template_SID = this.configService.get<string>(
@@ -142,12 +142,19 @@ export class RecordatorioDiaPagoService {
                   numero,
                   Template_SID,
                   {
-                    '1': `${cliente.nombre} ${cliente.apellidos}`,
-                    '2': factura.montoPago.toString(),
-                    '3': formatearFecha(
-                      factura.fechaPagoEsperada.toISOString(),
-                    ),
-                    '4': infoEmpresa.nombre,
+                    '1':
+                      cliente.nombre && cliente.apellidos
+                        ? `${cliente.nombre} ${cliente.apellidos}`
+                        : 'Nombre no disponible',
+                    '2':
+                      factura.montoPago !== undefined &&
+                      factura.montoPago !== null
+                        ? factura.montoPago.toString()
+                        : 0.0,
+                    '3': factura.fechaPagoEsperada
+                      ? formatearFecha(factura.fechaPagoEsperada.toISOString())
+                      : '00/00/0000',
+                    '4': infoEmpresa.nombre || 'Nova Sistemas S.A.',
                   },
                 );
               } catch (error) {
