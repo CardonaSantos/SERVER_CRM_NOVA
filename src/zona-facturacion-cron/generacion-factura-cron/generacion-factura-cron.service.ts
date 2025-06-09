@@ -23,10 +23,10 @@ export class GeneracionFacturaCronService {
     private readonly configService: ConfigService,
   ) {}
   //   GENERADOR DE FACTURAS PRIMER PASO
-  // @Cron('0 23 * * *', {
-  //   timeZone: 'America/Guatemala',
-  // })
-  @Cron(CronExpression.EVERY_10_SECONDS)
+  @Cron('0 23 * * *', {
+    timeZone: 'America/Guatemala',
+  })
+  // @Cron(CronExpression.EVERY_DAY_AT_11PM)
   async gerarFacturacionAutomaticaCron() {
     const hoylocal = dayjs().tz('America/Guatemala');
     console.log(

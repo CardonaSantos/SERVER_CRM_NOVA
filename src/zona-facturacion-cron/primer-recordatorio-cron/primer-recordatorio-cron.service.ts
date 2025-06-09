@@ -23,10 +23,10 @@ export class PrimerRecordatorioCronService {
     private readonly configService: ConfigService,
   ) {}
 
-  @Cron(CronExpression.EVERY_10_SECONDS)
-  // @Cron('0 23 * * *', {
-  //   timeZone: 'America/Guatemala',
-  // })
+  // @Cron(CronExpression.EVERY_10_SECONDS)
+  @Cron('0 23 * * *', {
+    timeZone: 'America/Guatemala',
+  })
   async generarMesnajePrimerRecordatorio() {
     try {
       const Template_SID = this.configService.get<string>(

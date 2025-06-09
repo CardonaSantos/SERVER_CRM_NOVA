@@ -20,10 +20,10 @@ export class RecordatorioDiaPagoService {
     private readonly configService: ConfigService,
     private readonly twilioService: TwilioService,
   ) {}
-  // @Cron('0 23 * * *', {
-  //   timeZone: 'America/Guatemala',
-  // })
-  @Cron(CronExpression.EVERY_10_SECONDS)
+  @Cron('0 23 * * *', {
+    timeZone: 'America/Guatemala',
+  })
+  // @Cron(CronExpression.EVERY_10_SECONDS)
   async generarMensajeDiaDePago() {
     try {
       const Template_SID = this.configService.get<string>(
