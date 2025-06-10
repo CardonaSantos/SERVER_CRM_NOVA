@@ -1,5 +1,10 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
+import {
+  DatosFacturaGenerate,
   formatearFecha,
   formatearNumeroWhatsApp,
   renderTemplate,
@@ -11,16 +16,19 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { TwilioService } from 'src/twilio/twilio.service';
+import { GenerarFacturaService } from '../generar-factura/generar-factura.service';
 // Extiende dayjs con los plugins
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
 @Injectable()
 export class SegundoRecordatorioCronService {
+  private readonly logger = new Logger(SegundoRecordatorioCronService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly twilioService: TwilioService,
-
+    private readonly generarFactura: GenerarFacturaService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -70,6 +78,7 @@ export class SegundoRecordatorioCronService {
       const zonasDeFacturacion = await this.prisma.facturacionZona.findMany({
         select: {
           id: true,
+          diaPago: true,
           diaSegundoRecordatorio: true,
           enviarRecordatorio2: true,
           clientes: {
@@ -82,6 +91,7 @@ export class SegundoRecordatorioCronService {
               servicioInternet: {
                 select: {
                   nombre: true,
+                  precio: true,
                   velocidad: true,
                 },
               },
@@ -100,7 +110,10 @@ export class SegundoRecordatorioCronService {
 
         for (const cliente of zona.clientes) {
           try {
-            const factura = await this.prisma.facturaInternet.findFirst({
+            let factura = await this.prisma.facturaInternet.findFirst({
+              orderBy: {
+                fechaPagoEsperada: 'desc', //la mas reciente creada
+              },
               where: {
                 clienteId: cliente.id,
                 estadoFacturaInternet: {
@@ -119,7 +132,39 @@ export class SegundoRecordatorioCronService {
               },
             });
 
-            if (!factura) continue;
+            if (!factura) {
+              try {
+                const dataFactura: DatosFacturaGenerate = {
+                  datalleFactura: `Pago por suscripción mensual al servicio de internet: ${cliente.servicioInternet.nombre} Q${cliente.servicioInternet.precio} — Fecha de pago: ${zona.diaPago}`,
+                  fechaPagoEsperada: fechaRecordatorio.format(),
+                  montoPago: cliente.servicioInternet.precio,
+                  saldoPendiente: cliente.servicioInternet.precio,
+                  estadoFacturaInternet: 'PENDIENTE',
+                  cliente: cliente.id,
+                  facturacionZona: zona.id,
+                  nombreClienteFactura: `${cliente.nombre} ${cliente.apellidos}`,
+                  numerosTelefono: [
+                    ...(cliente.telefono ?? '').split(',').map((n) => n.trim()),
+                    ...(cliente.contactoReferenciaTelefono ?? '')
+                      .split(',')
+                      .map((n) => n.trim()),
+                  ],
+                };
+
+                factura =
+                  await this.generarFactura.generarFacturaIndividual(
+                    dataFactura,
+                  );
+                this.logger.log(
+                  `Factura creada al vuelo para cliente ${cliente.id}`,
+                );
+              } catch (error) {
+                this.logger.debug(
+                  `Error al generar factura para cliente ${cliente.id}: ${error.message}`,
+                );
+                continue; // Saltar al siguiente cliente si falla la generación de factura
+              }
+            }
 
             const numerosTelefono = [
               ...(cliente.telefono ?? '').split(',').map((num) => num.trim()),

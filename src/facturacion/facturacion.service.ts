@@ -1,14 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateFacturacionDto } from './dto/create-facturacion.dto';
 import { UpdateFacturacionDto } from './dto/update-facturacion.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateFacturacionPaymentDto } from './dto/createFacturacionPayment.dto';
-import {
-  EstadoCliente,
-  EstadoFacturaInternet,
-  Prisma,
-  StateFacturaInternet,
-} from '@prisma/client';
+import { EstadoCliente, Prisma, StateFacturaInternet } from '@prisma/client';
 import * as dayjs from 'dayjs';
 import { CreatePaymentOnRuta } from './dto/createPaymentOnRuta.dto';
 import { GenerateFactura } from './dto/generateFactura.dto';
@@ -55,6 +50,8 @@ interface DatosFacturaGenerate {
 
 @Injectable()
 export class FacturacionService {
+  private readonly logger = new Logger(FacturacionService.name);
+
   constructor(private readonly prisma: PrismaService) {}
   async create(createFacturacionDto: CreateFacturacionDto) {}
 
@@ -628,66 +625,129 @@ export class FacturacionService {
 
   async findAllFacturasConPago() {
     try {
-      const facturasConPagos = await this.prisma.pagoFacturaInternet.findMany({
-        // include: {
-        //   pagos: true,
-        // },
-      });
+      const facturasConPagos = await this.prisma.pagoFacturaInternet.findMany(
+        {},
+      );
       return facturasConPagos;
     } catch (error) {
       console.log(error);
     }
   }
 
-  async facturacionToTable() {
+  async facturacionToTable(
+    page: number = 1,
+    limit = 10,
+    paramSearch?: string,
+
+    zona?: number,
+    municipio?: number,
+    departamento?: number,
+    sector?: number,
+  ) {
     try {
-      const facturas = await this.prisma.facturaInternet.findMany({
-        orderBy: {
-          creadoEn: 'desc',
-        },
-        select: {
-          id: true,
-          // estadoFacturaInternet: true,
-          estadoFacturaInternet: true,
-          cliente: {
-            select: {
-              nombre: true,
-              id: true,
-              apellidos: true,
-              telefono: true,
-              sector: true,
-              municipio: {
-                select: {
-                  id: true,
+      const skip = (page - 1) * limit;
+
+      const whereCondition: Prisma.FacturaInternetWhereInput = {
+        AND: [
+          paramSearch
+            ? {
+                OR: [
+                  {
+                    cliente: {
+                      nombre: { contains: paramSearch, mode: 'insensitive' },
+                    },
+                  },
+                  {
+                    cliente: {
+                      apellidos: { contains: paramSearch, mode: 'insensitive' },
+                    },
+                  },
+                  {
+                    cliente: {
+                      telefono: { contains: paramSearch, mode: 'insensitive' },
+                    },
+                  },
+                  {
+                    cliente: {
+                      IP: {
+                        direccionIp: {
+                          contains: paramSearch,
+                          mode: 'insensitive',
+                        },
+                      },
+                    },
+                  },
+                  // { estadoFacturaInternet: { equals: paramSearch, mode: 'insensitive' } },
+                ],
+              }
+            : {},
+
+          zona ? { facturacionZonaId: zona } : undefined,
+          municipio ? { cliente: { municipio: { id: municipio } } } : undefined,
+          departamento
+            ? { cliente: { departamento: { id: departamento } } }
+            : undefined,
+          sector ? { cliente: { sector: { id: sector } } } : undefined,
+        ].filter(Boolean) as Prisma.FacturaInternetWhereInput,
+      };
+
+      // this.logger.debug(`La data del query es: ${whereCondition}`);
+      this.logger.debug(JSON.stringify(whereCondition, null, 2));
+
+      const [facturas, totalCount] = await this.prisma.$transaction([
+        this.prisma.facturaInternet.findMany({
+          skip: skip,
+          take: limit,
+          orderBy: {
+            creadoEn: 'desc',
+          },
+          where: whereCondition,
+
+          select: {
+            id: true,
+            // estadoFacturaInternet: true,
+            estadoFacturaInternet: true,
+            cliente: {
+              select: {
+                nombre: true,
+                id: true,
+                apellidos: true,
+                telefono: true,
+                sector: true,
+                municipio: {
+                  select: {
+                    id: true,
+                  },
+                },
+                departamento: {
+                  select: {
+                    id: true,
+                  },
+                },
+                IP: {
+                  select: {
+                    direccionIp: true || null,
+                  },
                 },
               },
-              departamento: {
-                select: {
-                  id: true,
-                },
-              },
-              IP: {
-                select: {
-                  direccionIp: true || null,
+            },
+            montoPago: true,
+            creadoEn: true,
+            fechaPagoEsperada: true,
+            facturacionZonaId: true,
+            pagos: {
+              select: {
+                cobrador: {
+                  select: {
+                    nombre: true,
+                  },
                 },
               },
             },
           },
-          montoPago: true,
-          creadoEn: true,
-          fechaPagoEsperada: true,
-          facturacionZonaId: true,
-          pagos: {
-            select: {
-              cobrador: {
-                select: {
-                  nombre: true,
-                },
-              },
-            },
-          },
-        },
-      });
+        }),
+        this.prisma.facturaInternet.count({ where: whereCondition }),
+      ]);
 
       // Mapeamos las facturas para ajustarlas al formato `Factura`
       const facturasMapeadas = facturas.map((factura) => ({
@@ -718,19 +778,31 @@ export class FacturacionService {
         facturacionZonaId: factura.facturacionZonaId,
       }));
 
-      const cobrados = facturas.filter((fac) => {
-        return !['PENDIENTE', 'PARCIAL', 'VENCIDA', 'ANULADA'].includes(
-          fac.estadoFacturaInternet,
-        );
-      });
+      // const cobrados = facturas.filter((fac) => {
+      //   return !['PENDIENTE', 'PARCIAL', 'VENCIDA', 'ANULADA'].includes(
+      //     fac.estadoFacturaInternet,
+      //   );
+      // });
 
-      const facturados = facturas; //el total de facturas que tenemos actualmente
-      const porCobrar = Math.abs(facturados.length - cobrados.length); //la diferencia entre los cobrados y no
+      const [cobrados, facturados] = await this.prisma.$transaction([
+        this.prisma.facturaInternet.count({
+          where: {
+            estadoFacturaInternet: {
+              notIn: ['PENDIENTE', 'PARCIAL', 'VENCIDA', 'ANULADA'],
+            },
+          },
+        }),
+        this.prisma.facturaInternet.count(),
+      ]);
+
+      // const facturados = facturas; //el total de facturas que tenemos actualmente
+      const porCobrar = Math.abs(facturados - cobrados); //la diferencia entre los cobrados y no
 
       return {
         facturasMapeadas: facturasMapeadas,
-        cobrados: cobrados.length,
-        facturados: facturados.length,
+        totalCount: totalCount,
+        cobrados: cobrados,
+        facturados: facturados,
         porCobrar: porCobrar,
       };
     } catch (error) {

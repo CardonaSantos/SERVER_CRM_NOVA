@@ -1,6 +1,7 @@
 import {
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { CreateClienteInternetDto } from './dto/create-cliente-internet.dto';
@@ -8,7 +9,7 @@ import { UpdateClienteInternetDto } from './dto/update-cliente-internet.dto';
 import { UserTokenAuth } from 'src/auth/dto/userToken.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { updateCustomerService } from './dto/update-customer-service';
-import { ClienteInternet } from '@prisma/client';
+import { ClienteInternet, Prisma } from '@prisma/client';
 import * as dayjs from 'dayjs';
 import { IdContratoService } from 'src/id-contrato/id-contrato.service';
 
@@ -19,6 +20,7 @@ const formatearFecha = (fecha: string) => {
 
 @Injectable()
 export class ClienteInternetService {
+  private readonly logger = new Logger(ClienteInternetService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly idContradoService: IdContratoService,
@@ -758,14 +760,60 @@ export class ClienteInternetService {
     return `This action returns a #${id} clienteInternet`;
   }
 
-  async findCustomersToTable() {
-    console.log('datos para la tabla');
+  async findCustomersToTable(
+    page: number = 1,
+    limit: number = 10,
+    paramSearch,
+    ///
+    zona?: number,
+    municipio?: number,
+    departamento?: number,
+    sector?: number,
+  ) {
+    const skip = (page - 1) * limit;
 
-    return await this.prisma.$transaction(async (tx) => {
-      const customers = await tx.clienteInternet.findMany({
+    const whereCondition: Prisma.ClienteInternetWhereInput = {
+      AND: [
+        paramSearch
+          ? {
+              OR: [
+                { nombre: { contains: paramSearch, mode: 'insensitive' } },
+                { apellidos: { contains: paramSearch, mode: 'insensitive' } },
+                { telefono: { contains: paramSearch, mode: 'insensitive' } },
+                {
+                  IP: {
+                    direccionIp: {
+                      contains: paramSearch,
+                      mode: 'insensitive',
+                    },
+                  },
+                },
+              ],
+            }
+          : undefined,
+
+        zona ? { facturacionZonaId: zona } : undefined,
+        municipio ? { municipio: { id: municipio } } : undefined,
+        departamento ? { departamento: { id: departamento } } : undefined,
+        sector ? { sector: { id: sector } } : undefined,
+      ].filter(Boolean) as Prisma.ClienteInternetWhereInput[],
+    };
+
+    // this.logger.debug(`La data del query es: ${whereCondition}`);
+    this.logger.debug(JSON.stringify(whereCondition, null, 2));
+    this.logger.debug(
+      `La data de la paginacion llegando es: ${page} y el limite es: ${limit}`,
+    );
+
+    const [customers, totalCount] = await this.prisma.$transaction([
+      this.prisma.clienteInternet.findMany({
+        skip: skip,
+        take: limit,
         orderBy: {
           creadoEn: 'desc',
         },
+        where: whereCondition,
+
         select: {
           id: true,
           nombre: true,
@@ -819,53 +867,48 @@ export class ClienteInternetService {
             },
           },
         },
-      });
+      }),
+      this.prisma.clienteInternet.count(),
+    ]);
+    const formattedCustomers = customers.map((customer) => ({
+      id: customer.id,
+      nombreCompleto: `${customer.nombre} ${customer.apellidos}`,
+      estado: customer.estadoCliente,
+      telefono: customer.telefono,
+      dpi: customer.dpi,
+      direccion: customer.direccion,
+      creadoEn: customer.creadoEn,
+      actualizadoEn: customer.actualizadoEn,
+      departamento: customer.departamento?.nombre || 'No disponible',
+      municipio: customer.municipio?.nombre || 'No disponible',
+      direccionIp: customer.IP?.direccionIp || 'No disponible',
+      //IDS DE ZONAS
+      municipioId: customer.municipio.id,
+      sector: customer.sector || null,
+      sectorId: customer.sector ? customer.sector.id : null, // Evitar error si sector es null
+      departamentoId: customer.departamento.id,
+      servicios: customer.servicioInternet
+        ? [
+            //
+            {
+              id: customer.servicioInternet.id,
+              nombreServicio: customer.servicioInternet.nombre,
+              velocidad: customer.servicioInternet.velocidad,
+              precio: customer.servicioInternet.precio,
+              estado: customer.servicioInternet.estado,
+              creadoEn: customer.servicioInternet.actualizadoEn,
+              actualizadoEn: customer.servicioInternet.actualizadoEn,
+            },
+          ]
+        : [],
+      facturacionZona: customer.facturacionZona?.nombre || 'Sin zona',
+      facturacionZonaId: customer.facturacionZona.id,
+    }));
 
-      // console.log(customers);
-
-      if (!customers) {
-        throw new NotFoundException(
-          'Error al conseguir los registros de clientes',
-        );
-      }
-
-      const formattedCustomers = customers.map((customer) => ({
-        id: customer.id,
-        nombreCompleto: `${customer.nombre} ${customer.apellidos}`,
-        estado: customer.estadoCliente,
-        telefono: customer.telefono,
-        dpi: customer.dpi,
-        direccion: customer.direccion,
-        creadoEn: customer.creadoEn,
-        actualizadoEn: customer.actualizadoEn,
-        departamento: customer.departamento?.nombre || 'No disponible',
-        municipio: customer.municipio?.nombre || 'No disponible',
-        direccionIp: customer.IP?.direccionIp || 'No disponible',
-        //IDS DE ZONAS
-        municipioId: customer.municipio.id,
-        sector: customer.sector || null,
-        sectorId: customer.sector ? customer.sector.id : null, // Evitar error si sector es null
-        departamentoId: customer.departamento.id,
-        servicios: customer.servicioInternet
-          ? [
-              //
-              {
-                id: customer.servicioInternet.id,
-                nombreServicio: customer.servicioInternet.nombre,
-                velocidad: customer.servicioInternet.velocidad,
-                precio: customer.servicioInternet.precio,
-                estado: customer.servicioInternet.estado,
-                creadoEn: customer.servicioInternet.actualizadoEn,
-                actualizadoEn: customer.servicioInternet.actualizadoEn,
-              },
-            ]
-          : [],
-        facturacionZona: customer.facturacionZona?.nombre || 'Sin zona',
-        facturacionZonaId: customer.facturacionZona.id,
-      }));
-
-      return formattedCustomers;
-    });
+    return {
+      data: formattedCustomers,
+      totalCount: totalCount,
+    };
   }
 
   //SERVICE QUE RETORNA TODOS LOS DETALLES DEL CLIENTE A LA INTERFAZ

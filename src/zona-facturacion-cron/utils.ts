@@ -55,3 +55,15 @@ export interface DatosFacturaGenerate {
   datalleFacturaParaMensaje?: string;
   numerosTelefono?: string[];
 }
+
+export interface DatosFacturaGenerateIndividual {
+  datalleFactura: string; // detalle o descripción de la factura
+  fechaPagoEsperada: string | Date; // fecha esperada de pago, puede ser string ISO o Date
+  montoPago: number; // monto total a pagar
+  saldoPendiente: number; // saldo pendiente (usualmente igual a montoPago)
+  estadoFacturaInternet: 'PENDIENTE' | 'PARCIAL' | 'PAGADA' | string; // estado de la factura
+  cliente: number; // id del cliente (según tipo, string o number)
+  facturacionZona: number; // id de la zona de facturación
+  nombreClienteFactura: string; // nombre completo para mostrar en la factura
+  numerosTelefono?: string[]; // opcional, lista de números de teléfono asociados
+}

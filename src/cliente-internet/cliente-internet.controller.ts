@@ -11,6 +11,7 @@ import {
   Request,
   Put,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { ClienteInternetService } from './cliente-internet.service';
 import { CreateClienteInternetDto } from './dto/create-cliente-internet.dto';
@@ -38,8 +39,35 @@ export class ClienteInternetController {
   }
 
   @Get('/customer-to-table')
-  findCustomersToTable() {
-    return this.clienteInternetService.findCustomersToTable();
+  findCustomersToTable(
+    @Query('page') page: string,
+    @Query('limite') limite: string,
+    @Query('paramSearch') paramSearch: string,
+
+    //otros filtros
+    @Query('zonasFacturacionSelected') zonasFacturacionSelected: string,
+    @Query('muniSelected') muniSelected: string,
+    @Query('depaSelected') depaSelected: string,
+    @Query('sectorSelected') sectorSelected: string,
+  ) {
+    const pageNumber = parseInt(page, 10) || 1;
+    const limit = parseInt(limite, 10) || 1;
+    //otros filtros
+    const zona = parseInt(zonasFacturacionSelected, 10) || null;
+    const municipio = parseInt(muniSelected, 10) || null;
+    const departamento = parseInt(depaSelected, 10) || null;
+    const sector = parseInt(sectorSelected, 10) || null;
+
+    return this.clienteInternetService.findCustomersToTable(
+      pageNumber,
+      limit,
+      paramSearch,
+      //otro
+      zona,
+      municipio,
+      departamento,
+      sector,
+    );
   }
 
   @Get('/get-customer-details/:id')

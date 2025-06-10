@@ -1,33 +1,41 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import * as dayjs from 'dayjs';
 import * as utc from 'dayjs/plugin/utc';
 import * as timezone from 'dayjs/plugin/timezone';
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
+  DatosFacturaGenerate,
   formatearFecha,
   formatearNumeroWhatsApp,
   renderTemplate,
 } from '../utils';
 import { TwilioService } from 'src/twilio/twilio.service';
 import { ConfigService } from '@nestjs/config';
+import { GenerarFacturaService } from '../generar-factura/generar-factura.service';
 // Extiende dayjs con los plugins
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
 @Injectable()
 export class PrimerRecordatorioCronService {
+  private readonly logger = new Logger(PrimerRecordatorioCronService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly twilioService: TwilioService,
     private readonly configService: ConfigService,
+    private readonly generarFactura: GenerarFacturaService,
   ) {}
 
   // @Cron(CronExpression.EVERY_10_SECONDS)
   @Cron('0 23 * * *', {
     timeZone: 'America/Guatemala',
   })
-  async generarMesnajePrimerRecordatorio() {
+  async generarMensajePrimerRecordatorio() {
     try {
       const Template_SID = this.configService.get<string>(
         'RECORDATORIO_PAGO_1_SID',
@@ -56,8 +64,10 @@ export class PrimerRecordatorioCronService {
       const zonasDeFacturacion = await this.prisma.facturacionZona.findMany({
         select: {
           id: true,
+          diaPago: true,
           diaRecordatorio: true,
           enviarRecordatorio1: true,
+
           clientes: {
             select: {
               id: true,
@@ -68,6 +78,7 @@ export class PrimerRecordatorioCronService {
               servicioInternet: {
                 select: {
                   nombre: true,
+                  precio: true,
                   velocidad: true,
                 },
               },
@@ -86,9 +97,13 @@ export class PrimerRecordatorioCronService {
 
         for (const cliente of zona.clientes) {
           try {
-            const factura = await this.prisma.facturaInternet.findFirst({
+            let factura = await this.prisma.facturaInternet.findFirst({
+              orderBy: {
+                fechaPagoEsperada: 'desc', //la mas reciente creada
+              },
               where: {
                 clienteId: cliente.id,
+
                 estadoFacturaInternet: {
                   in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'],
                 },
@@ -105,7 +120,39 @@ export class PrimerRecordatorioCronService {
               },
             });
 
-            if (!factura) continue;
+            if (!factura) {
+              try {
+                const dataFactura: DatosFacturaGenerate = {
+                  datalleFactura: `Pago por suscripción mensual al servicio de internet: ${cliente.servicioInternet.nombre} Q${cliente.servicioInternet.precio} — Fecha de pago: ${zona.diaPago}`,
+                  fechaPagoEsperada: fechaRecordatorio.format(),
+                  montoPago: cliente.servicioInternet.precio,
+                  saldoPendiente: cliente.servicioInternet.precio,
+                  estadoFacturaInternet: 'PENDIENTE',
+                  cliente: cliente.id,
+                  facturacionZona: zona.id,
+                  nombreClienteFactura: `${cliente.nombre} ${cliente.apellidos}`,
+                  numerosTelefono: [
+                    ...(cliente.telefono ?? '').split(',').map((n) => n.trim()),
+                    ...(cliente.contactoReferenciaTelefono ?? '')
+                      .split(',')
+                      .map((n) => n.trim()),
+                  ],
+                };
+
+                factura =
+                  await this.generarFactura.generarFacturaIndividual(
+                    dataFactura,
+                  );
+                this.logger.log(
+                  `Factura creada al vuelo para cliente ${cliente.id}`,
+                );
+              } catch (error) {
+                this.logger.debug(
+                  `Error al generar factura para cliente ${cliente.id}: ${error.message}`,
+                );
+                continue; // Saltar al siguiente cliente si falla la generación de factura
+              }
+            }
 
             const numerosTelefono = [
               ...(cliente.telefono ?? '').split(',').map((num) => num.trim()),
@@ -146,8 +193,14 @@ export class PrimerRecordatorioCronService {
                     '4': infoEmpresa.nombre || 'Nova Sistemas S.A.',
                   },
                 );
+                this.logger.log(
+                  `Primer recordatorio enviado a ${numero} para cliente ${cliente.id}`,
+                );
               } catch (error) {
-                console.log('El error es: ', error);
+                this.logger.warn(
+                  `Error procesando cliente ${cliente.id}`,
+                  error,
+                );
                 return error;
               }
             }

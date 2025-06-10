@@ -9,6 +9,7 @@ import { GeneracionFacturaCronService } from './generacion-factura-cron/generaci
 import { PrimerRecordatorioCronService } from './primer-recordatorio-cron/primer-recordatorio-cron.service';
 import { SegundoRecordatorioCronService } from './segundo-recordatorio-cron/segundo-recordatorio-cron.service';
 import { RecordatorioDiaPagoService } from './recordatorio-dia-pago/recordatorio-dia-pago.service';
+import { GenerarFacturaService } from './generar-factura/generar-factura.service';
 
 @Module({
   controllers: [ZonaFacturacionCronController],
@@ -20,6 +21,7 @@ import { RecordatorioDiaPagoService } from './recordatorio-dia-pago/recordatorio
     PrimerRecordatorioCronService,
     SegundoRecordatorioCronService,
     RecordatorioDiaPagoService,
+    GenerarFacturaService,
   ],
 })
 export class ZonaFacturacionCronModule {}

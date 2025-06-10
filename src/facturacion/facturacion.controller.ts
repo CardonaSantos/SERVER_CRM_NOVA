@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { FacturacionService } from './facturacion.service';
 import { CreateFacturacionDto } from './dto/create-facturacion.dto';
@@ -82,8 +83,34 @@ export class FacturacionController {
   }
 
   @Get('/facturacion-to-table')
-  facturacionToTable() {
-    return this.facturacionService.facturacionToTable();
+  facturacionToTable(
+    @Query('page') page: string,
+    @Query('limite') limite: string,
+    @Query('paramSearch') paramSearch: string,
+    //
+    @Query('zonasFacturacionSelected') zonasFacturacionSelected: string,
+    @Query('muniSelected') muniSelected: string,
+    @Query('depaSelected') depaSelected: string,
+    @Query('sectorSelected') sectorSelected: string,
+  ) {
+    const pagina = parseInt(page, 10) || 1;
+    const limit = parseInt(limite, 10) || 10;
+
+    const zona = parseInt(zonasFacturacionSelected, 10) || null;
+    const municipio = parseInt(muniSelected, 10) || null;
+    const departamento = parseInt(depaSelected, 10) || null;
+    const sector = parseInt(sectorSelected, 10) || null;
+
+    return this.facturacionService.facturacionToTable(
+      pagina,
+      limit,
+      paramSearch,
+      //otros datos
+      zona,
+      municipio,
+      departamento,
+      sector,
+    );
   }
 
   @Get('/get-factura-to-edit/:id')
