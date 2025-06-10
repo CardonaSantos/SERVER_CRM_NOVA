@@ -646,53 +646,48 @@ export class FacturacionService {
   ) {
     try {
       const skip = (page - 1) * limit;
+      // 1) Tokenizamos el search en términos
+      const terms =
+        paramSearch
+          ?.trim()
+          .split(/\s+/)
+          .filter((t) => t.length > 0) || [];
 
-      const whereCondition: Prisma.FacturaInternetWhereInput = {
-        AND: [
-          paramSearch
-            ? {
-                OR: [
-                  {
-                    cliente: {
-                      nombre: { contains: paramSearch, mode: 'insensitive' },
-                    },
-                  },
-                  {
-                    cliente: {
-                      apellidos: { contains: paramSearch, mode: 'insensitive' },
-                    },
-                  },
-                  {
-                    cliente: {
-                      telefono: { contains: paramSearch, mode: 'insensitive' },
-                    },
-                  },
-                  {
-                    cliente: {
-                      IP: {
-                        direccionIp: {
-                          contains: paramSearch,
-                          mode: 'insensitive',
-                        },
-                      },
-                    },
-                  },
-                  // { estadoFacturaInternet: { equals: paramSearch, mode: 'insensitive' } },
-                ],
-              }
-            : {},
+      // 2) Construimos dinámicamente las condiciones AND
+      const andConditions: Prisma.FacturaInternetWhereInput[] = [];
 
-          zona ? { facturacionZonaId: zona } : undefined,
-          municipio ? { cliente: { municipio: { id: municipio } } } : undefined,
-          departamento
-            ? { cliente: { departamento: { id: departamento } } }
-            : undefined,
-          sector ? { cliente: { sector: { id: sector } } } : undefined,
-        ].filter(Boolean) as Prisma.FacturaInternetWhereInput,
-      };
+      // 2.1) Para cada término, buscamos en nombre o apellidos
+      for (const term of terms) {
+        andConditions.push({
+          OR: [
+            { cliente: { nombre: { contains: term, mode: 'insensitive' } } },
+            { cliente: { apellidos: { contains: term, mode: 'insensitive' } } },
+            { cliente: { telefono: { contains: term, mode: 'insensitive' } } },
+            {
+              cliente: {
+                IP: { direccionIp: { contains: term, mode: 'insensitive' } },
+              },
+            },
+          ],
+        });
+      }
 
-      // this.logger.debug(`La data del query es: ${whereCondition}`);
-      this.logger.debug(JSON.stringify(whereCondition, null, 2));
+      // 2.2) Filtros extras
+      if (zona) andConditions.push({ facturacionZonaId: zona });
+      if (municipio)
+        andConditions.push({ cliente: { municipioId: municipio } });
+      if (departamento)
+        andConditions.push({ cliente: { departamentoId: departamento } });
+      if (sector) andConditions.push({ cliente: { sectorId: sector } });
+
+      // 3) Armamos el where final
+      const whereCondition: Prisma.FacturaInternetWhereInput =
+        andConditions.length > 0 ? { AND: andConditions } : {};
+
+      this.logger.debug(
+        'whereCondition:',
+        JSON.stringify(whereCondition, null, 2),
+      );
 
       const [facturas, totalCount] = await this.prisma.$transaction([
         this.prisma.facturaInternet.findMany({

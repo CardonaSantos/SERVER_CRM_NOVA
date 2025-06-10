@@ -772,38 +772,44 @@ export class ClienteInternetService {
   ) {
     const skip = (page - 1) * limit;
 
-    const whereCondition: Prisma.ClienteInternetWhereInput = {
-      AND: [
-        paramSearch
-          ? {
-              OR: [
-                { nombre: { contains: paramSearch, mode: 'insensitive' } },
-                { apellidos: { contains: paramSearch, mode: 'insensitive' } },
-                { telefono: { contains: paramSearch, mode: 'insensitive' } },
-                {
-                  IP: {
-                    direccionIp: {
-                      contains: paramSearch,
-                      mode: 'insensitive',
-                    },
-                  },
-                },
-              ],
-            }
-          : undefined,
+    // 1) Separamos el search en términos
+    const terms =
+      paramSearch
+        ?.trim()
+        .split(/\s+/)
+        .filter((t) => t.length > 0) || [];
 
-        zona ? { facturacionZonaId: zona } : undefined,
-        municipio ? { municipio: { id: municipio } } : undefined,
-        departamento ? { departamento: { id: departamento } } : undefined,
-        sector ? { sector: { id: sector } } : undefined,
-      ].filter(Boolean) as Prisma.ClienteInternetWhereInput[],
-    };
+    // 2) Construimos array de condiciones
+    const andConditions: Prisma.ClienteInternetWhereInput[] = [];
 
-    // this.logger.debug(`La data del query es: ${whereCondition}`);
-    this.logger.debug(JSON.stringify(whereCondition, null, 2));
+    // Por cada término, agregamos un OR que busque en nombre o apellidos o teléfono o IP
+    for (const term of terms) {
+      andConditions.push({
+        OR: [
+          { nombre: { contains: term, mode: 'insensitive' } },
+          { apellidos: { contains: term, mode: 'insensitive' } },
+          { telefono: { contains: term, mode: 'insensitive' } },
+          { IP: { direccionIp: { contains: term, mode: 'insensitive' } } },
+        ],
+      });
+    }
+
+    // Filtros exactos
+    if (zona) andConditions.push({ facturacionZonaId: zona });
+    if (municipio) andConditions.push({ municipioId: municipio });
+    if (departamento) andConditions.push({ departamentoId: departamento });
+    if (sector) andConditions.push({ sectorId: sector });
+
+    // 3) Armamos el where final
+    const whereCondition: Prisma.ClienteInternetWhereInput =
+      andConditions.length > 0 ? { AND: andConditions } : {};
+
+    // DEBUG
     this.logger.debug(
-      `La data de la paginacion llegando es: ${page} y el limite es: ${limit}`,
+      'whereCondition:',
+      JSON.stringify(whereCondition, null, 2),
     );
+    this.logger.debug(`page=${page}, limit=${limit}`);
 
     const [customers, totalCount] = await this.prisma.$transaction([
       this.prisma.clienteInternet.findMany({
