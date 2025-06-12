@@ -3,7 +3,13 @@ import { CreateFacturacionDto } from './dto/create-facturacion.dto';
 import { UpdateFacturacionDto } from './dto/update-facturacion.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateFacturacionPaymentDto } from './dto/createFacturacionPayment.dto';
-import { EstadoCliente, Prisma, StateFacturaInternet } from '@prisma/client';
+import {
+  EstadoCliente,
+  EstadoFactura,
+  EstadoFacturaInternet,
+  Prisma,
+  StateFacturaInternet,
+} from '@prisma/client';
 import * as dayjs from 'dayjs';
 import { CreatePaymentOnRuta } from './dto/createPaymentOnRuta.dto';
 import { GenerateFactura } from './dto/generateFactura.dto';
@@ -643,6 +649,8 @@ export class FacturacionService {
     municipio?: number,
     departamento?: number,
     sector?: number,
+
+    estadoFactura?: StateFacturaInternet,
   ) {
     try {
       const skip = (page - 1) * limit;
@@ -679,6 +687,16 @@ export class FacturacionService {
       if (departamento)
         andConditions.push({ cliente: { departamentoId: departamento } });
       if (sector) andConditions.push({ cliente: { sectorId: sector } });
+      // Filtrar por estado (incluye valor 0)
+      if (
+        estadoFactura !== undefined &&
+        estadoFactura !== null &&
+        estadoFactura != ('TODOS' as StateFacturaInternet)
+      ) {
+        andConditions.push({
+          estadoFacturaInternet: { equals: estadoFactura },
+        });
+      }
 
       // 3) Armamos el where final
       const whereCondition: Prisma.FacturaInternetWhereInput =

@@ -18,6 +18,11 @@ import { GenerateFactura } from './dto/generateFactura.dto';
 import { GenerateFacturaMultipleDto } from './dto/generateMultipleFactura.dto';
 import { DeleteFacturaDto } from './dto/delete-one-factura.dto';
 import { UpdateFacturaDto } from './dto/update-factura.dto';
+import {
+  EstadoFactura,
+  EstadoFacturaInternet,
+  StateFacturaInternet,
+} from '@prisma/client';
 
 @Controller('facturacion')
 export class FacturacionController {
@@ -92,6 +97,8 @@ export class FacturacionController {
     @Query('muniSelected') muniSelected: string,
     @Query('depaSelected') depaSelected: string,
     @Query('sectorSelected') sectorSelected: string,
+
+    @Query('estado') estado: StateFacturaInternet,
   ) {
     const pagina = parseInt(page, 10) || 1;
     const limit = parseInt(limite, 10) || 10;
@@ -100,6 +107,8 @@ export class FacturacionController {
     const municipio = parseInt(muniSelected, 10) || null;
     const departamento = parseInt(depaSelected, 10) || null;
     const sector = parseInt(sectorSelected, 10) || null;
+
+    const estadoFactura = estado || null;
 
     return this.facturacionService.facturacionToTable(
       pagina,
@@ -110,6 +119,7 @@ export class FacturacionController {
       municipio,
       departamento,
       sector,
+      estadoFactura,
     );
   }
 

@@ -27,6 +27,7 @@ import { SectorModule } from './sector/sector.module';
 import { MensajeModule } from './mensaje/mensaje.module';
 import { ContratoClienteModule } from './contrato-cliente/contrato-cliente.module';
 import { MikroTikModule } from './mikro-tik/mikro-tik.module';
+import { TwilioApiModule } from './twilio-api/twilio-api.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { MikroTikModule } from './mikro-tik/mikro-tik.module';
     MensajeModule,
     ContratoClienteModule,
     MikroTikModule,
+    TwilioApiModule,
   ],
   controllers: [AppController],
   providers: [AppService],
