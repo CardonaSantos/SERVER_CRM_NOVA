@@ -5,8 +5,12 @@ import {
   DefaultValuePipe,
   ParseIntPipe,
   ParseEnumPipe,
+  Param,
+  Res, //Este es diferente del de Express
 } from '@nestjs/common';
-import { TwilioApiService } from './twilio-api.service';
+import { Response } from 'express';
+
+import { TwilioApiService, TwilioHistory } from './twilio-api.service';
 import { FiltersDto, MessageStatus } from './dto/FilterDto';
 
 @Controller('twilio-api')
@@ -21,12 +25,10 @@ export class TwilioApiController {
     @Query('to') to?: string,
     @Query('dateAfter') dateAfter?: string,
     @Query('dateBefore') dateBefore?: string,
-
-    // ← Aquí marcamos el ParseEnumPipe como opcional:
     @Query('status', new ParseEnumPipe(MessageStatus, { optional: true }))
     status?: MessageStatus,
-  ) {
-    return this.twilioApiService.listMessages({
+  ): Promise<TwilioHistory> {
+    const filters: FiltersDto = {
       limit,
       pageToken,
       from,
@@ -34,6 +36,27 @@ export class TwilioApiController {
       dateAfter,
       dateBefore,
       status,
-    });
+    };
+    return this.twilioApiService.listMessages(filters);
+  }
+
+  /**
+   * Devuelve metadata de todos los medios adjuntos a un mensaje
+   */
+  @Get('messages/:sid/media')
+  async listMedia(@Param('sid') sid: string) {
+    return this.twilioApiService.getMessageMedia(sid);
+  }
+
+  /**
+   * Stream del contenido binario de un medio específico
+   */
+  @Get('messages/:sid/media/:mediaSid')
+  async serveMedia(
+    @Param('sid') sid: string,
+    @Param('mediaSid') mediaSid: string,
+    @Res() res: Response,
+  ) {
+    await this.twilioApiService.streamMedia(sid, mediaSid, res);
   }
 }
