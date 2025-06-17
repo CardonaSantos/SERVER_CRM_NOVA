@@ -28,6 +28,8 @@ import { MensajeModule } from './mensaje/mensaje.module';
 import { ContratoClienteModule } from './contrato-cliente/contrato-cliente.module';
 import { MikroTikModule } from './mikro-tik/mikro-tik.module';
 import { TwilioApiModule } from './twilio-api/twilio-api.module';
+import { MetasTicketsModule } from './metas-tickets/metas-tickets.module';
+import { MetricasTicketsModule } from './metricas-tickets/metricas-tickets.module';
 
 @Module({
   imports: [
@@ -62,6 +64,8 @@ import { TwilioApiModule } from './twilio-api/twilio-api.module';
     ContratoClienteModule,
     MikroTikModule,
     TwilioApiModule,
+    MetasTicketsModule,
+    MetricasTicketsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

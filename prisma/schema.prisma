@@ -334,9 +334,9 @@ model FacturaInternet {
   creador    Usuario? @relation(fields: [creadorId], references: [id], onDelete: SetNull, name: "FacturaInternetCreador")
 
   // periodo String? @db.VarChar(6)  // Nullable de momento
-  periodo String? @db.VarChar(6)
-  // periodo String   @db.VarChar(6)
-  // @@unique([clienteId, facturacionZonaId, periodo])
+  // periodo String? @db.VarChar(6)
+  periodo String   @db.VarChar(6)
+  @@unique([clienteId, facturacionZonaId, periodo])
 }
 
 enum StateFacturaInternet {
@@ -642,10 +642,41 @@ model TicketSoporte {
   etiquetas TicketEtiqueta[]
   //CAMPOS PARA GRAFICOS
   fechaApertura DateTime @default(now())  // Fecha de apertura del ticket
+
+  fechaAsignacion  DateTime? // Cuándo se asignó al técnico
+  fechaInicioAtencion DateTime? // Cuando el técnico realmente comenzó a trabajar
+  fechaResolucionTecnico DateTime? // Cuando el técnico marcó como “resuelto”
+
   fechaCierre   DateTime? // Fecha de cierre del ticket
 
   //para la boleta
   boleta      BoletaSoporte?
+}
+
+model MetaTecnicoTicket {
+  id                Int       @id @default(autoincrement())
+  tecnicoId         Int       // Relación al usuario/técnico
+  tecnico           Usuario   @relation(fields: [tecnicoId], references: [id], onDelete: Cascade, name: "MetaTecnicoRelation")
+  
+  fechaInicio       DateTime  @default(now())    // Inicio del periodo
+  fechaFin          DateTime                     // Fin del periodo (ej. fin de mes)
+  
+  metaTickets       Int       // Objetivo: número de tickets a resolver
+  ticketsResueltos  Int       @default(0)        // Contador actual
+  cumplida          Boolean   @default(false)    // Se marcara true cuando ticketsResueltos >= metaTickets
+  fechaCumplida     DateTime?                    // Cuándo se alcanzó la meta, si aplica
+  
+  titulo            String?  // (Opcional) descripción corta de la meta
+  estado            EstadoMetaTicket             // Ej. PENDIENTE, EN_CURSO, CUMPLIDA, VENCIDA
+
+  @@index([tecnicoId, fechaInicio, fechaFin])
+}
+
+enum EstadoMetaTicket {
+  CANCELADO
+  ABIERTO
+  FINALIZADO
+  CERRADO
 }
 
 model BoletaSoporte {
@@ -719,6 +750,9 @@ model Usuario {
   ticketsAsignados TicketSoporte[] @relation("TicketTecnico")
   // Relación con tickets donde el usuario creó el ticket
   ticketsCreados   TicketSoporte[] @relation("TicketCreador")
+
+  // Relación con metas técnicas asignadas al usuario
+  metasTecnico     MetaTecnicoTicket[] @relation("MetaTecnicoRelation")
   //usuarios que pueden comentar los tickets
   SeguimientoTicket SeguimientoTicket[]
   //referencia a los clientes que le dimos asesoramiento, o bien que fueron creados por nosotros
