@@ -12,6 +12,7 @@ import { updateCustomerService } from './dto/update-customer-service';
 import { ClienteInternet, Prisma } from '@prisma/client';
 import * as dayjs from 'dayjs';
 import { IdContratoService } from 'src/id-contrato/id-contrato.service';
+import { periodoFrom } from 'src/facturacion/Utils';
 
 const formatearFecha = (fecha: string) => {
   // Formateo en UTC sin conversión a local
@@ -156,8 +157,11 @@ export class ClienteInternetService {
       const fechaPrimerPagoInicial = dayjs().date(fechaPrimerPago);
       const siguientePago = fechaPrimerPagoInicial.add(1, 'month');
 
+      const periodo = periodoFrom(fechaPrimerPagoInicial.toDate()); // o la fecha que uses
+      console.log('El periodo generando es: ', periodo);
       const newFacturaInternetPrimerPago = await prisma.facturaInternet.create({
         data: {
+          periodo: periodo,
           fechaPagoEsperada: fechaPrimerPagoInicial.toDate(),
           montoPago: servicioClienteInternet.precio,
           saldoPendiente: servicioClienteInternet.precio,
@@ -387,10 +391,11 @@ export class ClienteInternetService {
     });
   }
 
-  // Obtener un cliente con todas sus relaciones
-
-  // Obtener un cliente con todas sus relaciones
-  // Obtener un cliente con todas sus relaciones
+  /**
+   * Obtiene un cliente con todas sus relaciones y sus facturas.
+   * @param clienteInternetId El ID del cliente a buscar.
+   * @returns Un objeto con los datos del cliente y sus relaciones (facturas, pagos, tickets…).
+   */
   async getDetallesClienteInternet2(clienteInternetId: number) {
     try {
       const clienteInternetWithRelations =
@@ -432,7 +437,15 @@ export class ClienteInternetService {
             },
             facturaInternet: {
               select: {
+                //AHORA LLAMO AL COBRADOR
                 id: true,
+                creador: {
+                  select: {
+                    id: true,
+                    nombre: true,
+                    rol: true,
+                  },
+                },
                 montoPago: true,
                 creadoEn: true,
                 fechaPagoEsperada: true,
@@ -444,10 +457,12 @@ export class ClienteInternetService {
                     montoPagado: true,
                     metodoPago: true,
                     fechaPago: true,
+                    //AHORA LLAMO AL COBRADOR
                     cobrador: {
                       select: {
                         id: true,
                         nombre: true,
+                        rol: true,
                       },
                     },
                   },
@@ -624,6 +639,13 @@ export class ClienteInternetService {
             fechaVencimiento: factura.fechaPagoEsperada,
             pagada: factura.estadoFacturaInternet === 'PAGADA' ? true : false,
             estado: factura.estadoFacturaInternet, //ESTADO DE LA FACTURA
+            creador: factura.creador
+              ? {
+                  id: factura.creador.id,
+                  nombre: factura.creador.nombre,
+                  rol: factura.creador.rol,
+                }
+              : null,
             pagos: factura.pagos.map((pago) => ({
               fechaPago: pago.fechaPago,
               metodoPago: pago.metodoPago,
@@ -632,6 +654,7 @@ export class ClienteInternetService {
                 ? {
                     id: pago.cobrador.id,
                     nombreCobrador: pago.cobrador.nombre,
+                    rol: pago.cobrador.rol,
                   }
                 : null,
             })),

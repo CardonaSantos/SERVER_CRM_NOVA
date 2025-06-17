@@ -13,6 +13,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { DatosFacturaGenerate, DatosFacturaGenerateIndividual } from '../utils';
 import { EstadoCliente } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
+import { periodoFrom } from 'src/facturacion/Utils';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
@@ -50,8 +51,12 @@ export class GenerarFacturaService {
         return facturaExistente;
       }
 
+      const periodo = periodoFrom(dataFactura.fechaPagoEsperada); // o la fecha que uses
+      console.log('El periodo generando es: ', periodo);
+
       const newFactura = await this.prisma.facturaInternet.create({
         data: {
+          periodo: periodo,
           fechaPagoEsperada: dayjs(dataFactura.fechaPagoEsperada).toDate(),
           montoPago: dataFactura.montoPago,
           saldoPendiente: dataFactura.saldoPendiente,

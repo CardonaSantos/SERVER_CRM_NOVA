@@ -1,6 +1,7 @@
 import * as dayjs from 'dayjs';
 import * as utc from 'dayjs/plugin/utc';
 import * as timezone from 'dayjs/plugin/timezone';
+import { EstadoCliente, StateFacturaInternet } from '@prisma/client';
 // Extiende dayjs con los plugins
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -66,4 +67,38 @@ export interface DatosFacturaGenerateIndividual {
   facturacionZona: number; // id de la zona de facturación
   nombreClienteFactura: string; // nombre completo para mostrar en la factura
   numerosTelefono?: string[]; // opcional, lista de números de teléfono asociados
+}
+
+//ACTUALIZAR SALDO Y ESTADO DE FACTURAS:
+//  await this.prisma.saldoCliente.update({
+//         where: { clienteId: newFactura.clienteId },
+//         data: { saldoPendiente: { increment: newFactura.montoPago } },
+//       });
+
+// const facturasPendientes = await this.prisma.facturaInternet.findMany({
+//   where: {
+//     clienteId: newFactura.clienteId,
+//     estadoFacturaInternet: {
+//       in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'],
+//     },
+//   },
+// });
+/* ---------- helpers.ts (exportables) ------------- */
+export const PENDIENTES_ENUM: StateFacturaInternet[] = [
+  'PENDIENTE',
+  'PARCIAL',
+  'VENCIDA',
+];
+
+export function getEstadoCliente(pend: number): EstadoCliente {
+  switch (pend) {
+    case 0:
+      return 'ACTIVO';
+    case 1:
+      return 'PENDIENTE_ACTIVO';
+    case 2:
+      return 'ATRASADO';
+    default:
+      return 'MOROSO';
+  }
 }

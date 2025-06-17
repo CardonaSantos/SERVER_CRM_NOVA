@@ -109,26 +109,18 @@ model FacturacionZona {
   nombre          String   // Nombre de la zona (Ej: "Jacaltenango Corte 5")
   empresaId       Int
   empresa         Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-
   enviarRecordatorioGeneracion   Boolean @default(true)
   diaGeneracionFactura  Int  // Día del mes en que se genera la factura#GENERO UNA NOTI
-
   enviarRecordatorio1   Boolean @default(true)
   diaRecordatorio       Int?  // Día del mes en que se envía el recordatorio# GENERO UNA NOTI
-
   enviarRecordatorio2   Boolean @default(true)
   diaSegundoRecordatorio Int?  // Día del mes en que se envia el segundo recordatorio# GENERO UNA NOTI
-
   enviarAvisoPago       Boolean @default(true)
   diaPago               Int  // Día del mes en que se espera el pago# GENERO UNA NOTI
-
   horaRecordatorio      String? // Hora específica para enviar la notificación (ej: "08:00:00")#NO VALIDO POR EL MOMENTO
-
   suspenderTrasFacturas Int? // Cantidad de facturas vencidas antes de cortar servicio
   enviarSiTieneFacturasVencidas  Boolean @default(false)
-
   enviarRecordatorio    Boolean @default(true)
-
   whatsapp Boolean      @default(true)
   email Boolean         @default(false)
   sms Boolean           @default(false)
@@ -316,7 +308,7 @@ model PagoFactura {
 
   creadoEn      DateTime @default(now())
 }
-//ESTO ES LO QUE SE GENERARÁ Y MATARÁ
+
 model FacturaInternet {
   id                Int       @id @default(autoincrement())
   fechaPagoEsperada DateTime? //[EDITABLE] 
@@ -325,26 +317,26 @@ model FacturaInternet {
   saldoPendiente    Float? @default(0)  // Nuevo campo: lo que queda por pagar [EDITABLE]
   empresaId         Int
   empresa           Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  // metodoPago        MetodoPagoFacturaInternet//PARA EL ESTADO DEL PAGO [quitarlo]
   clienteId         Int
   cliente           ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   estadoFacturaInternet StateFacturaInternet @default(PENDIENTE)//ESTADO DE LA FACTURA, PENDIENTE, ETC. NO REFIRIENDOSE AL PAGO
   pagos             PagoFacturaInternet[]  // Relación 1:N, puede tener múltiples pagos
   creadoEn          DateTime @default(now())
   actualizadoEn     DateTime @updatedAt
-  //CAMPOS PARA QUE PUEDAN EDITAR LA FACTURA
   nombreClienteFactura     String?
   detalleFactura           String?
-  //
-  facturacionZonaId Int? // 🔹 Hacerlo opcional para permitir `NULL`
+  facturacionZonaId Int? 
   facturacionZona   FacturacionZona? @relation(fields: [facturacionZonaId], references: [id], onDelete: SetNull)
-  //ARRAY DE RECORDATORIOS
   RecordatorioPago RecordatorioPago[]
-  // estadoFacturaInternet StateFacturaInternet
-
-  // Factura Factura[] @relation("ServiciosPorInternet")
-    // ← Aquí expones el array inverso
   serviciosAdicionales Factura[] @relation("ServiciosPorInternet")
+  //Creador de la factura
+  creadorId  Int?
+  creador    Usuario? @relation(fields: [creadorId], references: [id], onDelete: SetNull, name: "FacturaInternetCreador")
+
+  // periodo String? @db.VarChar(6)  // Nullable de momento
+  periodo String? @db.VarChar(6)
+  // periodo String   @db.VarChar(6)
+  // @@unique([clienteId, facturacionZonaId, periodo])
 }
 
 enum StateFacturaInternet {
@@ -406,12 +398,9 @@ model PagoFacturaInternet {
   metodoPago    MetodoPagoFacturaInternet  
   fechaPago     DateTime  @default(now())
   creadoEn      DateTime @default(now())
-  // Relación con el cobrador
-  
   // Hacer cobrador opcional
   cobradorId         Int?
   cobrador           Usuario? @relation(fields: [cobradorId], references: [id])
-  //NUMERO DE BOLETA
   numeroBoleta String? @unique // Campo único solo cuando se proporciona
 }
 
@@ -717,7 +706,6 @@ model Usuario {
   id              Int       @id @default(autoincrement())
   empresaId       Int       // Relación con la empresa
   empresa         Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  // sucursalId      Int?      // Relación opcional con una sucursal
   nombre          String
   correo          String @unique
   contrasena      String
@@ -733,19 +721,18 @@ model Usuario {
   ticketsCreados   TicketSoporte[] @relation("TicketCreador")
   //usuarios que pueden comentar los tickets
   SeguimientoTicket SeguimientoTicket[]
-
   //referencia a los clientes que le dimos asesoramiento, o bien que fueron creados por nosotros
   clientesAsesorados  ClienteInternet[]
-
   //Registros de caja chica
   RegistroCaja RegistroCaja[]
-
   //PUEDE TENER VARIAS METAS ASIGNADAS
   MetaTickets MetaTickets[]
   //un usuario puede haber pagado varias facturas
   PagoFacturaInternet PagoFacturaInternet[]
-//puede tener varias boletas generadas
+  //puede tener varias boletas generadas
   BoletaSoporte BoletaSoporte[]
+  // Relación con facturas creadas por el usuario
+  facturasCreadas FacturaInternet[] @relation("FacturaInternetCreador")
 }
 
 model MetaTickets {

@@ -7,6 +7,7 @@ import * as csv from 'csvtojson';
 import * as dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
+import { periodoFrom } from 'src/facturacion/Utils';
 
 @Injectable()
 export class CustomerPayloadService {
@@ -269,8 +270,11 @@ export class CustomerPayloadService {
       estadoFactura = 'PARCIAL';
     }
 
+    const periodo = periodoFrom(fechaPagoEsperada); // o la fecha que uses
+    console.log('El periodo generando es: ', periodo);
     const factura = await this.prisma.facturaInternet.create({
       data: {
+        periodo: periodo,
         creadoEn: new Date(),
         fechaPagoEsperada,
         montoPago: cliente.servicioInternet.precio,

@@ -1,6 +1,9 @@
-import { IsInt } from 'class-validator';
+import { IsInt, IsOptional } from 'class-validator';
 
 export class GenerateFactura {
+  @IsInt()
+  @IsOptional()
+  creadorId: number;
   @IsInt()
   clienteId: number;
   @IsInt()

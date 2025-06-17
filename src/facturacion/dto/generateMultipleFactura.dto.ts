@@ -1,6 +1,9 @@
-import { IsInt } from 'class-validator';
+import { IsInt, IsOptional } from 'class-validator';
 
 export class GenerateFacturaMultipleDto {
+  @IsInt()
+  @IsOptional()
+  creadorId: number;
   @IsInt()
   mesInicio: number;
   @IsInt()

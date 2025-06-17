@@ -51,6 +51,9 @@ export class FacturacionController {
     );
   }
 
+  //**
+  // Generar una factura manualmente
+  // */
   @Post('/generate-factura-internet')
   generateFacturaInternet(@Body() createGenerateFactura: GenerateFactura) {
     return this.facturacionService.generateFacturaInternet(
@@ -58,6 +61,9 @@ export class FacturacionController {
     );
   }
 
+  //**
+  // Generar facturas manualmente
+  // */
   @Post('/generate-factura-internet-multiple')
   generateFacturaMultiple(
     @Body() createFacturaMultipleDto: GenerateFacturaMultipleDto,
@@ -66,7 +72,7 @@ export class FacturacionController {
       createFacturaMultipleDto,
     );
   }
-  //reemplazar todo esto
+
   @Get()
   findAll() {
     return this.facturacionService.findAll();

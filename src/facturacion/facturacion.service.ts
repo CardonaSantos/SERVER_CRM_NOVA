@@ -16,11 +16,15 @@ import { GenerateFactura } from './dto/generateFactura.dto';
 import 'dayjs/locale/es'; // Carga el idioma español
 import { GenerateFacturaMultipleDto } from './dto/generateMultipleFactura.dto';
 import { DeleteFacturaDto } from './dto/delete-one-factura.dto';
-
+import {
+  ConflictException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import * as utc from 'dayjs/plugin/utc';
 import * as timezone from 'dayjs/plugin/timezone';
 import { log } from 'console';
 import { UpdateFacturaDto } from './dto/update-factura.dto';
+import { periodoFrom } from './Utils';
 
 // Extiende dayjs con los plugins
 dayjs.extend(utc);
@@ -225,10 +229,13 @@ export class FacturacionService {
     } catch (error) {}
   }
 
+  /**
+   *
+   * @param id Solicita el id de la factura
+   * @returns Retorna la factura del cliente, con otros datos para su pago
+   */
   async findOneFacturaWithPayments(id: number) {
     try {
-      console.log('El id es: ', id);
-
       const dataToSelect = {
         id: true,
         montoPago: true,
@@ -270,13 +277,20 @@ export class FacturacionService {
             },
           },
         },
-
+        creador: {
+          select: {
+            id: true,
+            nombre: true,
+            rol: true,
+          },
+        },
         pagos: {
           select: {
             cobrador: {
               select: {
                 id: true,
                 nombre: true,
+                rol: true,
               },
             },
             montoPagado: true,
@@ -322,6 +336,13 @@ export class FacturacionService {
 
       // Procesamos la factura para que coincida con la estructura deseada
       const resultado = {
+        creador: factura.creador
+          ? {
+              id: factura.creador.id,
+              nombre: factura.creador.nombre,
+              rol: factura.creador.rol,
+            }
+          : null,
         id: factura.id,
         fechaPagoEsperada: factura.fechaPagoEsperada?.toISOString() || null,
         fechaPagada: factura.fechaPagada, // Asumimos que aún no ha sido pagada, ajusta según tu lógica
@@ -365,7 +386,13 @@ export class FacturacionService {
         },
         estadoFacturaInternet: factura.estadoFacturaInternet,
         pagos: factura.pagos.map((pago) => ({
-          cobrador: pago.cobrador ? pago.cobrador.nombre : null,
+          cobrador: pago.cobrador
+            ? {
+                id: pago.cobrador.id,
+                nombre: pago.cobrador.nombre,
+                rol: pago.cobrador.rol,
+              }
+            : null,
           montoPagado: pago.montoPagado,
           metodoPago: pago.metodoPago,
           fechaPago: pago.fechaPago.toISOString(),
@@ -862,10 +889,12 @@ export class FacturacionService {
     }
   }
 
-  //GENERAR MANUALMENTE UNA FACTURA DE INTERNET, FUTURA O PASADA
+  /**
+   *
+   * @param createGenerateFactura
+   * @returns Una factura generada manualmente
+   */
   async generateFacturaInternet(createGenerateFactura: GenerateFactura) {
-    console.log('La data es  : ', createGenerateFactura);
-
     const cliente = await this.prisma.clienteInternet.findUnique({
       where: {
         id: createGenerateFactura.clienteId,
@@ -927,6 +956,8 @@ export class FacturacionService {
       .format('MMMM YYYY'); // Obtiene el nombre del mes y el año
 
     const detalleFactura = `Pago por suscripción mensual al servicio de internet, plan ${cliente.servicioInternet.nombre} (${cliente.servicioInternet.velocidad}), precio: ${cliente.servicioInternet.precio} Fecha: ${cliente.facturacionZona.diaPago} de ${mesNombre}`;
+    const periodo = periodoFrom(dataFactura.fechaPagoEsperada); // o la fecha que uses
+    console.log('El periodo generando es: ', periodo);
 
     try {
       // Iniciamos la transacción
@@ -934,6 +965,7 @@ export class FacturacionService {
         // Creamos la factura
         const newFacturaInternet = await prisma.facturaInternet.create({
           data: {
+            periodo: periodo,
             creadoEn: dayjs().format(),
             fechaPagoEsperada: dayjs(dataFactura.fechaPagoEsperada)
               .month(createGenerateFactura.mes - 1)
@@ -944,6 +976,14 @@ export class FacturacionService {
             cliente: {
               connect: { id: dataFactura.cliente },
             },
+            creador: createGenerateFactura.creadorId
+              ? {
+                  connect: {
+                    id: createGenerateFactura.creadorId,
+                  },
+                }
+              : undefined,
+
             facturacionZona: {
               connect: { id: dataFactura.facturacionZona },
             },
@@ -1015,135 +1055,181 @@ export class FacturacionService {
       });
 
       // Si la transacción es exitosa, mostramos el resultado
-      console.log('La factura creada es: ', result);
-    } catch (error) {
-      // Si hay un error, lo capturamos y mostramos
-      console.error(
-        'Error al generar la factura o actualizar el cliente:',
-        error,
-      );
+      this.logger.debug('La factura creada es: ', result);
+    } catch (err) {
+      // ↙︎  Atrapar duplicado
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        // Opcional: consultar la factura existente y devolverla
+
+        throw new ConflictException({
+          message:
+            'Ya existe una factura para ese mes. No se permiten duplicados',
+        });
+      }
+      //  Cualquier otro error se propaga
+      throw err;
     }
   }
-  //GENERAR MANUALMENTE MULTIPLES FACTURAS
+
+  //**
+  // Generar facturas multiples manualmente
+  // */
   async generateFacturaMultiple(
     createFacturaMultipleDto: GenerateFacturaMultipleDto,
   ) {
-    const { mesInicio, mesFin, anio, clienteId } = createFacturaMultipleDto;
-    console.log('La data llegando es: ', mesInicio, mesFin, anio, clienteId);
+    try {
+      const { mesInicio, mesFin, anio, clienteId } = createFacturaMultipleDto;
+      console.log('La data llegando es: ', createFacturaMultipleDto);
 
-    const cliente = await this.prisma.clienteInternet.findUnique({
-      where: {
-        id: clienteId,
-      },
-      select: {
-        id: true,
-        empresaId: true,
-        facturacionZona: {
-          select: {
-            id: true,
-            diaPago: true,
+      const cliente = await this.prisma.clienteInternet.findUnique({
+        where: {
+          id: clienteId,
+        },
+        select: {
+          id: true,
+          empresaId: true,
+          facturacionZona: {
+            select: {
+              id: true,
+              diaPago: true,
+            },
           },
-        },
-        servicioInternet: {
-          select: {
-            id: true,
-            nombre: true,
-            velocidad: true,
-            precio: true,
-          },
-        },
-      },
-    });
-
-    const facturas = [];
-
-    for (let mes = mesInicio; mes <= mesFin; mes++) {
-      const fechaPagoEsperada = dayjs()
-        .year(anio)
-        .month(mes - 1) // Ajustamos el mes para que sea 0-indexed
-        .date(cliente.facturacionZona.diaPago)
-        .tz('America/Guatemala', true) // Establece la zona horaria de Guatemala
-        // .format('YYYY-MM-DD');
-        .format(); // Esto generará la fecha en formato ISO 8601 (sin zona horaria explícita)
-
-      const mesNombre = dayjs()
-        .month(mes - 1)
-        .year(anio)
-        .format('MMMM YYYY'); // Obtiene el nombre del mes y el año
-
-      const detalleFactura = `Pago por suscripción mensual al servicio de internet, plan ${cliente.servicioInternet.nombre} (${cliente.servicioInternet.velocidad}), precio: ${cliente.servicioInternet.precio} Fecha: ${cliente.facturacionZona.diaPago} de ${mesNombre}`;
-      //nuevo ajuste
-      const nuevaFactura = await this.prisma.facturaInternet.create({
-        data: {
-          fechaPagoEsperada: fechaPagoEsperada,
-          montoPago: cliente.servicioInternet.precio,
-          saldoPendiente: cliente.servicioInternet.precio,
-          estadoFacturaInternet: 'PENDIENTE',
-          clienteId: clienteId,
-          facturacionZonaId: cliente.facturacionZona.id,
-          detalleFactura: detalleFactura,
-          empresaId: cliente.empresaId,
-        },
-      });
-
-      facturas.push(nuevaFactura);
-    }
-
-    const facturasPendientes = await this.prisma.facturaInternet.findMany({
-      where: {
-        clienteId,
-        estadoFacturaInternet: {
-          in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'],
-        },
-      },
-    });
-
-    const estadoPendiente = facturasPendientes.length;
-    let estadoCliente: EstadoCliente;
-
-    switch (estadoPendiente) {
-      case 0:
-        estadoCliente = 'ACTIVO';
-        break;
-
-      case 1:
-        estadoCliente = 'PENDIENTE_ACTIVO';
-        break;
-
-      case 2:
-        estadoCliente = 'ATRASADO';
-        break;
-
-      case 3:
-        estadoCliente = 'MOROSO';
-        break;
-
-      default:
-        break;
-    }
-
-    const newSaldo = await this.prisma.clienteInternet.update({
-      where: {
-        id: cliente.id,
-      },
-      data: {
-        estadoCliente: estadoCliente,
-        saldoCliente: {
-          update: {
-            saldoPendiente: {
-              increment: facturas.reduce(
-                (acc, factura) => acc + factura.montoPago,
-                0,
-              ),
+          servicioInternet: {
+            select: {
+              id: true,
+              nombre: true,
+              velocidad: true,
+              precio: true,
             },
           },
         },
-      },
-    });
+      });
 
-    console.log('el nuevo saldo es: ', newSaldo);
+      const facturas = [];
 
-    return facturas;
+      for (let mes = mesInicio; mes <= mesFin; mes++) {
+        const fechaPagoEsperada = dayjs()
+          .year(anio)
+          .month(mes - 1) // Ajustamos el mes para que sea 0-indexed
+          .date(cliente.facturacionZona.diaPago)
+          .tz('America/Guatemala', true) // Establece la zona horaria de Guatemala
+          // .format('YYYY-MM-DD');
+          .format(); // Esto generará la fecha en formato ISO 8601 (sin zona horaria explícita)
+
+        const mesNombre = dayjs()
+          .month(mes - 1)
+          .year(anio)
+          .format('MMMM YYYY'); // Obtiene el nombre del mes y el año
+
+        const detalleFactura = `Pago por suscripción mensual al servicio de internet, plan ${cliente.servicioInternet.nombre} (${cliente.servicioInternet.velocidad}), precio: ${cliente.servicioInternet.precio} Fecha: ${cliente.facturacionZona.diaPago} de ${mesNombre}`;
+        //nuevo ajuste
+        const periodo = periodoFrom(fechaPagoEsperada); // o la fecha que uses
+        console.log('El periodo generando es: ', periodo);
+
+        const nuevaFactura = await this.prisma.facturaInternet.create({
+          data: {
+            periodo: periodo,
+            fechaPagoEsperada: fechaPagoEsperada,
+            montoPago: cliente.servicioInternet.precio,
+            saldoPendiente: cliente.servicioInternet.precio,
+            estadoFacturaInternet: 'PENDIENTE',
+            detalleFactura: detalleFactura,
+            cliente: {
+              connect: { id: clienteId },
+            },
+            facturacionZona: {
+              connect: { id: cliente.facturacionZona.id },
+            },
+            empresa: {
+              connect: { id: cliente.empresaId },
+            },
+            creador: createFacturaMultipleDto.creadorId
+              ? {
+                  connect: {
+                    id: createFacturaMultipleDto.creadorId,
+                  },
+                }
+              : undefined,
+          },
+        });
+
+        this.logger.debug('La factura generada es: ', nuevaFactura);
+
+        facturas.push(nuevaFactura);
+      }
+
+      const facturasPendientes = await this.prisma.facturaInternet.findMany({
+        where: {
+          clienteId,
+          estadoFacturaInternet: {
+            in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'],
+          },
+        },
+      });
+
+      const estadoPendiente = facturasPendientes.length;
+      let estadoCliente: EstadoCliente;
+
+      switch (estadoPendiente) {
+        case 0:
+          estadoCliente = 'ACTIVO';
+          break;
+
+        case 1:
+          estadoCliente = 'PENDIENTE_ACTIVO';
+          break;
+
+        case 2:
+          estadoCliente = 'ATRASADO';
+          break;
+
+        case 3:
+          estadoCliente = 'MOROSO';
+          break;
+
+        default:
+          break;
+      }
+
+      const newSaldo = await this.prisma.clienteInternet.update({
+        where: {
+          id: cliente.id,
+        },
+        data: {
+          estadoCliente: estadoCliente,
+          saldoCliente: {
+            update: {
+              saldoPendiente: {
+                increment: facturas.reduce(
+                  (acc, factura) => acc + factura.montoPago,
+                  0,
+                ),
+              },
+            },
+          },
+        },
+      });
+
+      console.log('el nuevo saldo es: ', newSaldo);
+
+      return facturas;
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        // Opcional: consultar la factura existente y devolverla
+
+        throw new ConflictException({
+          message: 'Se detectó una factura duplicada',
+        });
+      }
+      //  Cualquier otro error se propaga
+      throw err;
+    }
   }
   //DESCONOCIDO??
   async generarFacturasInternet(clienteId: number) {
@@ -1199,9 +1285,11 @@ export class FacturacionService {
     const mesNombre = dayjs().format('MMMM YYYY'); // Obtiene el mes y el año de la fecha actual
 
     const detalleFactura = `Pago por suscripción mensual al servicio de internet, plan ${cliente.servicioInternet.nombre} (${cliente.servicioInternet.velocidad}), precio: ${cliente.servicioInternet.precio} Fecha: ${cliente.facturacionZona.diaPago} de ${mesNombre}`;
-
+    const periodo = periodoFrom(dataFactura.fechaPagoEsperada); // o la fecha que uses
+    console.log('El periodo generando es: ', periodo);
     const newFacturaInternet = await this.prisma.facturaInternet.create({
       data: {
+        periodo: periodo,
         fechaPagoEsperada: dayjs(dataFactura.fechaPagoEsperada).toDate(),
         montoPago: dataFactura.montoPago,
         saldoPendiente: dataFactura.saldoPendiente,
