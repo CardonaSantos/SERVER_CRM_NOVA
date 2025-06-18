@@ -60,6 +60,11 @@ export class UserController {
     return this.userService.getTecnicosToTicket();
   }
 
+  @Get('/get-users-to-meta-support')
+  getUsersToMeta() {
+    return this.userService.getUsersToMeta();
+  }
+
   @Get('/set-saldo-0/:id')
   setSaldo0(@Param('id') id: string) {
     return this.userService.setSaldo0(+id);

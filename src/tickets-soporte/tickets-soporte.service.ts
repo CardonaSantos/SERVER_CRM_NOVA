@@ -1,6 +1,7 @@
 import {
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { CreateTicketsSoporteDto } from './dto/create-tickets-soporte.dto';
@@ -8,12 +9,15 @@ import { UpdateTicketsSoporteDto } from './dto/update-tickets-soporte.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CloseTicketDto } from './dto/CloseTicketDto .dto';
 import { GenerarMensajeSoporteService } from './generar-mensaje-soporte/generar-mensaje-soporte.service';
+import { MetasTicketsService } from 'src/metas-tickets/metas-tickets.service';
 
 @Injectable()
 export class TicketsSoporteService {
+  private readonly logger = new Logger(TicketsSoporteService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly twilioMessageSuport: GenerarMensajeSoporteService,
+    private readonly metasTicketSoporte: MetasTicketsService,
   ) {}
   //Crear ticket soporte
   async create(createTicketsSoporteDto: CreateTicketsSoporteDto) {
@@ -207,6 +211,12 @@ export class TicketsSoporteService {
     });
   }
 
+  /**
+   *
+   * @param id Id del ticket a cerrar
+   * @param dto comentario, ticketId e id del usuario que cerró
+   * @returns
+   */
   async closeTickets(id: number, dto: CloseTicketDto) {
     try {
       const ticketToClose = await this.prisma.ticketSoporte.findUnique({
@@ -261,6 +271,11 @@ export class TicketsSoporteService {
           usuario: { connect: { id: dto.usuarioId } },
         },
       });
+
+      if (ticketClosed.tecnicoId) {
+        this.logger.debug('Incrementando resueltos en meta');
+        await this.metasTicketSoporte.incrementMeta(ticketClosed.tecnicoId);
+      }
 
       return {
         message: 'Ticket cerrado con éxito',

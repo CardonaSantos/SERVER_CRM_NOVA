@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { MetasTicketsService } from './metas-tickets.service';
 import { CreateMetasTicketDto } from './dto/create-metas-ticket.dto';
 import { UpdateMetasTicketDto } from './dto/update-metas-ticket.dto';
@@ -17,13 +25,21 @@ export class MetasTicketsController {
     return this.metasTicketsService.findAll();
   }
 
+  @Get('/tickets-for-metricas')
+  getMetricasTickets() {
+    return this.metasTicketsService.getMetricasTicketsMes();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.metasTicketsService.findOne(+id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateMetasTicketDto: UpdateMetasTicketDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateMetasTicketDto: UpdateMetasTicketDto,
+  ) {
     return this.metasTicketsService.update(+id, updateMetasTicketDto);
   }
 

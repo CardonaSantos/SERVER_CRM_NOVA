@@ -629,6 +629,8 @@ model TicketSoporte {
   tecnicoId       Int?      // Técnico asignado
   tecnico         Usuario?  @relation("TicketTecnico", fields: [tecnicoId], references: [id], onDelete: SetNull)
 
+  asignaciones               TicketSoporteTecnico[]   // nueva relación M–N
+
   creadoPorId     Int?      // Usuario que creó el ticket
   creadoPor       Usuario?  @relation("TicketCreador", fields: [creadoPorId], references: [id], onDelete: SetNull)
 
@@ -648,10 +650,25 @@ model TicketSoporte {
   fechaResolucionTecnico DateTime? // Cuando el técnico marcó como “resuelto”
 
   fechaCierre   DateTime? // Fecha de cierre del ticket
-
   //para la boleta
   boleta      BoletaSoporte?
 }
+
+
+model TicketSoporteTecnico {
+  id         Int            @id @default(autoincrement())
+  ticketId   Int
+  tecnicoId  Int
+  creadoEn   DateTime       @default(now())
+  actualizadoEn   DateTime       @updatedAt()
+
+  ticket     TicketSoporte  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  tecnico    Usuario        @relation(fields: [tecnicoId], references: [id], onDelete: Cascade)
+
+  @@unique([ticketId, tecnicoId])
+  @@index([tecnicoId])
+}
+
 
 model MetaTecnicoTicket {
   id                Int       @id @default(autoincrement())
@@ -669,8 +686,32 @@ model MetaTecnicoTicket {
   titulo            String?  // (Opcional) descripción corta de la meta
   estado            EstadoMetaTicket             // Ej. PENDIENTE, EN_CURSO, CUMPLIDA, VENCIDA
 
+  creadoEn DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
   @@index([tecnicoId, fechaInicio, fechaFin])
 }
+
+model Asistencia {
+  id            Int       @id @default(autoincrement())
+  usuarioId     Int
+  usuario       Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade, name: "UsuarioAsistencias")
+
+  fecha         DateTime  // Solo la fecha (sin hora), p. ej. 2025-07-15
+  horaEntrada   DateTime  // Marca de entrada real
+  horaSalida    DateTime? // Marca de salida (opcional si falta cerrar)
+
+  // Campos opcionales de cálculo/pre­cómputo
+  minutosTarde  Int?      // (horaEntrada – horaProgramada) en minutos, >0 si llegó tarde
+  trabajoCompleto Boolean @default(false) // true si registra entrada y salida
+
+  @@unique([usuarioId, fecha])
+  @@index([usuarioId, fecha])
+
+  creadoEn DateTime? @default(now())
+  actualizadoEn DateTime @updatedAt
+}
+
 
 enum EstadoMetaTicket {
   CANCELADO
@@ -767,6 +808,11 @@ model Usuario {
   BoletaSoporte BoletaSoporte[]
   // Relación con facturas creadas por el usuario
   facturasCreadas FacturaInternet[] @relation("FacturaInternetCreador")
+  //
+  asistencias  Asistencia[]  @relation("UsuarioAsistencias")
+   
+  ticketsSoporteTecnico   TicketSoporteTecnico[] // Back-reference for tecnico
+
 }
 
 model MetaTickets {

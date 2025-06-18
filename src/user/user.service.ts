@@ -234,6 +234,22 @@ export class UserService {
     }
   }
 
+  async getUsersToMeta() {
+    try {
+      const tecs = await this.prisma.usuario.findMany({
+        select: {
+          id: true,
+          nombre: true,
+          rol: true,
+        },
+      });
+      return tecs;
+    } catch (error) {
+      console.log(error);
+      return error;
+    }
+  }
+
   async setSaldo0(id: number) {
     try {
       const setSaldo = await this.prisma.saldoCliente.update({

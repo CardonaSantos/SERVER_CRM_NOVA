@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   InternalServerErrorException,
@@ -9,6 +10,11 @@ import { CreateMetasTicketDto } from './dto/create-metas-ticket.dto';
 import { UpdateMetasTicketDto } from './dto/update-metas-ticket.dto';
 import { MetaTecnicoTicket, Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+import * as dayjs from 'dayjs';
+import * as timezone from 'dayjs/plugin/timezone';
+import * as utc from 'dayjs/plugin/utc';
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 @Injectable()
 export class MetasTicketsService {
@@ -23,11 +29,19 @@ export class MetasTicketsService {
    */
   async create(createDto: CreateMetasTicketDto): Promise<MetaTecnicoTicket> {
     try {
+      console.log('La data entrando es: ', createDto);
+
       const meta = await this.prisma.metaTecnicoTicket.create({
         data: {
           estado: 'ABIERTO',
-          fechaInicio: createDto.fechaInicio,
-          fechaFin: createDto.fechaFin,
+          fechaInicio: dayjs
+            .tz(createDto.fechaInicio, 'YYYY-MM-DD', 'America/Guatemala')
+            .startOf('day')
+            .toDate(),
+          fechaFin: dayjs
+            .tz(createDto.fechaFin, 'YYYY-MM-DD', 'America/Guatemala')
+            .startOf('day')
+            .toDate(),
           titulo: createDto.titulo ?? 'Sin titulo',
           tecnico: {
             connect: {
@@ -153,5 +167,103 @@ export class MetasTicketsService {
         'Error interno al eliminar la meta.',
       );
     }
+  }
+
+  /**
+   *
+   * @param tecnicoId ID del tecnico a incrementar su meta
+   */
+  async incrementMeta(tecnicoId: number) {
+    if (!tecnicoId) {
+      throw new BadRequestException('Se requiere el ID del técnico');
+    }
+    const hoy = dayjs().tz('America/Guatemala').startOf('day').toDate();
+    const metaVigente = await this.prisma.metaTecnicoTicket.findFirst({
+      where: {
+        tecnicoId,
+        estado: 'ABIERTO',
+        fechaInicio: { lte: hoy },
+        fechaFin: { gte: hoy },
+      },
+      orderBy: { creadoEn: 'desc' },
+    });
+
+    if (!metaVigente) {
+      this.logger.debug('Meta no encontrada');
+      return null;
+    }
+
+    return this.prisma.metaTecnicoTicket.update({
+      where: { id: metaVigente.id },
+      data: { ticketsResueltos: { increment: 1 } },
+    });
+  }
+
+  /**
+   * Retorna los tickets con informacion para metricas
+   */
+  async getMetricasTicketsMes() {
+    const inicioMes = dayjs().tz('America/Guatemala').startOf('month');
+    const finMes = dayjs().tz('America/Guatemala').endOf('month');
+    const diasTrans =
+      dayjs().tz('America/Guatemala').diff(inicioMes, 'day') + 1;
+    const totalDias = finMes.diff(inicioMes, 'day') + 1;
+
+    const usuarios = await this.prisma.usuario.findMany({
+      where: { rol: 'TECNICO' },
+      select: {
+        id: true,
+        nombre: true,
+        correo: true,
+        ticketsAsignados: {
+          where: {
+            fechaApertura: { gte: inicioMes.toDate(), lte: finMes.toDate() },
+          },
+          select: {
+            fechaApertura: true,
+            fechaCierre: true,
+            estado: true,
+          },
+        },
+      },
+    });
+
+    return usuarios.map((u) => {
+      const tickets = u.ticketsAsignados;
+      const total = tickets.length;
+      const resueltos = tickets.filter((t) => t.estado === 'RESUELTA').length;
+      const pendientes = total - resueltos;
+      const tasa = total ? +((100 * resueltos) / total).toFixed(1) : 0;
+
+      const tiempos = tickets
+        .filter((t) => t.fechaCierre)
+        .map(
+          (t) =>
+            (new Date(t.fechaCierre).getTime() -
+              new Date(t.fechaApertura).getTime()) /
+            3600000,
+        );
+      const avgTime = tiempos.length
+        ? +(tiempos.reduce((a, b) => a + b, 0) / tiempos.length).toFixed(2)
+        : null;
+
+      const ticketsPorDia = diasTrans ? +(resueltos / diasTrans).toFixed(2) : 0;
+      const proyeccion = +(ticketsPorDia * totalDias).toFixed(0);
+
+      return {
+        tecnicoId: u.id,
+        nombre: u.nombre,
+        correo: u.correo,
+        totalTickets: total,
+        ticketsResueltos: resueltos,
+        ticketsPendientes: pendientes,
+        tasaResolucion: tasa,
+        tiempoPromedioHrs: avgTime,
+        ticketsPorDia,
+        proyeccion,
+        diasTranscurridos: diasTrans,
+        totalDias,
+      };
+    });
   }
 }
