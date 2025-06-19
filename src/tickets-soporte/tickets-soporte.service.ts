@@ -10,6 +10,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CloseTicketDto } from './dto/CloseTicketDto .dto';
 import { GenerarMensajeSoporteService } from './generar-mensaje-soporte/generar-mensaje-soporte.service';
 import { MetasTicketsService } from 'src/metas-tickets/metas-tickets.service';
+import { UpdateTicketStatusDto } from './dto/updateStatus';
 
 @Injectable()
 export class TicketsSoporteService {
@@ -420,5 +421,33 @@ export class TicketsSoporteService {
     } catch (error) {
       console.log(error);
     }
+  }
+
+  /**
+   * Actualiza el campo `estado` de un ticket de soporte.
+   */
+  async updateStatus(
+    ticketId: number,
+    dto: UpdateTicketStatusDto,
+  ): Promise<{ id: number; estado: string }> {
+    // Verificar que existe el ticket
+    console.log('la data llegnaod es', ticketId, dto);
+
+    const existing = await this.prisma.ticketSoporte.findUnique({
+      where: { id: ticketId },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Ticket con id ${ticketId} no encontrado`);
+    }
+
+    // Actualizar el estado
+    const updated = await this.prisma.ticketSoporte.update({
+      where: { id: ticketId },
+      data: { estado: dto.estado },
+      select: { id: true, estado: true },
+    });
+
+    return updated;
   }
 }

@@ -30,6 +30,11 @@ export class MetasTicketsController {
     return this.metasTicketsService.getMetricasTicketsMes();
   }
 
+  @Get('/tickets-en-proceso')
+  getEnProceso() {
+    return this.metasTicketsService.getTicketsEnProceso();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.metasTicketsService.findOne(+id);

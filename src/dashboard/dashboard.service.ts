@@ -9,35 +9,64 @@ export class DashboardService {
 
   async create(createDashboardDto: CreateDashboardDto) {}
 
+  /**
+   * Devuelve todos los tickets activos de un técnico,
+   * formateados para el frontend.
+   */
   async findAll(tecnicoId: number) {
-    try {
-      const myTickets = await this.prisma.ticketSoporte.findMany({
-        where: {
-          tecnicoId: tecnicoId,
+    const rawTickets = await this.prisma.ticketSoporte.findMany({
+      orderBy: {
+        fechaApertura: 'asc',
+      },
+      where: {
+        tecnicoId,
+        estado: {
+          notIn: ['RESUELTA', 'CANCELADA', 'ARCHIVADA', 'CERRADO'],
         },
-        select: {
-          id: true,
-          titulo: true,
-          fechaApertura: true,
-          cliente: {
-            select: {
-              nombre: true,
-              apellidos: true,
-            },
+      },
+      select: {
+        id: true,
+        titulo: true,
+        fechaApertura: true,
+        estado: true,
+        prioridad: true,
+        descripcion: true,
+        cliente: {
+          select: {
+            nombre: true,
+            direccion: true,
+            apellidos: true,
+            telefono: true,
+            contactoReferenciaTelefono: true,
+            ubicacion: { select: { latitud: true, longitud: true } },
           },
         },
-      });
+      },
+    });
 
-      const tickets = myTickets.map((t) => ({
+    return rawTickets
+      .sort(
+        (a, b) =>
+          new Date(a.fechaApertura).getTime() -
+          new Date(b.fechaApertura).getTime(),
+      )
+      .map((t) => ({
         id: t.id,
-        cliente: `${t.cliente.nombre} ${t.cliente.nombre}`,
-        ticketTexto: t.titulo,
-        fechaTicket: t.fechaApertura,
+        title: t.titulo,
+        openedAt: t.fechaApertura,
+        status: t.estado,
+        priority: t.prioridad,
+        description: t.descripcion,
+
+        clientName: `${t.cliente.nombre} ${t.cliente.apellidos}`,
+        clientPhone: t.cliente.telefono,
+        referenceContact: t.cliente.contactoReferenciaTelefono,
+        direction: t.cliente.direccion,
+        location: {
+          lat: t.cliente.ubicacion.latitud,
+          lng: t.cliente.ubicacion.longitud,
+        },
       }));
-      return tickets;
-    } catch (error) {
-      console.log(error);
-    }
   }
 
   async getDashboardData() {

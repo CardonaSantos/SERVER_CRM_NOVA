@@ -203,67 +203,221 @@ export class MetasTicketsService {
    * Retorna los tickets con informacion para metricas
    */
   async getMetricasTicketsMes() {
-    const inicioMes = dayjs().tz('America/Guatemala').startOf('month');
-    const finMes = dayjs().tz('America/Guatemala').endOf('month');
-    const diasTrans =
-      dayjs().tz('America/Guatemala').diff(inicioMes, 'day') + 1;
-    const totalDias = finMes.diff(inicioMes, 'day') + 1;
+    /* ───────── Configuración de fechas ───────── */
+    const TZ = 'America/Guatemala';
+    const inicioMes = dayjs().tz(TZ).startOf('month').toDate();
+    const finMes = dayjs().tz(TZ).endOf('month').toDate();
 
+    const diasTrans = dayjs().tz(TZ).diff(dayjs(inicioMes), 'day') + 1;
+    const totalDias = dayjs(finMes).diff(dayjs(inicioMes), 'day') + 1;
+
+    const filtroFechas = {
+      OR: [
+        { fechaApertura: { gte: inicioMes, lte: finMes } }, // abiertos este mes
+        { fechaCierre: { gte: inicioMes, lte: finMes } }, // o cerrados este mes
+      ],
+    };
+
+    /* ───────── Consulta de usuarios + tickets ───────── */
     const usuarios = await this.prisma.usuario.findMany({
-      where: { rol: 'TECNICO' },
+      where: { rol: { in: ['ADMIN', 'TECNICO'] } },
       select: {
         id: true,
         nombre: true,
         correo: true,
         ticketsAsignados: {
-          where: {
-            fechaApertura: { gte: inicioMes.toDate(), lte: finMes.toDate() },
-          },
-          select: {
-            fechaApertura: true,
-            fechaCierre: true,
-            estado: true,
-          },
+          where: filtroFechas,
+          select: { fechaApertura: true, fechaCierre: true, estado: true },
         },
       },
     });
 
-    return usuarios.map((u) => {
-      const tickets = u.ticketsAsignados;
-      const total = tickets.length;
-      const resueltos = tickets.filter((t) => t.estado === 'RESUELTA').length;
-      const pendientes = total - resueltos;
-      const tasa = total ? +((100 * resueltos) / total).toFixed(1) : 0;
+    /* ───────── Cálculo de métricas ───────── */
+    const data = usuarios.map(({ id, nombre, correo, ticketsAsignados }) => {
+      const totalTickets = ticketsAsignados.length;
+      const ticketsResueltos = ticketsAsignados.filter(
+        (t) => t.estado === 'RESUELTA',
+      ).length;
+      const ticketsPendientes = ticketsAsignados.filter(
+        (t) => t.estado !== 'RESUELTA',
+      ).length;
 
-      const tiempos = tickets
+      const tasaResolucion = totalTickets
+        ? Number(((ticketsResueltos / totalTickets) * 100).toFixed(1))
+        : 0;
+
+      const tiemposHrs = ticketsAsignados
         .filter((t) => t.fechaCierre)
         .map(
           (t) =>
-            (new Date(t.fechaCierre).getTime() -
-              new Date(t.fechaApertura).getTime()) /
-            3600000,
+            (t.fechaCierre!.getTime() - t.fechaApertura.getTime()) / 3_600_000,
         );
-      const avgTime = tiempos.length
-        ? +(tiempos.reduce((a, b) => a + b, 0) / tiempos.length).toFixed(2)
+
+      const tiempoPromedioHrs = tiemposHrs.length
+        ? Number(
+            (
+              tiemposHrs.reduce((sum, hrs) => sum + hrs, 0) / tiemposHrs.length
+            ).toFixed(2),
+          )
         : null;
 
-      const ticketsPorDia = diasTrans ? +(resueltos / diasTrans).toFixed(2) : 0;
-      const proyeccion = +(ticketsPorDia * totalDias).toFixed(0);
+      const ticketsPorDia = Number((ticketsResueltos / diasTrans).toFixed(2));
+      const proyeccion = Math.round(ticketsPorDia * totalDias);
 
       return {
-        tecnicoId: u.id,
-        nombre: u.nombre,
-        correo: u.correo,
-        totalTickets: total,
-        ticketsResueltos: resueltos,
-        ticketsPendientes: pendientes,
-        tasaResolucion: tasa,
-        tiempoPromedioHrs: avgTime,
+        tecnicoId: id,
+        nombre,
+        correo,
+        totalTickets,
+        ticketsResueltos,
+        ticketsPendientes,
+        tasaResolucion,
+        tiempoPromedioHrs,
         ticketsPorDia,
         proyeccion,
         diasTranscurridos: diasTrans,
         totalDias,
       };
     });
+
+    const dataScale = await this.getResueltosPorDiaMes();
+    const ticketsActuales = await this.getTicketsActuales();
+    const ticketsEnProceso = await this.getTicketsEnProceso();
+    // --> Respuesta final
+    return { data, dataScale, ticketsActuales, ticketsEnProceso };
+  }
+
+  async getResueltosPorDiaMes() {
+    const TZ = 'America/Guatemala';
+    const inicioMes = dayjs().tz(TZ).startOf('month').toDate();
+    const finMes = dayjs().tz(TZ).endOf('month').toDate();
+
+    // 1) Trae SÓLO tickets resueltos dentro del mes (fechaCierre)
+    const tickets = await this.prisma.ticketSoporte.findMany({
+      where: {
+        estado: 'RESUELTA',
+        fechaCierre: { gte: inicioMes, lte: finMes },
+        tecnico: { rol: { in: ['ADMIN', 'TECNICO'] } },
+      },
+      select: {
+        tecnicoId: true,
+        fechaCierre: true,
+        tecnico: { select: { nombre: true } },
+      },
+    });
+
+    /* 2) Agrupa por técnico y día */
+    const mapa: Record<
+      string, // técnico.nombre
+      Record<number, number> // día -> cantidad resuelta
+    > = {};
+
+    tickets.forEach(({ tecnico, fechaCierre }) => {
+      const dia = dayjs(fechaCierre).tz(TZ).date(); // 1-31
+      if (!mapa[tecnico.nombre]) mapa[tecnico.nombre] = {};
+      mapa[tecnico.nombre][dia] = (mapa[tecnico.nombre][dia] || 0) + 1;
+    });
+
+    /* 3) Convierte a estructura para la gráfica */
+    const diasTotales = dayjs(finMes).date(); // 28-31
+    const lineChartData: any[] = [];
+
+    for (let dia = 1; dia <= diasTotales; dia++) {
+      const fila: any = { dia };
+      Object.keys(mapa).forEach((tec) => {
+        fila[tec] = mapa[tec][dia] || 0;
+      });
+      lineChartData.push(fila);
+    }
+
+    return lineChartData; // [{ dia: 1, "Santos": 3, "Pedro": 0, ... }, …]
+  }
+
+  async getTicketsActuales() {
+    try {
+      const TZ = 'America/Guatemala';
+      const inicioDia = dayjs().tz(TZ).startOf('day').toDate();
+      const finDia = dayjs().tz(TZ).endOf('day').toDate();
+
+      const ticketsActuales = await this.prisma.ticketSoporte.findMany({
+        where: {
+          fechaApertura: {
+            gte: inicioDia,
+            lte: finDia,
+          },
+        },
+      });
+
+      const ticketsDisponible = await this.prisma.ticketSoporte.findMany({
+        where: {
+          estado: {
+            notIn: ['ARCHIVADA', 'CANCELADA', 'CERRADO', 'RESUELTA'],
+          },
+          tecnicoId: null,
+          // fechaApertura: {
+          //   gte: inicioDia,
+          //   lte: finDia,
+          // },
+        },
+      });
+
+      let tickets = ticketsDisponible.length;
+      let ticketsResueltos = ticketsActuales.filter(
+        (t) => t.estado === 'RESUELTA',
+      ).length;
+      let ticketsEnProceso = ticketsActuales.filter(
+        (t) => t.estado === 'EN_PROCESO',
+      ).length;
+      let ticketsAsignados = ticketsActuales.filter(
+        (t) => t.tecnicoId !== undefined,
+      ).length;
+
+      return {
+        tickets,
+        ticketsResueltos,
+        ticketsEnProceso,
+        ticketsAsignados,
+      };
+    } catch (error) {
+      console.log(error);
+      return error;
+    }
+  }
+
+  async getTicketsEnProceso() {
+    try {
+      const TZ = 'America/Guatemala';
+
+      const inicioDia = dayjs().tz(TZ).startOf('day').toDate();
+      const finDia = dayjs().tz(TZ).endOf('day').toDate();
+
+      let esteDiaTickets = await this.prisma.ticketSoporte.findMany({
+        where: {
+          fechaApertura: {
+            gte: inicioDia,
+            lte: finDia,
+          },
+          estado: 'EN_PROCESO',
+        },
+        select: {
+          id: true,
+          titulo: true,
+          descripcion: true,
+          estado: true,
+          prioridad: true,
+          tecnico: {
+            select: {
+              id: true,
+              nombre: true,
+            },
+          },
+        },
+      });
+
+      return esteDiaTickets;
+    } catch (error) {
+      this.logger.error('Ocurrió un error', error);
+      return error;
+    }
   }
 }
