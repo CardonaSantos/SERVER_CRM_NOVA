@@ -288,14 +288,19 @@ export class MetasTicketsService {
   async getResueltosPorDiaMes() {
     const TZ = 'America/Guatemala';
 
-    const inicioMes = dayjs().tz(TZ).startOf('month').utc().toDate();
-    const finMes = dayjs().tz(TZ).endOf('month').utc().toDate();
+    // getResueltosPorDiaMes FIX
+    // getResueltosPorDiaMes
+    const inicioMes = dayjs().tz(TZ).startOf('month').toDate();
+    const finMes = dayjs().tz(TZ).endOf('month').toDate();
 
     //Trae SÓLO tickets resueltos dentro del mes (fechaCierre)
     const tickets = await this.prisma.ticketSoporte.findMany({
       where: {
         estado: 'RESUELTA',
         fechaCierre: { gte: inicioMes, lte: finMes },
+        tecnico: {
+          rol: 'TECNICO',
+        },
       },
       select: {
         tecnicoId: true,
@@ -335,6 +340,16 @@ export class MetasTicketsService {
       isoFin: finMes.toISOString(),
       pgTz: await this.prisma.$queryRaw`SHOW timezone`,
     });
+
+    console.table({
+      inicioMesLocal: dayjs(inicioMes).tz(TZ).format(),
+      finMesLocal: dayjs(finMes).tz(TZ).format(),
+      inicioMesUTC: inicioMes.toISOString(),
+      finMesUTC: finMes.toISOString(),
+    });
+
+    console.log('Tickets encontrados:', tickets.length);
+    console.log('Primer ticket:', tickets[0]?.fechaCierre);
 
     return lineChartData; // [{ dia: 1, "Santos": 3, "Pedro": 0, ... }, …]
   }
