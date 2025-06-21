@@ -288,43 +288,32 @@ export class MetasTicketsService {
   async getResueltosPorDiaMes() {
     const TZ = 'America/Guatemala';
 
-    // getResueltosPorDiaMes FIX
-    // getResueltosPorDiaMes
     const inicioMes = dayjs().tz(TZ).startOf('month').toDate();
     const finMes = dayjs().tz(TZ).endOf('month').toDate();
 
-    //Trae SÓLO tickets resueltos dentro del mes (fechaCierre)
     const tickets = await this.prisma.ticketSoporte.findMany({
       where: {
         estado: 'RESUELTA',
         fechaCierre: { gte: inicioMes, lte: finMes },
-        tecnico: {
-          rol: 'TECNICO',
-        },
+        tecnico: { rol: 'TECNICO' },
       },
       select: {
-        tecnicoId: true,
         fechaCierre: true,
         tecnico: { select: { nombre: true } },
       },
     });
 
-    /* Agrupa por técnico y día */
-    const mapa: Record<
-      string, // técnico.nombre
-      Record<number, number> // día -> cantidad resuelta
-    > = {};
+    const mapa: Record<string, Record<number, number>> = {};
 
     tickets.forEach(({ tecnico, fechaCierre }) => {
-      const dia = dayjs(fechaCierre).tz(TZ).date(); // 1-31
+      const dia = dayjs(fechaCierre).tz(TZ).date(); // 1-31 local
       if (!mapa[tecnico.nombre]) mapa[tecnico.nombre] = {};
       mapa[tecnico.nombre][dia] = (mapa[tecnico.nombre][dia] || 0) + 1;
     });
 
-    /*  Convierte a estructura para la gráfica */
-    const diasTotales = dayjs(finMes).date(); // 28-31
-    const lineChartData: any[] = [];
+    const diasTotales = dayjs(inicioMes).tz(TZ).daysInMonth(); // ✅ 30/31/28
 
+    const lineChartData: any[] = [];
     for (let dia = 1; dia <= diasTotales; dia++) {
       const fila: any = { dia };
       Object.keys(mapa).forEach((tec) => {
@@ -333,25 +322,7 @@ export class MetasTicketsService {
       lineChartData.push(fila);
     }
 
-    console.log({
-      inicioMes,
-      finMes,
-      isoInicio: inicioMes.toISOString(),
-      isoFin: finMes.toISOString(),
-      pgTz: await this.prisma.$queryRaw`SHOW timezone`,
-    });
-
-    console.table({
-      inicioMesLocal: dayjs(inicioMes).tz(TZ).format(),
-      finMesLocal: dayjs(finMes).tz(TZ).format(),
-      inicioMesUTC: inicioMes.toISOString(),
-      finMesUTC: finMes.toISOString(),
-    });
-
-    console.log('Tickets encontrados:', tickets.length);
-    console.log('Primer ticket:', tickets[0]?.fechaCierre);
-
-    return lineChartData; // [{ dia: 1, "Santos": 3, "Pedro": 0, ... }, …]
+    return lineChartData;
   }
 
   async getTicketsActuales() {
