@@ -14,14 +14,29 @@ export class DashboardService {
    * formateados para el frontend.
    */
   async findAll(tecnicoId: number) {
+    console.log('El id del tecnico es: ', tecnicoId);
+
+    const user = await this.prisma.usuario.findUnique({
+      where: {
+        id: tecnicoId,
+      },
+    });
+    console.log('El usuario encontrado es: ', user);
+
     const rawTickets = await this.prisma.ticketSoporte.findMany({
       orderBy: {
         fechaApertura: 'asc',
       },
       where: {
-        tecnicoId,
+        tecnicoId: tecnicoId,
         estado: {
-          notIn: ['RESUELTA', 'CANCELADA', 'ARCHIVADA', 'CERRADO'],
+          in: [
+            'ABIERTA',
+            'EN_PROCESO',
+            'PENDIENTE',
+            'PENDIENTE_CLIENTE',
+            'PENDIENTE_TECNICO',
+          ],
         },
       },
       select: {
@@ -43,30 +58,27 @@ export class DashboardService {
         },
       },
     });
+    console.log('Los tickets asignados a este usuario son: ', rawTickets);
 
     return rawTickets
-      .sort(
-        (a, b) =>
-          new Date(a.fechaApertura).getTime() -
-          new Date(b.fechaApertura).getTime(),
-      )
-      .map((t) => ({
-        id: t.id,
-        title: t.titulo,
-        openedAt: t.fechaApertura,
-        status: t.estado,
-        priority: t.prioridad,
-        description: t.descripcion,
+      .sort((a, b) => +a.fechaApertura - +b.fechaApertura)
+      .map((t) => {
+        const loc = t.cliente.ubicacion; // puede ser null
+        return {
+          id: t.id,
+          title: t.titulo,
+          openedAt: t.fechaApertura,
+          status: t.estado,
+          priority: t.prioridad,
+          description: t.descripcion,
 
-        clientName: `${t.cliente.nombre} ${t.cliente.apellidos}`,
-        clientPhone: t.cliente.telefono,
-        referenceContact: t.cliente.contactoReferenciaTelefono,
-        direction: t.cliente.direccion,
-        location: {
-          lat: t.cliente.ubicacion.latitud,
-          lng: t.cliente.ubicacion.longitud,
-        },
-      }));
+          clientName: `${t.cliente.nombre} ${t.cliente.apellidos}`,
+          clientPhone: t.cliente.telefono,
+          referenceContact: t.cliente.contactoReferenciaTelefono,
+          direction: t.cliente.direccion,
+          location: loc ? { lat: loc.latitud, lng: loc.longitud } : null, // o undefined si prefieres
+        };
+      });
   }
 
   async getDashboardData() {

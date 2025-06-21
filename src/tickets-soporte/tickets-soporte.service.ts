@@ -47,6 +47,16 @@ export class TicketsSoporteService {
           tecnico: createTicketsSoporteDto.tecnicoId
             ? { connect: { id: createTicketsSoporteDto.tecnicoId } } // Si se pasa tecnicoId, conectamos
             : {}, // Si no se pasa tecnicoId, desconectamos (o dejamos nulo)
+
+          asignaciones:
+            createTicketsSoporteDto.tecnicosAdicionales.length > 0
+              ? {
+                  create: createTicketsSoporteDto.tecnicosAdicionales.map(
+                    (tecnicoId) => ({ tecnicoId }),
+                  ),
+                }
+              : undefined,
+
           prioridad: createTicketsSoporteDto.prioridad,
           estado: createTicketsSoporteDto.estado,
           etiquetas: {
@@ -61,6 +71,11 @@ export class TicketsSoporteService {
 
       return newTicketSoporte;
     });
+
+    this.logger.debug(
+      'El nuevo ticket con formato de asistentes es: ',
+      newTicketSoporte,
+    );
 
     await this.twilioMessageSuport.GenerarMensajeTicketSoporte(
       createTicketsSoporteDto.clienteId,
@@ -264,6 +279,25 @@ export class TicketsSoporteService {
         },
       });
 
+      const companios = await this.prisma.ticketSoporte.findUnique({
+        where: {
+          id: ticketClosed.id,
+        },
+        select: {
+          asignaciones: {
+            select: {
+              tecnico: {
+                select: {
+                  id: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      let acompanantes = companios?.asignaciones?.map((tec) => tec.tecnico.id);
+
       // 4. Agregar seguimiento
       await this.prisma.seguimientoTicket.create({
         data: {
@@ -274,8 +308,17 @@ export class TicketsSoporteService {
       });
 
       if (ticketClosed.tecnicoId) {
-        this.logger.debug('Incrementando resueltos en meta');
+        this.logger.debug('Incrementando meta para tecnico main');
         await this.metasTicketSoporte.incrementMeta(ticketClosed.tecnicoId);
+      }
+
+      if (acompanantes.length > 0) {
+        this.logger.debug('Incrementando resultos en metas para acompanantes');
+        for (const tec of acompanantes) {
+          this.logger.debug('Incrementando meta para: ', tec);
+
+          await this.metasTicketSoporte.incrementMeta(tec);
+        }
       }
 
       return {
@@ -322,6 +365,17 @@ export class TicketsSoporteService {
               nombre: true,
             },
           },
+          asignaciones: {
+            select: {
+              tecnico: {
+                select: {
+                  id: true,
+                  nombre: true,
+                  rol: true,
+                },
+              },
+            },
+          },
           creadoPor: {
             // Obtener el creador del ticket
             select: {
@@ -365,47 +419,59 @@ export class TicketsSoporteService {
           },
         },
       });
+
+      // const flatAcompanantes = tickets
+
       // Transformar los datos para adaptarlos a la estructura del tipo Ticket
-      const ticketsFormateados = tickets.map((ticket) => ({
-        id: ticket.id,
-        title: ticket.titulo,
-        description: ticket.descripcion,
-        status: ticket.estado,
-        priority: ticket.prioridad,
-        assignee: ticket.tecnico
-          ? {
-              id: ticket.tecnico.id,
-              name: ticket.tecnico.nombre,
-              initials: ticket.tecnico.nombre.slice(0, 2).toUpperCase(), // Tomar las iniciales
-            }
-          : null,
-        creator: ticket.creadoPor
-          ? {
-              id: ticket.creadoPor.id,
-              name: ticket.creadoPor.nombre,
-              initials: ticket.creadoPor.nombre.slice(0, 2).toUpperCase(),
-            }
-          : null,
-        date: ticket.fechaApertura.toISOString(), // Formato de fecha
-        unread: ticket.estado === 'ABIERTA', // Definir si está "sin leer" basado en el estado
-        tags: ticket.etiquetas.map((tag) => ({
-          label: tag.etiqueta.nombre,
-          value: tag.etiqueta.id,
-        })),
-        customer: {
-          id: ticket.cliente.id,
-          name: `${ticket.cliente.nombre} ${ticket.cliente.apellidos}`,
-        },
-        comments: ticket.SeguimientoTicket.map((comment) => ({
-          user: {
-            id: comment.usuario.id,
-            name: comment.usuario.nombre,
-            initials: comment.usuario.nombre.slice(0, 2).toUpperCase(),
+      const ticketsFormateados = tickets.map((ticket) => {
+        const acompanantes = ticket.asignaciones.map(({ tecnico }) => ({
+          id: tecnico.id,
+          name: tecnico.nombre,
+          rol: tecnico.rol,
+        }));
+
+        return {
+          id: ticket.id,
+          title: ticket.titulo,
+          description: ticket.descripcion,
+          status: ticket.estado,
+          priority: ticket.prioridad,
+          assignee: ticket.tecnico
+            ? {
+                id: ticket.tecnico.id,
+                name: ticket.tecnico.nombre,
+                initials: ticket.tecnico.nombre.slice(0, 2).toUpperCase(), // Tomar las iniciales
+              }
+            : null,
+          companios: acompanantes.length > 0 ? acompanantes : [],
+          creator: ticket.creadoPor
+            ? {
+                id: ticket.creadoPor.id,
+                name: ticket.creadoPor.nombre,
+                initials: ticket.creadoPor.nombre.slice(0, 2).toUpperCase(),
+              }
+            : null,
+          date: ticket.fechaApertura.toISOString(), // Formato de fecha
+          unread: ticket.estado === 'ABIERTA', // Definir si está "sin leer" basado en el estado
+          tags: ticket.etiquetas.map((tag) => ({
+            label: tag.etiqueta.nombre,
+            value: tag.etiqueta.id,
+          })),
+          customer: {
+            id: ticket.cliente.id,
+            name: `${ticket.cliente.nombre} ${ticket.cliente.apellidos}`,
           },
-          text: comment.descripcion,
-          date: comment.fechaRegistro.toISOString(),
-        })),
-      }));
+          comments: ticket.SeguimientoTicket.map((comment) => ({
+            user: {
+              id: comment.usuario.id,
+              name: comment.usuario.nombre,
+              initials: comment.usuario.nombre.slice(0, 2).toUpperCase(),
+            },
+            text: comment.descripcion,
+            date: comment.fechaRegistro.toISOString(),
+          })),
+        };
+      });
 
       return ticketsFormateados;
     } catch (error) {

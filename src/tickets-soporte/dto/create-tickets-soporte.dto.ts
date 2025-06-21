@@ -2,6 +2,7 @@ import { EstadoTicketSoporte, PrioridadTicketSoporte } from '@prisma/client';
 import {
   IsArray,
   IsEnum,
+  IsInt,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -12,6 +13,12 @@ export class CreateTicketsSoporteDto {
   @IsNumber()
   @IsNotEmpty()
   clienteId: number;
+  //los otros asoociados
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  tecnicosAdicionales?: number[]; // IDs de técnicos secundarios
+
   @IsNumber()
   @IsNotEmpty()
   empresaId: number;

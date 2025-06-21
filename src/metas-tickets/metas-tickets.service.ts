@@ -218,7 +218,6 @@ export class MetasTicketsService {
       ],
     };
 
-    /* ───────── Consulta de usuarios + tickets ───────── */
     const usuarios = await this.prisma.usuario.findMany({
       where: { rol: { in: ['ADMIN', 'TECNICO'] } },
       select: {
@@ -232,7 +231,6 @@ export class MetasTicketsService {
       },
     });
 
-    /* ───────── Cálculo de métricas ───────── */
     const data = usuarios.map(({ id, nombre, correo, ticketsAsignados }) => {
       const totalTickets = ticketsAsignados.length;
       const ticketsResueltos = ticketsAsignados.filter(
@@ -289,15 +287,15 @@ export class MetasTicketsService {
 
   async getResueltosPorDiaMes() {
     const TZ = 'America/Guatemala';
-    const inicioMes = dayjs().tz(TZ).startOf('month').toDate();
-    const finMes = dayjs().tz(TZ).endOf('month').toDate();
 
-    // 1) Trae SÓLO tickets resueltos dentro del mes (fechaCierre)
+    const inicioMes = dayjs().tz(TZ).startOf('month').utc().toDate();
+    const finMes = dayjs().tz(TZ).endOf('month').utc().toDate();
+
+    //Trae SÓLO tickets resueltos dentro del mes (fechaCierre)
     const tickets = await this.prisma.ticketSoporte.findMany({
       where: {
         estado: 'RESUELTA',
         fechaCierre: { gte: inicioMes, lte: finMes },
-        tecnico: { rol: { in: ['ADMIN', 'TECNICO'] } },
       },
       select: {
         tecnicoId: true,
@@ -306,7 +304,7 @@ export class MetasTicketsService {
       },
     });
 
-    /* 2) Agrupa por técnico y día */
+    /* Agrupa por técnico y día */
     const mapa: Record<
       string, // técnico.nombre
       Record<number, number> // día -> cantidad resuelta
@@ -318,7 +316,7 @@ export class MetasTicketsService {
       mapa[tecnico.nombre][dia] = (mapa[tecnico.nombre][dia] || 0) + 1;
     });
 
-    /* 3) Convierte a estructura para la gráfica */
+    /*  Convierte a estructura para la gráfica */
     const diasTotales = dayjs(finMes).date(); // 28-31
     const lineChartData: any[] = [];
 
@@ -330,61 +328,109 @@ export class MetasTicketsService {
       lineChartData.push(fila);
     }
 
+    console.log({
+      inicioMes,
+      finMes,
+      isoInicio: inicioMes.toISOString(),
+      isoFin: finMes.toISOString(),
+      pgTz: await this.prisma.$queryRaw`SHOW timezone`,
+    });
+
     return lineChartData; // [{ dia: 1, "Santos": 3, "Pedro": 0, ... }, …]
   }
 
   async getTicketsActuales() {
+    const TZ = 'America/Guatemala';
+    // rango en UTC
+    const inicioDia = dayjs().tz(TZ).startOf('day').utc().toDate();
+    const finDia = dayjs().tz(TZ).endOf('day').utc().toDate();
+
+    // 1. Tickets abiertos hoy (disponibles)
+    const tickets = await this.prisma.ticketSoporte.count({
+      where: {
+        estado: {
+          notIn: ['ARCHIVADA', 'CANCELADA', 'CERRADO', 'RESUELTA'],
+        },
+        tecnicoId: undefined,
+      },
+    });
+
+    // 2. Resueltos hoy (cerrados hoy sin importar cuándo se abrieron)
+    const ticketsResueltos = await this.prisma.ticketSoporte.count({
+      where: {
+        estado: 'RESUELTA',
+        fechaCierre: { gte: inicioDia, lte: finDia },
+      },
+    });
+
+    // 3. En proceso (tickets EN_PROCESO con fechaInicioAtencion hoy)
+    const ticketsEnProceso = await this.prisma.ticketSoporte.count({
+      where: {
+        estado: 'EN_PROCESO',
+      },
+    });
+
+    // 4. Asignados hoy (tienen técnico y fueron abiertos hoy)
+    const ticketsAsignados = await this.prisma.ticketSoporte.count({
+      where: {
+        fechaApertura: { gte: inicioDia, lte: finDia },
+        tecnicoId: { not: null },
+      },
+    });
+
+    return {
+      tickets, // disponibles
+      ticketsResueltos,
+      ticketsEnProceso,
+      ticketsAsignados,
+    };
+  }
+
+  async getTicketsEnProceso() {
     try {
       const TZ = 'America/Guatemala';
+
       const inicioDia = dayjs().tz(TZ).startOf('day').toDate();
       const finDia = dayjs().tz(TZ).endOf('day').toDate();
 
-      const ticketsActuales = await this.prisma.ticketSoporte.findMany({
+      let esteDiaTickets = await this.prisma.ticketSoporte.findMany({
         where: {
-          fechaApertura: {
-            gte: inicioDia,
-            lte: finDia,
-          },
-        },
-      });
-
-      const ticketsDisponible = await this.prisma.ticketSoporte.findMany({
-        where: {
-          estado: {
-            notIn: ['ARCHIVADA', 'CANCELADA', 'CERRADO', 'RESUELTA'],
-          },
-          tecnicoId: null,
           // fechaApertura: {
           //   gte: inicioDia,
           //   lte: finDia,
           // },
+          estado: 'EN_PROCESO',
+        },
+        select: {
+          id: true,
+          titulo: true,
+          descripcion: true,
+          estado: true,
+          prioridad: true,
+          tecnico: {
+            select: {
+              id: true,
+              nombre: true,
+            },
+          },
+          cliente: {
+            select: {
+              id: true,
+              nombre: true,
+              apellidos: true,
+            },
+          },
         },
       });
 
-      let tickets = ticketsDisponible.length;
-      let ticketsResueltos = ticketsActuales.filter(
-        (t) => t.estado === 'RESUELTA',
-      ).length;
-      let ticketsEnProceso = ticketsActuales.filter(
-        (t) => t.estado === 'EN_PROCESO',
-      ).length;
-      let ticketsAsignados = ticketsActuales.filter(
-        (t) => t.tecnicoId !== undefined,
-      ).length;
-
-      return {
-        tickets,
-        ticketsResueltos,
-        ticketsEnProceso,
-        ticketsAsignados,
-      };
+      return esteDiaTickets;
     } catch (error) {
-      console.log(error);
+      this.logger.error('Ocurrió un error', error);
       return error;
     }
   }
 
-  async getTicketsEnProceso() {
+  async getTicketsEnProcesoDashboard() {
     try {
       const TZ = 'America/Guatemala';
 
