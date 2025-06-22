@@ -2,6 +2,7 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   DatosFacturaGenerate,
@@ -35,20 +36,18 @@ export class SegundoRecordatorioCronService {
     private readonly facturaManager: FacturaManagerService,
   ) {}
 
-  // @Cron(CronExpression.EVERY_MINUTE)
-  @Cron('0 23 * * *', { timeZone: 'America/Guatemala' })
+  // @Cron(CronExpression.EVERY_10_SECONDS)
+  @Cron('0 10 * * *', { timeZone: 'America/Guatemala' }) // ⏰ 10:00 AM GT
   async generarMensajeSegundoRecordatorio(): Promise<void> {
     this.logger.debug('Verificando zonas de facturación: Recordatorio 2');
     const hoy = dayjs().tz('America/Guatemala');
 
-    /* 0️⃣ SID de la plantilla */
     const TEMPLATE_SID = this.configService.get<string>(
       'RECORDATORIO_PAGO_2_SID',
     );
     if (!TEMPLATE_SID)
       throw new InternalServerErrorException('SID plantilla faltante');
 
-    /* 1️⃣ Empresa para {{4}} */
     const empresa = await this.prisma.empresa.findFirst({
       select: { nombre: true },
     });
@@ -57,13 +56,11 @@ export class SegundoRecordatorioCronService {
       return;
     }
 
-    /* 2️⃣ Zonas + clientes */
     const zonas = await this.prisma.facturacionZona.findMany({
       include: { clientes: { include: { servicioInternet: true } } },
     });
 
     for (const zona of zonas) {
-      /* Día y flags del segundo recordatorio */
       const esHoy = zona.diaSegundoRecordatorio
         ? hoy.isSame(hoy.date(zona.diaSegundoRecordatorio), 'day')
         : false;
@@ -76,27 +73,25 @@ export class SegundoRecordatorioCronService {
         if (!cliente.servicioInternet) continue;
 
         try {
-          /* 3️⃣ Obtener / crear factura pendiente */
-          const { factura, esNueva } =
-            await this.facturaManager.obtenerOcrearFactura(cliente, zona);
+          /* SOLO buscar la factura: crearSiNoExiste = false */
+          const { factura } = await this.facturaManager.obtenerOcrearFactura(
+            cliente,
+            zona,
+            false,
+          );
 
-          /* Saltar si ya está liquidada */
           if (
             !['PENDIENTE', 'PARCIAL', 'VENCIDA'].includes(
               factura.estadoFacturaInternet,
             )
-          )
+          ) {
+            this.logger.debug(`Factura ya pagada; cliente ${cliente.id}.`);
             continue;
+          }
 
-          /* Recalcular estado si acabamos de crear la factura */
-          if (esNueva)
-            await this.facturaManager.actualizarEstadoCliente(factura);
-
-          /* 4️⃣ Variables de plantilla */
           const monto = factura.montoPago.toFixed(2);
           const fechaL = dayjs(factura.fechaPagoEsperada).format('DD/MM/YYYY');
 
-          /* 5️⃣ Destinos */
           const destinos = formatearTelefonos([
             cliente.telefono,
             cliente.contactoReferenciaTelefono,
@@ -120,6 +115,12 @@ export class SegundoRecordatorioCronService {
             );
           }
         } catch (err) {
+          if (err instanceof NotFoundException) {
+            this.logger.debug(
+              `Sin factura para cliente ${cliente.id}; no se envía recordatorio.`,
+            );
+            continue;
+          }
           this.logger.warn(
             `Zona ${zona.id} cliente ${cliente.id}: ${err.message}`,
           );

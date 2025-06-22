@@ -47,12 +47,10 @@ export class GeneracionFacturaCronService {
    * al método `generarFacturaClientePorZona` para generar una a un cliente.
    */
 
-  // @Cron(CronExpression.EVERY_10_MINUTES, {
+  // @Cron(CronExpression.EVERY_10_SECONDS, {
   //   timeZone: 'America/Guatemala',
   // })
-  @Cron('0 22 * * *', {
-    timeZone: 'America/Guatemala',
-  })
+  @Cron('0 10 * * *', { timeZone: 'America/Guatemala' }) // ⏰ 10:00 AM GT
   async gerarFacturacionAutomaticaCron() {
     const hoy = dayjs().tz('America/Guatemala');
     const TEMPLATE_SID =
@@ -74,11 +72,17 @@ export class GeneracionFacturaCronService {
 
         try {
           /** Crear o recuperar la factura */
-          const { factura, esNueva } =
-            await this.facturaManager.obtenerOcrearFactura(cliente, zona);
+          const { factura, esNueva, notificar } =
+            await this.facturaManager.CrearFacturaCronMain(cliente, zona);
 
-          /** Notificación */
-          await this.enviarWhatsAppFactura(cliente, factura, TEMPLATE_SID);
+          /** Notificación: solo si corresponde */
+          if (notificar) {
+            await this.enviarWhatsAppFactura(cliente, factura, TEMPLATE_SID);
+          } else {
+            this.logger.debug(
+              `Factura ${factura.id} ya pagada; no se envía notificación.`,
+            );
+          }
 
           /** Recalcular estado SOLO cuando se creó una nueva factura */
           if (esNueva) await this.actualizarEstadoCliente(factura);

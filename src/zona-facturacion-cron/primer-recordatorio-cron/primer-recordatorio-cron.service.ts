@@ -2,6 +2,7 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import * as dayjs from 'dayjs';
@@ -34,8 +35,8 @@ export class PrimerRecordatorioCronService {
     private readonly facturaManager: FacturaManagerService,
   ) {}
 
-  // @Cron(CronExpression.EVERY_MINUTE)
-  @Cron('0 23 * * *', { timeZone: 'America/Guatemala' })
+  // @Cron(CronExpression.EVERY_10_SECONDS)
+  @Cron('0 10 * * *', { timeZone: 'America/Guatemala' })
   async generarMensajePrimerRecordatorio(): Promise<void> {
     this.logger.debug('Verificando zonas de facturacion: Recordatorio 1');
     const hoy = dayjs().tz('America/Guatemala');
@@ -65,12 +66,7 @@ export class PrimerRecordatorioCronService {
         ? hoy.isSame(hoy.date(zona.diaRecordatorio), 'day')
         : false;
       if (!esHoy) continue;
-      if (
-        !zona.enviarRecordatorio1 ||
-        !zona.enviarRecordatorio ||
-        !zona.whatsapp
-      )
-        continue;
+      if (!zona.enviarRecordatorio1 || !zona.enviarRecordatorio) continue;
 
       for (const cliente of zona.clientes) {
         if (!cliente.servicioInternet) continue;
@@ -78,20 +74,28 @@ export class PrimerRecordatorioCronService {
         try {
           /** 3. Obtener / crear factura pendiente del periodo */
           const { factura, esNueva } =
-            await this.facturaManager.obtenerOcrearFactura(cliente, zona);
+            await this.facturaManager.obtenerOcrearFactura(
+              cliente,
+              zona,
+              false,
+            );
 
           /* Si la factura ya está pagada, NO enviar recordatorio */
           if (
             !['PENDIENTE', 'PARCIAL', 'VENCIDA'].includes(
               factura.estadoFacturaInternet,
             )
-          )
+          ) {
+            this.logger.debug(
+              'La factura ya está pagada, continuando con el siguiente cliente..',
+            );
             continue;
+          }
 
           /* Recalcular estado sólo si acabamos de crear la factura */
-          if (esNueva) {
-            await this.facturaManager.actualizarEstadoCliente(factura);
-          }
+          // if (esNueva) {
+          //   await this.facturaManager.actualizarEstadoCliente(factura);
+          // }
 
           /** 4. Formatear variables de la plantilla */
           const monto = factura.montoPago.toFixed(2);
@@ -121,6 +125,16 @@ export class PrimerRecordatorioCronService {
             );
           }
         } catch (err) {
+          if (err instanceof NotFoundException) {
+            this.logger.debug(
+              `Sin factura para cliente ${cliente.id}; no se envía recordatorio.`,
+            );
+            continue;
+          }
+          this.logger.warn(
+            `Zona ${zona.id} cliente ${cliente.id}: ${err.message}`,
+          );
+
           this.logger.warn(
             `Zona ${zona.id} cliente ${cliente.id}: ${err.message}`,
           );

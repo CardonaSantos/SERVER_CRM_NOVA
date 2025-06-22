@@ -2,6 +2,7 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   DatosFacturaGenerate,
@@ -33,20 +34,18 @@ export class RecordatorioDiaPagoService {
     private readonly twilioService: TwilioService,
     private readonly facturaManager: FacturaManagerService,
   ) {}
-  // @Cron(CronExpression.EVERY_MINUTE)
-  @Cron('0 23 * * *', { timeZone: 'America/Guatemala' })
+  // @Cron(CronExpression.EVERY_10_SECONDS)
+  @Cron('0 10 * * *', { timeZone: 'America/Guatemala' }) // ⏰ 10:00 AM GT
   async generarMensajeDiaDePago(): Promise<void> {
     this.logger.debug('Verificando zonas de facturación: Aviso de pago');
     const hoy = dayjs().tz('America/Guatemala');
 
-    /* 0️⃣  SID de la plantilla */
     const TEMPLATE_SID = this.configService.get<string>(
       'RECORDATORIO_ULTIMO_PAGO_SID',
     );
     if (!TEMPLATE_SID)
       throw new InternalServerErrorException('SID plantilla faltante');
 
-    /* 1️⃣  Empresa para {{4}} */
     const empresa = await this.prisma.empresa.findFirst({
       select: { nombre: true },
     });
@@ -55,14 +54,14 @@ export class RecordatorioDiaPagoService {
       return;
     }
 
-    /* 2️⃣  Zonas y clientes */
     const zonas = await this.prisma.facturacionZona.findMany({
       include: { clientes: { include: { servicioInternet: true } } },
     });
 
     for (const zona of zonas) {
-      /* Día y flags del aviso de pago */
-      const esHoy = hoy.isSame(hoy.date(zona.diaPago), 'day');
+      const esHoy = zona.diaPago
+        ? hoy.isSame(hoy.date(zona.diaPago), 'day')
+        : false;
       const habilitado =
         zona.enviarAvisoPago && zona.enviarRecordatorio && zona.whatsapp;
 
@@ -72,26 +71,24 @@ export class RecordatorioDiaPagoService {
         if (!cliente.servicioInternet) continue;
 
         try {
-          /* 3️⃣  Obtener / crear factura del periodo */
-          const { factura, esNueva } =
-            await this.facturaManager.obtenerOcrearFactura(cliente, zona);
+          const { factura } = await this.facturaManager.obtenerOcrearFactura(
+            cliente,
+            zona,
+            false,
+          );
 
-          /* Saltar si ya está pagada */
           if (
             !['PENDIENTE', 'PARCIAL', 'VENCIDA'].includes(
               factura.estadoFacturaInternet,
             )
-          )
+          ) {
+            this.logger.debug(`Factura ya pagada; cliente ${cliente.id}.`);
             continue;
+          }
 
-          if (esNueva)
-            await this.facturaManager.actualizarEstadoCliente(factura);
-
-          /* 4️⃣  Variables de plantilla */
           const monto = factura.montoPago.toFixed(2);
           const fechaL = dayjs(factura.fechaPagoEsperada).format('DD/MM/YYYY');
 
-          /* 5️⃣  Teléfonos válidos */
           const destinos = formatearTelefonos([
             cliente.telefono,
             cliente.contactoReferenciaTelefono,
@@ -115,6 +112,12 @@ export class RecordatorioDiaPagoService {
             );
           }
         } catch (err) {
+          if (err instanceof NotFoundException) {
+            this.logger.debug(
+              `Sin factura para cliente ${cliente.id}; no se envía aviso de pago.`,
+            );
+            continue;
+          }
           this.logger.warn(
             `Zona ${zona.id} cliente ${cliente.id}: ${err.message}`,
           );
