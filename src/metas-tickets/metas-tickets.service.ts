@@ -203,7 +203,6 @@ export class MetasTicketsService {
    * Retorna los tickets con informacion para metricas
    */
   async getMetricasTicketsMes() {
-    /* ───────── Configuración de fechas ───────── */
     const TZ = 'America/Guatemala';
     const inicioMes = dayjs().tz(TZ).startOf('month').toDate();
     const finMes = dayjs().tz(TZ).endOf('month').toDate();
@@ -288,39 +287,74 @@ export class MetasTicketsService {
   async getResueltosPorDiaMes() {
     const TZ = 'America/Guatemala';
 
+    // Fecha de inicio y fin de mes
     const inicioMes = dayjs().tz(TZ).startOf('month').toDate();
     const finMes = dayjs().tz(TZ).endOf('month').toDate();
 
+    // Traigo tickets resueltos en el mes, con main-tecnico y asignaciones
     const tickets = await this.prisma.ticketSoporte.findMany({
       where: {
         estado: 'RESUELTA',
         fechaCierre: { gte: inicioMes, lte: finMes },
-        tecnico: { rol: 'TECNICO' },
       },
       select: {
         fechaCierre: true,
-        tecnico: { select: { nombre: true } },
+        tecnico: {
+          select: { id: true, nombre: true, rol: true },
+        },
+        asignaciones: {
+          select: {
+            tecnico: {
+              select: { id: true, nombre: true, rol: true },
+            },
+          },
+        },
       },
     });
 
+    // Mapa [nombreTecnico] → { diaDelMes: cantidad }
     const mapa: Record<string, Record<number, number>> = {};
 
-    tickets.forEach(({ tecnico, fechaCierre }) => {
-      const dia = dayjs(fechaCierre).tz(TZ).date(); // 1-31 local
-      if (!mapa[tecnico.nombre]) mapa[tecnico.nombre] = {};
-      mapa[tecnico.nombre][dia] = (mapa[tecnico.nombre][dia] || 0) + 1;
+    tickets.forEach(({ tecnico, fechaCierre, asignaciones }) => {
+      const dia = dayjs(fechaCierre).tz(TZ).date(); // día 1–31
+
+      // Reunimos todos los técnicos implicados en este ticket
+      const listaTec: { id: number; nombre: string; rol: string }[] = [];
+
+      // 1) Técnico principal, si existe y es rol ‘TECNICO’
+      if (tecnico?.rol === 'TECNICO') {
+        listaTec.push(tecnico);
+      }
+
+      // 2) Cada uno de los compañeros asignados
+      asignaciones.forEach(({ tecnico: comp }) => {
+        if (comp.rol === 'TECNICO') {
+          listaTec.push(comp);
+        }
+      });
+
+      // Para cada técnico implicado, incrementamos su conteo del día
+      listaTec.forEach(({ nombre }) => {
+        if (!mapa[nombre]) {
+          mapa[nombre] = {};
+        }
+        mapa[nombre][dia] = (mapa[nombre][dia] || 0) + 1;
+      });
     });
 
-    const diasTotales = dayjs(inicioMes).tz(TZ).daysInMonth(); // ✅ 30/31/28
+    // Preparamos el array final para el chart
+    const diasTotales = dayjs(inicioMes).tz(TZ).daysInMonth();
+    const lineChartData: Array<Record<string | 'dia', number>> = [];
 
-    const lineChartData: any[] = [];
     for (let dia = 1; dia <= diasTotales; dia++) {
-      const fila: any = { dia };
+      const fila: Record<string | 'dia', number> = { dia };
       Object.keys(mapa).forEach((tec) => {
         fila[tec] = mapa[tec][dia] || 0;
       });
       lineChartData.push(fila);
     }
+
+    console.log('el log del array del scale es: ', lineChartData);
 
     return lineChartData;
   }

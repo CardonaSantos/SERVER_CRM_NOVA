@@ -1,0 +1,7 @@
+{
+  // Fuerza a Prettier a aceptar cualquier fin de línea
+  "prettier.endOfLine": "auto",
+
+  // Opción extra para que VSCode guarde siempre con LF
+  "files.eol": "\n"
+}

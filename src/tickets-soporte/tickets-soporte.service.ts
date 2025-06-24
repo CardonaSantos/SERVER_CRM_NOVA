@@ -184,8 +184,6 @@ export class TicketsSoporteService {
           descripcion: updateTicketsSoporteDto.description,
           estado: updateTicketsSoporteDto.status,
           prioridad: updateTicketsSoporteDto.priority,
-          // Actualizamos el técnico asignado si se envía (si no, lo dejamos sin cambios)
-          // Actualizamos el técnico: conectamos si se envía, sino desconectamos
           tecnico:
             updateTicketsSoporteDto.assignee &&
             updateTicketsSoporteDto.assignee.id
@@ -199,6 +197,21 @@ export class TicketsSoporteService {
       await tx.ticketEtiqueta.deleteMany({
         where: { ticketId: id },
       });
+
+      // 2) Limpia todas las asignaciones de técnicos
+      await tx.ticketSoporteTecnico.deleteMany({
+        where: { ticketId: id },
+      });
+
+      // 3) Vuelve a crear solo las que vienen en el DTO
+      if (updateTicketsSoporteDto.companios?.length) {
+        await tx.ticketSoporteTecnico.createMany({
+          data: updateTicketsSoporteDto.companios.map((tecnicoId) => ({
+            ticketId: id,
+            tecnicoId: tecnicoId,
+          })),
+        });
+      }
 
       // 2. Si se envían etiquetas, creamos las nuevas asociaciones.
       if (
@@ -296,7 +309,9 @@ export class TicketsSoporteService {
         },
       });
 
-      let acompanantes = companios?.asignaciones?.map((tec) => tec.tecnico.id);
+      const acompanantes = companios?.asignaciones?.map(
+        (tec) => tec.tecnico.id,
+      );
 
       // 4. Agregar seguimiento
       await this.prisma.seguimientoTicket.create({

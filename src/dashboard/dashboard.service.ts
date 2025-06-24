@@ -1,13 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { CreateDashboardDto } from './dto/create-dashboard.dto';
-import { UpdateDashboardDto } from './dto/update-dashboard.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createDashboardDto: CreateDashboardDto) {}
+  async create() {}
 
   /**
    * Devuelve todos los tickets activos de un técnico,
@@ -30,13 +28,7 @@ export class DashboardService {
       where: {
         tecnicoId: tecnicoId,
         estado: {
-          in: [
-            'ABIERTA',
-            'EN_PROCESO',
-            'PENDIENTE',
-            'PENDIENTE_CLIENTE',
-            'PENDIENTE_TECNICO',
-          ],
+          in: ['ABIERTA', 'EN_PROCESO'],
         },
       },
       select: {
@@ -79,6 +71,94 @@ export class DashboardService {
           location: loc ? { lat: loc.latitud, lng: loc.longitud } : null, // o undefined si prefieres
         };
       });
+  }
+
+  async findTicketsAsignados(tecnicoId: number) {
+    try {
+      console.log('El id del tecnico es: ', tecnicoId);
+
+      const user = await this.prisma.usuario.findUnique({
+        where: {
+          id: tecnicoId,
+        },
+      });
+      console.log('El usuario encontrado es: ', user);
+
+      const rawTickets = await this.prisma.ticketSoporte.findMany({
+        orderBy: {
+          fechaApertura: 'asc',
+        },
+        where: {
+          AND: [
+            {
+              estado: {
+                in: [
+                  'ABIERTA',
+                  'EN_PROCESO',
+                  'PENDIENTE',
+                  'PENDIENTE_CLIENTE',
+                  'PENDIENTE_TECNICO',
+                  'NUEVO',
+                ],
+              },
+            },
+            {
+              OR: [
+                { tecnicoId: tecnicoId },
+                {
+                  asignaciones: {
+                    some: { tecnicoId: tecnicoId },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+        select: {
+          id: true,
+          titulo: true,
+          fechaApertura: true,
+          estado: true,
+          prioridad: true,
+          descripcion: true,
+          cliente: {
+            select: {
+              id: true,
+              nombre: true,
+              direccion: true,
+              apellidos: true,
+              telefono: true,
+              contactoReferenciaTelefono: true,
+              ubicacion: { select: { latitud: true, longitud: true } },
+            },
+          },
+        },
+      });
+      console.log('Los tickets asignados a este usuario son: ', rawTickets);
+
+      return rawTickets
+        .sort((a, b) => +a.fechaApertura - +b.fechaApertura)
+        .map((t) => {
+          const loc = t.cliente.ubicacion; // puede ser null
+          return {
+            id: t.id,
+            title: t.titulo,
+            openedAt: t.fechaApertura,
+            status: t.estado,
+            priority: t.prioridad,
+            description: t.descripcion,
+            clientId: t.cliente.id,
+            clientName: `${t.cliente.nombre} ${t.cliente.apellidos}`,
+            clientPhone: t.cliente.telefono,
+            referenceContact: t.cliente.contactoReferenciaTelefono,
+            direction: t.cliente.direccion,
+            location: loc ? { lat: loc.latitud, lng: loc.longitud } : null, // o undefined si prefieres
+          };
+        });
+    } catch (error) {
+      console.log('El error es:');
+      return error;
+    }
   }
 
   async getDashboardData() {
@@ -131,10 +211,6 @@ export class DashboardService {
 
   findOne(id: number) {
     return `This action returns a #${id} dashboard`;
-  }
-
-  update(id: number, updateDashboardDto: UpdateDashboardDto) {
-    return `This action updates a #${id} dashboard`;
   }
 
   remove(id: number) {
