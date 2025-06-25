@@ -1,8 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import * as dayjs from 'dayjs';
+import * as utc from 'dayjs/plugin/utc';
+import * as timezone from 'dayjs/plugin/timezone';
 import { PrismaService } from 'src/prisma/prisma.service';
-
+dayjs.extend(utc);
+dayjs.extend(timezone);
 @Injectable()
 export class DashboardService {
+  private logger = new Logger(DashboardService.name);
   constructor(private readonly prisma: PrismaService) {}
 
   async create() {}
@@ -162,41 +167,143 @@ export class DashboardService {
   }
 
   async getDashboardData() {
+    const TZ = 'America/Guatemala';
+    const ahora = dayjs().tz(TZ);
+    const inicioMes = ahora.startOf('month').toDate();
+    const finMes = ahora.endOf('month').toDate();
+
     const [
       activeClientsCount,
       delinquentClientsCount,
       suspendedClientsCount,
+
+      // Si tienes un modelo Servicio, cámbialo aquí:
       activeServicesCount,
       suspendedServicesCount,
+
       clientsAddedThisMonthCount,
       lastTicket,
+
+      // Otros nuevos
+      ticketsResueltosDelMes,
+      clientesRegistrados,
+      clientesNuevosDelMes,
+
+      facturasEmitidas,
+      facturasEmitidasDelMes,
+
+      facturasCobradasDelMes,
+      facturasCobradas,
+
+      totalCobradoDelMesAgg,
+
+      moraTotalAgg,
+      pagosParcialesAgg,
+      pendientesSinPagarAgg,
     ] = await Promise.all([
-      this.prisma.clienteInternet.count({
-        where: { estadoCliente: 'ACTIVO' },
-      }),
-      this.prisma.clienteInternet.count({
-        where: { estadoCliente: 'MOROSO' },
-      }),
-      this.prisma.clienteInternet.count({
-        where: { estadoCliente: 'SUSPENDIDO' },
-      }),
-      this.prisma.clienteInternet.count({
-        where: { estadoCliente: 'ACTIVO' },
-      }),
-      this.prisma.clienteInternet.count({
-        where: { estadoCliente: 'SUSPENDIDO' },
-      }),
+      // Clientes por estado
       this.prisma.clienteInternet.count({
         where: {
-          creadoEn: {
-            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+          estadoCliente: {
+            in: ['ACTIVO', 'PENDIENTE_ACTIVO', 'PAGO_PENDIENTE', 'ATRASADO'],
           },
         },
       }),
+      this.prisma.clienteInternet.count({ where: { estadoCliente: 'MOROSO' } }),
+      this.prisma.clienteInternet.count({
+        where: { estadoCliente: 'SUSPENDIDO' },
+      }),
+
+      // Services (placeholder: ajusta si tienes otro modelo)
+      this.prisma.clienteInternet.count({ where: { estadoCliente: 'ACTIVO' } }),
+      this.prisma.clienteInternet.count({
+        where: { estadoCliente: 'SUSPENDIDO' },
+      }),
+
+      // Clientes añadidos este mes
+      this.prisma.clienteInternet.count({
+        where: { creadoEn: { gte: inicioMes } },
+      }),
+
+      // Último ticket creado
       this.prisma.ticketSoporte.findFirst({
         orderBy: { fechaApertura: 'desc' },
       }),
+
+      // Tickets resueltos en el mes (filtrado por fechaCierre)
+      this.prisma.ticketSoporte.count({
+        where: {
+          estado: 'RESUELTA',
+          fechaCierre: { gte: inicioMes, lte: finMes },
+        },
+      }),
+
+      // Clientes totales registrados
+      this.prisma.clienteInternet.count(),
+
+      // Clientes nuevos (nuevamente, igual que 'clientsAddedThisMonth')
+      this.prisma.clienteInternet.count({
+        where: { creadoEn: { gte: inicioMes } },
+      }),
+
+      // Facturas
+      this.prisma.facturaInternet.count(), // todas
+      this.prisma.facturaInternet.count({
+        // generadas este mes
+        where: { creadoEn: { gte: inicioMes } },
+      }),
+
+      // Facturas cobradas
+      this.prisma.facturaInternet.count({
+        where: {
+          estadoFacturaInternet: 'PAGADA',
+          fechaPagada: { gte: inicioMes, lte: finMes },
+        },
+      }),
+      this.prisma.facturaInternet.count({
+        where: { estadoFacturaInternet: 'PAGADA' },
+      }),
+
+      // Suma de lo cobrado este mes
+      this.prisma.facturaInternet.aggregate({
+        where: {
+          estadoFacturaInternet: 'PAGADA',
+          fechaPagada: { gte: inicioMes, lte: finMes },
+        },
+        _sum: { montoPago: true },
+      }),
+
+      // Para la mora de morosos: sumamos TOTAL de factura
+      this.prisma.facturaInternet.aggregate({
+        where: {
+          estadoFacturaInternet: { in: ['PARCIAL', 'PENDIENTE', 'VENCIDA'] },
+          cliente: { estadoCliente: 'MOROSO' },
+        },
+        _sum: { montoPago: true },
+      }),
+
+      // Suma de pagos parciales hechos a morosos
+      this.prisma.facturaInternet.aggregate({
+        where: {
+          estadoFacturaInternet: 'PARCIAL',
+          cliente: { estadoCliente: 'MOROSO' },
+        },
+        _sum: { montoPago: true },
+      }),
+
+      // Suma de facturas pendientes (monto total)
+      this.prisma.facturaInternet.aggregate({
+        where: { estadoFacturaInternet: 'PENDIENTE' },
+        _sum: { montoPago: true },
+      }),
     ]);
+
+    // Extraigo y calculo las sumas finales
+    const totalCobradoDelMes = totalCobradoDelMesAgg._sum.montoPago ?? 0;
+    const sumaMorososTotal = moraTotalAgg._sum.montoPago ?? 0;
+    const sumaPagosParciales = pagosParcialesAgg._sum.montoPago ?? 0;
+    const moraDeMorososReal = sumaMorososTotal - sumaPagosParciales;
+    const facturasSinPagarMonto = pendientesSinPagarAgg._sum.montoPago ?? 0;
 
     return {
       activeClients: activeClientsCount,
@@ -206,6 +313,16 @@ export class DashboardService {
       suspendedServices: suspendedServicesCount,
       clientsAddedThisMonth: clientsAddedThisMonthCount,
       lastTicket,
+      ticketsResueltosDelMes,
+      clientesRegistrados,
+      clientesNuevosDelMes,
+      facturasEmitidas,
+      facturasEmitidasDelMes,
+      facturasCobradasDelMes,
+      facturasCobradas,
+      totalCobradoDelMes,
+      moraDeMorosos: moraDeMorososReal,
+      facturasSinPagarMonto,
     };
   }
 

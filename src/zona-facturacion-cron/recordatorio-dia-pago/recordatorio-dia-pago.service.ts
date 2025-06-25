@@ -4,12 +4,6 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  DatosFacturaGenerate,
-  formatearFecha,
-  formatearNumeroWhatsApp,
-  renderTemplate,
-} from '../utils';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import * as dayjs from 'dayjs';
@@ -17,9 +11,13 @@ import * as utc from 'dayjs/plugin/utc';
 import * as timezone from 'dayjs/plugin/timezone';
 import { ConfigService } from '@nestjs/config';
 import { TwilioService } from 'src/twilio/twilio.service';
-import { GenerarFacturaService } from '../generar-factura/generar-factura.service';
+// import { GenerarFacturaService } from '../generar-factura/generar-factura.service';
 import { FacturaManagerService } from '../factura-manager/factura-manager.service';
-import { formatearTelefonos } from '../Functions';
+import {
+  formatearTelefonos,
+  shouldSkipClient,
+  shouldSkipZoneToday,
+} from '../Functions';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 @Injectable()
@@ -29,16 +27,16 @@ export class RecordatorioDiaPagoService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-    private readonly generarFactura: GenerarFacturaService,
+    // private readonly generarFactura: GenerarFacturaService,
 
     private readonly twilioService: TwilioService,
     private readonly facturaManager: FacturaManagerService,
   ) {}
-  // @Cron(CronExpression.EVERY_10_SECONDS)
+  // @Cron(CronExpression.EVERY_MINUTE)
   @Cron('0 10 * * *', { timeZone: 'America/Guatemala' }) // ⏰ 10:00 AM GT
   async generarMensajeDiaDePago(): Promise<void> {
     this.logger.debug('Verificando zonas de facturación: Aviso de pago');
-    const hoy = dayjs().tz('America/Guatemala');
+    // const hoy = dayjs().tz('America/Guatemala');
 
     const TEMPLATE_SID = this.configService.get<string>(
       'RECORDATORIO_ULTIMO_PAGO_SID',
@@ -59,16 +57,16 @@ export class RecordatorioDiaPagoService {
     });
 
     for (const zona of zonas) {
-      const esHoy = zona.diaPago
-        ? hoy.isSame(hoy.date(zona.diaPago), 'day')
-        : false;
-      const habilitado =
-        zona.enviarAvisoPago && zona.enviarRecordatorio && zona.whatsapp;
-
-      if (!esHoy || !habilitado) continue;
+      if (
+        shouldSkipZoneToday(zona.diaPago) || // día distinto
+        !(zona.enviarAvisoPago && zona.enviarRecordatorio)
+      ) {
+        continue;
+      }
 
       for (const cliente of zona.clientes) {
-        if (!cliente.servicioInternet) continue;
+        if (shouldSkipClient(cliente.estadoCliente, cliente.servicioInternet))
+          continue;
 
         try {
           const { factura } = await this.facturaManager.obtenerOcrearFactura(

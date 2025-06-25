@@ -281,7 +281,32 @@ export class MetasTicketsService {
     const ticketsActuales = await this.getTicketsActuales();
     const ticketsEnProceso = await this.getTicketsEnProceso();
     // --> Respuesta final
-    return { data, dataScale, ticketsActuales, ticketsEnProceso };
+    //otros datos
+    const resueltosDelMes = await this.getResueltosDelMes();
+    return {
+      data,
+      dataScale,
+      ticketsActuales,
+      ticketsEnProceso,
+      resueltosDelMes,
+    };
+  }
+
+  async getResueltosDelMes() {
+    const TZ = 'America/Guatemala';
+
+    // Fecha de inicio y fin de mes
+    const inicioMes = dayjs().tz(TZ).startOf('month').toDate();
+    const finMes = dayjs().tz(TZ).endOf('month').toDate();
+
+    const ticketsResueltosDelMes = await this.prisma.ticketSoporte.count({
+      where: {
+        fechaApertura: { gte: inicioMes },
+        fechaCierre: { lte: finMes },
+        estado: 'RESUELTA',
+      },
+    });
+    return ticketsResueltosDelMes; // un número
   }
 
   async getResueltosPorDiaMes() {

@@ -2,7 +2,6 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
-  NotFoundException,
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { TwilioService } from 'src/twilio/twilio.service';
@@ -10,22 +9,18 @@ import * as dayjs from 'dayjs';
 import * as utc from 'dayjs/plugin/utc';
 import * as timezone from 'dayjs/plugin/timezone';
 import { PrismaService } from 'src/prisma/prisma.service';
-import {
-  DatosFacturaGenerate,
-  DatosFacturaGenerateIndividual,
-  getEstadoCliente,
-  PENDIENTES_ENUM,
-} from '../utils';
+import { getEstadoCliente, PENDIENTES_ENUM } from '../utils';
 import {
   ClienteInternet,
-  EstadoCliente,
-  FacturacionZona,
+  // EstadoCliente,
   FacturaInternet,
-  StateFacturaInternet,
 } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
-import { calcularPeriodo, formatearTelefonos } from '../Functions';
-import { periodoFrom } from 'src/facturacion/Utils';
+import {
+  formatearTelefonos,
+  shouldSkipClient,
+  shouldSkipZoneToday,
+} from '../Functions';
 import { FacturaManagerService } from '../factura-manager/factura-manager.service';
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -47,12 +42,12 @@ export class GeneracionFacturaCronService {
    * al método `generarFacturaClientePorZona` para generar una a un cliente.
    */
 
-  // @Cron(CronExpression.EVERY_10_SECONDS, {
+  // @Cron(CronExpression.EVERY_MINUTE, {
   //   timeZone: 'America/Guatemala',
   // })
   @Cron('0 10 * * *', { timeZone: 'America/Guatemala' }) // ⏰ 10:00 AM GT
   async gerarFacturacionAutomaticaCron() {
-    const hoy = dayjs().tz('America/Guatemala');
+    // const hoy = dayjs().tz('America/Guatemala');
     const TEMPLATE_SID =
       this.configService.get<string>('GENERACION_FACTURA_1_SID') ??
       (() => {
@@ -64,11 +59,11 @@ export class GeneracionFacturaCronService {
     });
 
     for (const zona of zonas) {
-      if (!zona.diaGeneracionFactura) continue;
-      if (!hoy.isSame(hoy.date(zona.diaGeneracionFactura), 'day')) continue;
+      if (shouldSkipZoneToday(zona.diaGeneracionFactura)) continue;
 
       for (const cliente of zona.clientes) {
-        if (!cliente.servicioInternet) continue;
+        if (shouldSkipClient(cliente.estadoCliente, cliente.servicioInternet))
+          continue;
 
         try {
           /** Crear o recuperar la factura */

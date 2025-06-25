@@ -4,12 +4,6 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  DatosFacturaGenerate,
-  formatearFecha,
-  formatearNumeroWhatsApp,
-  renderTemplate,
-} from '../utils';
 import * as dayjs from 'dayjs';
 import * as utc from 'dayjs/plugin/utc';
 import * as timezone from 'dayjs/plugin/timezone';
@@ -19,7 +13,11 @@ import { ConfigService } from '@nestjs/config';
 import { TwilioService } from 'src/twilio/twilio.service';
 import { GenerarFacturaService } from '../generar-factura/generar-factura.service';
 import { FacturaManagerService } from '../factura-manager/factura-manager.service';
-import { formatearTelefonos } from '../Functions';
+import {
+  formatearTelefonos,
+  shouldSkipClient,
+  shouldSkipZoneToday,
+} from '../Functions';
 // Extiende dayjs con los plugins
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -36,7 +34,7 @@ export class SegundoRecordatorioCronService {
     private readonly facturaManager: FacturaManagerService,
   ) {}
 
-  // @Cron(CronExpression.EVERY_10_SECONDS)
+  // @Cron(CronExpression.EVERY_MINUTE)
   @Cron('0 10 * * *', { timeZone: 'America/Guatemala' }) // ⏰ 10:00 AM GT
   async generarMensajeSegundoRecordatorio(): Promise<void> {
     this.logger.debug('Verificando zonas de facturación: Recordatorio 2');
@@ -61,16 +59,16 @@ export class SegundoRecordatorioCronService {
     });
 
     for (const zona of zonas) {
-      const esHoy = zona.diaSegundoRecordatorio
-        ? hoy.isSame(hoy.date(zona.diaSegundoRecordatorio), 'day')
-        : false;
-      const habilitado =
-        zona.enviarRecordatorio2 && zona.enviarRecordatorio && zona.whatsapp;
-
-      if (!esHoy || !habilitado) continue;
+      if (
+        shouldSkipZoneToday(zona.diaSegundoRecordatorio) ||
+        !(zona.enviarRecordatorio && zona.enviarRecordatorio2)
+      ) {
+        continue;
+      }
 
       for (const cliente of zona.clientes) {
-        if (!cliente.servicioInternet) continue;
+        if (shouldSkipClient(cliente.estadoCliente, cliente.servicioInternet))
+          continue;
 
         try {
           /* SOLO buscar la factura: crearSiNoExiste = false */

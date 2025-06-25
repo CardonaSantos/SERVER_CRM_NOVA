@@ -9,18 +9,15 @@ import * as dayjs from 'dayjs';
 import * as utc from 'dayjs/plugin/utc';
 import * as timezone from 'dayjs/plugin/timezone';
 import { PrismaService } from 'src/prisma/prisma.service';
-import {
-  DatosFacturaGenerate,
-  formatearFecha,
-  formatearNumeroWhatsApp,
-  renderTemplate,
-} from '../utils';
+
 import { TwilioService } from 'src/twilio/twilio.service';
 import { ConfigService } from '@nestjs/config';
-import { GenerarFacturaService } from '../generar-factura/generar-factura.service';
 import { FacturaManagerService } from '../factura-manager/factura-manager.service';
-import { formatearTelefonos } from '../Functions';
-import { GeneracionFacturaCronService } from '../generacion-factura-cron/generacion-factura-cron.service';
+import {
+  formatearTelefonos,
+  shouldSkipClient,
+  shouldSkipZoneToday,
+} from '../Functions';
 // Extiende dayjs con los plugins
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -39,7 +36,7 @@ export class PrimerRecordatorioCronService {
   @Cron('0 10 * * *', { timeZone: 'America/Guatemala' })
   async generarMensajePrimerRecordatorio(): Promise<void> {
     this.logger.debug('Verificando zonas de facturacion: Recordatorio 1');
-    const hoy = dayjs().tz('America/Guatemala');
+    // const hoy = dayjs().tz('America/Guatemala');
     const TEMPLATE_SID = this.configService.get<string>(
       'RECORDATORIO_PAGO_1_SID',
     );
@@ -61,15 +58,13 @@ export class PrimerRecordatorioCronService {
     });
 
     for (const zona of zonas) {
-      /* 2.a ¿Es el día de este recordatorio y está habilitado? */
-      const esHoy = zona.diaRecordatorio
-        ? hoy.isSame(hoy.date(zona.diaRecordatorio), 'day')
-        : false;
-      if (!esHoy) continue;
+      if (shouldSkipZoneToday(zona.diaRecordatorio)) continue;
+      //verificar si está habilitado => proximanete, verificar el booleano en el modelo cliente para enviar o no
       if (!zona.enviarRecordatorio1 || !zona.enviarRecordatorio) continue;
 
       for (const cliente of zona.clientes) {
-        if (!cliente.servicioInternet) continue;
+        if (shouldSkipClient(cliente.estadoCliente, cliente.servicioInternet))
+          continue;
 
         try {
           /** 3. Obtener / crear factura pendiente del periodo */
