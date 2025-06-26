@@ -123,6 +123,7 @@ export class MetasTicketsService {
    * @throws NotFoundException si no existe la meta.
    * @throws ConflictException en caso de conflicto de datos.
    * @throws InternalServerErrorException en errores inesperados.
+ 
    */
   async update(
     id: number,
@@ -132,7 +133,19 @@ export class MetasTicketsService {
     try {
       const updated = await this.prisma.metaTecnicoTicket.update({
         where: { id },
-        data: updateDto,
+        data: {
+          titulo: updateDto.titulo,
+          fechaInicio: dayjs
+            .tz(updateDto.fechaInicio, 'YYYY-MM-DD', 'America/Guatemala')
+            .startOf('day')
+            .toDate(),
+          fechaFin: dayjs
+            .tz(updateDto.fechaFin, 'YYYY-MM-DD', 'America/Guatemala')
+            .startOf('day')
+            .toDate(),
+          metaTickets: updateDto.metaTickets,
+          estado: updateDto.estado,
+        },
       });
       return updated;
     } catch (error) {
@@ -177,26 +190,38 @@ export class MetasTicketsService {
     if (!tecnicoId) {
       throw new BadRequestException('Se requiere el ID del técnico');
     }
-    const hoy = dayjs().tz('America/Guatemala').startOf('day').toDate();
-    const metaVigente = await this.prisma.metaTecnicoTicket.findFirst({
-      where: {
-        tecnicoId,
-        estado: 'ABIERTO',
-        fechaInicio: { lte: hoy },
-        fechaFin: { gte: hoy },
-      },
-      orderBy: { creadoEn: 'desc' },
-    });
 
-    if (!metaVigente) {
-      this.logger.debug('Meta no encontrada');
+    this.logger.debug(`incrementMeta llamado para tecnicoId=${tecnicoId}`);
+
+    // 1) Listar todas las metas abiertas de este técnico, ordenadas de más nueva a más vieja
+    const metasAbiertas = await this.prisma.metaTecnicoTicket.findMany({
+      where: { tecnicoId, estado: 'ABIERTO' },
+      orderBy: { creadoEn: 'desc' },
+      take: 2, // solo trae un par para inspección rápida
+    });
+    this.logger.debug(
+      `Metas ABIERTO encontradas (más recientes primero):\n` +
+        JSON.stringify(metasAbiertas, null, 2),
+    );
+
+    // 2) Tomar la primera (la más reciente)
+    const meta = metasAbiertas[0];
+    if (!meta) {
+      this.logger.debug('No hay ninguna meta abierta para este técnico');
       return null;
     }
 
-    return this.prisma.metaTecnicoTicket.update({
-      where: { id: metaVigente.id },
+    // 3) Incrementar
+    const updated = await this.prisma.metaTecnicoTicket.update({
+      where: { id: meta.id },
       data: { ticketsResueltos: { increment: 1 } },
     });
+    this.logger.debug(
+      `Meta ${meta.id} (creadaEn=${meta.creadoEn.toISOString()}) actualizada: ` +
+        `ticketsResueltos pasó de ${meta.ticketsResueltos} a ${updated.ticketsResueltos}`,
+    );
+
+    return updated;
   }
 
   /**
@@ -309,14 +334,19 @@ export class MetasTicketsService {
     return ticketsResueltosDelMes; // un número
   }
 
-  async getResueltosPorDiaMes() {
+  async getResueltosPorDiaMes(): Promise<
+    Array<Record<'dia' | string, number>>
+  > {
     const TZ = 'America/Guatemala';
 
-    // Fecha de inicio y fin de mes
-    const inicioMes = dayjs().tz(TZ).startOf('month').toDate();
-    const finMes = dayjs().tz(TZ).endOf('month').toDate();
+    // 1) Rango inicio/fin de mes (cubre desde 00:00 hasta 23:59)
+    const inicioMes = dayjs().tz(TZ).startOf('month').startOf('day').toDate();
+    const finMes = dayjs().tz(TZ).endOf('month').endOf('day').toDate();
+    this.logger.debug(
+      `Rango para consulta: ${inicioMes.toISOString()} → ${finMes.toISOString()}`,
+    );
 
-    // Traigo tickets resueltos en el mes, con main-tecnico y asignaciones
+    // 2) Traer todos los tickets cerrados (RESUELTA) en ese rango
     const tickets = await this.prisma.ticketSoporte.findMany({
       where: {
         estado: 'RESUELTA',
@@ -336,50 +366,62 @@ export class MetasTicketsService {
         },
       },
     });
+    this.logger.debug(`Tickets resueltos encontrados: ${tickets.length}`);
+    this.logger.debug('Detalle de tickets:', JSON.stringify(tickets, null, 2));
 
-    // Mapa [nombreTecnico] → { diaDelMes: cantidad }
-    const mapa: Record<string, Record<number, number>> = {};
+    // 3) Construir mapa [nombreTecnico] -> { dia: cantidad }
+    const mapa = tickets.reduce<Record<string, Record<number, number>>>(
+      (acc, t) => {
+        const dia = dayjs(t.fechaCierre).tz(TZ).date();
+        this.logger.debug(
+          `Procesando ticket cierre=${t.fechaCierre.toISOString()} → día ${dia}`,
+          {
+            tecnico: t.tecnico,
+            acompanantes: t.asignaciones.map((a) => a.tecnico),
+          },
+        );
 
-    tickets.forEach(({ tecnico, fechaCierre, asignaciones }) => {
-      const dia = dayjs(fechaCierre).tz(TZ).date(); // día 1–31
-
-      // Reunimos todos los técnicos implicados en este ticket
-      const listaTec: { id: number; nombre: string; rol: string }[] = [];
-
-      // 1) Técnico principal, si existe y es rol ‘TECNICO’
-      if (tecnico?.rol === 'TECNICO') {
-        listaTec.push(tecnico);
-      }
-
-      // 2) Cada uno de los compañeros asignados
-      asignaciones.forEach(({ tecnico: comp }) => {
-        if (comp.rol === 'TECNICO') {
-          listaTec.push(comp);
+        // Lista de todos los técnicos implicados que sean realmente 'TECNICO'
+        const todos: Array<{ id: number; nombre: string; rol: string }> = [];
+        if (t.tecnico?.rol === 'TECNICO') {
+          todos.push(t.tecnico);
         }
-      });
+        t.asignaciones.forEach(({ tecnico: comp }) => {
+          if (comp.rol === 'TECNICO') {
+            todos.push(comp);
+          }
+        });
 
-      // Para cada técnico implicado, incrementamos su conteo del día
-      listaTec.forEach(({ nombre }) => {
-        if (!mapa[nombre]) {
-          mapa[nombre] = {};
-        }
-        mapa[nombre][dia] = (mapa[nombre][dia] || 0) + 1;
-      });
-    });
+        // Incrementar el conteo para cada técnico
+        todos.forEach(({ nombre }) => {
+          acc[nombre] = acc[nombre] || {};
+          acc[nombre][dia] = (acc[nombre][dia] || 0) + 1;
+        });
 
-    // Preparamos el array final para el chart
+        return acc;
+      },
+      {},
+    );
+    this.logger.debug(
+      'Mapa intermedio de técnicos por día:',
+      JSON.stringify(mapa, null, 2),
+    );
+
+    // 4) Formatear el array final para el chart
     const diasTotales = dayjs(inicioMes).tz(TZ).daysInMonth();
-    const lineChartData: Array<Record<string | 'dia', number>> = [];
+    const lineChartData: Array<Record<'dia' | string, number>> = [];
 
     for (let dia = 1; dia <= diasTotales; dia++) {
-      const fila: Record<string | 'dia', number> = { dia };
+      const fila: Record<'dia' | string, number> = { dia };
       Object.keys(mapa).forEach((tec) => {
         fila[tec] = mapa[tec][dia] || 0;
       });
       lineChartData.push(fila);
     }
-
-    console.log('el log del array del scale es: ', lineChartData);
+    this.logger.debug(
+      'Datos finales para gráfica de líneas:',
+      JSON.stringify(lineChartData, null, 2),
+    );
 
     return lineChartData;
   }

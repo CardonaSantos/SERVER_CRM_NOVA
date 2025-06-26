@@ -200,6 +200,10 @@ export class DashboardService {
       moraTotalAgg,
       pagosParcialesAgg,
       pendientesSinPagarAgg,
+      //clientes con pago pendiente
+      pendientesPago,
+      atrasados,
+      desinstalados,
     ] = await Promise.all([
       // Clientes por estado
       this.prisma.clienteInternet.count({
@@ -296,6 +300,24 @@ export class DashboardService {
         where: { estadoFacturaInternet: 'PENDIENTE' },
         _sum: { montoPago: true },
       }),
+
+      this.prisma.clienteInternet.count({
+        where: {
+          estadoCliente: 'PENDIENTE_ACTIVO',
+        },
+      }),
+
+      this.prisma.clienteInternet.count({
+        where: {
+          estadoCliente: 'ATRASADO',
+        },
+      }),
+
+      this.prisma.clienteInternet.count({
+        where: {
+          estadoCliente: 'DESINSTALADO',
+        },
+      }),
     ]);
 
     // Extraigo y calculo las sumas finales
@@ -323,6 +345,9 @@ export class DashboardService {
       totalCobradoDelMes,
       moraDeMorosos: moraDeMorososReal,
       facturasSinPagarMonto,
+      pendientesPago: pendientesPago,
+      atrasados: atrasados,
+      desinstalados: desinstalados,
     };
   }
 

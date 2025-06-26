@@ -49,6 +49,8 @@ export class ClienteInternetController {
     @Query('muniSelected') muniSelected: string,
     @Query('depaSelected') depaSelected: string,
     @Query('sectorSelected') sectorSelected: string,
+    //nuevo state
+    @Query('estadoSelected') estadoSelected: string,
   ) {
     const pageNumber = parseInt(page, 10) || 1;
     const limit = parseInt(limite, 10) || 1;
@@ -57,6 +59,7 @@ export class ClienteInternetController {
     const municipio = parseInt(muniSelected, 10) || null;
     const departamento = parseInt(depaSelected, 10) || null;
     const sector = parseInt(sectorSelected, 10) || null;
+    const estado = estadoSelected || null;
 
     return this.clienteInternetService.findCustomersToTable(
       pageNumber,
@@ -67,6 +70,7 @@ export class ClienteInternetController {
       municipio,
       departamento,
       sector,
+      estado,
     );
   }
 

@@ -45,6 +45,8 @@ export class MetasTicketsController {
     @Param('id') id: string,
     @Body() updateMetasTicketDto: UpdateMetasTicketDto,
   ) {
+    console.log('La data entrando al controller es: ', updateMetasTicketDto);
+
     return this.metasTicketsService.update(+id, updateMetasTicketDto);
   }
 

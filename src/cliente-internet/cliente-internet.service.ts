@@ -9,7 +9,7 @@ import { UpdateClienteInternetDto } from './dto/update-cliente-internet.dto';
 import { UserTokenAuth } from 'src/auth/dto/userToken.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { updateCustomerService } from './dto/update-customer-service';
-import { ClienteInternet, Prisma } from '@prisma/client';
+import { ClienteInternet, EstadoCliente, Prisma } from '@prisma/client';
 import * as dayjs from 'dayjs';
 import { IdContratoService } from 'src/id-contrato/id-contrato.service';
 import { periodoFrom } from 'src/facturacion/Utils';
@@ -792,6 +792,7 @@ export class ClienteInternetService {
     municipio?: number,
     departamento?: number,
     sector?: number,
+    estado?: string,
   ) {
     const skip = (page - 1) * limit;
 
@@ -822,6 +823,9 @@ export class ClienteInternetService {
     if (municipio) andConditions.push({ municipioId: municipio });
     if (departamento) andConditions.push({ departamentoId: departamento });
     if (sector) andConditions.push({ sectorId: sector });
+    if (estado) {
+      andConditions.push({ estadoCliente: estado as EstadoCliente });
+    }
 
     // 3) Armamos el where final
     const whereCondition: Prisma.ClienteInternetWhereInput =
@@ -897,7 +901,10 @@ export class ClienteInternetService {
           },
         },
       }),
-      this.prisma.clienteInternet.count(),
+      // this.prisma.clienteInternet.count(),
+      this.prisma.clienteInternet.count({
+        where: whereCondition, // ← aquí el conteo filtrado
+      }),
     ]);
     const formattedCustomers = customers.map((customer) => ({
       id: customer.id,

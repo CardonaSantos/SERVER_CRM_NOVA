@@ -321,9 +321,14 @@ export class TicketsSoporteService {
           usuario: { connect: { id: dto.usuarioId } },
         },
       });
-
+      const user = await this.prisma.clienteInternet.findUnique({
+        where: {
+          id: ticketClosed.tecnicoId,
+        },
+      });
       if (ticketClosed.tecnicoId) {
-        this.logger.debug('Incrementando meta para tecnico main');
+        this.logger.debug('Incrementando meta para tecnico main', user);
+
         await this.metasTicketSoporte.incrementMeta(ticketClosed.tecnicoId);
       }
 
@@ -467,6 +472,10 @@ export class TicketsSoporteService {
               }
             : null,
           date: ticket.fechaApertura.toISOString(), // Formato de fecha
+          closedAt: ticket.fechaCierre
+            ? ticket.fechaCierre.toISOString()
+            : null,
+
           unread: ticket.estado === 'ABIERTA', // Definir si está "sin leer" basado en el estado
           tags: ticket.etiquetas.map((tag) => ({
             label: tag.etiqueta.nombre,
