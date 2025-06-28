@@ -32,7 +32,7 @@ export class RecordatorioDiaPagoService {
     private readonly twilioService: TwilioService,
     private readonly facturaManager: FacturaManagerService,
   ) {}
-  // @Cron(CronExpression.EVERY_MINUTE)
+  // @Cron(CronExpression.EVERY_10_SECONDS)
   @Cron('0 10 * * *', { timeZone: 'America/Guatemala' }) // ⏰ 10:00 AM GT
   async generarMensajeDiaDePago(): Promise<void> {
     this.logger.debug('Verificando zonas de facturación: Aviso de pago');
