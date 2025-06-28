@@ -402,6 +402,14 @@ export class MetasTicketsService {
       },
       {},
     );
+
+    // 3.5) Mapa total de tickets resueltos por día
+    const totalMap: Record<number, number> = {};
+    tickets.forEach((t) => {
+      const d = dayjs(t.fechaCierre).tz(TZ).date();
+      totalMap[d] = (totalMap[d] || 0) + 1;
+    });
+
     this.logger.debug(
       'Mapa intermedio de técnicos por día:',
       JSON.stringify(mapa, null, 2),
@@ -413,9 +421,15 @@ export class MetasTicketsService {
 
     for (let dia = 1; dia <= diasTotales; dia++) {
       const fila: Record<'dia' | string, number> = { dia };
+
+      // Rellenamos los contadores por técnico
       Object.keys(mapa).forEach((tec) => {
         fila[tec] = mapa[tec][dia] || 0;
       });
+
+      // **Aquí** asignamos el total de tickets resueltos ese día
+      fila['total'] = totalMap[dia] || 0;
+
       lineChartData.push(fila);
     }
     this.logger.debug(
