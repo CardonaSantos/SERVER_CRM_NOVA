@@ -34,7 +34,6 @@ export class GeneracionFacturaCronService {
     private readonly configService: ConfigService,
     private readonly facturaManager: FacturaManagerService,
   ) {}
-  // @Cron(CronExpression.EVERY_10_SECONDS)
   /**
    * Genera la facturación automática para los clientes.
    * Este método se ejecuta diariamente a las 11 PM (hora de Guatemala).
@@ -42,7 +41,7 @@ export class GeneracionFacturaCronService {
    * al método `generarFacturaClientePorZona` para generar una a un cliente.
    */
 
-  // @Cron(CronExpression.EVERY_10_SECONDS, {
+  // @Cron(CronExpression.EVERY_MINUTE, {
   //   timeZone: 'America/Guatemala',
   // })
   @Cron('0 10 * * *', { timeZone: 'America/Guatemala' }) // ⏰ 10:00 AM GT
@@ -111,7 +110,7 @@ export class GeneracionFacturaCronService {
 
     const destinos = formatearTelefonos([
       cliente.telefono,
-      cliente.contactoReferenciaTelefono,
+      // cliente.contactoReferenciaTelefono, //COMENTADO POR EL MOMENTO, NO REFERENCIAS
     ]);
 
     for (const numero of destinos) {

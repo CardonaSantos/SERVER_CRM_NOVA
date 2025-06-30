@@ -7,11 +7,13 @@ import {
   Param,
   Delete,
   ParseIntPipe,
+  Res,
 } from '@nestjs/common';
 import { RutaCobroService } from './ruta-cobro.service';
 import { CreateRutaDto } from './dto/create-ruta-cobro.dto';
 import { UpdateRutaDto } from './dto/update-ruta-cobro.dto';
 import { CreateNewRutaDto } from './dto/create-new-ruta.dto';
+import { Response } from 'express';
 
 @Controller('ruta-cobro')
 export class RutaCobroController {
@@ -41,6 +43,27 @@ export class RutaCobroController {
   @Get('/get-rutas-cobros')
   findAllRutas() {
     return this.rutaCobroService.findAllRutas();
+  }
+
+  @Get('/get-excel-ruta/:id')
+  async downloadExcelRutaCobro(
+    @Param('id', ParseIntPipe) id: number,
+    @Res() res: Response,
+  ) {
+    const buffer = await this.rutaCobroService.downloadExcelRutaCobro(id);
+
+    //Response de express
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    //Nombre de archivo explicito con terminacion de tipo de archivo y buffer
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="clientes_ruta_${id}.xlsx"`,
+    );
+
+    res.end(buffer);
   }
 
   @Patch('/update-one-ruta/:id')

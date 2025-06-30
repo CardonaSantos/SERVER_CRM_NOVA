@@ -99,7 +99,7 @@ export class PrimerRecordatorioCronService {
           /** 5. Números válidos */
           const destinos = formatearTelefonos([
             cliente.telefono,
-            cliente.contactoReferenciaTelefono,
+            // cliente.contactoReferenciaTelefono, //COMENTADO POR EL MOMENTO, NO REFERENCIAS
           ]);
 
           for (const numero of destinos) {

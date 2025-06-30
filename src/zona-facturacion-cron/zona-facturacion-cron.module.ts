@@ -9,7 +9,7 @@ import { GeneracionFacturaCronService } from './generacion-factura-cron/generaci
 import { PrimerRecordatorioCronService } from './primer-recordatorio-cron/primer-recordatorio-cron.service';
 import { SegundoRecordatorioCronService } from './segundo-recordatorio-cron/segundo-recordatorio-cron.service';
 import { RecordatorioDiaPagoService } from './recordatorio-dia-pago/recordatorio-dia-pago.service';
-import { GenerarFacturaService } from './generar-factura/generar-factura.service';
+// import { GenerarFacturaService } from './generar-factura/generar-factura.service';
 import { FacturaManagerService } from './factura-manager/factura-manager.service';
 
 @Module({
@@ -22,7 +22,7 @@ import { FacturaManagerService } from './factura-manager/factura-manager.service
     PrimerRecordatorioCronService,
     SegundoRecordatorioCronService,
     RecordatorioDiaPagoService,
-    GenerarFacturaService,
+    // GenerarFacturaService, ya no sirve
     FacturaManagerService,
   ],
 })

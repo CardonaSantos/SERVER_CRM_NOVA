@@ -11,7 +11,6 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { TwilioService } from 'src/twilio/twilio.service';
-import { GenerarFacturaService } from '../generar-factura/generar-factura.service';
 import { FacturaManagerService } from '../factura-manager/factura-manager.service';
 import {
   formatearTelefonos,
@@ -29,7 +28,6 @@ export class SegundoRecordatorioCronService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly twilioService: TwilioService,
-    private readonly generarFactura: GenerarFacturaService,
     private readonly configService: ConfigService,
     private readonly facturaManager: FacturaManagerService,
   ) {}
@@ -92,7 +90,7 @@ export class SegundoRecordatorioCronService {
 
           const destinos = formatearTelefonos([
             cliente.telefono,
-            cliente.contactoReferenciaTelefono,
+            // cliente.contactoReferenciaTelefono, //COMENTADO POR EL MOMENTO, NO REFERENCIAS
           ]);
 
           for (const numero of destinos) {

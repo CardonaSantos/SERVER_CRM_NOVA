@@ -937,6 +937,11 @@ export class FacturacionService {
 
     console.log('Fecha de pago esperada:', fechaPagoEsperada);
 
+    const fechaPago = dayjs()
+      .month(createGenerateFactura.mes - 1)
+      .year(createGenerateFactura.anio)
+      .date(cliente.facturacionZona.diaPago);
+
     // Establecer la zona horaria de Guatemala al generar la factura
     const dataFactura: DatosFacturaGenerate = {
       datalleFactura: `Pago por suscripción mensual al servicio de internet, plan ${cliente.servicioInternet.nombre} (${cliente.servicioInternet.velocidad}), precio: ${cliente.servicioInternet.precio} Fecha: ${cliente.facturacionZona.diaPago}`,
@@ -949,20 +954,14 @@ export class FacturacionService {
       facturacionZona: cliente.facturacionZona.id,
       nombreClienteFactura: `${cliente.nombre} ${cliente.apellidos}`,
     };
+    const mesNombre = fechaPago.format('MMMM YYYY').toUpperCase();
+    const monto = cliente.servicioInternet.precio.toFixed(2);
+    const detalleSimple = `Factura correspondiente a ${mesNombre} por Q${monto} | ${cliente.servicioInternet.nombre}`;
 
-    const mesNombre = dayjs()
-      .month(createGenerateFactura.mes - 1)
-      .year(createGenerateFactura.anio)
-      .format('MMMM YYYY'); // Obtiene el nombre del mes y el año
-
-    const detalleFactura = `Pago por suscripción mensual al servicio de internet, plan ${cliente.servicioInternet.nombre} (${cliente.servicioInternet.velocidad}), precio: ${cliente.servicioInternet.precio} Fecha: ${cliente.facturacionZona.diaPago} de ${mesNombre}`;
-    const periodo = periodoFrom(dataFactura.fechaPagoEsperada); // o la fecha que uses
-    console.log('El periodo generando es: ', periodo);
+    const periodo = periodoFrom(dataFactura.fechaPagoEsperada);
 
     try {
-      // Iniciamos la transacción
       const result = await this.prisma.$transaction(async (prisma) => {
-        // Creamos la factura
         const newFacturaInternet = await prisma.facturaInternet.create({
           data: {
             periodo: periodo,
@@ -988,7 +987,7 @@ export class FacturacionService {
               connect: { id: dataFactura.facturacionZona },
             },
             nombreClienteFactura: dataFactura.nombreClienteFactura,
-            detalleFactura: detalleFactura,
+            detalleFactura: detalleSimple,
             empresa: {
               connect: {
                 id: 1,
@@ -1082,8 +1081,6 @@ export class FacturacionService {
   ) {
     try {
       const { mesInicio, mesFin, anio, clienteId } = createFacturaMultipleDto;
-      console.log('La data llegando es: ', createFacturaMultipleDto);
-
       const cliente = await this.prisma.clienteInternet.findUnique({
         where: {
           id: clienteId,
@@ -1113,21 +1110,20 @@ export class FacturacionService {
       for (let mes = mesInicio; mes <= mesFin; mes++) {
         const fechaPagoEsperada = dayjs()
           .year(anio)
-          .month(mes - 1) // Ajustamos el mes para que sea 0-indexed
+          .month(mes - 1)
           .date(cliente.facturacionZona.diaPago)
-          .tz('America/Guatemala', true) // Establece la zona horaria de Guatemala
-          // .format('YYYY-MM-DD');
-          .format(); // Esto generará la fecha en formato ISO 8601 (sin zona horaria explícita)
+          .tz('America/Guatemala', true)
+          .format();
 
         const mesNombre = dayjs()
           .month(mes - 1)
           .year(anio)
-          .format('MMMM YYYY'); // Obtiene el nombre del mes y el año
+          .format('MMMM YYYY')
+          .toUpperCase();
 
-        const detalleFactura = `Pago por suscripción mensual al servicio de internet, plan ${cliente.servicioInternet.nombre} (${cliente.servicioInternet.velocidad}), precio: ${cliente.servicioInternet.precio} Fecha: ${cliente.facturacionZona.diaPago} de ${mesNombre}`;
-        //nuevo ajuste
-        const periodo = periodoFrom(fechaPagoEsperada); // o la fecha que uses
-        console.log('El periodo generando es: ', periodo);
+        const periodo = periodoFrom(fechaPagoEsperada);
+        const monto = cliente.servicioInternet.precio.toFixed(2);
+        const detalleSimple = `Factura correspondiente a ${mesNombre} por Q${monto} | ${cliente.servicioInternet.nombre}`;
 
         const nuevaFactura = await this.prisma.facturaInternet.create({
           data: {
@@ -1136,7 +1132,7 @@ export class FacturacionService {
             montoPago: cliente.servicioInternet.precio,
             saldoPendiente: cliente.servicioInternet.precio,
             estadoFacturaInternet: 'PENDIENTE',
-            detalleFactura: detalleFactura,
+            detalleFactura: detalleSimple,
             cliente: {
               connect: { id: clienteId },
             },
@@ -1358,19 +1354,29 @@ export class FacturacionService {
       const clienteSaldo = await this.prisma.saldoCliente.findUnique({
         where: { clienteId: facturaToUpdate.clienteId },
       });
+      //Actualizar solo una vez
       if (clienteSaldo) {
-        // si disminuyó el pendiente, diferencia > 0 => restamos menos;
-        // si aumentó, diferencia < 0 => restamos negativo => sumamos
-        const diferencia = saldoOriginalFactura - nuevoSaldoFactura;
-        const saldoClienteAjustado = Math.max(
-          clienteSaldo.saldoPendiente - diferencia,
-          0,
-        );
+        if (dto.estadoFacturaInternet === 'ANULADA') {
+          const nuevoSaldoPendiente = Math.max(
+            clienteSaldo.saldoPendiente - saldoOriginalFactura,
+            0,
+          );
+          await this.prisma.saldoCliente.update({
+            where: { clienteId: clienteSaldo.clienteId },
+            data: { saldoPendiente: nuevoSaldoPendiente },
+          });
+        } else {
+          const diferencia = saldoOriginalFactura - nuevoSaldoFactura;
+          const saldoClienteAjustado = Math.max(
+            clienteSaldo.saldoPendiente - diferencia,
+            0,
+          );
 
-        await this.prisma.saldoCliente.update({
-          where: { clienteId: clienteSaldo.clienteId },
-          data: { saldoPendiente: saldoClienteAjustado },
-        });
+          await this.prisma.saldoCliente.update({
+            where: { clienteId: clienteSaldo.clienteId },
+            data: { saldoPendiente: saldoClienteAjustado },
+          });
+        }
       }
 
       const facturasPendientes = await this.prisma.facturaInternet.findMany({
@@ -1406,6 +1412,9 @@ export class FacturacionService {
           break;
 
         default:
+          if (facturasPendientes.length > 3) {
+            estadoCliente = 'MOROSO';
+          }
           break;
       }
 

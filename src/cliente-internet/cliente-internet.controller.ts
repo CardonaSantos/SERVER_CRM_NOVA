@@ -6,13 +6,11 @@ import {
   Patch,
   Param,
   Delete,
-  UseGuards,
-  Req,
-  Request,
-  Put,
   ParseIntPipe,
   Query,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { ClienteInternetService } from './cliente-internet.service';
 import { CreateClienteInternetDto } from './dto/create-cliente-internet.dto';
 import { UpdateClienteInternetDto } from './dto/update-cliente-internet.dto';

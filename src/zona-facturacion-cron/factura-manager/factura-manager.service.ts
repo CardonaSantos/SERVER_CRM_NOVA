@@ -158,7 +158,9 @@ export class FacturaManagerService {
 
     const mes = hoy.format('MMMM'); // "junio"
     const mesCapitalizado = mes.charAt(0).toUpperCase() + mes.slice(1);
-    const textoDetalle = `Pago respectivo al mes de ${mesCapitalizado}`;
+
+    const monto = clienteDb.servicioInternet.precio.toFixed(2);
+    const detalleSimple = `Factura correspondiente a ${mesCapitalizado} por Q${monto} | ${clienteDb.servicioInternet.nombre}`;
 
     const factura = await this.prisma.facturaInternet.create({
       data: {
@@ -171,7 +173,7 @@ export class FacturaManagerService {
         facturacionZona: { connect: { id: zona.id } },
         nombreClienteFactura:
           `${clienteDb.nombre} ${clienteDb.apellidos ?? ''}`.trim(),
-        detalleFactura: `${textoDetalle} – ${clienteDb.servicioInternet.nombre}`,
+        detalleFactura: `${detalleSimple}`,
         empresa: { connect: { id: zona.empresaId } },
       },
     });

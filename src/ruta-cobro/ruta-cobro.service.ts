@@ -1,13 +1,23 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateRutaDto } from './dto/create-ruta-cobro.dto';
 import { UpdateRutaDto } from './dto/update-ruta-cobro.dto';
 import { CreateNewRutaDto } from './dto/create-new-ruta.dto';
 import { Ruta } from '@prisma/client';
+import * as dayjs from 'dayjs';
+import * as utc from 'dayjs/plugin/utc';
+import * as timezone from 'dayjs/plugin/timezone';
+import * as ExcelJS from 'exceljs';
+// Extiende dayjs con los plugins
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.locale('es'); // Establece español como idioma predeterminado
 
 @Injectable()
 export class RutaCobroService {
+  private readonly logger = new Logger(RutaCobroService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createRutaCobroDto: CreateNewRutaDto) {
@@ -157,7 +167,7 @@ export class RutaCobroService {
               direccion: cliente.direccion,
             }
           : undefined,
-        saldoPendiente: cliente.saldoCliente.saldoPendiente,
+        saldoPendiente: cliente.saldoCliente?.saldoPendiente ?? 0,
         facturasPendientes: cliente.facturaInternet.filter(
           (f) => f.estadoFacturaInternet === 'PENDIENTE',
         ),
@@ -277,9 +287,9 @@ export class RutaCobroService {
             detalleFactura: factura.detalleFactura,
           })),
           saldo: {
-            saldoFavor: cliente.saldoCliente.saldoFavor,
-            saldoPendiente: cliente.saldoCliente.saldoPendiente,
-            ultimoPago: cliente.saldoCliente.ultimoPago,
+            saldoFavor: cliente.saldoCliente?.saldoFavor ?? 0,
+            saldoPendiente: cliente.saldoCliente?.saldoPendiente ?? 0,
+            ultimoPago: cliente.saldoCliente?.ultimoPago ?? null,
           },
         })),
       };
@@ -451,6 +461,110 @@ export class RutaCobroService {
       return rutaclosed;
     } catch (error) {
       console.log(error);
+    }
+  }
+
+  async downloadExcelRutaCobro(id: number) {
+    try {
+      const rutaCobro = await this.prisma.ruta.findUnique({
+        where: {
+          id: id,
+        },
+        select: {
+          nombreRuta: true,
+          cobrador: {
+            select: {
+              id: true,
+              nombre: true,
+              rol: true,
+            },
+          },
+          observaciones: true,
+          clientes: {
+            select: {
+              fechaInstalacion: true,
+              id: true,
+              nombre: true,
+              apellidos: true,
+              telefono: true,
+              direccion: true,
+              contactoReferenciaTelefono: true,
+              ubicacion: true,
+              observaciones: true,
+              facturaInternet: {
+                where: {
+                  estadoFacturaInternet: {
+                    in: ['PENDIENTE', 'VENCIDA', 'PARCIAL'],
+                  },
+                },
+              },
+              servicioInternet: {
+                select: {
+                  nombre: true,
+                },
+              },
+              sector: {
+                select: {
+                  nombre: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      this.logger.debug('La ruta encontrada es: ', rutaCobro);
+
+      const arrayToExcel = rutaCobro.clientes.map((c) => ({
+        nombre: `${c.nombre} ${c.apellidos}`,
+        telefono: c.telefono,
+        telefonoReferencia: c.contactoReferenciaTelefono,
+        direccion: c.direccion,
+        facturas: c.facturaInternet
+          .map(
+            (fac) =>
+              `Mes: ${dayjs(fac.fechaPagoEsperada).format('MMMM YYYY')}, Monto: Q${fac.montoPago}`,
+          )
+          .join('\n'),
+        observaciones: c.observaciones ?? '',
+        fechaInstalacion: dayjs(c.fechaInstalacion).format('DD MMMM YYYY'), // Ej: "05 julio 2025"
+        sector: c.sector.nombre,
+        plan: c.servicioInternet.nombre,
+
+        ubicacion: c.ubicacion
+          ? `${c.ubicacion.latitud},${c.ubicacion.longitud}`
+          : '',
+      }));
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet(rutaCobro.nombreRuta);
+      // 1. Define columnas primero
+      worksheet.columns = [
+        { header: 'Nombre', key: 'nombre', width: 35 },
+        { header: 'Teléfono', key: 'telefono', width: 15 },
+        { header: 'Tel. Referencia', key: 'telefonoReferencia', width: 18 },
+        { header: 'Dirección', key: 'direccion', width: 40 },
+
+        { header: 'Sector', key: 'sector', width: 20 },
+        { header: 'Facturas Pendientes', key: 'facturas', width: 35 },
+        { header: 'Plan', key: 'plan', width: 25 },
+
+        { header: 'Fecha Instalacion', key: 'fechaInstalacion', width: 20 },
+        { header: 'Observaciones', key: 'observaciones', width: 25 },
+        { header: 'Ubicación', key: 'ubicacion', width: 40 },
+      ];
+
+      // 2. Ahora puedes acceder y configurar las columnas por key
+      worksheet.getColumn('facturas').alignment = { wrapText: true };
+      worksheet.getColumn('direccion').alignment = { wrapText: true };
+
+      arrayToExcel.forEach((item) => worksheet.addRow(item));
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      return buffer;
+    } catch (error) {
+      this.logger.error('El error es: ', error);
+      return error;
     }
   }
 }

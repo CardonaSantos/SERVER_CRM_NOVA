@@ -11,8 +11,15 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { updateCustomerService } from './dto/update-customer-service';
 import { ClienteInternet, EstadoCliente, Prisma } from '@prisma/client';
 import * as dayjs from 'dayjs';
+import * as utc from 'dayjs/plugin/utc';
+import * as timezone from 'dayjs/plugin/timezone';
 import { IdContratoService } from 'src/id-contrato/id-contrato.service';
 import { periodoFrom } from 'src/facturacion/Utils';
+import ExcelJS from 'exceljs';
+// Extiende dayjs con los plugins
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.locale('es'); // Establece español como idioma predeterminado
 
 const formatearFecha = (fecha: string) => {
   // Formateo en UTC sin conversión a local
@@ -701,6 +708,10 @@ export class ClienteInternetService {
     }
   }
 
+  /**
+   *
+   * @returns Clientes y sus datos para la creacion de rutas de cobro
+   */
   async getCustomersToRuta() {
     try {
       const customers = await this.prisma.clienteInternet.findMany({
@@ -735,11 +746,11 @@ export class ClienteInternetService {
             },
           },
           facturaInternet: {
-            // where: {
-            //   estadoFacturaInternet: {
-            //     not: 'PAGADA', // Solo clientes con facturas no pagadas
-            //   },
-            // },
+            where: {
+              estadoFacturaInternet: {
+                in: ['PARCIAL', 'PENDIENTE', 'VENCIDA'], // Solo clientes con facturas no pagadas
+              },
+            },
             select: {
               id: true,
             },
@@ -755,7 +766,7 @@ export class ClienteInternetService {
         estadoCliente: c.estadoCliente,
         saldoPendiente: c.saldoCliente?.saldoPendiente ?? 0,
         facturacionZona: c.facturacionZona?.id ?? null,
-        facturasPendientes: c.facturaInternet.length,
+        facturasPendientes: c.facturaInternet?.length,
         sector: {
           id: c.sector?.id ?? null,
           nombre: c.sector?.nombre ?? '',
@@ -938,7 +949,8 @@ export class ClienteInternetService {
           ]
         : [],
       facturacionZona: customer.facturacionZona?.nombre || 'Sin zona',
-      facturacionZonaId: customer.facturacionZona.id,
+      facturacionZonaId:
+        customer.facturacionZona?.id || 'Sin zona facturacion id',
     }));
 
     return {
@@ -1231,86 +1243,6 @@ export class ClienteInternetService {
     }
   }
 
-  // async getCustomerToEdit(clienteInternetId: number) {
-  //   try {
-  //     const customer = await this.prisma.clienteInternet.findUnique({
-  //       where: { id: clienteInternetId },
-  //       include: {
-  //         IP: true,
-  //         ubicacion: true,
-  //         municipio: true,
-  //         departamento: true,
-  //         servicioInternet: true,
-  //         clienteServicios: {
-  //           include: {
-  //             servicio: true,
-  //           },
-  //         },
-  //         facturacionZona: true,
-  //         ContratoFisico: true, // Incluye los datos del contrato si existe
-  //       },
-  //     });
-
-  //     // Verifica si el cliente existe
-  //     if (!customer) {
-  //       throw new Error('Cliente no encontrado');
-  //     }
-
-  //     const dataToEdit = {
-  //       id: customer.id,
-  //       nombre: customer.nombre,
-  //       apellidos: customer.apellidos,
-  //       telefono: customer.telefono,
-  //       direccion: customer.direccion,
-  //       dpi: customer.dpi,
-  //       observaciones: customer.observaciones,
-  //       contactoReferenciaNombre: customer.contactoReferenciaNombre,
-  //       contactoReferenciaTelefono: customer.contactoReferenciaTelefono,
-  //       // coordenadas: `${customer.ubicacion.longitud} ${customer.ubicacion.latitud}`,
-  //       coordenadas: customer.ubicacion
-  //         ? [`${customer.ubicacion.longitud}`, `${customer.ubicacion.latitud}`]
-  //         : [],
-
-  //       ip: customer.IP.direccionIp,
-  //       gateway: customer.IP.gateway,
-  //       mascara: customer.IP.mascara,
-  //       contrasenaWifi: customer.contrasenaWifi,
-  //       ssidRouter: customer.ssidRouter,
-  //       fechaInstalacion: customer.fechaInstalacion,
-  //       departamento: customer.departamento,
-  //       municipio: customer.municipio,
-  //       servicios: customer.clienteServicios.map((s) => ({
-  //         id: s.servicio.id,
-  //         nombre: s.servicio.nombre,
-  //       })),
-  //       zonaFacturacion: {
-  //         id: customer.facturacionZona.id,
-  //         nombre: customer.facturacionZona.nombre,
-  //         // velocidad: customer.facturacionZona.
-  //       },
-  //       servicioWifi: {
-  //         id: customer.servicioInternet.id,
-  //         nombre: customer.servicioInternet.nombre,
-  //         velocidad: customer.servicioInternet.velocidad,
-  //       },
-  //       // Revisa si ContratoFisico existe antes de acceder a sus campos
-  //       contrato: customer.ContratoFisico
-  //         ? {
-  //             idContrato: customer.ContratoFisico.idContrato,
-  //             fechaFirma: customer.ContratoFisico.fechaFirma,
-  //             archivoContrato: customer.ContratoFisico.archivoContrato,
-  //             observaciones: customer.ContratoFisico.observaciones,
-  //           }
-  //         : null, // Si no existe, lo asigna como null
-  //     };
-
-  //     return dataToEdit;
-  //   } catch (error) {
-  //     console.error('Error al obtener los datos del cliente:', error);
-  //     throw new Error('No se pudo obtener la información del cliente.');
-  //   }
-  // }
-
   async getCustomerToEdit(clienteInternetId: number) {
     try {
       const customer = await this.prisma.clienteInternet.findUnique({
@@ -1349,7 +1281,7 @@ export class ClienteInternetService {
         contactoReferenciaTelefono: customer.contactoReferenciaTelefono,
         estado: customer.estadoCliente,
         coordenadas: customer.ubicacion
-          ? [`${customer.ubicacion.longitud}`, `${customer.ubicacion.latitud}`]
+          ? [`${customer.ubicacion.latitud}`, `${customer.ubicacion.longitud}`]
           : [],
         ip: customer.IP?.direccionIp || '',
         gateway: customer.IP?.gateway || '',
