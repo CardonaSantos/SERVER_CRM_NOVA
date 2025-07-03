@@ -332,7 +332,7 @@ model FacturaInternet {
   //Creador de la factura
   creadorId  Int?
   creador    Usuario? @relation(fields: [creadorId], references: [id], onDelete: SetNull, name: "FacturaInternetCreador")
-
+  facturasEliminadas   FacturaEliminada[]//PARA FUTURO SOFT DELETE                                      
   // periodo String? @db.VarChar(6)  // Nullable de momento
   // periodo String? @db.VarChar(6)
   periodo String   @db.VarChar(6)
@@ -382,11 +382,6 @@ model Lead {
   cliente       ClienteInternet? @relation(fields: [clienteId], references: [id])
   clienteId     Int?
 }
-
-
-// CAMPOS PARA REQUERIMIENTOS TI
-
-
 
 model PagoFacturaInternet {
   id            Int       @id @default(autoincrement())
@@ -791,7 +786,6 @@ model Usuario {
   ticketsAsignados TicketSoporte[] @relation("TicketTecnico")
   // Relación con tickets donde el usuario creó el ticket
   ticketsCreados   TicketSoporte[] @relation("TicketCreador")
-
   // Relación con metas técnicas asignadas al usuario
   metasTecnico     MetaTecnicoTicket[] @relation("MetaTecnicoRelation")
   //usuarios que pueden comentar los tickets
@@ -808,12 +802,32 @@ model Usuario {
   BoletaSoporte BoletaSoporte[]
   // Relación con facturas creadas por el usuario
   facturasCreadas FacturaInternet[] @relation("FacturaInternetCreador")
-  //
   asistencias  Asistencia[]  @relation("UsuarioAsistencias")
-   
   ticketsSoporteTecnico   TicketSoporteTecnico[] // Back-reference for tecnico
-
+  facturasEliminadas FacturaEliminada[]     // ← esta “propiedad array”
 }
+
+model FacturaEliminada {
+  id                  Int                @id @default(autoincrement())
+  // FK opcional al registro original
+  facturaInternetId   Int?               
+  facturaInternet     FacturaInternet?   @relation(fields: [facturaInternetId], references: [id], onDelete: SetNull)
+  // Snapshot de los datos importantes
+  periodo             String   
+  montoPago           Float    
+  fechaPagoEsperada   DateTime 
+  clienteId           Int      
+
+  // Usuario que elimina
+  usuarioId           Int      
+  usuario             Usuario            @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+
+  fechaEliminacion    DateTime           @default(now())
+  motivo String?
+  @@index([usuarioId])
+  @@index([facturaInternetId])
+}
+
 
 model MetaTickets {
   id Int @id @default(autoincrement())

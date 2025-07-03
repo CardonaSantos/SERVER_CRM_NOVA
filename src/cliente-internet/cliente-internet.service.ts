@@ -458,6 +458,7 @@ export class ClienteInternetService {
                 fechaPagoEsperada: true,
                 saldoPendiente: true,
                 estadoFacturaInternet: true,
+                periodo: true, //NUEVO Y VERIFICADOR
                 pagos: {
                   select: {
                     id: true,
@@ -646,6 +647,7 @@ export class ClienteInternetService {
             fechaVencimiento: factura.fechaPagoEsperada,
             pagada: factura.estadoFacturaInternet === 'PAGADA' ? true : false,
             estado: factura.estadoFacturaInternet, //ESTADO DE LA FACTURA
+            periodo: factura.periodo,
             creador: factura.creador
               ? {
                   id: factura.creador.id,

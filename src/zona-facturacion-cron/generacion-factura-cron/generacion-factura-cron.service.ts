@@ -41,7 +41,7 @@ export class GeneracionFacturaCronService {
    * al método `generarFacturaClientePorZona` para generar una a un cliente.
    */
 
-  // @Cron(CronExpression.EVERY_MINUTE, {
+  // @Cron(CronExpression.EVERY_10_SECONDS, {
   //   timeZone: 'America/Guatemala',
   // })
   @Cron('0 10 * * *', { timeZone: 'America/Guatemala' }) // ⏰ 10:00 AM GT

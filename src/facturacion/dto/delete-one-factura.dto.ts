@@ -1,8 +1,11 @@
-import { IsString, IsUUID } from 'class-validator';
+import { IsNumber, IsString, IsUUID } from 'class-validator';
 
 export class DeleteFacturaDto {
   @IsUUID()
   facturaId: number;
+
+  @IsNumber()
+  userId: number;
 
   @IsString()
   estadoFactura: string;
@@ -12,4 +15,7 @@ export class DeleteFacturaDto {
 
   @IsString()
   fechaVencimiento: string;
+
+  @IsString()
+  motivo: string;
 }

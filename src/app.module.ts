@@ -30,6 +30,7 @@ import { MikroTikModule } from './mikro-tik/mikro-tik.module';
 import { TwilioApiModule } from './twilio-api/twilio-api.module';
 import { MetasTicketsModule } from './metas-tickets/metas-tickets.module';
 import { MetricasTicketsModule } from './metricas-tickets/metricas-tickets.module';
+import { FacturaEliminacionModule } from './factura-eliminacion/factura-eliminacion.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { MetricasTicketsModule } from './metricas-tickets/metricas-tickets.modul
     TwilioApiModule,
     MetasTicketsModule,
     MetricasTicketsModule,
+    FacturaEliminacionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

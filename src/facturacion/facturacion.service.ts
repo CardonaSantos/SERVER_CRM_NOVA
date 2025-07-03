@@ -25,6 +25,7 @@ import * as timezone from 'dayjs/plugin/timezone';
 import { log } from 'console';
 import { UpdateFacturaDto } from './dto/update-factura.dto';
 import { periodoFrom } from './Utils';
+import { FacturaEliminacionService } from 'src/factura-eliminacion/factura-eliminacion.service';
 
 // Extiende dayjs con los plugins
 dayjs.extend(utc);
@@ -62,7 +63,10 @@ interface DatosFacturaGenerate {
 export class FacturacionService {
   private readonly logger = new Logger(FacturacionService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly facturaEliminiacion: FacturaEliminacionService,
+  ) {}
   async create(createFacturacionDto: CreateFacturacionDto) {}
 
   async findAll() {
@@ -1056,13 +1060,10 @@ export class FacturacionService {
       // Si la transacción es exitosa, mostramos el resultado
       this.logger.debug('La factura creada es: ', result);
     } catch (err) {
-      // ↙︎  Atrapar duplicado
       if (
         err instanceof Prisma.PrismaClientKnownRequestError &&
         err.code === 'P2002'
       ) {
-        // Opcional: consultar la factura existente y devolverla
-
         throw new ConflictException({
           message:
             'Ya existe una factura para ese mes. No se permiten duplicados',
@@ -1492,7 +1493,7 @@ export class FacturacionService {
           fechaPagoEsperada: true,
           nombreClienteFactura: true,
           saldoPendiente: true,
-
+          periodo: true,
           cliente: {
             select: {
               id: true,
@@ -1564,6 +1565,7 @@ export class FacturacionService {
         creadoEn: facturaPagada.creadoEn.toISOString(),
         fechaPagoEsperada: facturaPagada.fechaPagoEsperada?.toISOString(),
         saldoPendiente,
+        periodo: facturaPagada.periodo,
         cliente: {
           id: facturaPagada.cliente.id,
           nombre: facturaPagada.cliente.nombre,
@@ -1590,38 +1592,41 @@ export class FacturacionService {
   }
 
   async removeOneFactura(dto: DeleteFacturaDto) {
-    const { facturaId, estadoFactura, fechaEmision, fechaVencimiento } = dto;
+    console.log('Entrando a eliminacion');
 
-    // 1. Buscar la factura a eliminar junto con los pagos asociados
+    const { facturaId, userId, motivo } = dto;
+
     const facturaToDelete = await this.prisma.facturaInternet.findUnique({
       where: { id: facturaId },
-      include: { pagos: true }, // Incluir los pagos asociados a la factura
+      include: { pagos: true },
     });
 
     if (!facturaToDelete) {
       throw new NotFoundException('Factura no encontrada');
     }
 
-    // 2. Calcular el monto total de los pagos asociados a la factura eliminada
+    await this.facturaEliminiacion.createEliminacionFacturaRegist(
+      facturaToDelete,
+      userId,
+      motivo,
+      facturaId,
+    );
+
     const pagosAsociados = facturaToDelete.pagos;
     let montoTotalPagos = 0;
     for (const pago of pagosAsociados) {
       montoTotalPagos += pago.montoPagado;
     }
 
-    // 3. Eliminar la factura
     await this.prisma.facturaInternet.delete({
       where: { id: facturaToDelete.id },
     });
 
-    // 4. Obtener el saldo del cliente
     const saldoCliente = await this.prisma.saldoCliente.findUnique({
       where: { clienteId: facturaToDelete.clienteId },
     });
 
     if (saldoCliente) {
-      // 5. Recalcular el saldo pendiente real del cliente después de eliminar la factura
-      // Obtener todas las facturas pendientes restantes (sin la eliminada)
       const facturasRestantes = await this.prisma.facturaInternet.findMany({
         where: {
           clienteId: facturaToDelete.clienteId,
@@ -1629,22 +1634,18 @@ export class FacturacionService {
         },
       });
 
-      // Calcular el nuevo saldo pendiente sumando los montos de las facturas restantes
       let nuevoSaldoPendiente = 0;
       for (const factura of facturasRestantes) {
         nuevoSaldoPendiente += factura.montoPago;
       }
 
-      // 6. Ajustar el saldo pendiente después de eliminar la factura y restar los pagos asociados
-      const saldoPendienteAjustado = Math.max(nuevoSaldoPendiente, 0); // Evitar que el saldo pendiente sea negativo
+      const saldoPendienteAjustado = Math.max(nuevoSaldoPendiente, 0);
 
-      // Si el pago realizado es mayor que la factura eliminada, se genera un saldo a favor
       const saldoFavor = Math.max(
         saldoCliente.saldoFavor + (montoTotalPagos - facturaToDelete.montoPago),
         0,
       );
 
-      // 7. Actualizar el saldo del cliente
       await this.prisma.saldoCliente.update({
         where: { clienteId: facturaToDelete.clienteId },
         data: {
@@ -1655,7 +1656,6 @@ export class FacturacionService {
       });
     }
 
-    // 8. Recalcular el estado del cliente
     const facturasPendientes = await this.prisma.facturaInternet.findMany({
       where: {
         clienteId: facturaToDelete.clienteId,
@@ -1687,15 +1687,10 @@ export class FacturacionService {
         break;
     }
 
-    // 9. Actualizar el estado del cliente
     await this.prisma.clienteInternet.update({
       where: { id: facturaToDelete.clienteId },
       data: { estadoCliente: estadoCliente },
     });
-
-    console.log(
-      `Factura ${facturaId} eliminada y estado de cliente actualizado.`,
-    );
 
     return `Factura ${facturaId} eliminada y estado de cliente actualizado.`;
   }

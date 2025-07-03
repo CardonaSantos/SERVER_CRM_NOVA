@@ -162,6 +162,7 @@ export class FacturacionController {
 
   @Delete('/delete-one-factura')
   remove(@Body() deleteFacturaDto: DeleteFacturaDto) {
+    console.log('DTO recibido en controller:', deleteFacturaDto);
     return this.facturacionService.removeOneFactura(deleteFacturaDto);
   }
 }
