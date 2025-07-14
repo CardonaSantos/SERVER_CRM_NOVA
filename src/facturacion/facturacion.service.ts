@@ -7,6 +7,7 @@ import {
   EstadoCliente,
   EstadoFactura,
   EstadoFacturaInternet,
+  PagoFacturaInternet,
   Prisma,
   StateFacturaInternet,
 } from '@prisma/client';
@@ -26,6 +27,8 @@ import { log } from 'console';
 import { UpdateFacturaDto } from './dto/update-factura.dto';
 import { periodoFrom } from './Utils';
 import { FacturaEliminacionService } from 'src/factura-eliminacion/factura-eliminacion.service';
+import { RegistrarPagoFromBanruralDto } from './dto/pago-from-banrural.dto';
+import { calculateEstadoCliente } from './functions/functions';
 
 // Extiende dayjs con los plugins
 dayjs.extend(utc);
@@ -1319,10 +1322,6 @@ export class FacturacionService {
     console.log('La factura creada es: ', x);
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} facturacion`;
-  }
-
   async updateFactura(id: number, dto: UpdateFacturaDto) {
     try {
       console.log('actualizando la factura', dto);
@@ -1432,10 +1431,6 @@ export class FacturacionService {
     } catch (error) {
       console.log(error);
     }
-  }
-
-  update(id: number, updateFacturacionDto: UpdateFacturacionDto) {
-    return `This action updates a #${id} facturacion`;
   }
 
   async remove() {
@@ -1812,5 +1807,94 @@ export class FacturacionService {
       `,
     );
     return `Deleted ${deleteResult.count} facturas from March and updated cliente balances`;
+  }
+
+  /**
+   *
+   * @param createFacturacionPaymentDto Dto personalizado para pago desde banrural
+   * @returns
+   */
+  async generatePagoFromBanrural(
+    createFacturacionPaymentDto: RegistrarPagoFromBanruralDto,
+    UUID: string,
+  ): Promise<PagoFacturaInternet> {
+    const { clienteId, facturaId, descripcion, moneda, monto } =
+      createFacturacionPaymentDto;
+
+    this.logger.debug('Mi UUID de este pago es: ', UUID);
+
+    return await this.prisma.$transaction(async (tx) => {
+      const newPayment = await tx.pagoFacturaInternet.create({
+        data: {
+          cliente: { connect: { id: clienteId } },
+          montoPagado: monto,
+          facturaInternet: { connect: { id: facturaId } },
+          metodoPago: 'DEPOSITO',
+        },
+      });
+
+      const clienteSaldo = await tx.saldoCliente.findUnique({
+        where: { clienteId },
+      });
+
+      if (clienteSaldo) {
+        const nuevoSaldoPendiente = clienteSaldo.saldoPendiente - monto;
+        const saldoPendienteAjustado = Math.max(nuevoSaldoPendiente, 0);
+
+        await tx.saldoCliente.update({
+          where: { clienteId },
+          data: {
+            saldoPendiente: saldoPendienteAjustado,
+            totalPagos: clienteSaldo.totalPagos + monto,
+            ultimoPago: new Date(),
+          },
+        });
+      }
+
+      const factura = await tx.facturaInternet.findUnique({
+        where: { id: facturaId },
+      });
+
+      if (factura) {
+        const saldoPendienteFacturaAjustado = Math.max(
+          factura.saldoPendiente - monto,
+          0,
+        );
+
+        await tx.facturaInternet.update({
+          where: { id: facturaId },
+          data: {
+            fechaPagada: new Date(),
+            saldoPendiente: saldoPendienteFacturaAjustado,
+            estadoFacturaInternet:
+              saldoPendienteFacturaAjustado <= 0
+                ? 'PAGADA'
+                : saldoPendienteFacturaAjustado < factura.montoPago &&
+                    saldoPendienteFacturaAjustado > 0
+                  ? 'PARCIAL'
+                  : 'PENDIENTE',
+          },
+        });
+      }
+
+      const facturasPendientesCantidad = await tx.facturaInternet.count({
+        where: {
+          clienteId,
+          estadoFacturaInternet: { in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'] },
+        },
+      });
+
+      let estadoCliente: EstadoCliente;
+      estadoCliente = calculateEstadoCliente(facturasPendientesCantidad);
+
+      await tx.clienteInternet.update({
+        where: { id: clienteId },
+        data: {
+          estadoCliente: estadoCliente,
+        },
+      });
+
+      return newPayment;
+    });
   }
 }

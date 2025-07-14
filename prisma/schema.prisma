@@ -396,7 +396,8 @@ model PagoFacturaInternet {
   // Hacer cobrador opcional
   cobradorId         Int?
   cobrador           Usuario? @relation(fields: [cobradorId], references: [id])
-  numeroBoleta String? @unique // Campo único solo cuando se proporciona
+  numeroBoleta String? @unique // Numero de boleta 
+  codigoConfirmacion   String?   @unique //para Banrural, opcional
 }
 
 model FacturaServicio {
@@ -901,6 +902,7 @@ enum EstadoTicketSoporte {
   PENDIENTE
   PENDIENTE_CLIENTE
   PENDIENTE_TECNICO
+  PENDIENTE_REVISION
   RESUELTA
   CANCELADA
   ARCHIVADA

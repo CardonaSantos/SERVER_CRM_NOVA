@@ -134,25 +134,12 @@ export class FacturacionController {
     return this.facturacionService.find_factura_to_edit(id);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.facturacionService.findOne(+id);
-  }
-
   @Patch('/update-factura/:id')
   updateFactura(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateFacturacionDto: UpdateFacturaDto,
   ) {
     return this.facturacionService.updateFactura(id, updateFacturacionDto);
-  }
-
-  @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() updateFacturacionDto: UpdateFacturacionDto,
-  ) {
-    return this.facturacionService.update(+id, updateFacturacionDto);
   }
 
   @Delete('/delete-all-march')

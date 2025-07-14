@@ -397,10 +397,10 @@ export class TicketsSoporteService {
             },
           },
           creadoPor: {
-            // Obtener el creador del ticket
             select: {
               id: true,
               nombre: true,
+              rol: true,
             },
           },
           fechaApertura: true,
@@ -469,6 +469,7 @@ export class TicketsSoporteService {
                 id: ticket.creadoPor.id,
                 name: ticket.creadoPor.nombre,
                 initials: ticket.creadoPor.nombre.slice(0, 2).toUpperCase(),
+                rol: ticket.creadoPor.rol,
               }
             : null,
           date: ticket.fechaApertura.toISOString(), // Formato de fecha

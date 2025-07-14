@@ -496,11 +496,9 @@ export class MetasTicketsService {
 
       let esteDiaTickets = await this.prisma.ticketSoporte.findMany({
         where: {
-          // fechaApertura: {
-          //   gte: inicioDia,
-          //   lte: finDia,
-          // },
-          estado: 'EN_PROCESO',
+          estado: {
+            in: ['EN_PROCESO', 'PENDIENTE_REVISION'],
+          },
         },
         select: {
           id: true,
@@ -514,6 +512,16 @@ export class MetasTicketsService {
               nombre: true,
             },
           },
+          asignaciones: {
+            select: {
+              tecnico: {
+                select: {
+                  id: true,
+                  nombre: true,
+                },
+              },
+            },
+          },
           cliente: {
             select: {
               id: true,
@@ -524,7 +532,15 @@ export class MetasTicketsService {
         },
       });
 
-      return esteDiaTickets;
+      const formatteados = esteDiaTickets.map((ticket) => ({
+        ...ticket,
+        acompanantes: ticket.asignaciones.map((t) => ({
+          nombre: t.tecnico.nombre,
+          id: t.tecnico.id,
+        })),
+      }));
+
+      return formatteados;
     } catch (error) {
       this.logger.error('Ocurrió un error', error);
       return error;

@@ -31,6 +31,7 @@ import { TwilioApiModule } from './twilio-api/twilio-api.module';
 import { MetasTicketsModule } from './metas-tickets/metas-tickets.module';
 import { MetricasTicketsModule } from './metricas-tickets/metricas-tickets.module';
 import { FacturaEliminacionModule } from './factura-eliminacion/factura-eliminacion.module';
+import { BanruralIntegrationModule } from './banrural-integration/banrural-integration.module';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { FacturaEliminacionModule } from './factura-eliminacion/factura-eliminac
     MetasTicketsModule,
     MetricasTicketsModule,
     FacturaEliminacionModule,
+    BanruralIntegrationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
