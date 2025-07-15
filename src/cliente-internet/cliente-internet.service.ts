@@ -436,10 +436,28 @@ export class ClienteInternetService {
               select: {
                 id: true,
                 titulo: true,
+                descripcion: true,
                 estado: true,
                 prioridad: true,
                 fechaApertura: true,
                 fechaCierre: true,
+                creadoPor: true,
+                tecnico: {
+                  select: {
+                    id: true,
+                    nombre: true,
+                  },
+                },
+                asignaciones: {
+                  select: {
+                    tecnico: {
+                      select: {
+                        id: true,
+                        nombre: true,
+                      },
+                    },
+                  },
+                },
               },
             },
             facturaInternet: {
@@ -632,10 +650,21 @@ export class ClienteInternetService {
           (ticket) => ({
             id: ticket.id,
             titulo: ticket.titulo,
+            descripcion: ticket.descripcion,
             estado: ticket.estado,
             prioridad: ticket.prioridad,
             fechaApertura: ticket.fechaApertura,
             fechaCierre: ticket.fechaCierre,
+            creadoPro: ticket.creadoPor
+              ? { id: ticket.creadoPor.id, nombre: ticket.creadoPor.nombre }
+              : null,
+            tecnico: ticket.tecnico
+              ? { id: ticket.tecnico.id, nombre: ticket.tecnico.nombre }
+              : null,
+            acompanantes: (ticket.asignaciones ?? []).map((aco) => ({
+              id: aco.tecnico.id,
+              nombre: aco.tecnico.nombre,
+            })),
           }),
         ),
         // FECHA DE VENCIMINEOTO AQUI
