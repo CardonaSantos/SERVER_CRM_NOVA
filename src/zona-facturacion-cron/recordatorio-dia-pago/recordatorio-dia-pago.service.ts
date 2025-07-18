@@ -97,11 +97,9 @@ export class RecordatorioDiaPagoService {
               numero,
               TEMPLATE_SID,
               {
-                '1':
-                  `${cliente.nombre ?? ''} ${cliente.apellidos ?? ''}`.trim() ||
-                  'Nombre no disponible',
-                '2': monto,
-                '3': fechaL,
+                '1': cliente.nombre + cliente.apellidos,
+                '2': empresa.nombre,
+                '3': monto,
                 '4': empresa.nombre,
               },
             );

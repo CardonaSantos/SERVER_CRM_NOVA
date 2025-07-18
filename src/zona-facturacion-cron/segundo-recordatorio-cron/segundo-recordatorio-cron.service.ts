@@ -86,8 +86,10 @@ export class SegundoRecordatorioCronService {
           }
 
           const monto = factura.montoPago.toFixed(2);
-          const fechaL = dayjs(factura.fechaPagoEsperada).format('DD/MM/YYYY');
-
+          const fechaL = dayjs(factura.fechaPagoEsperada)
+            .locale('es')
+            .format('MMMM YYYY')
+            .toUpperCase();
           const destinos = formatearTelefonos([
             cliente.telefono,
             // cliente.contactoReferenciaTelefono, //COMENTADO POR EL MOMENTO, NO REFERENCIAS
@@ -101,9 +103,10 @@ export class SegundoRecordatorioCronService {
                 '1':
                   `${cliente.nombre ?? ''} ${cliente.apellidos ?? ''}`.trim() ||
                   'Nombre no disponible',
-                '2': monto,
-                '3': fechaL,
-                '4': empresa.nombre,
+                '2': empresa.nombre,
+                '3': monto,
+                '4': '', // no la uso aqui
+                '5': empresa.nombre,
               },
             );
             this.logger.log(

@@ -94,7 +94,11 @@ export class PrimerRecordatorioCronService {
 
           /** 4. Formatear variables de la plantilla */
           const monto = factura.montoPago.toFixed(2);
-          const fechaL = dayjs(factura.fechaPagoEsperada).format('DD/MM/YYYY');
+          const fechaL = dayjs(factura.fechaPagoEsperada)
+            .locale('es')
+            .format('MMMM YYYY')
+            .toUpperCase();
+          // resultado: "julio 2025"
 
           /** 5. Números válidos */
           const destinos = formatearTelefonos([
@@ -107,12 +111,10 @@ export class PrimerRecordatorioCronService {
               numero,
               TEMPLATE_SID,
               {
-                '1':
-                  `${cliente.nombre ?? ''} ${cliente.apellidos ?? ''}`.trim() ||
-                  'Nombre no disponible',
-                '2': monto,
+                '1': cliente.nombre + ' ' + cliente.apellidos,
+                '2': empresa.nombre,
                 '3': fechaL,
-                '4': empresa.nombre,
+                '4': monto,
               },
             );
             this.logger.log(

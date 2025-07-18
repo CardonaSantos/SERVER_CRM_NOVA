@@ -105,7 +105,9 @@ export class GeneracionFacturaCronService {
       select: { nombre: true },
     });
 
-    const mesFactura = dayjs(factura.fechaPagoEsperada).format('MMMM YYYY');
+    const mesFactura = dayjs(factura.fechaPagoEsperada)
+      .format('MMMM YYYY')
+      .toUpperCase();
     const fechaLimite = dayjs(factura.fechaPagoEsperada).format('DD/MM/YYYY');
 
     const destinos = formatearTelefonos([
@@ -119,10 +121,10 @@ export class GeneracionFacturaCronService {
           `${cliente.nombre ?? ''} ${cliente.apellidos ?? ''}`.trim() ||
           'Nombre no disponible',
         '2': empresa?.nombre ?? 'Nova Sistemas S.A.',
-        '3': mesFactura,
+        '3': mesFactura, // ejemplo: "julio 2025"
         '4': factura.montoPago.toFixed(2),
-        '5': fechaLimite,
       });
+
       this.logger.log(`Factura notificada a ${numero}`);
     }
   }
