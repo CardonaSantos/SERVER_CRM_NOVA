@@ -43,7 +43,7 @@ export class GeneracionFacturaCronService {
 
   // @Cron(CronExpression.EVERY_10_SECONDS, {
   //   timeZone: 'America/Guatemala',
-  // })
+  // })//comentado
   @Cron('0 10 * * *', { timeZone: 'America/Guatemala' }) // ⏰ 10:00 AM GT
   async gerarFacturacionAutomaticaCron() {
     // const hoy = dayjs().tz('America/Guatemala');
