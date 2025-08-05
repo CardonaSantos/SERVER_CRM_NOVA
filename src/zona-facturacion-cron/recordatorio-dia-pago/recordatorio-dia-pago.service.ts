@@ -36,7 +36,6 @@ export class RecordatorioDiaPagoService {
   @Cron('0 10 * * *', { timeZone: 'America/Guatemala' }) // ⏰ 10:00 AM GT
   async generarMensajeDiaDePago(): Promise<void> {
     this.logger.debug('Verificando zonas de facturación: Aviso de pago');
-    // const hoy = dayjs().tz('America/Guatemala');
 
     const TEMPLATE_SID = this.configService.get<string>(
       'RECORDATORIO_ULTIMO_PAGO_SID',
@@ -59,7 +58,7 @@ export class RecordatorioDiaPagoService {
     for (const zona of zonas) {
       if (
         shouldSkipZoneToday(zona.diaPago) || // día distinto
-        !(zona.enviarAvisoPago && zona.enviarRecordatorio)
+        !(zona.enviarAvisoPago && zona.enviarRecordatorio) //si las flags son true
       ) {
         continue;
       }

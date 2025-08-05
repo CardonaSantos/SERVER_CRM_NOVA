@@ -55,43 +55,6 @@ export class FacturaManagerService {
     });
     if (adelantada)
       throw new InternalServerErrorException('Cliente pagado adelantado');
-
-    /* 3) Traer datos frescos del cliente + plan */
-    // const clienteDb = await this.prisma.clienteInternet.findUnique({
-    //   where: { id: cliente.id },
-    //   include: { servicioInternet: true },
-    // });
-    // if (!clienteDb?.servicioInternet)
-    //   throw new InternalServerErrorException('Cliente sin plan');
-
-    // /* 4) Crear la factura */
-    // const fechaPago = dayjs(periodo + zona.diaPago.toString().padStart(2, '0'))
-    //   .tz('America/Guatemala')
-    //   .toDate();
-
-    // const factura = await this.prisma.facturaInternet.create({
-    //   data: {
-    //     periodo,
-    //     fechaPagoEsperada: fechaPago,
-    //     montoPago: clienteDb.servicioInternet.precio,
-    //     saldoPendiente: clienteDb.servicioInternet.precio,
-    //     estadoFacturaInternet: 'PENDIENTE',
-    //     cliente: { connect: { id: cliente.id } },
-    //     facturacionZona: { connect: { id: zona.id } },
-    //     nombreClienteFactura:
-    //       `${clienteDb.nombre} ${clienteDb.apellidos ?? ''}`.trim(),
-    //     detalleFactura: `Pago mensual – ${clienteDb.servicioInternet.nombre}`,
-    //     empresa: { connect: { id: zona.empresaId } },
-    //   },
-    // });
-
-    // /* 5) Incrementar saldo solo una vez */
-    // await this.prisma.saldoCliente.update({
-    //   where: { clienteId: factura.clienteId },
-    //   data: { saldoPendiente: { increment: factura.montoPago } },
-    // });
-
-    // return { factura, esNueva: true };
   }
 
   async actualizarEstadoCliente(factura: FacturaInternet): Promise<void> {
@@ -151,17 +114,20 @@ export class FacturaManagerService {
     if (!clienteDb?.servicioInternet)
       throw new InternalServerErrorException('Cliente sin plan');
 
-    /* 4) Crear la factura */
-    const fechaPago = dayjs(periodo + zona.diaPago.toString().padStart(2, '0'))
-      .tz('America/Guatemala')
-      .toDate();
+    const base = dayjs(periodo, 'YYYYMM').date(zona.diaPago);
+    const fechaPago = base.tz('America/Guatemala').toDate();
 
-    const mes = hoy.format('MMMM'); // "junio"
-    const mesCapitalizado = mes.charAt(0).toUpperCase() + mes.slice(1);
+    const fechaPagoEsperada = dayjs(fechaPago);
+    const mesYAnio = fechaPagoEsperada
+      .locale('es')
+      .format('MMMM YYYY') // "septiembre 2025"
+      .toUpperCase(); // "SEPTIEMBRE 2025"
+
+    const plan = clienteDb.servicioInternet.nombre;
 
     const monto = clienteDb.servicioInternet.precio.toFixed(2);
-    const detalleSimple = `Factura correspondiente a ${mesCapitalizado} por Q${monto} | ${clienteDb.servicioInternet.nombre}`;
-
+    // const detalleSimple = `Factura correspondiente a ${mesCapitalizado} por Q${monto} | ${clienteDb.servicioInternet.nombre}`;
+    const detalleSimple = `Factura correspondiente a ${mesYAnio} por Q${monto} | ${plan}`;
     const factura = await this.prisma.facturaInternet.create({
       data: {
         periodo,

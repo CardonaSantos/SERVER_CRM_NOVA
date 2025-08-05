@@ -87,11 +87,6 @@ export class PrimerRecordatorioCronService {
             continue;
           }
 
-          /* Recalcular estado sólo si acabamos de crear la factura */
-          // if (esNueva) {
-          //   await this.facturaManager.actualizarEstadoCliente(factura);
-          // }
-
           /** 4. Formatear variables de la plantilla */
           const monto = factura.montoPago.toFixed(2);
           const fechaL = dayjs(factura.fechaPagoEsperada)

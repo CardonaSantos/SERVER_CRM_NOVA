@@ -110,12 +110,10 @@ export class GeneracionFacturaCronService {
       .toUpperCase();
     const fechaLimite = dayjs(factura.fechaPagoEsperada).format('DD/MM/YYYY');
 
-    const destinos = formatearTelefonos([
-      cliente.telefono,
-      // cliente.contactoReferenciaTelefono, //COMENTADO POR EL MOMENTO, NO REFERENCIAS
-    ]);
+    const destinos = formatearTelefonos([cliente.telefono]);
+    const destinosUnicos = Array.from(new Set(destinos));
 
-    for (const numero of destinos) {
+    for (const numero of destinosUnicos) {
       await this.twilioService.sendWhatsAppTemplate(numero, templateSid, {
         '1':
           `${cliente.nombre ?? ''} ${cliente.apellidos ?? ''}`.trim() ||
