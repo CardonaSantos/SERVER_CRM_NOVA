@@ -452,6 +452,7 @@ export class FacturacionService {
       cobradorId,
       numeroBoleta,
       serviciosAdicionales,
+      fechaPago,
     } = createFacturacionPaymentDto;
 
     const numeroBoletaReal =
@@ -469,6 +470,7 @@ export class FacturacionService {
             connect: { id: cobradorId },
           },
           numeroBoleta: numeroBoletaReal,
+          fechaPago: fechaPago,
         },
       });
 
@@ -505,7 +507,7 @@ export class FacturacionService {
         await tx.facturaInternet.update({
           where: { id: facturaInternetId },
           data: {
-            fechaPagada: new Date(),
+            fechaPagada: fechaPago || dayjs().tz('America/Guatemala').toDate(),
             saldoPendiente: saldoPendienteFacturaAjustado,
             estadoFacturaInternet:
               saldoPendienteFacturaAjustado <= 0
@@ -628,6 +630,7 @@ export class FacturacionService {
       observaciones,
     } = createFacturacionPaymentDto;
 
+    const fechaPago = dayjs().tz('America/Guatemala').toDate();
     try {
       const newPago = await this.createNewPaymentFacturacion({
         facturaInternetId,
@@ -636,6 +639,7 @@ export class FacturacionService {
         metodoPago,
         cobradorId,
         numeroBoleta,
+        fechaPago,
       });
 
       const result = await this.prisma.$transaction(async (tx) => {

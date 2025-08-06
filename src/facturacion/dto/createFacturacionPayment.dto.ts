@@ -1,6 +1,7 @@
 import { MetodoPagoFacturaInternet } from '@prisma/client';
 import {
   IsArray,
+  IsDate,
   IsEnum,
   IsInt,
   IsNotEmpty,
@@ -9,6 +10,11 @@ import {
 } from 'class-validator';
 
 export class CreateFacturacionPaymentDto {
+  @IsString()
+  // @IsDate()
+  @IsOptional()
+  fechaPago: Date | null;
+
   @IsArray()
   @IsOptional()
   serviciosAdicionales?: number[];
