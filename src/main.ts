@@ -12,6 +12,7 @@ async function bootstrap() {
       'http://localhost:5173',
       'http://localhost:5174',
       'http://localhost:5173',
+      'https://servercrmnova-production.up.railway.app',
     ],
     credentials: true, // <- para cookies/withCredentials
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
