@@ -22,11 +22,17 @@ import { GetClientesRutaQueryDto } from './pagination/cliente-internet.dto';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.locale('es'); // Establece español como idioma predeterminado
-
+const strip = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase();
 const formatearFecha = (fecha: string) => {
   // Formateo en UTC sin conversión a local
   return dayjs(fecha).format('DD/MM/YYYY');
 };
+const ACCENT_FROM = 'ÁÀÂÄÃáàâäãÉÈÊËéèêëÍÌÎÏíìîïÓÒÔÖÕóòôöõÚÙÛÜúùûüÇçÑñÝŸýÿ';
+const ACCENT_TO = 'AAAAAaaaaaEEEEeeeeIIIIiiiiOOOOOoooooUUUUuuuuCcNnYYyy';
 
 @Injectable()
 export class ClienteInternetService {
@@ -753,6 +759,125 @@ export class ClienteInternetService {
    * - Si no envías uno, NO se filtra por ese.
    * - Sin filtros → devuelve todos.
    */
+  // async getCustomersToRuta(q: GetClientesRutaQueryDto) {
+  //   try {
+  //     const {
+  //       empresaId,
+  //       sortBy,
+  //       page,
+  //       perPage,
+  //       sortDir,
+  //       estado,
+  //       search,
+  //       zonaIds,
+  //       sectorIds,
+  //     } = q;
+
+  //     this.logger.log('El Q en fetch clientes es: ', JSON.stringify(q));
+
+  //     // Normaliza arrays y limpia 0/NaN
+  //     const zonas = (zonaIds ?? []).filter((n) => Number.isFinite(n) && n > 0);
+  //     const sectores = (sectorIds ?? []).filter(
+  //       (n) => Number.isFinite(n) && n > 0,
+  //     );
+  //     const tokens = (search ?? '').trim().split(/\s+/).filter(Boolean);
+
+  //     // —— WHERE (AND estricto) ——
+  //     const where: Prisma.ClienteInternetWhereInput = {
+  //       ...(empresaId ? { empresaId } : {}),
+  //       ...(estado ? { estadoCliente: estado } : {}),
+  //       ...(zonas.length ? { facturacionZonaId: { in: zonas } } : {}),
+  //       ...(sectores.length ? { sectorId: { in: sectores } } : {}),
+  //       ...(tokens.length
+  //         ? {
+  //             AND: tokens.map((token) => ({
+  //               OR: [
+  //                 { nombre: { contains: token, mode: 'insensitive' } },
+  //                 { apellidos: { contains: token, mode: 'insensitive' } },
+  //                 { direccion: { contains: token, mode: 'insensitive' } },
+  //                 { telefono: { contains: token, mode: 'insensitive' } },
+  //               ],
+  //             })),
+  //           }
+  //         : {}),
+  //     };
+
+  //     // (opcional) Log para depurar qué WHERE quedó
+  //     this.logger.debug?.('WHERE generado: ' + JSON.stringify(where));
+
+  //     // —— ORDER / PAGINACIÓN ——
+  //     const orderBy:
+  //       | Prisma.ClienteInternetOrderByWithRelationInput
+  //       | Prisma.ClienteInternetOrderByWithRelationInput[] =
+  //       sortBy === 'saldo'
+  //         ? { saldoCliente: { saldoPendiente: sortDir } }
+  //         : [{ nombre: sortDir }, { apellidos: sortDir }];
+
+  //     const skip = (page - 1) * perPage;
+  //     const take = perPage;
+
+  //     const [total, rows] = await Promise.all([
+  //       this.prisma.clienteInternet.count({ where }),
+  //       this.prisma.clienteInternet.findMany({
+  //         where,
+  //         orderBy,
+  //         skip,
+  //         take,
+  //         select: {
+  //           id: true,
+  //           nombre: true,
+  //           apellidos: true,
+  //           telefono: true,
+  //           direccion: true,
+  //           estadoCliente: true,
+  //           saldoCliente: { select: { saldoPendiente: true } },
+  //           municipio: { select: { id: true, nombre: true } },
+  //           sector: { select: { id: true, nombre: true } },
+  //           facturacionZona: { select: { id: true, nombre: true } },
+  //           facturaInternet: {
+  //             where: {
+  //               estadoFacturaInternet: {
+  //                 in: ['PARCIAL', 'PENDIENTE', 'VENCIDA'],
+  //               },
+  //             },
+  //             select: { id: true, fechaPagoEsperada: true, montoPago: true },
+  //           },
+  //         },
+  //       }),
+  //     ]);
+
+  //     const items = rows.map((c) => ({
+  //       id: c.id,
+  //       nombre: c.nombre,
+  //       apellidos: c.apellidos ?? '',
+  //       telefono: c.telefono ?? null,
+  //       direccion: c.direccion ?? null,
+  //       estadoCliente: c.estadoCliente,
+  //       saldoPendiente: c.saldoCliente?.saldoPendiente ?? 0,
+  //       facturacionZona: c.facturacionZona?.id ?? null,
+  //       zonaFacturacion: c.facturacionZona?.nombre ?? '',
+  //       facturasPendientes: c.facturaInternet.length,
+  //       sector: { id: c.sector?.id ?? null, nombre: c.sector?.nombre ?? '' },
+  //       municipio: {
+  //         id: c.municipio?.id ?? null,
+  //         nombre: c.municipio?.nombre ?? '',
+  //       },
+  //       facturas: c.facturaInternet.map((f) => ({
+  //         id: f.id,
+  //         montoFactura: f.montoPago,
+  //         fechaPagoEsperada: f.fechaPagoEsperada,
+  //       })),
+  //     }));
+
+  //     return { items, total, page, perPage };
+  //   } catch (error) {
+  //     this.logger.error('El error generado es: ', error);
+  //     if (error instanceof HttpException) throw error;
+  //     throw new InternalServerErrorException(
+  //       'Fatal error: Error inesperado en clientes ruta',
+  //     );
+  //   }
+  // }
   async getCustomersToRuta(q: GetClientesRutaQueryDto) {
     try {
       const {
@@ -774,29 +899,21 @@ export class ClienteInternetService {
       const sectores = (sectorIds ?? []).filter(
         (n) => Number.isFinite(n) && n > 0,
       );
+      const tokens = strip(search ?? '')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
 
-      // —— WHERE (AND estricto) ——
+      // —— WHERE (AND estricto para Prisma, se usa después solo en relaciones/orden) ——
       const where: Prisma.ClienteInternetWhereInput = {
         ...(empresaId ? { empresaId } : {}),
         ...(estado ? { estadoCliente: estado } : {}),
         ...(zonas.length ? { facturacionZonaId: { in: zonas } } : {}),
         ...(sectores.length ? { sectorId: { in: sectores } } : {}),
-        ...(search
-          ? {
-              OR: [
-                { nombre: { contains: search, mode: 'insensitive' } },
-                { apellidos: { contains: search, mode: 'insensitive' } },
-                { direccion: { contains: search, mode: 'insensitive' } },
-                { telefono: { contains: search, mode: 'insensitive' } },
-              ],
-            }
-          : {}),
+        //  nada para que no filtre doble.
       };
 
-      // (opcional) Log para depurar qué WHERE quedó
-      this.logger.debug?.('WHERE generado: ' + JSON.stringify(where));
-
-      // —— ORDER / PAGINACIÓN ——
+      // —— ORDER / PAGINACIÓN (Prisma) ——
       const orderBy:
         | Prisma.ClienteInternetOrderByWithRelationInput
         | Prisma.ClienteInternetOrderByWithRelationInput[] =
@@ -807,35 +924,105 @@ export class ClienteInternetService {
       const skip = (page - 1) * perPage;
       const take = perPage;
 
-      const [total, rows] = await Promise.all([
-        this.prisma.clienteInternet.count({ where }),
-        this.prisma.clienteInternet.findMany({
-          where,
-          orderBy,
-          skip,
-          take,
-          select: {
-            id: true,
-            nombre: true,
-            apellidos: true,
-            telefono: true,
-            direccion: true,
-            estadoCliente: true,
-            saldoCliente: { select: { saldoPendiente: true } },
-            municipio: { select: { id: true, nombre: true } },
-            sector: { select: { id: true, nombre: true } },
-            facturacionZona: { select: { id: true, nombre: true } },
-            facturaInternet: {
-              where: {
-                estadoFacturaInternet: {
-                  in: ['PARCIAL', 'PENDIENTE', 'VENCIDA'],
-                },
+      // ------------------------------------------------------------
+      // 1) ID MATCH con búsqueda acento-insensible (sin JOINs, sin "sc")
+      // ------------------------------------------------------------
+
+      const andEmpresa = empresaId
+        ? Prisma.sql` AND c."empresaId" = ${empresaId}`
+        : Prisma.sql``;
+
+      const andEstado = estado
+        ? Prisma.sql` AND c."estadoCliente" = CAST(${estado} AS "EstadoCliente")` // ← o ::text = ${estado}
+        : Prisma.sql``;
+
+      const andZonas = zonas.length
+        ? Prisma.sql` AND c."facturacionZonaId" IN (${Prisma.join(
+            zonas.map((n) => Prisma.sql`${n}`),
+            ', ',
+          )})`
+        : Prisma.sql``;
+
+      const andSectores = sectores.length
+        ? Prisma.sql` AND c."sectorId" IN (${Prisma.join(
+            sectores.map((n) => Prisma.sql`${n}`),
+            ', ',
+          )})`
+        : Prisma.sql``;
+
+      // Usa unaccent(); si tu Postgres no la tiene, dímelo y te paso el fallback con translate(...)
+      const andSearch = tokens.length
+        ? Prisma.sql` AND ${Prisma.join(
+            tokens.map(
+              (t) => Prisma.sql`
+            translate(
+              coalesce(c."nombre",'') || ' ' ||
+              coalesce(c."apellidos",'') || ' ' ||
+              coalesce(c."direccion",'') || ' ' ||
+              coalesce(c."telefono"::text,''),
+              ${ACCENT_FROM},
+              ${ACCENT_TO}
+            ) ILIKE translate(${`%${t}%`}, ${ACCENT_FROM}, ${ACCENT_TO})
+          `,
+            ),
+            ' AND ', // (en Prisma v6 el separador debe ser string)
+          )}`
+        : Prisma.sql``;
+
+      // a) Total
+      const [{ count }] = await this.prisma.$queryRaw<
+        { count: number }[]
+      >(Prisma.sql`
+      SELECT COUNT(*)::int AS count
+      FROM "ClienteInternet" c
+      WHERE 1=1
+      ${andEmpresa} ${andEstado} ${andZonas} ${andSectores} ${andSearch}
+    `);
+
+      // b) IDs de la página (sin ordenar por "sc", solo por id para estabilidad)
+      const idRows = await this.prisma.$queryRaw<{ id: number }[]>(Prisma.sql`
+      SELECT c.id
+      FROM "ClienteInternet" c
+      WHERE 1=1
+      ${andEmpresa} ${andEstado} ${andZonas} ${andSectores} ${andSearch}
+      ORDER BY c.id
+      LIMIT ${take} OFFSET ${skip}
+    `);
+
+      const idsPage = idRows.map((r) => r.id);
+      if (idsPage.length === 0) {
+        return { items: [], total: count, page, perPage };
+      }
+
+      // ------------------------------------------------------------
+      // 2) Trae la página final con Prisma (orden/relaciones)
+      // ------------------------------------------------------------
+      const rows = await this.prisma.clienteInternet.findMany({
+        where: { ...where, id: { in: idsPage } },
+        orderBy,
+        // Nota: el orden final lo controla Prisma (nombre/apellidos o saldo);
+        // si quieres preservar exactamente el orden de idsPage, avísame y lo reordenamos en memoria.
+        select: {
+          id: true,
+          nombre: true,
+          apellidos: true,
+          telefono: true,
+          direccion: true,
+          estadoCliente: true,
+          saldoCliente: { select: { saldoPendiente: true } },
+          municipio: { select: { id: true, nombre: true } },
+          sector: { select: { id: true, nombre: true } },
+          facturacionZona: { select: { id: true, nombre: true } },
+          facturaInternet: {
+            where: {
+              estadoFacturaInternet: {
+                in: ['PARCIAL', 'PENDIENTE', 'VENCIDA'],
               },
-              select: { id: true, fechaPagoEsperada: true, montoPago: true },
             },
+            select: { id: true, fechaPagoEsperada: true, montoPago: true },
           },
-        }),
-      ]);
+        },
+      });
 
       const items = rows.map((c) => ({
         id: c.id,
@@ -860,7 +1047,7 @@ export class ClienteInternetService {
         })),
       }));
 
-      return { items, total, page, perPage };
+      return { items, total: count, page, perPage };
     } catch (error) {
       this.logger.error('El error generado es: ', error);
       if (error instanceof HttpException) throw error;

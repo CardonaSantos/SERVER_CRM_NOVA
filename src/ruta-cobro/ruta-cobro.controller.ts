@@ -8,6 +8,10 @@ import {
   Delete,
   ParseIntPipe,
   Res,
+  Logger,
+  InternalServerErrorException,
+  HttpException,
+  Query,
 } from '@nestjs/common';
 import { RutaCobroService } from './ruta-cobro.service';
 import { UpdateRutaDto } from './dto/update-ruta-cobro.dto';
@@ -16,6 +20,7 @@ import { Response } from 'express';
 
 @Controller('ruta-cobro')
 export class RutaCobroController {
+  private logger = new Logger(RutaCobroController.name);
   constructor(private readonly rutaCobroService: RutaCobroService) {}
 
   @Post()
@@ -49,8 +54,19 @@ export class RutaCobroController {
    * @returns todas las rutas de cobro para su vista y administracion
    */
   @Get('/get-rutas-cobros')
-  findAllRutas() {
-    return this.rutaCobroService.findAllRutas();
+  async getRutas() {
+    try {
+      const data = await this.rutaCobroService.findAllRutas();
+      return { items: data, total: data.length };
+    } catch (e) {
+      this.logger.error('get-rutas-cobros failed', e);
+      throw new InternalServerErrorException('Error recuperando rutas');
+    }
+  }
+
+  @Get('rutas-cobros-asignadas')
+  async getRutasCobroAsignadasUser(@Query('id', ParseIntPipe) id: number) {
+    return await this.rutaCobroService.findRutasAsignadas(id);
   }
 
   @Get('/get-excel-ruta/:id')

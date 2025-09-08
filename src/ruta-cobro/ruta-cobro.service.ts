@@ -20,6 +20,19 @@ import * as ExcelJS from 'exceljs';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.locale('es'); // Establece español como idioma predeterminado
+// Helper reutilizable
+function makeSheetName(name: string, fallback = 'Ruta'): string {
+  // 1) reemplaza caracteres prohibidos
+  let n = name.replace(/[\\/*?:[\]]/g, '-'); // incluye / \ * ? : [ ]
+  // 2) quita apóstrofes al inicio/fin (Excel no deja)
+  n = n.replace(/^'+|'+$/g, '');
+  // 3) colapsa espacios
+  n = n.replace(/\s+/g, ' ').trim();
+  // 4) límite 31 chars
+  if (n.length === 0) n = fallback;
+  if (n.length > 31) n = n.slice(0, 31);
+  return n;
+}
 
 @Injectable()
 export class RutaCobroService {
@@ -560,6 +573,63 @@ export class RutaCobroService {
     }
   }
 
+  async findRutasAsignadas(cobradorId: number) {
+    if (!cobradorId) throw new BadRequestException('ID de cobrador inválido');
+
+    try {
+      const rutas = await this.prisma.ruta.findMany({
+        where: {
+          cobradorId,
+          estadoRuta: { in: ['ACTIVO', 'ASIGNADA', 'EN_CURSO'] },
+        },
+        select: {
+          id: true,
+          nombreRuta: true,
+          creadoEn: true,
+          actualizadoEn: true,
+          observaciones: true,
+          cobrador: {
+            select: {
+              id: true,
+              nombre: true,
+              rol: true,
+            },
+          },
+          _count: { select: { clientes: true } },
+          clientes: {
+            select: { id: true, nombre: true, apellidos: true },
+          },
+        },
+        orderBy: { actualizadoEn: 'desc' },
+      });
+
+      // Totales agregados (opcional)
+      const totalClientes = rutas.reduce(
+        (acc, r) => acc + r._count.clientes,
+        0,
+      );
+
+      return {
+        rutas,
+        totales: {
+          totalRutas: rutas.length,
+          totalClientes, // suma de clientes de todas las rutas de ese cobrador
+        },
+      };
+    } catch (error) {
+      this.logger.error('error generado en get cobros asignados: ', error);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException(
+        'Fatal error:Error inesperado en modulo cobro rutas',
+      );
+    }
+  }
+
+  /**
+   *
+   * @param id ID del registro de ruta
+   * @returns blob para descarga de ruta excel
+   */
   async downloadExcelRutaCobro(id: number) {
     try {
       const rutaCobro = await this.prisma.ruta.findUnique({
@@ -634,7 +704,8 @@ export class RutaCobroService {
       }));
 
       const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet(rutaCobro.nombreRuta);
+      const safeName = makeSheetName(rutaCobro.nombreRuta);
+      const worksheet = workbook.addWorksheet(safeName);
       // 1. Define columnas primero
       worksheet.columns = [
         { header: 'Nombre', key: 'nombre', width: 35 },
