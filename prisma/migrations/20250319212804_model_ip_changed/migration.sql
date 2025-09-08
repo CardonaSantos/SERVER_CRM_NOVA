@@ -1,4 +1,0 @@
--- AlterTable
-ALTER TABLE "IP" ADD COLUMN     "gateway" TEXT DEFAULT '192.168.1.1',
-ADD COLUMN     "mascara" TEXT DEFAULT '255.255.255.0',
-ALTER COLUMN "direccionIp" SET DEFAULT '192.168.1.1';

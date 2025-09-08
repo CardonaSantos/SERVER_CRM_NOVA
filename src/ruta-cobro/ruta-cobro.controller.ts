@@ -10,7 +10,6 @@ import {
   Res,
 } from '@nestjs/common';
 import { RutaCobroService } from './ruta-cobro.service';
-import { CreateRutaDto } from './dto/create-ruta-cobro.dto';
 import { UpdateRutaDto } from './dto/update-ruta-cobro.dto';
 import { CreateNewRutaDto } from './dto/create-new-ruta.dto';
 import { Response } from 'express';
@@ -29,6 +28,11 @@ export class RutaCobroController {
     return this.rutaCobroService.findAll();
   }
 
+  /**
+   *
+   * @param rutaId RUTA ID
+   * @returns Toda una ruta para su inicio en cobro calle
+   */
   @Get('/get-one-ruta-cobro/:rutaId')
   finRutaCobro(@Param('rutaId', ParseIntPipe) rutaId: number) {
     console.log('Visitando la ruta');
@@ -40,6 +44,10 @@ export class RutaCobroController {
     return this.rutaCobroService.getRutaCobroToEdit(rutaId);
   }
 
+  /**
+   *
+   * @returns todas las rutas de cobro para su vista y administracion
+   */
   @Get('/get-rutas-cobros')
   findAllRutas() {
     return this.rutaCobroService.findAllRutas();

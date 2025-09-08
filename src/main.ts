@@ -7,10 +7,16 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   // Habilitar CORS correctamente
   app.enableCors({
-    // origin: '*', // Solo permite peticiones desde el frontend
-    credentials: true,
+    origin: [
+      // 'https://sabisu-auto.up.railway.app',
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:5173',
+    ],
+    credentials: true, // <- para cookies/withCredentials
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    // exposedHeaders: ['set-cookie'], // opcional
   });
   await app.listen(port || 3000);
 }

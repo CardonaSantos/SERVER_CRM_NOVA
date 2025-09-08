@@ -1,4 +1,5 @@
 import {
+  HttpException,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -16,6 +17,7 @@ import * as timezone from 'dayjs/plugin/timezone';
 import { IdContratoService } from 'src/id-contrato/id-contrato.service';
 import { periodoFrom } from 'src/facturacion/Utils';
 import ExcelJS from 'exceljs';
+import { GetClientesRutaQueryDto } from './pagination/cliente-internet.dto';
 // Extiende dayjs con los plugins
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -743,77 +745,128 @@ export class ClienteInternetService {
 
   /**
    *
-   * @returns Clientes y sus datos para la creacion de rutas de cobro
+   * @returns Clientes y sus datos para la creación de rutas de cobro
    */
-  async getCustomersToRuta() {
+  /**
+   * Clientes para crear rutas de cobro — Filtros AND estrictos:
+   * - Si envías estado, zonas, sectores → debe cumplir TODOS.
+   * - Si no envías uno, NO se filtra por ese.
+   * - Sin filtros → devuelve todos.
+   */
+  async getCustomersToRuta(q: GetClientesRutaQueryDto) {
     try {
-      const customers = await this.prisma.clienteInternet.findMany({
-        select: {
-          id: true,
-          nombre: true,
-          apellidos: true,
-          telefono: true,
-          direccion: true,
-          estadoCliente: true,
+      const {
+        empresaId,
+        sortBy,
+        page,
+        perPage,
+        sortDir,
+        estado,
+        search,
+        zonaIds,
+        sectorIds,
+      } = q;
 
-          saldoCliente: {
-            select: {
-              saldoPendiente: true, // Seleccionamos el saldo pendiente del cliente
-            },
-          },
-          municipio: {
-            select: {
-              id: true,
-              nombre: true,
-            },
-          },
-          sector: {
-            select: {
-              id: true,
-              nombre: true,
-            },
-          },
-          facturacionZona: {
-            select: {
-              id: true,
-            },
-          },
-          facturaInternet: {
-            where: {
-              estadoFacturaInternet: {
-                in: ['PARCIAL', 'PENDIENTE', 'VENCIDA'], // Solo clientes con facturas no pagadas
+      this.logger.log('El Q en fetch clientes es: ', JSON.stringify(q));
+
+      // Normaliza arrays y limpia 0/NaN
+      const zonas = (zonaIds ?? []).filter((n) => Number.isFinite(n) && n > 0);
+      const sectores = (sectorIds ?? []).filter(
+        (n) => Number.isFinite(n) && n > 0,
+      );
+
+      // —— WHERE (AND estricto) ——
+      const where: Prisma.ClienteInternetWhereInput = {
+        ...(empresaId ? { empresaId } : {}),
+        ...(estado ? { estadoCliente: estado } : {}),
+        ...(zonas.length ? { facturacionZonaId: { in: zonas } } : {}),
+        ...(sectores.length ? { sectorId: { in: sectores } } : {}),
+        ...(search
+          ? {
+              OR: [
+                { nombre: { contains: search, mode: 'insensitive' } },
+                { apellidos: { contains: search, mode: 'insensitive' } },
+                { direccion: { contains: search, mode: 'insensitive' } },
+                { telefono: { contains: search, mode: 'insensitive' } },
+              ],
+            }
+          : {}),
+      };
+
+      // (opcional) Log para depurar qué WHERE quedó
+      this.logger.debug?.('WHERE generado: ' + JSON.stringify(where));
+
+      // —— ORDER / PAGINACIÓN ——
+      const orderBy:
+        | Prisma.ClienteInternetOrderByWithRelationInput
+        | Prisma.ClienteInternetOrderByWithRelationInput[] =
+        sortBy === 'saldo'
+          ? { saldoCliente: { saldoPendiente: sortDir } }
+          : [{ nombre: sortDir }, { apellidos: sortDir }];
+
+      const skip = (page - 1) * perPage;
+      const take = perPage;
+
+      const [total, rows] = await Promise.all([
+        this.prisma.clienteInternet.count({ where }),
+        this.prisma.clienteInternet.findMany({
+          where,
+          orderBy,
+          skip,
+          take,
+          select: {
+            id: true,
+            nombre: true,
+            apellidos: true,
+            telefono: true,
+            direccion: true,
+            estadoCliente: true,
+            saldoCliente: { select: { saldoPendiente: true } },
+            municipio: { select: { id: true, nombre: true } },
+            sector: { select: { id: true, nombre: true } },
+            facturacionZona: { select: { id: true, nombre: true } },
+            facturaInternet: {
+              where: {
+                estadoFacturaInternet: {
+                  in: ['PARCIAL', 'PENDIENTE', 'VENCIDA'],
+                },
               },
-            },
-            select: {
-              id: true,
+              select: { id: true, fechaPagoEsperada: true, montoPago: true },
             },
           },
-        },
-      });
+        }),
+      ]);
 
-      const customersSet = customers.map((c) => ({
+      const items = rows.map((c) => ({
         id: c.id,
-        nombre: `${c.nombre} ${c.apellidos}`,
-        telefono: c.telefono,
-        direccion: c.direccion,
+        nombre: c.nombre,
+        apellidos: c.apellidos ?? '',
+        telefono: c.telefono ?? null,
+        direccion: c.direccion ?? null,
         estadoCliente: c.estadoCliente,
         saldoPendiente: c.saldoCliente?.saldoPendiente ?? 0,
         facturacionZona: c.facturacionZona?.id ?? null,
-        facturasPendientes: c.facturaInternet?.length,
-        sector: {
-          id: c.sector?.id ?? null,
-          nombre: c.sector?.nombre ?? '',
-        },
+        zonaFacturacion: c.facturacionZona?.nombre ?? '',
+        facturasPendientes: c.facturaInternet.length,
+        sector: { id: c.sector?.id ?? null, nombre: c.sector?.nombre ?? '' },
         municipio: {
           id: c.municipio?.id ?? null,
           nombre: c.municipio?.nombre ?? '',
         },
+        facturas: c.facturaInternet.map((f) => ({
+          id: f.id,
+          montoFactura: f.montoPago,
+          fechaPagoEsperada: f.fechaPagoEsperada,
+        })),
       }));
 
-      return customersSet;
+      return { items, total, page, perPage };
     } catch (error) {
-      console.log(error);
-      throw new Error('Error al obtener los clientes');
+      this.logger.error('El error generado es: ', error);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException(
+        'Fatal error: Error inesperado en clientes ruta',
+      );
     }
   }
 

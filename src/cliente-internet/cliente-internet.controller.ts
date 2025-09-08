@@ -9,6 +9,7 @@ import {
   ParseIntPipe,
   Query,
   Res,
+  ValidationPipe,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { ClienteInternetService } from './cliente-internet.service';
@@ -18,6 +19,7 @@ import { UpdateClienteInternetDto } from './dto/update-cliente-internet.dto';
 import { GetUserAuthToken } from 'src/CustomDecoratorAuthToken/GetUserAuthToken';
 import { GetToken } from 'src/auth/JwtGuard/getUserDecorator';
 import { updateCustomerService } from './dto/update-customer-service';
+import { GetClientesRutaQueryDto } from './pagination/cliente-internet.dto';
 // import { IdContratoService } from 'src/id-contrato/id-contrato.service';
 
 @Controller('internet-customer')
@@ -88,8 +90,17 @@ export class ClienteInternetController {
   }
 
   @Get('/get-customers-ruta')
-  getCustomersToRuta() {
-    return this.clienteInternetService.getCustomersToRuta();
+  getCustomersToRuta(
+    @Query(
+      new ValidationPipe({
+        transform: true,
+        transformOptions: { enableImplicitConversion: true },
+        whitelist: true,
+      }),
+    )
+    q: GetClientesRutaQueryDto,
+  ) {
+    return this.clienteInternetService.getCustomersToRuta(q);
   }
 
   @Delete('/delete-all')

@@ -1,4 +1,11 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateRutaDto } from './dto/create-ruta-cobro.dto';
@@ -21,38 +28,61 @@ export class RutaCobroService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createRutaCobroDto: CreateNewRutaDto) {
+    const {
+      cobradorId,
+      empresaId,
+      nombreRuta,
+      observaciones,
+      facturas,
+      asignadoPor,
+    } = createRutaCobroDto;
+
+    if (facturas.length <= 0) {
+      throw new BadRequestException('Facturas seleccionadas no válidas');
+    }
+
     return await this.prisma.$transaction(async (tx) => {
-      console.log('La data llegando es: ', createRutaCobroDto);
+      const facturasFound = await tx.facturaInternet.findMany({
+        where: { id: { in: facturas } },
+        select: { id: true, clienteId: true },
+      });
 
-      const newRutaCobro = await tx.ruta.create({
+      const newRuta = await tx.ruta.create({
         data: {
-          nombreRuta: createRutaCobroDto.nombreRuta,
-          cobrador: createRutaCobroDto.cobradorId
-            ? {
-                connect: {
-                  id: createRutaCobroDto.cobradorId,
-                },
-              }
-            : undefined, // Dejar undefined si no se pasa un cobradorId
-          empresa: {
-            connect: {
-              id: createRutaCobroDto.empresaId,
-            },
-          },
-          clientes: {
-            connect: createRutaCobroDto.clientes.map((id) => ({ id })),
-          },
-          observaciones: createRutaCobroDto.observaciones,
-
-          // cobrados: 0,
-          // montoCobrado: 0,
-          // estadoRuta: 'ACTIVO', // Suponiendo que 'ACTIVO' es un valor válido para el enum EstadoRuta
+          estadoRuta: 'ASIGNADA',
+          montoCobrado: 0,
+          observaciones,
+          nombreRuta,
+          cobrador: { connect: { id: cobradorId } },
+          empresa: { connect: { id: empresaId } },
         },
       });
 
-      console.log('La nueva ruta es: ', newRutaCobro);
+      // Vincular facturas
+      await Promise.all(
+        facturasFound.map((f) =>
+          tx.facturaRuta.create({
+            data: {
+              ruta: { connect: { id: newRuta.id } },
+              factura: { connect: { id: f.id } },
+              asignadaPor: { connect: { id: asignadoPor } },
+            },
+          }),
+        ),
+      );
 
-      return newRutaCobro; // Retornar la ruta recién creada
+      // Vincular clientes únicos
+      const clientesIds = [...new Set(facturasFound.map((f) => f.clienteId))];
+      if (clientesIds.length > 0) {
+        await tx.ruta.update({
+          where: { id: newRuta.id },
+          data: {
+            clientes: { connect: clientesIds.map((id) => ({ id })) },
+          },
+        });
+      }
+
+      return newRuta;
     });
   }
 
@@ -108,87 +138,152 @@ export class RutaCobroService {
     return `This action returns all rutaCobro`;
   }
 
+  /**
+   *
+   * @returns Encuentra todas las rutas de cobros
+   */
   async findAllRutas() {
     const rutas = await this.prisma.ruta.findMany({
-      include: {
-        empresa: true, // Incluye la empresa relacionada
-        cobrador: true, // Incluye el cobrador (usuario) relacionado
+      orderBy: { creadoEn: 'desc' },
+      select: {
+        id: true,
+        nombreRuta: true,
+        cobradorId: true,
+        empresaId: true,
+        estadoRuta: true,
+        creadoEn: true,
+        actualizadoEn: true,
+        observaciones: true,
+        empresa: { select: { id: true, nombre: true } },
+        cobrador: {
+          select: {
+            id: true,
+            nombre: true,
+            correo: true,
+            telefono: true,
+            rol: true,
+          },
+        },
         clientes: {
-          include: {
-            empresa: true, // Incluye la empresa del cliente
-            ubicacion: true, // Incluye la ubicación del cliente
-            saldoCliente: true,
-            facturaInternet: true,
+          select: {
+            id: true,
+            nombre: true,
+            apellidos: true,
+            telefono: true,
+            contactoReferenciaTelefono: true,
+            direccion: true,
+            dpi: true,
+            estadoCliente: true,
+            empresaId: true,
+            empresa: { select: { id: true, nombre: true } },
+            ubicacion: { select: { id: true, latitud: true, longitud: true } },
+            facturacionZonaId: true,
+            saldoCliente: { select: { saldoPendiente: true } },
+            facturaInternet: {
+              where: {
+                estadoFacturaInternet: {
+                  in: ['VENCIDA', 'PENDIENTE', 'PARCIAL'],
+                },
+              },
+              select: {
+                id: true,
+                estadoFacturaInternet: true,
+                montoPago: true,
+                saldoPendiente: true,
+              },
+            },
           },
         },
       },
     });
 
-    const x = rutas.map((ruta) => ({
-      id: ruta.id,
-      nombreRuta: ruta.nombreRuta,
-      cobradorId: ruta.cobradorId,
-      cobrador: ruta.cobrador
-        ? {
-            id: ruta.cobrador.id,
-            nombre: ruta.cobrador.nombre,
-            apellidos: ruta.cobrador.nombre,
-            email: ruta.cobrador.correo,
-            telefono: ruta.cobrador.telefono,
-            rol: ruta.cobrador.rol,
-          }
-        : undefined,
-      empresaId: ruta.empresaId,
-      empresa: {
-        id: ruta.empresa.id,
-        nombre: ruta.empresa.nombre,
-      },
-      //PARA EL CLIENTE DE LA RUTA
-      clientes: ruta.clientes.map((cliente) => ({
-        id: cliente.id,
-        nombre: cliente.nombre,
-        apellidos: cliente.apellidos,
-        telefono: cliente.telefono,
-        direccion: cliente.direccion,
-        dpi: cliente.dpi,
-        estadoCliente: cliente.estadoCliente,
-        empresaId: cliente.empresaId,
-        empresa: cliente.empresa
-          ? {
-              id: cliente.empresa.id,
-              nombre: cliente.empresa.nombre,
-            }
-          : undefined,
-        ubicacion: cliente.ubicacion
-          ? {
-              id: cliente.ubicacion.id,
-              latitud: cliente.ubicacion.latitud,
-              longitud: cliente.ubicacion.longitud,
-              direccion: cliente.direccion,
-            }
-          : undefined,
-        saldoPendiente: cliente.saldoCliente?.saldoPendiente ?? 0,
-        facturasPendientes: cliente.facturaInternet.filter(
-          (f) => f.estadoFacturaInternet === 'PENDIENTE',
-        ),
-        facturacionZona: cliente.facturacionZonaId,
-      })),
-      // cobrados: ruta.cobrados,
-      montoCobrado: ruta.montoCobrado,
-      estadoRuta: ruta.estadoRuta,
-      fechaCreacion: ruta.creadoEn,
-      fechaActualizacion: ruta.actualizadoEn,
-      observaciones: ruta.observaciones,
-      diasCobro: ['MARTES'],
-    }));
+    if (!rutas)
+      throw new NotFoundException('No se encontraron rutas de cobros');
 
-    // console.log('RUTAS: ', x);
+    const x = rutas.map((ruta) => {
+      const facturasRuta = ruta.clientes.flatMap(
+        (c) => c.facturaInternet ?? [],
+      );
+      const totalACobrar = facturasRuta.reduce(
+        (t, f) => t + (f.montoPago ?? 0),
+        0,
+      );
+      const totalPendienteRuta = facturasRuta.reduce(
+        (t, f) => t + (f.saldoPendiente ?? 0),
+        0,
+      );
+      const totalCobrado = totalACobrar - totalPendienteRuta;
+
+      return {
+        id: ruta.id,
+        nombreRuta: ruta.nombreRuta,
+        cobradorId: ruta.cobradorId,
+        cobrador: ruta.cobrador
+          ? {
+              id: ruta.cobrador.id,
+              nombre: ruta.cobrador.nombre,
+              email: ruta.cobrador.correo,
+              telefono: ruta.cobrador.telefono,
+              rol: ruta.cobrador.rol,
+            }
+          : undefined,
+        empresaId: ruta.empresaId,
+        empresa: { id: ruta.empresa.id, nombre: ruta.empresa.nombre },
+        clientes: ruta.clientes.map((cliente) => {
+          const totalPendienteCliente = (cliente.facturaInternet ?? []).reduce(
+            (acc, f) => acc + (f.saldoPendiente ?? 0),
+            0,
+          );
+          return {
+            id: cliente.id,
+            nombre: cliente.nombre,
+            apellidos: cliente.apellidos,
+            telefono: cliente.telefono,
+            telefonoReferencia: cliente.contactoReferenciaTelefono,
+            direccion: cliente.direccion,
+            dpi: cliente.dpi,
+            estadoCliente: cliente.estadoCliente,
+            empresaId: cliente.empresaId,
+            empresa: cliente.empresa
+              ? { id: cliente.empresa.id, nombre: cliente.empresa.nombre }
+              : undefined,
+            ubicacion: cliente.ubicacion
+              ? {
+                  id: cliente.ubicacion.id,
+                  latitud: cliente.ubicacion.latitud,
+                  longitud: cliente.ubicacion.longitud,
+                  direccion: cliente.direccion,
+                }
+              : undefined,
+            saldoPendiente: totalPendienteCliente,
+            facturasPendientes: (cliente.facturaInternet ?? []).filter(
+              (f) => f.estadoFacturaInternet === 'PENDIENTE',
+            ),
+            facturacionZona: cliente.facturacionZonaId,
+          };
+        }),
+        estadoRuta: ruta.estadoRuta,
+        fechaCreacion: ruta.creadoEn,
+        fechaActualizacion: ruta.actualizadoEn,
+        observaciones: ruta.observaciones,
+        diasCobro: ['MARTES'],
+        totalACobrar,
+        totalCobrado,
+        porCobrar: totalPendienteRuta,
+      };
+    });
+
     return x;
   }
 
+  /**
+   *
+   * @param rutaId I
+   * @returns Ruta con data completa para cobro
+   */
   async finRutaCobro(rutaId: number) {
     try {
-      console.log('El id pasando es: ', rutaId);
+      if (!rutaId) throw new BadRequestException('ID de ruta no válido');
 
       const ruta = await this.prisma.ruta.findUnique({
         where: { id: rutaId },
@@ -259,39 +354,54 @@ export class RutaCobroService {
           nombre: ruta?.cobrador?.nombre,
           correo: ruta?.cobrador?.correo,
         },
-        clientes: ruta?.clientes.map((cliente) => ({
-          id: cliente.id,
-          nombreCompleto: `${cliente.nombre} ${cliente.apellidos}`,
-          telefono: cliente.telefono,
-          direccion: cliente.direccion,
-          imagenes: [],
-          contactoReferencia: {
-            telefono: cliente.contactoReferenciaTelefono,
-            nombre: cliente.contactoReferenciaNombre,
-          },
-          ubicacion:
-            cliente.ubicacion &&
-            cliente.ubicacion.latitud &&
-            cliente.ubicacion.longitud
-              ? {
-                  latitud: cliente.ubicacion.latitud,
-                  longitud: cliente.ubicacion.longitud,
-                }
-              : [], // Si no existe ubicacion, devuelve un array vacío
-          facturas: cliente.facturaInternet.map((factura) => ({
-            id: factura.id,
-            montoPago: factura.montoPago,
-            estadoFactura: factura.estadoFacturaInternet,
-            saldoPendiente: factura.saldoPendiente,
-            creadoEn: factura.creadoEn,
-            detalleFactura: factura.detalleFactura,
-          })),
-          saldo: {
-            saldoFavor: cliente.saldoCliente?.saldoFavor ?? 0,
-            saldoPendiente: cliente.saldoCliente?.saldoPendiente ?? 0,
-            ultimoPago: cliente.saldoCliente?.ultimoPago ?? null,
-          },
-        })),
+        clientes: ruta?.clientes
+          .sort(
+            (a, b) =>
+              b.facturaInternet.reduce((acc, f) => acc + f.saldoPendiente, 0) -
+              a.facturaInternet.reduce((acc, f) => acc + f.saldoPendiente, 0),
+          )
+          .map((cliente) => {
+            const totalDebe = cliente.facturaInternet.reduce(
+              (acc, factura) => acc + factura.saldoPendiente,
+              0,
+            );
+
+            return {
+              id: cliente.id,
+              nombreCompleto: `${cliente.nombre} ${cliente.apellidos}`,
+              telefono: cliente.telefono,
+              direccion: cliente.direccion,
+              imagenes: [],
+              contactoReferencia: {
+                telefono: cliente.contactoReferenciaTelefono,
+                nombre: cliente.contactoReferenciaNombre,
+              },
+              ubicacion:
+                cliente.ubicacion &&
+                cliente.ubicacion.latitud &&
+                cliente.ubicacion.longitud
+                  ? {
+                      latitud: cliente.ubicacion.latitud,
+                      longitud: cliente.ubicacion.longitud,
+                    }
+                  : [], // Si no existe ubicacion, devuelve un array vacío
+              facturas: cliente.facturaInternet.map((factura) => ({
+                id: factura.id,
+                montoPago: factura.montoPago,
+                estadoFactura: factura.estadoFacturaInternet,
+                saldoPendiente: factura.saldoPendiente,
+                creadoEn: factura.creadoEn,
+                detalleFactura: factura.detalleFactura,
+              })),
+              saldo: {
+                saldoFavor: cliente.saldoCliente?.saldoFavor ?? 0,
+                saldoPendiente: cliente.saldoCliente?.saldoPendiente ?? 0,
+                ultimoPago: cliente.saldoCliente?.ultimoPago ?? null,
+              },
+              //nuevo
+              totalDebe: totalDebe,
+            };
+          }),
       };
 
       return response;
@@ -306,24 +416,17 @@ export class RutaCobroService {
   async getRutaCobroToEdit(rutaId: number) {
     const ruta = await this.prisma.ruta.findUnique({
       where: { id: rutaId },
-      select: {
-        id: true,
-        nombreRuta: true,
-        cobradorId: true,
+      include: {
         cobrador: {
           select: {
             id: true,
             nombre: true,
-            // apellidos: true,
             correo: true,
             telefono: true,
             rol: true,
           },
         },
-        empresaId: true,
-        empresa: {
-          select: { id: true, nombre: true },
-        },
+        empresa: { select: { id: true, nombre: true } },
         clientes: {
           select: {
             id: true,
@@ -337,27 +440,20 @@ export class RutaCobroService {
             empresa: { select: { id: true, nombre: true } },
             ubicacion: { select: { id: true, latitud: true, longitud: true } },
             facturacionZonaId: true,
-            // Solo contamos facturas pendientes
+            // Solo contamos facturas con saldo/pendientes
             facturaInternet: {
               where: {
                 estadoFacturaInternet: {
                   in: ['PENDIENTE', 'VENCIDA', 'PARCIAL'],
                 },
               },
-              select: { id: true },
+              select: { id: true }, // traemos solo ids para contar
             },
-            // Si tienes una relación de saldoCliente
-            saldoCliente: {
-              select: { saldoPendiente: true },
-            },
+            saldoCliente: { select: { saldoPendiente: true } },
           },
         },
-        montoCobrado: true,
-        estadoRuta: true,
-        observaciones: true,
-        creadoEn: true,
-        actualizadoEn: true,
-        CobroRuta: { select: { id: true } }, // para contar cuántos cobros hay
+        // << Importante: en el schema es "cobros"
+        cobros: { select: { id: true } },
       },
     });
 
@@ -366,33 +462,33 @@ export class RutaCobroService {
     return {
       id: ruta.id,
       nombreRuta: ruta.nombreRuta,
-      cobradorId: ruta.cobradorId,
-      cobrador: ruta.cobrador,
+      cobradorId: ruta.cobradorId ?? undefined,
+      cobrador: ruta.cobrador ?? undefined,
       empresaId: ruta.empresaId,
       empresa: ruta.empresa,
       clientes: ruta.clientes.map((c) => ({
         id: c.id,
         nombre: c.nombre,
-        apellidos: c.apellidos,
-        telefono: c.telefono,
-        direccion: c.direccion,
-        dpi: c.dpi,
+        apellidos: c.apellidos ?? undefined,
+        telefono: c.telefono ?? undefined,
+        direccion: c.direccion ?? undefined,
+        dpi: c.dpi ?? undefined,
         estadoCliente: c.estadoCliente,
         empresaId: c.empresaId,
         empresa: c.empresa,
         ubicacion: c.ubicacion ?? undefined,
         saldoPendiente: c.saldoCliente?.saldoPendiente ?? 0,
         facturasPendientes: c.facturaInternet.length,
-        facturacionZona: c.facturacionZonaId!,
+        facturacionZona: c.facturacionZonaId ?? undefined,
       })),
-      cobrados: ruta.CobroRuta.length,
+      cobrados: ruta.cobros.length,
       montoCobrado: ruta.montoCobrado,
       estadoRuta: ruta.estadoRuta,
       fechaCreacion: ruta.creadoEn.toISOString(),
       fechaActualizacion: ruta.actualizadoEn.toISOString(),
       observaciones: ruta.observaciones ?? undefined,
-      diasCobro: [], // si tienes lógica para días, inclúyelos aquí
-    };
+      diasCobro: [], // si luego guardas días en BD, mapéalos aquí
+    } as const;
   }
 
   findOne(id: number) {
@@ -520,17 +616,18 @@ export class RutaCobroService {
         telefono: c.telefono,
         telefonoReferencia: c.contactoReferenciaTelefono,
         direccion: c.direccion,
-        facturas: c.facturaInternet
+        facturas: (c.facturaInternet ?? [])
           .map(
             (fac) =>
               `Mes: ${dayjs(fac.fechaPagoEsperada).format('MMMM YYYY')}, Monto: Q${fac.montoPago}`,
           )
           .join('\n'),
         observaciones: c.observaciones ?? '',
-        fechaInstalacion: dayjs(c.fechaInstalacion).format('DD MMMM YYYY'), // Ej: "05 julio 2025"
-        sector: c.sector.nombre,
-        plan: c.servicioInternet.nombre,
-
+        fechaInstalacion: c.fechaInstalacion
+          ? dayjs(c.fechaInstalacion).format('DD MMMM YYYY')
+          : '',
+        sector: c.sector?.nombre ?? '', // ✅ safe
+        plan: c.servicioInternet?.nombre ?? '', // ✅ safe
         ubicacion: c.ubicacion
           ? `${c.ubicacion.latitud},${c.ubicacion.longitud}`
           : '',
@@ -564,7 +661,10 @@ export class RutaCobroService {
       return buffer;
     } catch (error) {
       this.logger.error('El error es: ', error);
-      return error;
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException(
+        'Fatal error: Error inesperado en ruta cobro excel',
+      );
     }
   }
 }

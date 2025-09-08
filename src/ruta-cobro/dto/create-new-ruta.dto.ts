@@ -8,7 +8,13 @@ export class CreateNewRutaDto {
   @IsInt()
   empresaId: number;
   @IsArray()
-  clientes: number[];
+  clientes?: number[];
   @IsString()
   observaciones: string;
+
+  @IsArray()
+  facturas?: [];
+
+  @IsInt()
+  asignadoPor: number;
 }
