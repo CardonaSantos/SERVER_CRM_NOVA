@@ -12,8 +12,7 @@ async function bootstrap() {
       'http://localhost:5173',
       'http://localhost:5174',
       'http://localhost:5173',
-      'https://pos-crm-nova.up.railway.app/dashboard',
-      'https://pos-crm-nova.up.railway.app/crm',
+      'https://pos-crm-nova.up.railway.app',
     ],
     credentials: true, // <- para cookies/withCredentials
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
