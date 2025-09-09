@@ -9,8 +9,7 @@ async function bootstrap() {
   const allowlist = new Set<string>([
     'http://localhost:5173',
     'http://localhost:5174',
-    'https://pos-crm-nova.up.railway.app', // 👈 verifica que sea EXACTO
-    'https://pos-crm-nova-production.up.railway.app', // si aplica
+    'https://pos-crm-nova.up.railway.app',
   ]);
 
   app.enableCors({
