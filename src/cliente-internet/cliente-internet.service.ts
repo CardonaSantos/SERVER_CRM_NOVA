@@ -10,7 +10,12 @@ import { UpdateClienteInternetDto } from './dto/update-cliente-internet.dto';
 import { UserTokenAuth } from 'src/auth/dto/userToken.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { updateCustomerService } from './dto/update-customer-service';
-import { ClienteInternet, EstadoCliente, Prisma } from '@prisma/client';
+import {
+  ClienteInternet,
+  EstadoCliente,
+  Prisma,
+  StateFacturaInternet,
+} from '@prisma/client';
 import * as dayjs from 'dayjs';
 import * as utc from 'dayjs/plugin/utc';
 import * as timezone from 'dayjs/plugin/timezone';
@@ -544,6 +549,31 @@ export class ClienteInternetService {
       if (!clienteInternetWithRelations) {
         throw new Error('Cliente no encontrado');
       }
+      const pendientes: StateFacturaInternet[] = [
+        'VENCIDA',
+        'PENDIENTE',
+        'PARCIAL',
+      ];
+      const totalfacturasPendientes =
+        clienteInternetWithRelations.facturaInternet.filter((f) =>
+          pendientes.includes(f.estadoFacturaInternet),
+        );
+
+      const totalPendiente = totalfacturasPendientes.reduce((acc, f) => {
+        const pagosRealizados = f.pagos.reduce(
+          (acc, p) => acc + p.montoPagado,
+          0,
+        );
+        return acc + (f.montoPago - pagosRealizados);
+      }, 0);
+
+      const totalPagadas = clienteInternetWithRelations.facturaInternet.reduce(
+        (acc: number, f) => {
+          if (f.estadoFacturaInternet === 'PAGADA') acc += f.montoPago;
+          return acc;
+        },
+        0,
+      );
 
       // Mapeamos los datos del cliente con el formato requerido
       const clienteEjemplo = {
@@ -646,10 +676,9 @@ export class ClienteInternetService {
         saldoCliente: clienteInternetWithRelations.saldoCliente
           ? {
               id: clienteInternetWithRelations.saldoCliente.id,
-              saldo: clienteInternetWithRelations.saldoCliente.saldoFavor,
-              saldoPendiente:
-                clienteInternetWithRelations.saldoCliente.saldoPendiente,
-              totalPagos: clienteInternetWithRelations.saldoCliente.totalPagos,
+              saldo: totalPagadas,
+              saldoPendiente: totalPendiente,
+              totalPagos: totalPagadas,
               ultimoPago: clienteInternetWithRelations.saldoCliente.ultimoPago,
             }
           : null,
@@ -749,135 +778,6 @@ export class ClienteInternetService {
     }
   }
 
-  /**
-   *
-   * @returns Clientes y sus datos para la creación de rutas de cobro
-   */
-  /**
-   * Clientes para crear rutas de cobro — Filtros AND estrictos:
-   * - Si envías estado, zonas, sectores → debe cumplir TODOS.
-   * - Si no envías uno, NO se filtra por ese.
-   * - Sin filtros → devuelve todos.
-   */
-  // async getCustomersToRuta(q: GetClientesRutaQueryDto) {
-  //   try {
-  //     const {
-  //       empresaId,
-  //       sortBy,
-  //       page,
-  //       perPage,
-  //       sortDir,
-  //       estado,
-  //       search,
-  //       zonaIds,
-  //       sectorIds,
-  //     } = q;
-
-  //     this.logger.log('El Q en fetch clientes es: ', JSON.stringify(q));
-
-  //     // Normaliza arrays y limpia 0/NaN
-  //     const zonas = (zonaIds ?? []).filter((n) => Number.isFinite(n) && n > 0);
-  //     const sectores = (sectorIds ?? []).filter(
-  //       (n) => Number.isFinite(n) && n > 0,
-  //     );
-  //     const tokens = (search ?? '').trim().split(/\s+/).filter(Boolean);
-
-  //     // —— WHERE (AND estricto) ——
-  //     const where: Prisma.ClienteInternetWhereInput = {
-  //       ...(empresaId ? { empresaId } : {}),
-  //       ...(estado ? { estadoCliente: estado } : {}),
-  //       ...(zonas.length ? { facturacionZonaId: { in: zonas } } : {}),
-  //       ...(sectores.length ? { sectorId: { in: sectores } } : {}),
-  //       ...(tokens.length
-  //         ? {
-  //             AND: tokens.map((token) => ({
-  //               OR: [
-  //                 { nombre: { contains: token, mode: 'insensitive' } },
-  //                 { apellidos: { contains: token, mode: 'insensitive' } },
-  //                 { direccion: { contains: token, mode: 'insensitive' } },
-  //                 { telefono: { contains: token, mode: 'insensitive' } },
-  //               ],
-  //             })),
-  //           }
-  //         : {}),
-  //     };
-
-  //     // (opcional) Log para depurar qué WHERE quedó
-  //     this.logger.debug?.('WHERE generado: ' + JSON.stringify(where));
-
-  //     // —— ORDER / PAGINACIÓN ——
-  //     const orderBy:
-  //       | Prisma.ClienteInternetOrderByWithRelationInput
-  //       | Prisma.ClienteInternetOrderByWithRelationInput[] =
-  //       sortBy === 'saldo'
-  //         ? { saldoCliente: { saldoPendiente: sortDir } }
-  //         : [{ nombre: sortDir }, { apellidos: sortDir }];
-
-  //     const skip = (page - 1) * perPage;
-  //     const take = perPage;
-
-  //     const [total, rows] = await Promise.all([
-  //       this.prisma.clienteInternet.count({ where }),
-  //       this.prisma.clienteInternet.findMany({
-  //         where,
-  //         orderBy,
-  //         skip,
-  //         take,
-  //         select: {
-  //           id: true,
-  //           nombre: true,
-  //           apellidos: true,
-  //           telefono: true,
-  //           direccion: true,
-  //           estadoCliente: true,
-  //           saldoCliente: { select: { saldoPendiente: true } },
-  //           municipio: { select: { id: true, nombre: true } },
-  //           sector: { select: { id: true, nombre: true } },
-  //           facturacionZona: { select: { id: true, nombre: true } },
-  //           facturaInternet: {
-  //             where: {
-  //               estadoFacturaInternet: {
-  //                 in: ['PARCIAL', 'PENDIENTE', 'VENCIDA'],
-  //               },
-  //             },
-  //             select: { id: true, fechaPagoEsperada: true, montoPago: true },
-  //           },
-  //         },
-  //       }),
-  //     ]);
-
-  //     const items = rows.map((c) => ({
-  //       id: c.id,
-  //       nombre: c.nombre,
-  //       apellidos: c.apellidos ?? '',
-  //       telefono: c.telefono ?? null,
-  //       direccion: c.direccion ?? null,
-  //       estadoCliente: c.estadoCliente,
-  //       saldoPendiente: c.saldoCliente?.saldoPendiente ?? 0,
-  //       facturacionZona: c.facturacionZona?.id ?? null,
-  //       zonaFacturacion: c.facturacionZona?.nombre ?? '',
-  //       facturasPendientes: c.facturaInternet.length,
-  //       sector: { id: c.sector?.id ?? null, nombre: c.sector?.nombre ?? '' },
-  //       municipio: {
-  //         id: c.municipio?.id ?? null,
-  //         nombre: c.municipio?.nombre ?? '',
-  //       },
-  //       facturas: c.facturaInternet.map((f) => ({
-  //         id: f.id,
-  //         montoFactura: f.montoPago,
-  //         fechaPagoEsperada: f.fechaPagoEsperada,
-  //       })),
-  //     }));
-
-  //     return { items, total, page, perPage };
-  //   } catch (error) {
-  //     this.logger.error('El error generado es: ', error);
-  //     if (error instanceof HttpException) throw error;
-  //     throw new InternalServerErrorException(
-  //       'Fatal error: Error inesperado en clientes ruta',
-  //     );
-  //   }
-  // }
   async getCustomersToRuta(q: GetClientesRutaQueryDto) {
     try {
       const {
