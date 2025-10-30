@@ -26,7 +26,7 @@ export class CustomerPayloadController {
       process.cwd(),
       'src',
       'assets',
-      'BASE_ALDEAS_PETATAN_FORMATTED.csv',
+      'BASE_JACAL_NUEVA_FORMATO.csv',
     );
     console.log('📂 Usando ruta:', ruta);
     return await this.customerPayloadService.importarClientesDesdeCSV(ruta);
