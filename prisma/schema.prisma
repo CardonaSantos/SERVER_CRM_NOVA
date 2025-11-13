@@ -505,6 +505,7 @@ model AlbumCliente {
   portadaId   Int?
   esGeneral   Boolean @default(false) // para marcar el álbum por defecto
 
+  orden Int?
   creadoEn      DateTime @default(now())
   actualizadoEn DateTime @updatedAt
 
