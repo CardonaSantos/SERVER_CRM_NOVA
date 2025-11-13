@@ -1,33 +1,3 @@
-// BASE DE DATOS ANTERIOR DEL PULL
-
-// ------------------------------->
-////////////////////////////////////////////////////////////////////////////////
-// 📑 ÍNDICE RÁPIDO (Ctrl/Cmd+F → “[nn]”)
-//   [01] ENTIDADES BASE: Empresa, Usuario, ConfiguracionGlobal, Saldos, Proveedor
-//   [02] GEOGRAFÍA/UBICACIONES/ZONAS: Departamento, Municipio, Sector, Ubicacion, FacturacionZona
-//   [03] PLANTILLAS Y COMUNICACIONES: PlantillaMensaje, PlantillaContrato
-//   [04] SERVICIOS (Catálogos y asignaciones): TipoServicio, Servicio, ServicioInternet
-//   [05] CLIENTES Y CONTRATOS: ClienteInternet, IP, Fotos, saldoCliente, ContratoFisico,
-//                               ContratoServicioInternet, ClienteServicio, Lead
-//   [06] FACTURACIÓN Y PAGOS: FacturaInternet, Factura, FacturaServicio,
-//                              PagoFacturaInternet, PagoFactura, RecordatorioPago, FacturaEliminada
-//   [07] RUTAS DE COBRO: Ruta, RutaTurno, FacturaRuta, CobroRuta
-//   [08] SOPORTE Y METAS: TicketSoporte, BoletaSoporte, EtiquetaTicket, TicketEtiqueta,
-//                          SeguimientoTicket, TicketSoporteTecnico, MetaTecnicoTicket,
-//                          MetaTickets, Asistencia
-//   [09] ENUMS: Todos los enums agrupados
-//
-//  → ir a [01] ENTIDADES BASE
-//  → ir a [02] GEOGRAFÍA/UBICACIONES/ZONAS
-//  → ir a [03] PLANTILLAS Y COMUNICACIONES
-//  → ir a [04] SERVICIOS
-//  → ir a [05] CLIENTES Y CONTRATOS
-//  → ir a [06] FACTURACIÓN Y PAGOS
-//  → ir a [07] RUTAS DE COBRO
-//  → ir a [08] SOPORTE Y METAS
-//  → ir a [09] ENUMS
-////////////////////////////////////////////////////////////////////////////////
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -36,10 +6,6 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL_CRM")
 }
-
-////////////////////////////////////////////////////////////////////////////////
-// [01] 🧱 ENTIDADES BASE: Empresa, Usuarios, Configuración, Saldos, Proveedores
-////////////////////////////////////////////////////////////////////////////////
 
 model Empresa {
   id                  Int                   @id @default(autoincrement())
@@ -55,11 +21,13 @@ model Empresa {
   logo3               String?
   creadoEn            DateTime              @default(now())
   actualizadoEn       DateTime              @updatedAt
+  albumClientes       AlbumCliente[]
   clientesInternet    ClienteInternet[]
   ConfiguracionGlobal ConfiguracionGlobal[]
   Factura             Factura[]
   facturas            FacturaInternet[]
   FacturacionZona     FacturacionZona[]
+  medias              Media[]
   plantillas          PlantillaMensaje[]
   Proveedor           Proveedor[]
   rutas               Ruta[]
@@ -70,9 +38,6 @@ model Empresa {
   TicketSoporte       TicketSoporte[]
   Ubicacion           Ubicacion[]
   empleados           Usuario[]
-
-  medias        Media[]
-  albumClientes AlbumCliente[]
 }
 
 model Usuario {
@@ -91,21 +56,20 @@ model Usuario {
   clientesAsesorados     ClienteInternet[]
   facturasEliminadas     FacturaEliminada[]
   facturasCreadas        FacturaInternet[]      @relation("FacturaInternetCreador")
+  facturasAsignadas      FacturaRuta[]          @relation("AsignadorFacturaRuta")
+  facturasCobradas       FacturaRuta[]          @relation("CobradorFacturaRuta")
+  archivosCargados       Media[]
   metasTecnico           MetaTecnicoTicket[]    @relation("MetaTecnicoRelation")
   MetaTickets            MetaTickets[]
   PagoFacturaInternet    PagoFacturaInternet[]
   RegistroCaja           RegistroCaja[]
   Ruta                   Ruta[]
+  rutaTurnosComoCobrador RutaTurno[]
   SeguimientoTicket      SeguimientoTicket[]
   ticketsCreados         TicketSoporte[]        @relation("TicketCreador")
   ticketsAsignados       TicketSoporte[]        @relation("TicketTecnico")
   ticketsSoporteTecnico  TicketSoporteTecnico[]
   empresa                Empresa                @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  facturasAsignadas      FacturaRuta[]          @relation("AsignadorFacturaRuta")
-  facturasCobradas       FacturaRuta[]          @relation("CobradorFacturaRuta")
-  rutaTurnosComoCobrador RutaTurno[]
-
-  archivosCargados Media[]
 }
 
 model ConfiguracionGlobal {
@@ -163,10 +127,6 @@ model Proveedor {
   empresaId Int
   empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 }
-
-////////////////////////////////////////////////////////////////////////////////
-// [02] 🌐 GEOGRAFÍA/UBICACIONES/ZONAS
-////////////////////////////////////////////////////////////////////////////////
 
 model Departamento {
   id         Int               @id @default(autoincrement())
@@ -235,10 +195,6 @@ model FacturacionZona {
   empresa                       Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// [03] 🧾 PLANTILLAS Y COMUNICACIONES
-////////////////////////////////////////////////////////////////////////////////
-
 model PlantillaMensaje {
   id            Int           @id @default(autoincrement())
   nombre        String
@@ -258,10 +214,6 @@ model PlantillaContrato {
   creadoEn      DateTime @default(now())
   actualizadoEn DateTime @updatedAt
 }
-
-////////////////////////////////////////////////////////////////////////////////
-// [04] 🧰 SERVICIOS (Catálogos y asignaciones)
-////////////////////////////////////////////////////////////////////////////////
 
 model TipoServicio {
   id            Int            @id @default(autoincrement())
@@ -302,10 +254,6 @@ model ServicioInternet {
   empresa       Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// [05] 👤 CLIENTES Y SUS ATRIBUTOS/CONTRATOS
-////////////////////////////////////////////////////////////////////////////////
-
 model ClienteInternet {
   id                         Int                       @id @default(autoincrement())
   nombre                     String
@@ -329,6 +277,8 @@ model ClienteInternet {
   facturacionZonaId          Int?
   servicioInternetId         Int?
   sectorId                   Int?
+  nota                       String?
+  albumClientes              AlbumCliente[]
   asesor                     Usuario?                  @relation(fields: [asesorId], references: [id])
   departamento               Departamento?             @relation(fields: [departamentoId], references: [id])
   empresa                    Empresa?                  @relation(fields: [empresaId], references: [id])
@@ -345,6 +295,7 @@ model ClienteInternet {
   fotos                      Fotos[]
   IP                         IP?
   Lead                       Lead[]
+  medias                     Media[]
   pagoFactura                PagoFactura[]
   PagoFacturaInternet        PagoFacturaInternet[]
   RecordatorioPago           RecordatorioPago[]
@@ -352,11 +303,6 @@ model ClienteInternet {
   ubicacion                  Ubicacion?
   saldoCliente               saldoCliente?
   ruta                       Ruta[]                    @relation("ClienteInternetToRuta")
-  nota                       String?
-
-  medias Media[]
-
-  albumClientes AlbumCliente[]
 }
 
 model IP {
@@ -399,22 +345,21 @@ model ContratoFisico {
   creadoEn        DateTime?        @default(now())
   actualizadoEn   DateTime         @updatedAt
   observaciones   String?
+  comentario      String?
+  mediaId         Int?
   cliente         ClienteInternet? @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-
-  mediaId Int? // NUEVO: documento del contrato como Media.DOCUMENTO
-  media   Media? @relation(fields: [mediaId], references: [id], onDelete: SetNull)
-  comentario String?
+  media           Media?           @relation(fields: [mediaId], references: [id])
 }
 
 model ContratoServicioInternet {
   id                         Int             @id @default(autoincrement())
   clienteId                  Int             @unique
-  creadoEn                   DateTime        @default(now())
-  actualizadoEn              DateTime        @updatedAt
-  costoInstalacion           Float?
   fechaInstalacionProgramada DateTime?
+  costoInstalacion           Float?
   fechaPago                  DateTime?
   observaciones              String?
+  creadoEn                   DateTime        @default(now())
+  actualizadoEn              DateTime        @updatedAt
   cliente                    ClienteInternet @relation("ContratoCliente", fields: [clienteId], references: [id], onDelete: Cascade)
 }
 
@@ -443,86 +388,70 @@ model Lead {
   cliente   ClienteInternet? @relation(fields: [clienteId], references: [id])
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// [06] MEDIA
-////////////////////////////////////////////////////////////////////////////////
+/// /////////////////////////////////////////////////////////////////////////////
+/// /////////////////////////////////////////////////////////////////////////////
 model Media {
-  id          Int            @id @default(autoincrement())
-  empresaId   Int
-  clienteId   Int?
-  albumId     Int? // 1:N: media -> álbum
-  subidoPorId Int?
-  categoria   CategoriaMedia @default(CLIENTE_GENERAL)
-  tipo        TipoMedia
-  estado      EstadoMedia    @default(PENDIENTE)
-  notas       String?   // <- NUEVA COLUMNA
-
-  // Ubicación en Spaces/CDN (guarda el key, no la URL firmada)
-  bucket String?
-  region String?
-  key    String // p.ej. "clientes/123/2025/11/uuid.jpg"
-  cdnUrl String?
-
-  // Metadatos
-  mimeType       String?
-  extension      String?
-  tamanioBytes   BigInt?
-  ancho          Int?
-  alto           Int?
-  duracionSeg    Int?
-  checksumSha256 String? @db.VarChar(64)
-
-  // Organización y ciclo de vida
-  titulo      String?
-  descripcion String?
-  etiqueta    String?
-  orden       Int       @default(0)
-  tomadoEn    DateTime?
-  publico     Boolean   @default(false)
-  eliminadoEn DateTime?
-  metadatos   Json?
-
-  creadoEn      DateTime @default(now())
-  actualizadoEn DateTime @updatedAt
-
-  empresa         Empresa          @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  cliente         ClienteInternet? @relation(fields: [clienteId], references: [id], onDelete: SetNull)
-  album           AlbumCliente?    @relation("AlbumMedias", fields: [albumId], references: [id], onDelete: SetNull)
+  id              Int              @id @default(autoincrement())
+  empresaId       Int
+  clienteId       Int?
+  albumId         Int?
+  subidoPorId     Int?
+  categoria       CategoriaMedia   @default(CLIENTE_GENERAL)
+  tipo            TipoMedia
+  estado          EstadoMedia      @default(PENDIENTE)
+  bucket          String?
+  region          String?
+  key             String
+  cdnUrl          String?
+  mimeType        String?
+  extension       String?
+  tamanioBytes    BigInt?
+  ancho           Int?
+  alto            Int?
+  duracionSeg     Int?
+  checksumSha256  String?          @db.VarChar(64)
+  titulo          String?
+  descripcion     String?
+  etiqueta        String?
+  orden           Int              @default(0)
+  tomadoEn        DateTime?
+  publico         Boolean          @default(false)
+  eliminadoEn     DateTime?
+  metadatos       Json?
+  creadoEn        DateTime         @default(now())
+  actualizadoEn   DateTime         @updatedAt
+  notas           String?
   portadaDe       AlbumCliente[]   @relation("PortadaAlbum")
-  subidoPor       Usuario?         @relation(fields: [subidoPorId], references: [id])
   contratoFisicos ContratoFisico[]
+  album           AlbumCliente?    @relation("AlbumMedias", fields: [albumId], references: [id])
+  cliente         ClienteInternet? @relation(fields: [clienteId], references: [id])
+  empresa         Empresa          @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  subidoPor       Usuario?         @relation(fields: [subidoPorId], references: [id])
 
-  @@unique([bucket, key]) // evita duplicados en el storage
+  @@unique([bucket, key])
   @@index([clienteId, albumId, creadoEn(sort: Desc)])
   @@index([empresaId, categoria, tipo])
 }
 
-// Álbum por cliente
 model AlbumCliente {
-  id          Int     @id @default(autoincrement())
-  empresaId   Int
-  clienteId   Int
-  nombre      String
-  descripcion String?
-  portadaId   Int?
-  esGeneral   Boolean @default(false) // para marcar el álbum por defecto
+  id            Int             @id @default(autoincrement())
+  empresaId     Int
+  clienteId     Int
+  nombre        String
+  descripcion   String?
+  portadaId     Int?
+  esGeneral     Boolean         @default(false)
+  creadoEn      DateTime        @default(now())
+  actualizadoEn DateTime        @updatedAt
+  orden         Int?
+  cliente       ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  empresa       Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  portadaDe     Media?          @relation("PortadaAlbum", fields: [portadaId], references: [id])
+  medias        Media[]         @relation("AlbumMedias")
 
-  orden Int?
-  creadoEn      DateTime @default(now())
-  actualizadoEn DateTime @updatedAt
-
-  empresa   Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  cliente   ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  portadaDe Media?          @relation("PortadaAlbum", fields: [portadaId], references: [id])
-  medias    Media[]         @relation("AlbumMedias")
-
-  @@unique([clienteId, nombre]) // evita duplicar nombres ("General" reservado)
+  @@unique([clienteId, nombre])
   @@index([clienteId, creadoEn(sort: Desc)])
 }
-
-////////////////////////////////////////////////////////////////////////////////
-// [07] 💸 FACTURACIÓN Y PAGOS
-////////////////////////////////////////////////////////////////////////////////
 
 model FacturaInternet {
   id                    Int                   @id @default(autoincrement())
@@ -546,9 +475,9 @@ model FacturaInternet {
   creador               Usuario?              @relation("FacturaInternetCreador", fields: [creadorId], references: [id])
   empresa               Empresa               @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   facturacionZona       FacturacionZona?      @relation(fields: [facturacionZonaId], references: [id])
+  rutasAsignadas        FacturaRuta[]
   pagos                 PagoFacturaInternet[]
   RecordatorioPago      RecordatorioPago[]
-  rutasAsignadas        FacturaRuta[]
 
   @@unique([clienteId, facturacionZonaId, periodo])
 }
@@ -592,20 +521,17 @@ model PagoFacturaInternet {
   clienteId          Int
   montoPagado        Float
   metodoPago         MetodoPagoFacturaInternet
-  origen             OrigenPago                @default(RUTA)
   fechaPago          DateTime                  @default(now())
   creadoEn           DateTime                  @default(now())
   cobradorId         Int?
   numeroBoleta       String?                   @unique
   codigoConfirmacion String?                   @unique
-
-  // 🔗 NUEVO: de qué asignación de ruta provino el cobro
-  facturaRutaId Int?
-  facturaRuta   FacturaRuta? @relation(fields: [facturaRutaId], references: [id])
-
-  cliente         ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  cobrador        Usuario?        @relation(fields: [cobradorId], references: [id])
-  facturaInternet FacturaInternet @relation(fields: [facturaInternetId], references: [id], onDelete: Cascade)
+  facturaRutaId      Int?
+  origen             OrigenPago                @default(RUTA)
+  cliente            ClienteInternet           @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  cobrador           Usuario?                  @relation(fields: [cobradorId], references: [id])
+  facturaInternet    FacturaInternet           @relation(fields: [facturaInternetId], references: [id], onDelete: Cascade)
+  facturaRuta        FacturaRuta?              @relation(fields: [facturaRutaId], references: [id])
 
   @@index([facturaRutaId])
   @@index([facturaInternetId, fechaPago])
@@ -654,10 +580,6 @@ model FacturaEliminada {
   @@index([facturaInternetId])
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// [07] 🚚 RUTAS DE COBRO (Asignaciones, Turnos y Cobros)
-////////////////////////////////////////////////////////////////////////////////
-
 model Ruta {
   id            Int               @id @default(autoincrement())
   nombreRuta    String
@@ -668,57 +590,52 @@ model Ruta {
   observaciones String?
   actualizadoEn DateTime          @updatedAt
   creadoEn      DateTime          @default(now())
+  cobros        CobroRuta[]       @relation("RutaToCobros")
+  facturas      FacturaRuta[]
   cobrador      Usuario?          @relation(fields: [cobradorId], references: [id], onDelete: Cascade)
   empresa       Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  clientes      ClienteInternet[] @relation("ClienteInternetToRuta")
-  // notaPrueba   String?  @db.VarChar(100) // <- campo temporal
-  facturas      FacturaRuta[]
-  cobros        CobroRuta[]       @relation("RutaToCobros")
   turnos        RutaTurno[]
+  clientes      ClienteInternet[] @relation("ClienteInternetToRuta")
 }
 
 model RutaTurno {
-  id         Int             @id @default(autoincrement())
-  rutaId     Int
-  fecha      DateTime
-  cobradorId Int?
-  estado     EstadoRutaTurno @default(ABIERTA)
-  aperturaEn DateTime        @default(now())
-  cierreEn   DateTime?
-  notas      String?
-
-  totalAsignadas Int   @default(0)
-  totalCobradas  Int   @default(0)
-  sumaCobros     Float @default(0)
-
-  ruta     Ruta     @relation(fields: [rutaId], references: [id], onDelete: Cascade)
-  cobrador Usuario? @relation(fields: [cobradorId], references: [id])
+  id             Int             @id @default(autoincrement())
+  rutaId         Int
+  fecha          DateTime
+  cobradorId     Int?
+  estado         EstadoRutaTurno @default(ABIERTA)
+  aperturaEn     DateTime        @default(now())
+  cierreEn       DateTime?
+  notas          String?
+  totalAsignadas Int             @default(0)
+  totalCobradas  Int             @default(0)
+  sumaCobros     Float           @default(0)
+  cobrador       Usuario?        @relation(fields: [cobradorId], references: [id])
+  ruta           Ruta            @relation(fields: [rutaId], references: [id], onDelete: Cascade)
 
   @@unique([rutaId, fecha])
   @@index([estado])
-  // Recomendado para queries por cobrador:
   @@index([cobradorId])
 }
 
 model FacturaRuta {
-  id            Int                  @id @default(autoincrement())
+  id            Int                   @id @default(autoincrement())
   rutaId        Int
   facturaId     Int
-  asignadaEn    DateTime             @default(now())
+  asignadaEn    DateTime              @default(now())
   asignadaPorId Int?
-  estado        EstadoAsignacionRuta @default(ASIGNADA)
-  motivo        String? // p.ej., “cliente ausente”, “error de zona”
+  estado        EstadoAsignacionRuta  @default(ASIGNADA)
+  motivo        String?
   cobradaEn     DateTime?
-  cobradaPorId  Int? // snapshot del cobrador que la cobró
+  cobradaPorId  Int?
   observaciones String?
+  asignadaPor   Usuario?              @relation("AsignadorFacturaRuta", fields: [asignadaPorId], references: [id])
+  cobradaPor    Usuario?              @relation("CobradorFacturaRuta", fields: [cobradaPorId], references: [id])
+  factura       FacturaInternet       @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+  ruta          Ruta                  @relation(fields: [rutaId], references: [id], onDelete: Cascade)
+  pagos         PagoFacturaInternet[]
 
-  ruta        Ruta                  @relation(fields: [rutaId], references: [id], onDelete: Cascade)
-  factura     FacturaInternet       @relation(fields: [facturaId], references: [id], onDelete: Cascade)
-  asignadaPor Usuario?              @relation("AsignadorFacturaRuta", fields: [asignadaPorId], references: [id])
-  cobradaPor  Usuario?              @relation("CobradorFacturaRuta", fields: [cobradaPorId], references: [id])
-  pagos       PagoFacturaInternet[]
-
-  @@unique([rutaId, facturaId]) // evita duplicados en la MISMA ruta
+  @@unique([rutaId, facturaId])
   @@index([facturaId, estado])
   @@index([rutaId, estado])
 }
@@ -736,10 +653,6 @@ model CobroRuta {
   cliente       ClienteInternet @relation(fields: [clienteId], references: [id])
   ruta          Ruta            @relation("RutaToCobros", fields: [rutaId], references: [id])
 }
-
-////////////////////////////////////////////////////////////////////////////////
-// [08] 🛠️ SOPORTE TÉCNICO, ASIGNACIONES Y METAS
-////////////////////////////////////////////////////////////////////////////////
 
 model TicketSoporte {
   id                     Int                    @id @default(autoincrement())
@@ -871,9 +784,19 @@ model Asistencia {
   @@index([usuarioId, fecha])
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// [09] 📚 ENUMS (sin cambios, solo agrupados)
-////////////////////////////////////////////////////////////////////////////////
+model TestCategory {
+  id       String  @id @default(uuid())
+  name     String
+  products Test[]
+}
+
+model Test {
+  id          String   @id @default(uuid())
+  name        String
+  categoryId  String
+  category    TestCategory @relation(fields: [categoryId], references: [id])
+}
+
 
 enum OrigenPago {
   RUTA
@@ -898,12 +821,12 @@ enum EstadoRutaTurno {
 }
 
 enum TipoPlantilla {
+  GENERACION_FACTURA
   RECORDATORIO_1
   RECORDATORIO_2
   AVISO_PAGO
   SUSPENSION
   CORTE
-  GENERACION_FACTURA
 }
 
 enum StateFacturaInternet {
@@ -934,10 +857,10 @@ enum EstadoMetaTicket {
 
 enum EstadoRuta {
   ACTIVO
-  ASIGNADA
   CERRADO
   CANCELADO
   EN_CURSO
+  ASIGNADA
 }
 
 enum EstadoMetaTickets {
@@ -1032,8 +955,6 @@ enum MetodoPagoFacturaInternet {
   OTRO
 }
 
-//FOTOS Y VIDEOS
-// [09] ENUMS (agregar al bloque de enums)
 enum TipoMedia {
   IMAGEN
   VIDEO
