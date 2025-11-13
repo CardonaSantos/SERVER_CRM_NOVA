@@ -5,8 +5,6 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { ClienteInternetService } from 'src/cliente-internet/cliente-internet.service';
 import * as csv from 'csvtojson';
 import * as dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
-import timezone from 'dayjs/plugin/timezone';
 import { periodoFrom } from 'src/facturacion/Utils';
 
 @Injectable()

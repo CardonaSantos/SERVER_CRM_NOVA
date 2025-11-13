@@ -403,6 +403,7 @@ model ContratoFisico {
 
   mediaId Int? // NUEVO: documento del contrato como Media.DOCUMENTO
   media   Media? @relation(fields: [mediaId], references: [id], onDelete: SetNull)
+  comentario String?
 }
 
 model ContratoServicioInternet {

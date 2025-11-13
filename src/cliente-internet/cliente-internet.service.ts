@@ -1428,21 +1428,24 @@ export class ClienteInternetService {
           departamento: true,
           servicioInternet: true,
           clienteServicios: {
-            include: {
-              servicio: true,
-            },
+            include: { servicio: true },
           },
           facturacionZona: true,
-          ContratoFisico: true, // Incluye los datos del contrato si existe
+          ContratoFisico: {
+            select: {
+              idContrato: true,
+              fechaFirma: true,
+              archivoContrato: true,
+              observaciones: true,
+              // 🔥 No pedimos media ni mediaId
+            },
+          },
         },
       });
 
-      // Verifica si el cliente existe
-      if (!customer) {
-        throw new Error('Cliente no encontrado');
-      }
+      if (!customer) throw new Error('Cliente no encontrado');
 
-      const dataToEdit = {
+      return {
         id: customer.id,
         nombre: customer.nombre,
         apellidos: customer.apellidos,
@@ -1464,23 +1467,22 @@ export class ClienteInternetService {
         fechaInstalacion: customer.fechaInstalacion,
         departamento: customer.departamento,
         municipio: customer.municipio,
+
         servicios: customer.clienteServicios.map((s) => ({
           id: s.servicio.id,
           nombre: s.servicio.nombre,
         })),
+
         zonaFacturacion: customer.facturacionZona
           ? {
               id: customer.facturacionZona.id,
               nombre: customer.facturacionZona.nombre,
             }
-          : null, // Si no existe, se asigna null
+          : null,
 
         sector: customer.sector
-          ? {
-              id: customer.sector.id,
-              nombre: customer.sector.nombre,
-            }
-          : null, // Si no existe, se asigna null
+          ? { id: customer.sector.id, nombre: customer.sector.nombre }
+          : null,
 
         servicioWifi: customer.servicioInternet
           ? {
@@ -1488,7 +1490,8 @@ export class ClienteInternetService {
               nombre: customer.servicioInternet.nombre,
               velocidad: customer.servicioInternet.velocidad,
             }
-          : null, // Maneja el caso en que no exista servicio de internet
+          : null,
+
         contrato: customer.ContratoFisico
           ? {
               idContrato: customer.ContratoFisico.idContrato,
@@ -1498,10 +1501,8 @@ export class ClienteInternetService {
             }
           : null,
       };
-
-      return dataToEdit;
     } catch (error) {
-      console.error('Error al obtener los datos del cliente:', error);
+      console.error('Error al obtener cliente:', error);
       throw new Error('No se pudo obtener la información del cliente.');
     }
   }
