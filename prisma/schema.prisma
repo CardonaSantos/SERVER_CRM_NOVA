@@ -454,6 +454,7 @@ model Media {
   categoria   CategoriaMedia @default(CLIENTE_GENERAL)
   tipo        TipoMedia
   estado      EstadoMedia    @default(PENDIENTE)
+  notas       String?   // <- NUEVA COLUMNA
 
   // Ubicación en Spaces/CDN (guarda el key, no la URL firmada)
   bucket String?
