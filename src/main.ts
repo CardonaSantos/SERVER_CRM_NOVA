@@ -5,6 +5,13 @@ import { MigrateModule } from './migrate.module';
 
 //importar algo aqui VERGA-error
 async function bootstrap() {
+  if (process.env.RUN_MIGRATIONS === 'true') {
+    const migrateApp = await NestFactory.create(MigrateModule);
+    await migrateApp.init();
+    await migrateApp.close();
+    process.exit(0);
+  }
+
   const app = await NestFactory.create(AppModule);
   // Habilitar CORS correctamente
   const allowlist = new Set<string>([
@@ -30,13 +37,6 @@ async function bootstrap() {
     preflightContinue: false,
     optionsSuccessStatus: 204,
   });
-
-  if (process.env.RUN_MIGRATIONS === 'true') {
-    const migrateApp = await NestFactory.create(MigrateModule);
-    await migrateApp.init();
-    await migrateApp.close();
-    process.exit(0);
-  }
 
   await app.listen(port || 3000);
 }
