@@ -1,0 +1,2 @@
+-- no-op sync point for Railway
+-- This migration intentionally does nothing.

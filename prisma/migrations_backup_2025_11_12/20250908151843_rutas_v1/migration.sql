@@ -1,3 +1,25 @@
+-- AJUSTE TIPO
+-- Garantiza que el enum exista y que contenga el valor requerido.
+DO $$
+BEGIN
+  -- Crea el enum si no existe (mismos labels que tu baseline)
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'EstadoRuta') THEN
+    CREATE TYPE "EstadoRuta" AS ENUM ('ACTIVO', 'CERRADO', 'CANCELADO', 'EN_CURSO');
+  END IF;
+
+  -- Agrega 'ASIGNADA' si aún no está
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_enum e
+    JOIN pg_type t ON e.enumtypid = t.oid
+    WHERE t.typname = 'EstadoRuta' AND e.enumlabel = 'ASIGNADA'
+  ) THEN
+    ALTER TYPE "EstadoRuta" ADD VALUE 'ASIGNADA';
+  END IF;
+END$$;
+
+
+
 -- CreateEnum
 CREATE TYPE "OrigenPago" AS ENUM ('RUTA', 'OFICINA', 'TRANSFERENCIA', 'EN_LINEA');
 
@@ -8,7 +30,7 @@ CREATE TYPE "EstadoAsignacionRuta" AS ENUM ('ASIGNADA', 'EN_PROCESO', 'COBRADA',
 CREATE TYPE "EstadoRutaTurno" AS ENUM ('ABIERTA', 'EN_CURSO', 'CERRADA', 'ANULADA');
 
 -- AlterEnum
-ALTER TYPE "EstadoRuta" ADD VALUE 'ASIGNADA';
+-- ALTER TYPE "EstadoRuta" ADD VALUE 'ASIGNADA'; YA NO PONER
 
 -- AlterTable
 ALTER TABLE "ClienteInternet" ADD COLUMN     "nota" TEXT;

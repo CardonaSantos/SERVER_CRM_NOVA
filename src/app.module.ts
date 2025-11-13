@@ -33,6 +33,7 @@ import { MetricasTicketsModule } from './metricas-tickets/metricas-tickets.modul
 import { FacturaEliminacionModule } from './factura-eliminacion/factura-eliminacion.module';
 import { BanruralIntegrationModule } from './banrural-integration/banrural-integration.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { DigitalOceanMediaModule } from './modules/digital-ocean-media/digital-ocean-media.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { ReportsModule } from './modules/reports/reports.module';
     FacturaEliminacionModule,
     BanruralIntegrationModule,
     ReportsModule,
+    DigitalOceanMediaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

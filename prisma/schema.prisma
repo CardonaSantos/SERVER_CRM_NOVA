@@ -1,3 +1,6 @@
+// BASE DE DATOS ANTERIOR DEL PULL
+
+// ------------------------------->
 ////////////////////////////////////////////////////////////////////////////////
 // 📑 ÍNDICE RÁPIDO (Ctrl/Cmd+F → “[nn]”)
 //   [01] ENTIDADES BASE: Empresa, Usuario, ConfiguracionGlobal, Saldos, Proveedor
@@ -67,6 +70,9 @@ model Empresa {
   TicketSoporte       TicketSoporte[]
   Ubicacion           Ubicacion[]
   empleados           Usuario[]
+
+  medias        Media[]
+  albumClientes AlbumCliente[]
 }
 
 model Usuario {
@@ -98,6 +104,8 @@ model Usuario {
   facturasAsignadas      FacturaRuta[]          @relation("AsignadorFacturaRuta")
   facturasCobradas       FacturaRuta[]          @relation("CobradorFacturaRuta")
   rutaTurnosComoCobrador RutaTurno[]
+
+  archivosCargados Media[]
 }
 
 model ConfiguracionGlobal {
@@ -345,6 +353,10 @@ model ClienteInternet {
   saldoCliente               saldoCliente?
   ruta                       Ruta[]                    @relation("ClienteInternetToRuta")
   nota                       String?
+
+  medias Media[]
+
+  albumClientes AlbumCliente[]
 }
 
 model IP {
@@ -388,6 +400,9 @@ model ContratoFisico {
   actualizadoEn   DateTime         @updatedAt
   observaciones   String?
   cliente         ClienteInternet? @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  mediaId Int? // NUEVO: documento del contrato como Media.DOCUMENTO
+  media   Media? @relation(fields: [mediaId], references: [id], onDelete: SetNull)
 }
 
 model ContratoServicioInternet {
@@ -428,7 +443,82 @@ model Lead {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// [06] 💸 FACTURACIÓN Y PAGOS
+// [06] MEDIA
+////////////////////////////////////////////////////////////////////////////////
+model Media {
+  id          Int            @id @default(autoincrement())
+  empresaId   Int
+  clienteId   Int?
+  albumId     Int? // 1:N: media -> álbum
+  subidoPorId Int?
+  categoria   CategoriaMedia @default(CLIENTE_GENERAL)
+  tipo        TipoMedia
+  estado      EstadoMedia    @default(PENDIENTE)
+
+  // Ubicación en Spaces/CDN (guarda el key, no la URL firmada)
+  bucket String?
+  region String?
+  key    String // p.ej. "clientes/123/2025/11/uuid.jpg"
+  cdnUrl String?
+
+  // Metadatos
+  mimeType       String?
+  extension      String?
+  tamanioBytes   BigInt?
+  ancho          Int?
+  alto           Int?
+  duracionSeg    Int?
+  checksumSha256 String? @db.VarChar(64)
+
+  // Organización y ciclo de vida
+  titulo      String?
+  descripcion String?
+  etiqueta    String?
+  orden       Int       @default(0)
+  tomadoEn    DateTime?
+  publico     Boolean   @default(false)
+  eliminadoEn DateTime?
+  metadatos   Json?
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  empresa         Empresa          @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  cliente         ClienteInternet? @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  album           AlbumCliente?    @relation("AlbumMedias", fields: [albumId], references: [id], onDelete: SetNull)
+  portadaDe       AlbumCliente[]   @relation("PortadaAlbum")
+  subidoPor       Usuario?         @relation(fields: [subidoPorId], references: [id])
+  contratoFisicos ContratoFisico[]
+
+  @@unique([bucket, key]) // evita duplicados en el storage
+  @@index([clienteId, albumId, creadoEn(sort: Desc)])
+  @@index([empresaId, categoria, tipo])
+}
+
+// Álbum por cliente
+model AlbumCliente {
+  id          Int     @id @default(autoincrement())
+  empresaId   Int
+  clienteId   Int
+  nombre      String
+  descripcion String?
+  portadaId   Int?
+  esGeneral   Boolean @default(false) // para marcar el álbum por defecto
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  empresa   Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  cliente   ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  portadaDe Media?          @relation("PortadaAlbum", fields: [portadaId], references: [id])
+  medias    Media[]         @relation("AlbumMedias")
+
+  @@unique([clienteId, nombre]) // evita duplicar nombres ("General" reservado)
+  @@index([clienteId, creadoEn(sort: Desc)])
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// [07] 💸 FACTURACIÓN Y PAGOS
 ////////////////////////////////////////////////////////////////////////////////
 
 model FacturaInternet {
@@ -936,5 +1026,38 @@ enum MetodoPagoFacturaInternet {
   DEPOSITO
   PAYPAL
   PENDIENTE
+  OTRO
+}
+
+//FOTOS Y VIDEOS
+// [09] ENUMS (agregar al bloque de enums)
+enum TipoMedia {
+  IMAGEN
+  VIDEO
+  DOCUMENTO
+  AUDIO
+  OTRO
+}
+
+enum EstadoMedia {
+  PENDIENTE
+  PROCESANDO
+  LISTO
+  FALLIDO
+}
+
+enum ProveedorStorage {
+  DO_SPACES
+  AWS_S3
+  GCS
+  AZURE
+  LOCAL
+}
+
+enum CategoriaMedia {
+  CLIENTE_GENERAL
+  CLIENTE_CONTRATO
+  CLIENTE_INSTALACION
+  SOPORTE_TICKET
   OTRO
 }
