@@ -103,6 +103,11 @@ export class ClienteInternetController {
     return this.clienteInternetService.getCustomersToRuta(q);
   }
 
+  @Get('/cliente-media-dev/:id')
+  getCustomerWithMedia(@Param('id', ParseIntPipe) id: number) {
+    return this.clienteInternetService.getCustomerWithMedia(id);
+  }
+
   @Delete('/delete-all')
   deleteAllClientesInternet() {
     return this.clienteInternetService.deleteClientsWithRelations();

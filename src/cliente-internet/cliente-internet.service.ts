@@ -11,8 +11,10 @@ import { UserTokenAuth } from 'src/auth/dto/userToken.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { updateCustomerService } from './dto/update-customer-service';
 import {
+  CategoriaMedia,
   ClienteInternet,
   EstadoCliente,
+  EstadoMedia,
   Prisma,
   StateFacturaInternet,
 } from '@prisma/client';
@@ -422,6 +424,17 @@ export class ClienteInternetService {
         await this.prisma.clienteInternet.findUnique({
           where: { id: clienteInternetId },
           include: {
+            medias: {
+              select: {
+                id: true,
+                cdnUrl: true,
+                titulo: true,
+                descripcion: true,
+                categoria: true,
+                estado: true,
+                etiqueta: true,
+              },
+            },
             asesor: { select: { id: true, nombre: true } },
             municipio: { select: { id: true, nombre: true } },
             departamento: { select: { id: true, nombre: true } },
@@ -592,6 +605,18 @@ export class ClienteInternetService {
         contrasenaWifi: clienteInternetWithRelations.contrasenaWifi,
         ssidRouter: clienteInternetWithRelations.ssidRouter,
         fechaInstalacion: clienteInternetWithRelations.fechaInstalacion,
+        imagenes:
+          clienteInternetWithRelations.medias.length > 0
+            ? clienteInternetWithRelations.medias.map((img) => ({
+                id: img.id,
+                categoria: img.categoria ?? CategoriaMedia.CLIENTE_GENERAL,
+                cdnUrl: img.cdnUrl ?? '',
+                descripcion: img.descripcion ?? '',
+                estado: img.estado ?? EstadoMedia.LISTO,
+                etiqueta: img.etiqueta ?? '',
+                titulo: img.titulo ?? '',
+              }))
+            : [],
         asesor: clienteInternetWithRelations.asesor
           ? {
               id: clienteInternetWithRelations.asesor.id,
@@ -1644,5 +1669,40 @@ export class ClienteInternetService {
     });
 
     return result;
+  }
+
+  async getCustomerWithMedia(clienteId: number) {
+    try {
+      const client = await this.prisma.clienteInternet.findUnique({
+        where: {
+          id: clienteId,
+        },
+        select: {
+          medias: {
+            select: {
+              id: true,
+              cdnUrl: true,
+              titulo: true,
+              descripcion: true,
+              categoria: true,
+              album: true,
+              cliente: true,
+              estado: true,
+              etiqueta: true,
+              key: true,
+              notas: true,
+              tipo: true,
+              subidoPor: true,
+              orden: true,
+            },
+          },
+        },
+      });
+      return client;
+    } catch (error) {
+      this.logger.error('Error generado en módulo cliente: ', error?.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException('Fatal Error: Error inesperado');
+    }
   }
 }
