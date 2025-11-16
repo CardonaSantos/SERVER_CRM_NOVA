@@ -88,6 +88,11 @@ export class FacturacionController {
     return this.facturacionService.findAllFacturasConPago();
   }
 
+  /**
+   * Servicio de get para una impresion de factura
+   * @param id ID DE FACTURA A IMPRIMIR
+   * @returns
+   */
   @Get('/factura-to-pdf/:id')
   getInvoiceToPDF(@Param('id', ParseIntPipe) id: number) {
     return this.facturacionService.getFacturaToPDf(id);

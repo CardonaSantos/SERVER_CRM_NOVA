@@ -615,6 +615,7 @@ export class ClienteInternetService {
                 estado: img.estado ?? EstadoMedia.LISTO,
                 etiqueta: img.etiqueta ?? '',
                 titulo: img.titulo ?? '',
+                customerId: clienteInternetWithRelations.id,
               }))
             : [],
         asesor: clienteInternetWithRelations.asesor
@@ -1455,6 +1456,17 @@ export class ClienteInternetService {
           clienteServicios: {
             include: { servicio: true },
           },
+          medias: {
+            select: {
+              id: true,
+              titulo: true,
+              descripcion: true,
+              cdnUrl: true,
+              categoria: true,
+              estado: true,
+              etiqueta: true,
+            },
+          },
           facturacionZona: true,
           ContratoFisico: {
             select: {
@@ -1492,6 +1504,20 @@ export class ClienteInternetService {
         fechaInstalacion: customer.fechaInstalacion,
         departamento: customer.departamento,
         municipio: customer.municipio,
+
+        imagenes:
+          customer.medias.length > 0
+            ? customer.medias.map((img) => ({
+                id: img.id,
+                categoria: img.categoria ?? CategoriaMedia.CLIENTE_GENERAL,
+                cdnUrl: img.cdnUrl ?? '',
+                descripcion: img.descripcion ?? '',
+                estado: img.estado ?? EstadoMedia.LISTO,
+                etiqueta: img.etiqueta ?? '',
+                titulo: img.titulo ?? '',
+                customerId: customer.id,
+              }))
+            : [],
 
         servicios: customer.clienteServicios.map((s) => ({
           id: s.servicio.id,

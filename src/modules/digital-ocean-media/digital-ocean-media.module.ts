@@ -11,6 +11,7 @@ import { SpacesAdapter } from './infraestructure/storage/spaces.adapter';
 import { PrismaMediaRepository } from './infraestructure/persistence/prisma-media.repository';
 
 import {
+  ELIMINAR_MEDIA_USECASE,
   MEDIA_REPOSITORY,
   SPACES_CFG,
   SPACES_S3,
@@ -18,6 +19,9 @@ import {
   SUBIR_MEDIA_USECASE,
 } from './tokens/tokens';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { FileStoragePort } from './domain/ports/file-storage.port';
+import { MediaRepositoryPort } from './domain/ports/media-repository.port';
+import { EliminarMediaUseCase } from './application/use-cases/eliminar-media.usecase';
 
 @Module({
   controllers: [MediaController],
@@ -41,6 +45,14 @@ import { PrismaService } from 'src/prisma/prisma.service';
         // console.log('SPACES CFG ->', cfg); // <- descomenta si deseas depurar
         return cfg;
       },
+    },
+
+    //  Eliminar media
+    {
+      provide: ELIMINAR_MEDIA_USECASE,
+      useFactory: (storage: FileStoragePort, repo: MediaRepositoryPort) =>
+        new EliminarMediaUseCase(storage, repo),
+      inject: [STORAGE_PORT, MEDIA_REPOSITORY],
     },
 
     // 2) Cliente S3 apuntando a DO (path-style recomendado)

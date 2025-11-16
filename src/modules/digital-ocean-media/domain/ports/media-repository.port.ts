@@ -17,4 +17,5 @@ export interface MediaRepositoryPort {
   listar(f: ListarMediaFiltro): Promise<MediaAsset[]>;
   marcarEliminado(id: number, empresaId: number, fecha: Date): Promise<void>;
   existePorBucketKey(bucket: string, key: string): Promise<boolean>;
+  eliminar(id: number, empresaId: number): Promise<void>;
 }

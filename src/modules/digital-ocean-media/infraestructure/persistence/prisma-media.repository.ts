@@ -55,4 +55,11 @@ export class PrismaMediaRepository implements MediaRepositoryPort {
     });
     return !!found;
   }
+
+  async eliminar(id: number, empresaId: number): Promise<void> {
+    // Ya validamos empresaId antes, así que aquí basta con borrar por id
+    await this.prisma.media.delete({
+      where: { id },
+    });
+  }
 }

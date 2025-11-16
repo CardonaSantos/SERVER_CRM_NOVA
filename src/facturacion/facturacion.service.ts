@@ -1453,8 +1453,6 @@ export class FacturacionService {
           id: id,
         },
         select: {
-          //añadir la factura pagada
-          // …tu selección actual…
           serviciosAdicionales: {
             select: {
               id: true,

@@ -7,16 +7,25 @@ import {
   Body,
   Inject,
   UploadedFiles,
+  Delete,
+  Param,
+  Query,
+  Logger,
 } from '@nestjs/common';
-import { SUBIR_MEDIA_USECASE } from '../tokens/tokens';
+import { ELIMINAR_MEDIA_USECASE, SUBIR_MEDIA_USECASE } from '../tokens/tokens';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { SubirMediaUseCase } from '../application/use-cases/subir-media.usecase';
 import { TipoMedia } from '@prisma/client';
+import { EliminarMediaUseCase } from '../application/use-cases/eliminar-media.usecase';
 
 @Controller('media')
 export class MediaController {
+  private readonly logger = new Logger(MediaController.name);
   constructor(
     @Inject(SUBIR_MEDIA_USECASE) private readonly subirMedia: SubirMediaUseCase,
+
+    @Inject(ELIMINAR_MEDIA_USECASE)
+    private readonly eliminarMedia: EliminarMediaUseCase,
   ) {}
 
   @UseInterceptors(FilesInterceptor('files'))
@@ -69,5 +78,23 @@ export class MediaController {
     );
 
     return { count: results.length, items: results };
+  }
+
+  @Delete(':id')
+  async deleteMedia(
+    @Param('id') id: string,
+    @Query('empresaId') empresaId: string,
+  ) {
+    console.log('ID RECIBIDO EN EL CONTROLLER ===>', id);
+    console.log('EMPRESA ===>', empresaId);
+    //COMENT
+    const result = await this.eliminarMedia.execute({
+      id: Number(id),
+      empresaId: Number(empresaId),
+      hardDelete: true,
+    });
+    this.logger.log('resultado eliminacion: ', result);
+
+    return result;
   }
 }

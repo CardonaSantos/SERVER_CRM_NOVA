@@ -125,6 +125,12 @@ export class ClienteInternetController {
     );
   }
 
+  /**
+   * ACTUALIZAR CLIENTE
+   * @param updateCustomerService DTO de nuevoc cambios
+   * @param id
+   * @returns
+   */
   @Patch('/update-customer/:id')
   updateClienteInternet(
     @Body() updateCustomerService: UpdateClienteInternetDto,
