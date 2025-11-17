@@ -67,6 +67,14 @@ export class RecordatorioDiaPagoService {
         if (shouldSkipClient(cliente.estadoCliente, cliente.servicioInternet))
           continue;
 
+        //nueva flag
+        if (!cliente.enviarRecordatorio) {
+          this.logger.debug(
+            `Cliente ${cliente.id} tiene enviarRecordatorio=false; no se envía Recordatorio 1.`,
+          );
+          continue;
+        }
+
         try {
           const { factura } = await this.facturaManager.obtenerOcrearFactura(
             cliente,

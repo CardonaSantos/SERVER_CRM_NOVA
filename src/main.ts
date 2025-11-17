@@ -8,6 +8,7 @@ async function bootstrap() {
   // Habilitar CORS correctamente
   const allowlist = new Set<string>([
     'http://localhost:5173',
+    'http://localhost:3000',
     'http://localhost:5174',
     'https://pos-crm-nova.up.railway.app',
   ]);

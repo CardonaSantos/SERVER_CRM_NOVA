@@ -68,6 +68,14 @@ export class SegundoRecordatorioCronService {
         if (shouldSkipClient(cliente.estadoCliente, cliente.servicioInternet))
           continue;
 
+        //nueva flag
+        if (!cliente.enviarRecordatorio) {
+          this.logger.debug(
+            `Cliente ${cliente.id} tiene enviarRecordatorio=false; no se envía Recordatorio 1.`,
+          );
+          continue;
+        }
+
         try {
           /* SOLO buscar la factura: crearSiNoExiste = false */
           const { factura } = await this.facturaManager.obtenerOcrearFactura(

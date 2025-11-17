@@ -16,6 +16,8 @@ export class UpdateClienteInternetDto {
   @IsNotEmpty()
   nombre: string;
 
+  enviarRecordatorio: boolean;
+
   @IsEnum(EstadoCliente)
   @IsNotEmpty()
   // @IsOptional()

@@ -34,6 +34,8 @@ import { FacturaEliminacionModule } from './factura-eliminacion/factura-eliminac
 import { BanruralIntegrationModule } from './banrural-integration/banrural-integration.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { DigitalOceanMediaModule } from './modules/digital-ocean-media/digital-ocean-media.module';
+import { NotificacionesModule } from './notificaciones/notificaciones.module';
+import { PerfilUsuarioModule } from './perfil-usuario/perfil-usuario.module';
 
 @Module({
   imports: [
@@ -74,6 +76,8 @@ import { DigitalOceanMediaModule } from './modules/digital-ocean-media/digital-o
     BanruralIntegrationModule,
     ReportsModule,
     DigitalOceanMediaModule,
+    NotificacionesModule,
+    PerfilUsuarioModule,
   ],
   controllers: [AppController],
   providers: [AppService],

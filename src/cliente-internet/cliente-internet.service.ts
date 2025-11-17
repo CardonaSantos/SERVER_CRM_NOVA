@@ -1489,6 +1489,7 @@ export class ClienteInternetService {
         telefono: customer.telefono,
         direccion: customer.direccion,
         dpi: customer.dpi,
+        enviarRecordatorio: customer.enviarRecordatorio,
         observaciones: customer.observaciones,
         contactoReferenciaNombre: customer.contactoReferenciaNombre,
         contactoReferenciaTelefono: customer.contactoReferenciaTelefono,
@@ -1579,6 +1580,7 @@ export class ClienteInternetService {
       idContrato,
       observacionesContrato,
       sectorId,
+      enviarRecordatorio,
     } = updateCustomerService;
 
     // Si se envían coordenadas, las parseamos; de lo contrario, asignamos null
@@ -1616,6 +1618,8 @@ export class ClienteInternetService {
         where: { id: id },
         data: {
           nombre: updateCustomerService.nombre,
+          enviarRecordatorio: updateCustomerService.enviarRecordatorio,
+
           apellidos: updateCustomerService.apellidos || null,
           telefono: updateCustomerService.telefono || null,
           direccion: updateCustomerService.direccion || null,

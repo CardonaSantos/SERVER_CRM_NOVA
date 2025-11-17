@@ -1,14 +1,19 @@
 import {
   BadRequestException,
+  HttpException,
   Injectable,
   InternalServerErrorException,
+  Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { CreateEmpresaDto } from './dto/create-empresa.dto';
 import { UpdateEmpresaDto } from './dto/update-empresa.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { throwFatalError } from 'src/Utils/CommonFatalError';
 
 @Injectable()
 export class EmpresaService {
+  private readonly logger = new Logger(EmpresaService.name);
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createEmpresaDto: CreateEmpresaDto) {
@@ -42,6 +47,28 @@ export class EmpresaService {
     return this.prisma.empresa.findUnique({
       where: { id },
     });
+  }
+
+  async getEmpresaInfo(empresaId: number) {
+    try {
+      this.logger.log('El id es: ', empresaId);
+      const empresa = await this.prisma.empresa.findUnique({
+        where: {
+          id: empresaId,
+        },
+        select: {
+          nombre: true,
+          id: true,
+          logo1: true,
+        },
+      });
+
+      if (!empresa) throw new NotFoundException('Empresa no encontrada');
+
+      return empresa;
+    } catch (error) {
+      throwFatalError(error, this.logger, 'Empresa');
+    }
   }
 
   // Actualizar empresa

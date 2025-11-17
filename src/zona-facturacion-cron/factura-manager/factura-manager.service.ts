@@ -33,18 +33,15 @@ export class FacturaManagerService {
     const hoy = dayjs().tz('America/Guatemala');
     const periodo = calcularPeriodo(zona, hoy);
 
-    /* 1) Buscar existente */
     const existente = await this.prisma.facturaInternet.findFirst({
       where: { clienteId: cliente.id, facturacionZonaId: zona.id, periodo },
     });
     if (existente) return { factura: existente, esNueva: false };
 
-    /* 2) Si NO se permite crear, lanza 404 controlado */
     if (!crearSiNoExiste) {
       throw new NotFoundException('Factura del periodo no encontrada');
     }
 
-    /* 2) Chequear pagos adelantados */
     const adelantada = await this.prisma.facturaInternet.findFirst({
       where: {
         clienteId: cliente.id,
@@ -82,7 +79,6 @@ export class FacturaManagerService {
     const hoy = dayjs().tz('America/Guatemala');
     const periodo = calcularPeriodo(zona, hoy);
 
-    /* 1) Buscar existente */
     const existente = await this.prisma.facturaInternet.findFirst({
       where: { clienteId: cliente.id, facturacionZonaId: zona.id, periodo },
     });
@@ -94,7 +90,6 @@ export class FacturaManagerService {
       return { factura: existente, esNueva: false, notificar };
     }
 
-    /* 2) Chequear pagos adelantados (no notificar si el cliente pagó de más) */
     const adelantada = await this.prisma.facturaInternet.findFirst({
       where: {
         clienteId: cliente.id,
@@ -106,7 +101,6 @@ export class FacturaManagerService {
     if (adelantada)
       throw new InternalServerErrorException('Cliente pagado adelantado');
 
-    /* 3) Traer datos frescos del cliente + plan */
     const clienteDb = await this.prisma.clienteInternet.findUnique({
       where: { id: cliente.id },
       include: { servicioInternet: true },
@@ -144,7 +138,6 @@ export class FacturaManagerService {
       },
     });
 
-    /* 5) Incrementar saldo solo una vez */
     await this.prisma.saldoCliente.update({
       where: { clienteId: factura.clienteId },
       data: { saldoPendiente: { increment: factura.montoPago } },

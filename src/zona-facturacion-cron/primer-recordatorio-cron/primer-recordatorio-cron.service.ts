@@ -66,6 +66,14 @@ export class PrimerRecordatorioCronService {
         if (shouldSkipClient(cliente.estadoCliente, cliente.servicioInternet))
           continue;
 
+        //nueva flag
+        if (!cliente.enviarRecordatorio) {
+          this.logger.debug(
+            `Cliente ${cliente.id} tiene enviarRecordatorio=false; no se envía Recordatorio 1.`,
+          );
+          continue;
+        }
+
         try {
           /** 3. Obtener / crear factura pendiente del periodo */
           const { factura, esNueva } =

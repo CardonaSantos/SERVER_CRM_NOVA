@@ -34,19 +34,12 @@ export class GeneracionFacturaCronService {
     private readonly configService: ConfigService,
     private readonly facturaManager: FacturaManagerService,
   ) {}
-  /**
-   * Genera la facturación automática para los clientes.
-   * Este método se ejecuta diariamente a las 11 PM (hora de Guatemala).
-   * Revisa las zonas de facturación y genera facturas para los clientes o llama inmediatamente
-   * al método `generarFacturaClientePorZona` para generar una a un cliente.
-   */
 
   // @Cron(CronExpression.EVERY_10_SECONDS, {
   //   timeZone: 'America/Guatemala',
-  // })//comentado
-  @Cron('0 10 * * *', { timeZone: 'America/Guatemala' }) // ⏰ 10:00 AM GT
+  // }) //comentado
+  @Cron('0 10 * * *', { timeZone: 'America/Guatemala' })
   async gerarFacturacionAutomaticaCron() {
-    // const hoy = dayjs().tz('America/Guatemala');
     const TEMPLATE_SID =
       this.configService.get<string>('GENERACION_FACTURA_1_SID') ??
       (() => {
@@ -63,6 +56,13 @@ export class GeneracionFacturaCronService {
       for (const cliente of zona.clientes) {
         if (shouldSkipClient(cliente.estadoCliente, cliente.servicioInternet))
           continue;
+        //nueva flag
+        if (!cliente.enviarRecordatorio) {
+          this.logger.debug(
+            `Cliente ${cliente.id} tiene enviarRecordatorio=false; no se envía Recordatorio 1.`,
+          );
+          continue;
+        }
 
         try {
           /** Crear o recuperar la factura */

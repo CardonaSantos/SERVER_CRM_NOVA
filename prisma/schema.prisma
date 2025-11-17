@@ -1,3 +1,7 @@
+/// ======================================================================
+/// CONFIGURACIÓN PRISMA
+/// ======================================================================
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,6 +11,24 @@ datasource db {
   url      = env("DATABASE_URL_CRM")
 }
 
+/// ======================================================================
+/// ÍNDICE DE SECCIONES (BUSCAR POR TAG EN VS CODE)
+///
+/// [01] Empresa, Usuarios, Caja y Proveedores
+/// [02] Geografía
+/// [03] Facturación - Configuración y Plantillas
+/// [04] Servicios
+/// [05] Clientes Internet y Relacionados
+/// [06] Media y Álbumes
+/// [07] Facturación - Operaciones
+/// [08] Rutas de Cobro
+/// [09] Soporte y Tickets
+/// [10] Asistencia / RRHH
+/// [11] Modelos de Prueba
+/// [12] Enumeraciones
+/// ======================================================================
+
+/// [01] Empresa, Usuarios, Caja y Proveedores
 model Empresa {
   id                  Int                   @id @default(autoincrement())
   nombre              String                @unique
@@ -38,6 +60,7 @@ model Empresa {
   TicketSoporte       TicketSoporte[]
   Ubicacion           Ubicacion[]
   empleados           Usuario[]
+  notificaciones      Notificacion[]
 }
 
 model Usuario {
@@ -51,6 +74,7 @@ model Usuario {
   creadoEn               DateTime               @default(now())
   actualizadoEn          DateTime               @updatedAt
   contrasena             String
+  perfil                 PerfilUsuario?
   asistencias            Asistencia[]           @relation("UsuarioAsistencias")
   BoletaSoporte          BoletaSoporte[]
   clientesAsesorados     ClienteInternet[]
@@ -70,6 +94,34 @@ model Usuario {
   ticketsAsignados       TicketSoporte[]        @relation("TicketTecnico")
   ticketsSoporteTecnico  TicketSoporteTecnico[]
   empresa                Empresa                @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  clientesEliminados     ClienteInternet[]      @relation("ClienteEliminadoPor")
+
+  notificacionesRecibidas NotificacionUsuario[]
+  notificacionesEnviadas  Notificacion[]        @relation("NotificacionRemitente")
+}
+
+model PerfilUsuario {
+  id        Int @id @default(autoincrement())
+  usuarioId Int @unique
+
+  // Visual
+  avatarUrl String? // URL de la foto de perfil (cdn, media, etc.)
+  portada   String? // URL de la foto de perfil (cdn, media, etc.)
+  bio       String?
+  // Preferencias básicas
+  // tema            TemaUsuario @default(SISTEMA) aun no implementado
+
+  // Notificaciones
+  notificarWhatsApp Boolean @default(true)
+  notificarPush     Boolean @default(true) // para notificaciones in-app
+  notificarSonido   Boolean @default(true) // sonidos en la UI
+
+  telefono String?
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 }
 
 model ConfiguracionGlobal {
@@ -128,6 +180,7 @@ model Proveedor {
   empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 }
 
+/// [02] Geografía
 model Departamento {
   id         Int               @id @default(autoincrement())
   nombre     String            @unique
@@ -166,6 +219,7 @@ model Ubicacion {
   empresa   Empresa          @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 }
 
+/// [03] Facturación - Configuración y Plantillas
 model FacturacionZona {
   id                            Int               @id @default(autoincrement())
   nombre                        String
@@ -215,6 +269,7 @@ model PlantillaContrato {
   actualizadoEn DateTime @updatedAt
 }
 
+/// [04] Servicios
 model TipoServicio {
   id            Int            @id @default(autoincrement())
   nombre        String         @unique
@@ -254,38 +309,53 @@ model ServicioInternet {
   empresa       Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 }
 
+/// [05] Clientes Internet y Relacionados
 model ClienteInternet {
+  // Identidad
   id                         Int                       @id @default(autoincrement())
+  empresaId                  Int?
+  asesorId                   Int?
+  // Información personal
   nombre                     String
   apellidos                  String?
-  telefono                   String?
-  direccion                  String?
   dpi                        String?
   observaciones              String?
+  nota                       String?
+  // Información de contacto
+  telefono                   String?
+  direccion                  String?
   contactoReferenciaNombre   String?
   contactoReferenciaTelefono String?
-  estadoCliente              EstadoCliente
+  // Servicio y red
   contrasenaWifi             String?
   ssidRouter                 String?
   fechaInstalacion           DateTime?
-  asesorId                   Int?
-  municipioId                Int?
-  departamentoId             Int?
-  empresaId                  Int?
-  creadoEn                   DateTime                  @default(now())
-  actualizadoEn              DateTime                  @updatedAt
-  facturacionZonaId          Int?
   servicioInternetId         Int?
   sectorId                   Int?
-  nota                       String?
-  albumClientes              AlbumCliente[]
+  // Opciones y flags
+  enviarRecordatorio         Boolean                   @default(true)
+  isEliminado                Boolean                   @default(false)
+  eliminadoEn                DateTime?
+  // ESTADO DE SERVICIO-CLIENTE Y COBRANZA =>
+  estadoCliente              EstadoCliente
+  estadoCobranza             EstadoCobranzaCliente     @default(AL_DIA)
+  // Geografía
+  municipioId                Int?
+  departamentoId             Int?
+  facturacionZonaId          Int?
+  // Metadatos
+  creadoEn                   DateTime                  @default(now())
+  actualizadoEn              DateTime                  @updatedAt
+  // Relaciones principales
+  empresa                    Empresa?                  @relation(fields: [empresaId], references: [id])
   asesor                     Usuario?                  @relation(fields: [asesorId], references: [id])
   departamento               Departamento?             @relation(fields: [departamentoId], references: [id])
-  empresa                    Empresa?                  @relation(fields: [empresaId], references: [id])
-  facturacionZona            FacturacionZona?          @relation(fields: [facturacionZonaId], references: [id])
   municipio                  Municipio?                @relation(fields: [municipioId], references: [id])
+  facturacionZona            FacturacionZona?          @relation(fields: [facturacionZonaId], references: [id])
   sector                     Sector?                   @relation(fields: [sectorId], references: [id])
   servicioInternet           ServicioInternet?         @relation(fields: [servicioInternetId], references: [id])
+  // Relaciones de datos / hijos
+  albumClientes              AlbumCliente[]
   clienteServicios           ClienteServicio[]
   CobroRuta                  CobroRuta[]
   ContratoFisico             ContratoFisico?
@@ -303,6 +373,8 @@ model ClienteInternet {
   ubicacion                  Ubicacion?
   saldoCliente               saldoCliente?
   ruta                       Ruta[]                    @relation("ClienteInternetToRuta")
+  eliminadoPorId             Int?
+  eliminadoPor               Usuario?                  @relation("ClienteEliminadoPor", fields: [eliminadoPorId], references: [id], onDelete: SetNull)
 }
 
 model IP {
@@ -388,6 +460,7 @@ model Lead {
   cliente   ClienteInternet? @relation(fields: [clienteId], references: [id])
 }
 
+/// [06] Media y Álbumes
 /// /////////////////////////////////////////////////////////////////////////////
 /// /////////////////////////////////////////////////////////////////////////////
 model Media {
@@ -453,6 +526,7 @@ model AlbumCliente {
   @@index([clienteId, creadoEn(sort: Desc)])
 }
 
+/// [07] Facturación - Operaciones
 model FacturaInternet {
   id                    Int                   @id @default(autoincrement())
   fechaPagoEsperada     DateTime?
@@ -580,6 +654,7 @@ model FacturaEliminada {
   @@index([facturaInternetId])
 }
 
+/// [08] Rutas de Cobro
 model Ruta {
   id            Int               @id @default(autoincrement())
   nombreRuta    String
@@ -654,6 +729,7 @@ model CobroRuta {
   ruta          Ruta            @relation("RutaToCobros", fields: [rutaId], references: [id])
 }
 
+/// [09] Soporte y Tickets
 model TicketSoporte {
   id                     Int                    @id @default(autoincrement())
   clienteId              Int
@@ -669,14 +745,19 @@ model TicketSoporte {
   fechaAsignacion        DateTime?
   fechaInicioAtencion    DateTime?
   fechaResolucionTecnico DateTime?
-  boleta                 BoletaSoporte?
-  SeguimientoTicket      SeguimientoTicket[]
-  etiquetas              TicketEtiqueta[]
-  cliente                ClienteInternet        @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  creadoPor              Usuario?               @relation("TicketCreador", fields: [creadoPorId], references: [id])
-  empresa                Empresa                @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  tecnico                Usuario?               @relation("TicketTecnico", fields: [tecnicoId], references: [id])
-  asignaciones           TicketSoporteTecnico[]
+  // FIJAR
+  fijado                 Boolean                @default(false)
+  // --- NUEVO: resumen / responsable cierre ---
+  resumen                TicketResumen?         @relation("TicketResumenTicket")
+
+  boleta            BoletaSoporte?
+  SeguimientoTicket SeguimientoTicket[]
+  etiquetas         TicketEtiqueta[]
+  cliente           ClienteInternet        @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  creadoPor         Usuario?               @relation("TicketCreador", fields: [creadoPorId], references: [id])
+  empresa           Empresa                @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  tecnico           Usuario?               @relation("TicketTecnico", fields: [tecnicoId], references: [id])
+  asignaciones      TicketSoporteTecnico[]
 }
 
 model BoletaSoporte {
@@ -723,14 +804,21 @@ model SeguimientoTicket {
   usuario       Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 }
 
+//PIVOTE TEC. ASIGNADOS Y RESUELTOS POR ->
 model TicketSoporteTecnico {
-  id            Int           @id @default(autoincrement())
+  id            Int      @id @default(autoincrement())
   ticketId      Int
   tecnicoId     Int
-  creadoEn      DateTime      @default(now())
-  actualizadoEn DateTime      @updatedAt
-  tecnico       Usuario       @relation(fields: [tecnicoId], references: [id], onDelete: Cascade)
-  ticket        TicketSoporte @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  // rol en la resolución
+  esResponsable        Boolean   @default(false) // true si este técnico cuenta como "lo resolvió"
+  resolvioEn           DateTime? // cuándo este técnico marcó como resuelto (si aplica)
+  tiempoTecnicoMinutos Int? // tiempo que le asignas a este técnico en este ticket
+
+  tecnico Usuario       @relation(fields: [tecnicoId], references: [id], onDelete: Cascade)
+  ticket  TicketSoporte @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@unique([ticketId, tecnicoId])
   @@index([tecnicoId])
@@ -768,6 +856,44 @@ model MetaTickets {
   usuario          Usuario?          @relation(fields: [usuarioId], references: [id])
 }
 
+// NUEVA TELEMETRÍA ---->
+model TicketResumen {
+  id         Int  @id @default(autoincrement())
+  ticketId   Int  @unique
+  solucionId Int?
+
+  // Qué se hizo / cómo quedó
+  resueltoComo  String? // texto libre: "Se rehizo acometida, se cambió ONT, etc."
+  notasInternas String?
+
+  // Reaperturas / intentos
+  reabierto         Boolean @default(false)
+  numeroReaperturas Int     @default(0)
+  intentos          Int     @default(1) // intentos totales sobre el mismo ticket
+
+  // Tiempos (en minutos) -> los calculas con las fechas del ticket y los guardas aquí
+  tiempoTotalMinutos   Int? // desde apertura hasta cierre
+  tiempoTecnicoMinutos Int? // desde inicio atención hasta resolución técnico
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  ticket   TicketSoporte   @relation("TicketResumenTicket", fields: [ticketId], references: [id], onDelete: Cascade)
+  solucion SolucionTicket? @relation(fields: [solucionId], references: [id])
+
+  @@index([solucionId])
+}
+
+//tabla de soluciones custom
+model SolucionTicket {
+  id          Int             @id @default(autoincrement())
+  solucion    String          @unique // p.ej: "REDROPEO", "CAMBIO_IP", "RECONFIG_ROUTER"
+  descripcion String?
+  tickets     TicketResumen[]
+  isEliminado Boolean         @default(false)
+}
+
+/// [10] Asistencia / RRHH
 model Asistencia {
   id              Int       @id @default(autoincrement())
   usuarioId       Int
@@ -784,19 +910,107 @@ model Asistencia {
   @@index([usuarioId, fecha])
 }
 
+/// [11] Modelos de Prueba
 model TestCategory {
-  id       String  @id @default(uuid())
+  id       String @id @default(uuid())
   name     String
   products Test[]
 }
 
 model Test {
-  id          String   @id @default(uuid())
-  name        String
-  categoryId  String
-  category    TestCategory @relation(fields: [categoryId], references: [id])
+  id         String       @id @default(uuid())
+  name       String
+  categoryId String
+  category   TestCategory @relation(fields: [categoryId], references: [id])
 }
 
+/// [12] Notificaciones
+model Notificacion {
+  id Int @id @default(autoincrement())
+
+  empresaId Int? // noti pertenece a una empresa (o null si GLOBAL)
+  empresa   Empresa? @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  // Contenido 
+  titulo         String?
+  mensaje        String
+  categoria      CategoriaNotificacion @default(OTROS)
+  subtipo        String? // ej: 'FACTURAS_GENERADAS', 'PAGO_REGISTRADO', 'TICKET_CREADO'
+  severidad      SeveridadNotificacion @default(INFO)
+  url            String?
+  // Contexto de negocio
+  referenciaTipo String? // 'TicketSoporte', 'FacturaInternet', 'ClienteInternet', etc.
+  referenciaId   Int? // ID de la entidad referenciada
+  route          String? // ej: '/tickets/123' o '/facturacion/internet?zona=1&periodo=202501'
+  actionLabel    String? // ej: 'Ver detalle'
+  // meta           Json? // payload extra: { zonaId, periodo, totalFacturas }
+
+  // Emisor / auditoría
+  remitenteId Int?
+  remitente   Usuario? @relation("NotificacionRemitente", fields: [remitenteId], references: [id])
+
+  audiencia AudienciaNotificacion @default(USUARIOS)
+
+  fechaCreacion DateTime  @default(now())
+  visibleDesde  DateTime?
+  expiraEn      DateTime?
+  programadaEn  DateTime? // si algún día quieres programar envíos diferidos
+
+  // Estado por usuario
+  destinatarios NotificacionUsuario[]
+
+  @@index([empresaId, categoria, severidad, fechaCreacion])
+  @@index([referenciaTipo, referenciaId])
+  @@index([fechaCreacion])
+}
+
+model NotificacionUsuario {
+  id             Int @id @default(autoincrement())
+  usuarioId      Int
+  notificacionId Int
+
+  usuario      Usuario      @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  notificacion Notificacion @relation(fields: [notificacionId], references: [id], onDelete: Cascade)
+
+  // Estado por usuario
+  leido       Boolean   @default(false)
+  leidoEn     DateTime?
+  eliminado   Boolean   @default(false) // oculto/dismiss
+  eliminadoEn DateTime?
+
+  recibidoEn  DateTime  @default(now())
+  fijadoHasta DateTime? // si quieres poder pinear notis en la UI
+
+  @@unique([usuarioId, notificacionId]) // evita duplicados
+  @@index([usuarioId, eliminado, leido, recibidoEn])
+}
+
+/// [X] Enumeraciones
+
+enum CategoriaNotificacion {
+  SISTEMA // cosas generales del sistema
+  FACTURACION // facturas, pagos, periodos
+  COBRANZA // cortes, avisos de morosidad, rutas
+  SOPORTE // tickets de soporte
+  RUTA_COBRO // eventos de rutas / cobradores
+  CLIENTE // alta/baja de clientes, cambios de servicio
+  OTROS
+}
+
+enum SeveridadNotificacion {
+  INFO
+  EXITO
+  ALERTA
+  ERROR
+  CRITICA
+}
+
+enum AudienciaNotificacion {
+  USUARIOS // usuarios específicos (join table)
+  ROL // usuarios por rol (igual termina en join por usuario)
+  EMPRESA // todos los usuarios de la empresa
+  GLOBAL // todo el sistema (multi-empresa)
+}
 
 enum OrigenPago {
   RUTA
@@ -871,13 +1085,20 @@ enum EstadoMetaTickets {
 
 enum EstadoCliente {
   ACTIVO
-  MOROSO
   SUSPENDIDO
   DESINSTALADO
   PENDIENTE_ACTIVO
+  EN_INSTALACION
+  PAGO_PENDIENTE // NO USAR
+  ATRASADO // NO USAR
+  MOROSO // NO USAR
+}
+
+enum EstadoCobranzaCliente {
+  AL_DIA
   PAGO_PENDIENTE
   ATRASADO
-  EN_INSTALACION
+  MOROSO
 }
 
 enum EstadoServicio {
