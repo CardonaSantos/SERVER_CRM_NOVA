@@ -20,6 +20,7 @@ export class EmpresaController {
   create(@Body() createEmpresaDto: CreateEmpresaDto) {
     return this.empresaService.create(createEmpresaDto);
   }
+
   /**
    * Detalles de la empresa - dashboard
    * @param id

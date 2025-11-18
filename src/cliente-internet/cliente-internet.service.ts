@@ -1048,74 +1048,99 @@ export class ClienteInternetService {
     );
     this.logger.debug(`page=${page}, limit=${limit}`);
 
-    const [customers, totalCount] = await this.prisma.$transaction([
-      this.prisma.clienteInternet.findMany({
-        skip: skip,
-        take: limit,
-        orderBy: {
-          creadoEn: 'desc',
-        },
-        where: whereCondition,
+    const [customers, totalCount, activo, pendiente_activo, atrasado, moroso] =
+      await this.prisma.$transaction([
+        this.prisma.clienteInternet.findMany({
+          skip: skip,
+          take: limit,
+          orderBy: {
+            creadoEn: 'desc',
+          },
+          where: whereCondition,
 
-        select: {
-          id: true,
-          nombre: true,
-          apellidos: true,
-          telefono: true,
-          dpi: true,
-          direccion: true,
-          creadoEn: true,
-          actualizadoEn: true,
-          estadoCliente: true,
-          sector: {
-            select: {
-              id: true,
-              nombre: true,
+          select: {
+            id: true,
+            nombre: true,
+            apellidos: true,
+            telefono: true,
+            dpi: true,
+            direccion: true,
+            creadoEn: true,
+            actualizadoEn: true,
+            estadoCliente: true,
+            sector: {
+              select: {
+                id: true,
+                nombre: true,
+              },
             },
-          },
 
-          // Relación 1:1 con el servicio de internet
-          servicioInternet: {
-            select: {
-              id: true,
-              nombre: true,
-              velocidad: true,
-              precio: true,
-              estado: true,
-              actualizadoEn: true,
+            // Relación 1:1 con el servicio de internet
+            servicioInternet: {
+              select: {
+                id: true,
+                nombre: true,
+                velocidad: true,
+                precio: true,
+                estado: true,
+                actualizadoEn: true,
+              },
+            },
+            departamento: {
+              select: {
+                id: true,
+                nombre: true,
+              },
+            },
+            municipio: {
+              select: {
+                id: true,
+                nombre: true,
+              },
+            },
+            IP: {
+              select: {
+                id: true,
+                direccionIp: true,
+              },
+            },
+            facturacionZona: {
+              select: {
+                id: true,
+                nombre: true,
+              },
             },
           },
-          departamento: {
-            select: {
-              id: true,
-              nombre: true,
-            },
+        }),
+        // this.prisma.clienteInternet.count(),
+        this.prisma.clienteInternet.count({
+          where: whereCondition, // ← aquí el conteo filtrado
+        }),
+
+        this.prisma.clienteInternet.count({
+          where: {
+            estadoCliente: 'ACTIVO',
           },
-          municipio: {
-            select: {
-              id: true,
-              nombre: true,
-            },
+        }),
+
+        this.prisma.clienteInternet.count({
+          where: {
+            estadoCliente: 'PENDIENTE_ACTIVO',
           },
-          IP: {
-            select: {
-              id: true,
-              direccionIp: true,
-            },
+        }),
+
+        this.prisma.clienteInternet.count({
+          where: {
+            estadoCliente: 'ATRASADO',
           },
-          facturacionZona: {
-            select: {
-              id: true,
-              nombre: true,
-            },
+        }),
+
+        this.prisma.clienteInternet.count({
+          where: {
+            estadoCliente: 'MOROSO',
           },
-        },
-      }),
-      // this.prisma.clienteInternet.count(),
-      this.prisma.clienteInternet.count({
-        where: whereCondition, // ← aquí el conteo filtrado
-      }),
-    ]);
+        }),
+      ]);
     const formattedCustomers = customers.map((customer) => ({
       id: customer.id,
       nombreCompleto: `${customer.nombre} ${customer.apellidos}`,
@@ -1155,6 +1180,12 @@ export class ClienteInternetService {
     return {
       data: formattedCustomers,
       totalCount: totalCount,
+      summary: {
+        activo,
+        moroso,
+        pendiente_activo,
+        atrasado,
+      },
     };
   }
 

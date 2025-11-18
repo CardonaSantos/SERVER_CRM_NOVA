@@ -51,7 +51,7 @@ export class EmpresaService {
 
   async getEmpresaInfo(empresaId: number) {
     try {
-      this.logger.log('El id es: ', empresaId);
+      this.logger.log('EMPRESA ID: ', empresaId);
       const empresa = await this.prisma.empresa.findUnique({
         where: {
           id: empresaId,
@@ -64,7 +64,7 @@ export class EmpresaService {
       });
 
       if (!empresa) throw new NotFoundException('Empresa no encontrada');
-
+      this.logger.log('La empresa encontrada es: ', empresa);
       return empresa;
     } catch (error) {
       throwFatalError(error, this.logger, 'Empresa');
