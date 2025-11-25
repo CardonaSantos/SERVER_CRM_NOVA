@@ -556,6 +556,12 @@ export class ClienteInternetService {
                 creadoEn: true,
               },
             },
+            MikrotikRouter: {
+              select: {
+                id: true,
+                nombre: true,
+              },
+            },
           },
         });
 
@@ -673,6 +679,13 @@ export class ClienteInternetService {
               id: clienteInternetWithRelations.ubicacion.id,
               latitud: clienteInternetWithRelations.ubicacion.latitud,
               longitud: clienteInternetWithRelations.ubicacion.longitud,
+            }
+          : null,
+
+        mikrotik: clienteInternetWithRelations.MikrotikRouter
+          ? {
+              id: clienteInternetWithRelations.MikrotikRouter.id,
+              nombre: clienteInternetWithRelations.MikrotikRouter.nombre,
             }
           : null,
 
@@ -1508,6 +1521,12 @@ export class ClienteInternetService {
               // 🔥 No pedimos media ni mediaId
             },
           },
+          MikrotikRouter: {
+            select: {
+              id: true,
+              nombre: true,
+            },
+          },
         },
       });
 
@@ -1555,18 +1574,15 @@ export class ClienteInternetService {
           id: s.servicio.id,
           nombre: s.servicio.nombre,
         })),
-
         zonaFacturacion: customer.facturacionZona
           ? {
               id: customer.facturacionZona.id,
               nombre: customer.facturacionZona.nombre,
             }
           : null,
-
         sector: customer.sector
           ? { id: customer.sector.id, nombre: customer.sector.nombre }
           : null,
-
         servicioWifi: customer.servicioInternet
           ? {
               id: customer.servicioInternet.id,
@@ -1574,13 +1590,18 @@ export class ClienteInternetService {
               velocidad: customer.servicioInternet.velocidad,
             }
           : null,
-
         contrato: customer.ContratoFisico
           ? {
               idContrato: customer.ContratoFisico.idContrato,
               fechaFirma: customer.ContratoFisico.fechaFirma,
               archivoContrato: customer.ContratoFisico.archivoContrato,
               observaciones: customer.ContratoFisico.observaciones,
+            }
+          : null,
+        mikrotik: customer.MikrotikRouter
+          ? {
+              id: customer.MikrotikRouter.id,
+              nombre: customer.MikrotikRouter.nombre,
             }
           : null,
       };
@@ -1611,9 +1632,10 @@ export class ClienteInternetService {
       idContrato,
       observacionesContrato,
       sectorId,
+      mikrotikRouterId,
       enviarRecordatorio,
     } = updateCustomerService;
-
+    this.logger.log('El dto para actualizar es: ', updateCustomerService);
     // Si se envían coordenadas, las parseamos; de lo contrario, asignamos null
     const latitud = coordenadas?.[0] ? Number(coordenadas[0]) : null;
     const longitud = coordenadas?.[1] ? Number(coordenadas[1]) : null;
@@ -1665,7 +1687,6 @@ export class ClienteInternetService {
           ssidRouter: updateCustomerService.ssidRouter,
           fechaInstalacion: updateCustomerService.fechaInstalacion || null,
           estadoCliente: updateCustomerService.estado || 'ACTIVO',
-
           // Relaciones
           servicioInternet: servicioWifiId
             ? { connect: { id: servicioWifiId } }
@@ -1679,13 +1700,19 @@ export class ClienteInternetService {
             : undefined,
           empresa: { connect: { id: empresaId } },
           asesor: asesorId ? { connect: { id: asesorId } } : undefined,
-          // Actualizamos la ubicación solo si se actualizaron coordenadas
           ubicacion: ubicacion ? { connect: { id: ubicacion.id } } : undefined,
           facturacionZona: zonaFacturacionId
             ? { connect: { id: zonaFacturacionId } }
             : undefined,
 
-          // Actualizamos los servicios (borramos los existentes y creamos nuevos)
+          MikrotikRouter:
+            mikrotikRouterId === null
+              ? { disconnect: true }
+              : mikrotikRouterId
+                ? { connect: { id: mikrotikRouterId } }
+                : undefined,
+
+          // borramos los existentes y creamos nuevos
           clienteServicios: {
             deleteMany: {},
             create: serviceIds.map((serviceId) => ({
@@ -1697,7 +1724,6 @@ export class ClienteInternetService {
         },
       });
 
-      // Actualizar IP
       const ipRecord = await prisma.iP.upsert({
         where: { clienteId: id },
         update: { direccionIp: ip, gateway, mascara },

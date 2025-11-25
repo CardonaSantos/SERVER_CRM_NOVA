@@ -36,6 +36,11 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { DigitalOceanMediaModule } from './modules/digital-ocean-media/digital-ocean-media.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { PerfilUsuarioModule } from './perfil-usuario/perfil-usuario.module';
+import { TicketSolucionesModule } from './ticket-soluciones/ticket-soluciones.module';
+import { SshMikrotikConnectionModule } from './ssh-mikrotik-connection/ssh-mikrotik-connection.module';
+import { OltModule } from './olt/olt.module';
+import { FireworksIaModule } from './fireworks-ia/fireworks-ia.module';
+import { WhatsappApiMetaModule } from './whatsapp-api-meta/whatsapp-api-meta.module';
 
 @Module({
   imports: [
@@ -78,6 +83,11 @@ import { PerfilUsuarioModule } from './perfil-usuario/perfil-usuario.module';
     DigitalOceanMediaModule,
     NotificacionesModule,
     PerfilUsuarioModule,
+    TicketSolucionesModule,
+    SshMikrotikConnectionModule,
+    OltModule,
+    FireworksIaModule,
+    WhatsappApiMetaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

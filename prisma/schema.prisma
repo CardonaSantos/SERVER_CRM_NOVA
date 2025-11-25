@@ -61,6 +61,10 @@ model Empresa {
   Ubicacion           Ubicacion[]
   empleados           Usuario[]
   notificaciones      Notificacion[]
+
+  //nuevos
+  Olt            Olt[]
+  MikrotikRouter MikrotikRouter[]
 }
 
 model Usuario {
@@ -343,6 +347,9 @@ model ClienteInternet {
   municipioId                Int?
   departamentoId             Int?
   facturacionZonaId          Int?
+  //Optico
+  mikrotikRouterId           Int?
+  MikrotikRouter             MikrotikRouter?           @relation(fields: [mikrotikRouterId], references: [id])
   // Metadatos
   creadoEn                   DateTime                  @default(now())
   actualizadoEn              DateTime                  @updatedAt
@@ -802,6 +809,9 @@ model SeguimientoTicket {
   fechaRegistro DateTime      @default(now())
   ticket        TicketSoporte @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   usuario       Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @default(now()) @updatedAt
 }
 
 //PIVOTE TEC. ASIGNADOS Y RESUELTOS POR ->
@@ -886,11 +896,13 @@ model TicketResumen {
 
 //tabla de soluciones custom
 model SolucionTicket {
-  id          Int             @id @default(autoincrement())
-  solucion    String          @unique // p.ej: "REDROPEO", "CAMBIO_IP", "RECONFIG_ROUTER"
-  descripcion String?
-  tickets     TicketResumen[]
-  isEliminado Boolean         @default(false)
+  id            Int             @id @default(autoincrement())
+  solucion      String          @unique // p.ej: "REDROPEO", "CAMBIO_IP", "RECONFIG_ROUTER"
+  descripcion   String?
+  tickets       TicketResumen[]
+  isEliminado   Boolean         @default(false)
+  creadoEn      DateTime        @default(now())
+  actualizadoEn DateTime        @default(now()) @updatedAt
 }
 
 /// [10] Asistencia / RRHH
@@ -983,6 +995,55 @@ model NotificacionUsuario {
 
   @@unique([usuarioId, notificacionId]) // evita duplicados
   @@index([usuarioId, eliminado, leido, recibidoEn])
+}
+
+/// [13] OLT
+model Olt {
+  id            Int     @id @default(autoincrement())
+  nombre        String // Nombre amigable: "OLT TP-Link Jacaltenango"
+  modelo        String? // "P1201-16"
+  vendor        String? // "TP-Link"
+  serie         String? // Device SN
+  mgmtIp        String // IP de gestión
+  mgmtVlan      Int? // VLAN de gestión si la usas
+  telnetPort    Int     @default(23)
+  snmpCommunity String? // solo lectura normalmente
+
+  empresaId Int
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  MikrotikRouter MikrotikRouter[]
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  @@unique([empresaId, nombre])
+}
+
+/// [14] MIKROTIK-ROUTER
+model MikrotikRouter {
+  id          Int     @id @default(autoincrement())
+  nombre      String // "MKT Core Jacaltenango"
+  host        String // IP o FQDN de gestión
+  sshPort     Int     @default(22)
+  usuario     String // usuario de automatización (la pass la manejas fuera)
+  descripcion String?
+  activo      Boolean @default(true)
+  passwordEnc String? // contraseña encriptada base64
+
+  empresaId Int
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  // Opcional
+  oltId Int?
+  olt   Olt? @relation(fields: [oltId], references: [id])
+
+  clientesInternet ClienteInternet[] // Clientes que cuelgan de este Mikrotik
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  @@unique([empresaId, nombre])
 }
 
 /// [X] Enumeraciones

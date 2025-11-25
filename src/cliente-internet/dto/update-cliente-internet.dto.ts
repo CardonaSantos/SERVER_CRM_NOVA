@@ -8,6 +8,7 @@ import {
   IsInt,
   IsArray,
   IsEnum,
+  IsNumber,
 } from 'class-validator';
 
 export class UpdateClienteInternetDto {
@@ -25,6 +26,10 @@ export class UpdateClienteInternetDto {
 
   @IsOptional()
   sectorId?: number;
+
+  @IsOptional()
+  @IsInt()
+  mikrotikRouterId: number;
 
   @IsString()
   @IsNotEmpty()
