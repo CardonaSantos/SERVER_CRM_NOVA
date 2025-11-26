@@ -147,6 +147,12 @@ export class FacturacionController {
     return this.facturacionService.updateFactura(id, updateFacturacionDto);
   }
 
+  @Delete('/delete-one-payment/:id')
+  deleteOnePayment(@Param('id', ParseIntPipe) id: number) {
+    console.log('ID DELETE ONE PAYMENT: ', id);
+    return this.facturacionService.deleteOnePayment(id);
+  }
+
   @Delete('/delete-all-march')
   removeAllFacturasMarzo() {
     return this.facturacionService.removeManyFacturasMarch();

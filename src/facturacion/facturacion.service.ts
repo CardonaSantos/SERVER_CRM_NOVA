@@ -29,6 +29,7 @@ import { periodoFrom } from './Utils';
 import { FacturaEliminacionService } from 'src/factura-eliminacion/factura-eliminacion.service';
 import { RegistrarPagoFromBanruralDto } from './dto/pago-from-banrural.dto';
 import { calculateEstadoCliente } from './functions/functions';
+import { throwFatalError } from 'src/Utils/CommonFatalError';
 
 // Extiende dayjs con los plugins
 dayjs.extend(utc);
@@ -305,6 +306,7 @@ export class FacturacionService {
             creadoEn: true,
             metodoPago: true,
             cobradorId: true,
+            id: true,
           },
         },
         RecordatorioPago: {
@@ -405,6 +407,7 @@ export class FacturacionService {
           fechaPago: pago.fechaPago.toISOString(),
           cobradorId: pago.cobradorId,
           creadoEn: pago.creadoEn.toISOString(),
+          id: pago.id,
         })),
 
         creadoEn: factura.creadoEn.toISOString(),
@@ -1898,5 +1901,113 @@ export class FacturacionService {
 
       return newPayment;
     });
+  }
+
+  async deleteOnePayment(id: number) {
+    try {
+      this.logger.log('EL id: ', id);
+      return await this.prisma.$transaction(async (tx) => {
+        const pago = await tx.pagoFacturaInternet.findUnique({
+          where: { id },
+          select: {
+            id: true,
+            montoPagado: true,
+            fechaPago: true,
+            clienteId: true,
+            facturaInternetId: true,
+          },
+        });
+
+        if (!pago) {
+          throw new NotFoundException('Pago de factura no encontrado');
+        }
+
+        const { clienteId, facturaInternetId, montoPagado } = pago;
+
+        // 1. Borrar pago
+        await tx.pagoFacturaInternet.delete({
+          where: { id },
+        });
+
+        // 2. Recalcular factura
+        const factura = await tx.facturaInternet.findUnique({
+          where: { id: facturaInternetId },
+        });
+
+        if (factura) {
+          const saldoPendienteFactura = Math.max(
+            factura.saldoPendiente + montoPagado,
+            0,
+          );
+
+          const ultimoPagoFactura = await tx.pagoFacturaInternet.findFirst({
+            where: { facturaInternetId },
+            orderBy: { fechaPago: 'desc' },
+          });
+
+          let estadoFacturaInternet: typeof factura.estadoFacturaInternet;
+
+          if (saldoPendienteFactura <= 0) {
+            estadoFacturaInternet = 'PAGADA';
+          } else if (saldoPendienteFactura < factura.montoPago) {
+            estadoFacturaInternet = 'PARCIAL';
+          } else {
+            estadoFacturaInternet = 'PENDIENTE';
+          }
+
+          await tx.facturaInternet.update({
+            where: { id: facturaInternetId },
+            data: {
+              saldoPendiente: saldoPendienteFactura,
+              estadoFacturaInternet,
+              fechaPagada:
+                estadoFacturaInternet === 'PAGADA'
+                  ? (ultimoPagoFactura?.fechaPago ?? factura.fechaPagada)
+                  : null,
+            },
+          });
+        }
+
+        // 3. Recalcular estado del cliente
+        const facturasPendientes = await tx.facturaInternet.findMany({
+          where: {
+            clienteId,
+            estadoFacturaInternet: {
+              in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'],
+            },
+          },
+        });
+
+        const estadoPendiente = facturasPendientes.length;
+        let estadoCliente: EstadoCliente;
+
+        switch (estadoPendiente) {
+          case 0:
+            estadoCliente = 'ACTIVO';
+            break;
+          case 1:
+            estadoCliente = 'PENDIENTE_ACTIVO';
+            break;
+          case 2:
+            estadoCliente = 'ATRASADO';
+            break;
+          case 3:
+          default:
+            estadoCliente = 'MOROSO';
+            break;
+        }
+
+        await tx.clienteInternet.update({
+          where: { id: clienteId },
+          data: {
+            estadoCliente,
+          },
+        });
+
+        return { ok: true };
+      });
+    } catch (error) {
+      throwFatalError(error, this.logger, 'facturacion - deleteOnePayment');
+    }
   }
 }
