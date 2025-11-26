@@ -138,9 +138,11 @@ export class SshMikrotikConnectionService {
       username: cliente.MikrotikRouter.usuario,
       password: password,
     };
+
     this.logger.log('El config creado es: ', config);
 
-    const addressList = this.config.get<string>('SUSPENDED_LIST');
+    const addressList =
+      this.config.get<string>('SUSPENDED_LIST') ?? 'clientes_suspendidos';
     const comment = `crm-suspendido-${cliente.id}-${cliente.nombre ?? ''} ${cliente.apellidos ?? ''}`;
     const cmd = `/ip firewall address-list add list=${addressList} address=${ip} comment="${comment}"`;
     const { stdout, stderr } = await this.runCommand(cmd, config);
@@ -151,6 +153,14 @@ export class SshMikrotikConnectionService {
       );
     }
     // TODO: aquí ya puedes crear tu entidad "SuspensionCliente", guardar log, enviar notificación, etc.
+    await this.prisma.clienteInternet.update({
+      where: {
+        id: cliente.id,
+      },
+      data: {
+        estadoServicioMikrotik: 'SUSPENDIDO',
+      },
+    });
     return { ok: true, stdout };
   }
 
@@ -236,6 +246,16 @@ export class SshMikrotikConnectionService {
         `Error activando cliente en Mikrotik: ${stderr}`,
       );
     }
+
+    await this.prisma.clienteInternet.update({
+      where: {
+        id: cliente.id,
+      },
+      data: {
+        estadoServicioMikrotik: 'ACTIVO',
+      },
+    });
+
     return { ok: true, stdout };
   }
 }

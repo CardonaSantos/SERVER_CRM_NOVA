@@ -15,6 +15,7 @@ import {
   ClienteInternet,
   EstadoCliente,
   EstadoMedia,
+  EstadoServicioMikrotik,
   Prisma,
   StateFacturaInternet,
 } from '@prisma/client';
@@ -25,6 +26,7 @@ import { IdContratoService } from 'src/id-contrato/id-contrato.service';
 import { periodoFrom } from 'src/facturacion/Utils';
 import ExcelJS from 'exceljs';
 import { GetClientesRutaQueryDto } from './pagination/cliente-internet.dto';
+import { calcularEstadoServicioMikrotik } from './helper/mikrotik-estado.helper';
 // Extiende dayjs con los plugins
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -40,6 +42,15 @@ const formatearFecha = (fecha: string) => {
 };
 const ACCENT_FROM = 'ÁÀÂÄÃáàâäãÉÈÊËéèêëÍÌÎÏíìîïÓÒÔÖÕóòôöõÚÙÛÜúùûüÇçÑñÝŸýÿ';
 const ACCENT_TO = 'AAAAAaaaaaEEEEeeeeIIIIiiiiOOOOOoooooUUUUuuuuCcNnYYyy';
+
+const ESTADOS_MK_ACTIVOS: EstadoServicioMikrotik[] = [
+  EstadoServicioMikrotik.ACTIVO,
+  EstadoServicioMikrotik.PENDIENTE_APLICAR, // si quieres considerar este como "activo"
+];
+
+const esServicioMikrotikActivo = (
+  estado: EstadoServicioMikrotik | null | undefined,
+) => !!estado && ESTADOS_MK_ACTIVOS.includes(estado);
 
 @Injectable()
 export class ClienteInternetService {
@@ -608,6 +619,14 @@ export class ClienteInternetService {
         contactoReferenciaTelefono:
           clienteInternetWithRelations.contactoReferenciaTelefono,
         estadoCliente: clienteInternetWithRelations.estadoCliente,
+
+        estadoServicioMikrotik:
+          clienteInternetWithRelations.estadoServicioMikrotik,
+
+        servicioEstado: esServicioMikrotikActivo(
+          clienteInternetWithRelations.estadoServicioMikrotik,
+        ),
+
         contrasenaWifi: clienteInternetWithRelations.contrasenaWifi,
         ssidRouter: clienteInternetWithRelations.ssidRouter,
         fechaInstalacion: clienteInternetWithRelations.fechaInstalacion,
@@ -1735,6 +1754,13 @@ export class ClienteInternetService {
         },
       });
 
+      await this.syncEstadoServicioMikrotik({
+        tx: prisma,
+        clienteId: id,
+        estadoCliente: updatedCliente.estadoCliente,
+        mikrotikRouterId: updatedCliente.mikrotikRouterId,
+      });
+
       // Actualizar contrato si existe
       if (idContrato) {
         await prisma.contratoFisico.update({
@@ -1756,6 +1782,63 @@ export class ClienteInternetService {
     });
 
     return result;
+  }
+
+  /**
+   * Sincroniza el estadoServicioMikrotik de un cliente en base a:
+   * - su estadoCliente
+   * - si tiene Mikrotik asignado o no
+   *
+   * Puede usar una transacción (tx) o el prisma global.
+   * Permite pasar overrides ya conocidos (estadoCliente, mikrotikRouterId) para evitar un SELECT extra.
+   */
+  async syncEstadoServicioMikrotik(opts: {
+    tx?: Prisma.TransactionClient;
+    clienteId: number;
+    estadoCliente?: EstadoCliente;
+    mikrotikRouterId?: number | null;
+  }) {
+    const { tx, clienteId } = opts;
+    const prisma = tx ?? this.prisma;
+
+    let { estadoCliente, mikrotikRouterId } = opts;
+
+    let estadoServicioActual: EstadoServicioMikrotik | null = null;
+
+    if (estadoCliente === undefined || mikrotikRouterId === undefined) {
+      const clienteDb = await prisma.clienteInternet.findUnique({
+        where: { id: clienteId },
+        select: {
+          estadoCliente: true,
+          mikrotikRouterId: true,
+          estadoServicioMikrotik: true,
+        },
+      });
+
+      if (!clienteDb) {
+        throw new Error('Cliente no encontrado al sincronizar estado Mikrotik');
+      }
+
+      estadoCliente ??= clienteDb.estadoCliente;
+      mikrotikRouterId ??= clienteDb.mikrotikRouterId;
+      estadoServicioActual = clienteDb.estadoServicioMikrotik;
+    }
+
+    const nuevoEstado = calcularEstadoServicioMikrotik({
+      estadoCliente: estadoCliente!,
+      mikrotikRouterId: mikrotikRouterId ?? null,
+    });
+
+    if (estadoServicioActual !== null && estadoServicioActual === nuevoEstado) {
+      return;
+    }
+
+    await prisma.clienteInternet.update({
+      where: { id: clienteId },
+      data: {
+        estadoServicioMikrotik: nuevoEstado,
+      },
+    });
   }
 
   async getCustomerWithMedia(clienteId: number) {

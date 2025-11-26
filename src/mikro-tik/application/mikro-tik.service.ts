@@ -3,7 +3,6 @@ import { CreateMikroTikDto } from '../dto/create-mikro-tik.dto';
 import { UpdateMikroTikDto } from '../dto/update-mikro-tik.dto';
 import { MikrotikRouterRepository } from '../domain/mikrotik-repository';
 import { MikrotikRouter } from '../domain/mikrotik-entity';
-import { throwFatalError } from 'src/Utils/CommonFatalError';
 
 @Injectable()
 export class MikroTikService {
@@ -38,7 +37,7 @@ export class MikroTikService {
     return this.mikrotikService.deleteById(id);
   }
   // PATCH
-  async update(id: number, dto: UpdateMikroTikDto) {
-    return this.mikrotikService.update(id, dto);
+  async update(dto: UpdateMikroTikDto) {
+    return this.mikrotikService.update(dto);
   }
 }

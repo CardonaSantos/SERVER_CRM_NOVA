@@ -8,7 +8,6 @@ import {
   Delete,
 } from '@nestjs/common';
 import { SuspendCustomerDto } from '../dto/create-ssh-mikrotik-connection.dto';
-import { UpdateSshMikrotikConnectionDto } from '../dto/update-ssh-mikrotik-connection.dto';
 import { SshMikrotikConnectionService } from '../application/ssh-mikrotik-connection.service';
 import { ActivateCustomerDto } from '../dto/activate-ssh-mikrotik.dto';
 

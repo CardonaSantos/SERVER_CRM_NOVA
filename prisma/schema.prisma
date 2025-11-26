@@ -8,7 +8,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL_CRM")
+  // url      = env("DATABASE_URL_CRM")
 }
 
 /// ======================================================================
@@ -350,6 +350,8 @@ model ClienteInternet {
   //Optico
   mikrotikRouterId           Int?
   MikrotikRouter             MikrotikRouter?           @relation(fields: [mikrotikRouterId], references: [id])
+  estadoServicioMikrotik     EstadoServicioMikrotik @default(SIN_MIKROTIK)
+
   // Metadatos
   creadoEn                   DateTime                  @default(now())
   actualizadoEn              DateTime                  @updatedAt
@@ -382,6 +384,7 @@ model ClienteInternet {
   ruta                       Ruta[]                    @relation("ClienteInternetToRuta")
   eliminadoPorId             Int?
   eliminadoPor               Usuario?                  @relation("ClienteEliminadoPor", fields: [eliminadoPorId], references: [id], onDelete: SetNull)
+  
 }
 
 model IP {
@@ -1266,4 +1269,12 @@ enum CategoriaMedia {
   CLIENTE_INSTALACION
   SOPORTE_TICKET
   OTRO
+}
+
+enum EstadoServicioMikrotik {
+  SIN_MIKROTIK
+  ACTIVO
+  SUSPENDIDO
+  PENDIENTE_APLICAR
+  ERROR
 }

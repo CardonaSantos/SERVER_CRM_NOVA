@@ -120,10 +120,7 @@ export class MikrotikRouterPrisma extends MikrotikRouterRepository {
     }
   }
 
-  async update(
-    id: number,
-    dto: CreateMikroTikDto,
-  ): Promise<MikrotikRouter | null> {
+  async update(dto: CreateMikroTikDto): Promise<MikrotikRouter | null> {
     try {
       const data: any = { ...dto };
 
@@ -132,12 +129,14 @@ export class MikrotikRouterPrisma extends MikrotikRouterRepository {
       }
 
       const recordUpdated = await this.prisma.mikrotikRouter.update({
-        where: { id },
+        where: {
+          id: dto.id,
+        },
         data,
       });
 
       if (!recordUpdated) {
-        throw new NotFoundException(`Mikrotik con id ${id} no encontrado`);
+        throw new NotFoundException(`Mikrotik con id ${dto.id} no encontrado`);
       }
 
       return this.mapPrismaToEntity(recordUpdated);

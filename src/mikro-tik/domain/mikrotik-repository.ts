@@ -1,4 +1,3 @@
-import { CreateMikroTikDto } from '../dto/create-mikro-tik.dto';
 import { UpdateMikroTikDto } from '../dto/update-mikro-tik.dto';
 import { MikrotikRouter } from './mikrotik-entity';
 
@@ -12,8 +11,5 @@ export abstract class MikrotikRouterRepository {
   abstract deleteById(id: number): Promise<MikrotikRouter | null>;
   abstract deleteAll(): Promise<number>;
   //PATCH
-  abstract update(
-    id: number,
-    dto: UpdateMikroTikDto,
-  ): Promise<MikrotikRouter | null>;
+  abstract update(dto: UpdateMikroTikDto): Promise<MikrotikRouter | null>;
 }

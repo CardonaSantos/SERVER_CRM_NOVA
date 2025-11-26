@@ -46,4 +46,8 @@ export class CreateMikroTikDto {
   @IsOptional()
   @IsInt()
   empresaId?: number;
+
+  @IsOptional()
+  @IsInt()
+  id: number;
 }
