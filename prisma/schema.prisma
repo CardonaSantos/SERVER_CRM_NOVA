@@ -8,8 +8,9 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  // url      = env("DATABASE_URL_CRM")
+  url      = env("DATABASE_URL_CRM")
 }
+// comentario nuevo
 
 /// ======================================================================
 /// ÍNDICE DE SECCIONES (BUSCAR POR TAG EN VS CODE)
