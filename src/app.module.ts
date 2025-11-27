@@ -41,6 +41,8 @@ import { SshMikrotikConnectionModule } from './ssh-mikrotik-connection/ssh-mikro
 import { OltModule } from './olt/olt.module';
 import { FireworksIaModule } from './fireworks-ia/fireworks-ia.module';
 import { WhatsappApiMetaModule } from './whatsapp-api-meta/whatsapp-api-meta.module';
+import { TwilioMensajesModule } from './twilio-mensajes/twilio-mensajes.module';
+import { OpenIaModule } from './open-ia/open-ia.module';
 
 @Module({
   imports: [
@@ -88,6 +90,8 @@ import { WhatsappApiMetaModule } from './whatsapp-api-meta/whatsapp-api-meta.mod
     OltModule,
     FireworksIaModule,
     WhatsappApiMetaModule,
+    TwilioMensajesModule,
+    OpenIaModule,
   ],
   controllers: [AppController],
   providers: [AppService],
