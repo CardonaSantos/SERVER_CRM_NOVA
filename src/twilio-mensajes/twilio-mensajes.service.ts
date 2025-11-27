@@ -16,7 +16,7 @@ export class TwilioMensajesService {
   private readonly logger = new Logger(TwilioMensajesService.name);
   constructor(
     private readonly prisma: PrismaService,
-    private readonly twilioService: TwilioService,
+    // private readonly twilioService: TwilioService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -61,41 +61,41 @@ export class TwilioMensajesService {
         `Iniciando campaña de promoción. Clientes a procesar: ${stats.totalClientes}`,
       );
 
-      for (const cliente of clientes) {
-        const destinos = formatearTelefonos([cliente.telefono]);
+      // for (const cliente of clientes) {
+      //   const destinos = formatearTelefonos([cliente.telefono]);
 
-        if (!destinos.length) {
-          stats.clientesSinTelefono++;
-          this.logger.debug(
-            `Cliente ${cliente.id} sin teléfonos válidos; se omite.`,
-          );
-          continue;
-        }
+      //   if (!destinos.length) {
+      //     stats.clientesSinTelefono++;
+      //     this.logger.debug(
+      //       `Cliente ${cliente.id} sin teléfonos válidos; se omite.`,
+      //     );
+      //     continue;
+      //   }
 
-        for (const numero of destinos) {
-          stats.totalDestinos++;
+      //   for (const numero of destinos) {
+      //     stats.totalDestinos++;
 
-          try {
-            await this.twilioService.sendWhatsAppTemplate(
-              numero,
-              TEMPLATE_SID,
-              {},
-            );
+      //     try {
+      //       await this.twilioService.sendWhatsAppTemplate(
+      //         numero,
+      //         TEMPLATE_SID,
+      //         {},
+      //       );
 
-            stats.enviadosOk++;
-            this.logger.log(
-              `📨 Promoción enviada a ${numero} (cliente ${cliente.id})`,
-            );
-          } catch (err) {
-            stats.enviadosFallidos++;
-            this.logger.warn(
-              `❌ Error enviando promo a ${numero} (cliente ${cliente.id}): ${
-                (err as any)?.message ?? err
-              }`,
-            );
-          }
-        }
-      }
+      //       stats.enviadosOk++;
+      //       this.logger.log(
+      //         `📨 Promoción enviada a ${numero} (cliente ${cliente.id})`,
+      //       );
+      //     } catch (err) {
+      //       stats.enviadosFallidos++;
+      //       this.logger.warn(
+      //         `❌ Error enviando promo a ${numero} (cliente ${cliente.id}): ${
+      //           (err as any)?.message ?? err
+      //         }`,
+      //       );
+      //     }
+      //   }
+      // }
 
       this.logger.log(
         `Campaña finalizada. Clientes: ${stats.totalClientes}, destinos: ${stats.totalDestinos}, OK: ${stats.enviadosOk}, Fallidos: ${stats.enviadosFallidos}, Sin teléfono: ${stats.clientesSinTelefono}`,
