@@ -30,6 +30,7 @@ import { FacturaEliminacionService } from 'src/factura-eliminacion/factura-elimi
 import { RegistrarPagoFromBanruralDto } from './dto/pago-from-banrural.dto';
 import { calculateEstadoCliente } from './functions/functions';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
+import { WebSocketServices } from 'src/web-sockets/websocket.service';
 
 // Extiende dayjs con los plugins
 dayjs.extend(utc);
@@ -70,6 +71,7 @@ export class FacturacionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly facturaEliminiacion: FacturaEliminacionService,
+    private readonly ws: WebSocketServices,
   ) {}
   async create(createFacturacionDto: CreateFacturacionDto) {}
 
@@ -614,6 +616,8 @@ export class FacturacionService {
         }),
       );
 
+      await this.ws.sendFacturacionEvent(factura.empresaId);
+
       return newPayment;
     });
   }
@@ -1069,6 +1073,7 @@ export class FacturacionService {
 
       // Si la transacción es exitosa, mostramos el resultado
       this.logger.debug('La factura creada es: ', result);
+      this.ws.sendFacturacionEvent(result.empresaId);
     } catch (err) {
       if (
         err instanceof Prisma.PrismaClientKnownRequestError &&
@@ -1222,6 +1227,7 @@ export class FacturacionService {
 
       console.log('el nuevo saldo es: ', newSaldo);
 
+      await this.ws.sendFacturacionEvent(cliente.empresaId);
       return facturas;
     } catch (err) {
       if (
@@ -1691,6 +1697,8 @@ export class FacturacionService {
       where: { id: facturaToDelete.clienteId },
       data: { estadoCliente: estadoCliente },
     });
+
+    await this.ws.sendFacturacionEvent(facturaToDelete.empresaId);
 
     return `Factura ${facturaId} eliminada y estado de cliente actualizado.`;
   }

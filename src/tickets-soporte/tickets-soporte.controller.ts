@@ -48,17 +48,16 @@ export class TicketsSoporteController {
     return this.ticketsSoporteService.update(id, updateTicketsSoporteDto);
   }
 
-  /**
-   * PATCH /tickets-soporte/update-status-ticket/:id
-   * Body: { estado: EstadoTicketSoporte }
-   */
-  @Patch('update-status-ticket/:id')
-  @HttpCode(HttpStatus.OK)
-  async updateStatus(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateTicketStatusDto,
-  ) {
-    return this.ticketsSoporteService.updateStatus(id, dto);
+  // tickets-soporte.controller.ts
+
+  @Patch('update-ticket-proceso/:id')
+  async updateTicketProceso(@Param('id', ParseIntPipe) id: number) {
+    return this.ticketsSoporteService.updateStatusEnProceso(id);
+  }
+
+  @Patch('update-ticket-revision/:id')
+  async updateTicketRevision(@Param('id', ParseIntPipe) id: number) {
+    return this.ticketsSoporteService.updateStatusEnRevision(id);
   }
 
   @Patch('/close-ticket-soporte/:id')

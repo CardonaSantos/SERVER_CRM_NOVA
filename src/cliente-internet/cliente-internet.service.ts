@@ -27,6 +27,7 @@ import { periodoFrom } from 'src/facturacion/Utils';
 import ExcelJS from 'exceljs';
 import { GetClientesRutaQueryDto } from './pagination/cliente-internet.dto';
 import { calcularEstadoServicioMikrotik } from './helper/mikrotik-estado.helper';
+import { TZ } from 'src/Utils/tzgt';
 // Extiende dayjs con los plugins
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -1685,6 +1686,10 @@ export class ClienteInternetService {
         });
       }
 
+      const desinstalado: Date | null =
+        updateCustomerService.estado === 'DESINSTALADO'
+          ? dayjs().tz(TZ).toDate()
+          : null;
       // Actualizar cliente
       const updatedCliente = await prisma.clienteInternet.update({
         where: { id: id },
@@ -1706,6 +1711,7 @@ export class ClienteInternetService {
           ssidRouter: updateCustomerService.ssidRouter,
           fechaInstalacion: updateCustomerService.fechaInstalacion || null,
           estadoCliente: updateCustomerService.estado || 'ACTIVO',
+          desinstaladoEn: desinstalado,
           // Relaciones
           servicioInternet: servicioWifiId
             ? { connect: { id: servicioWifiId } }

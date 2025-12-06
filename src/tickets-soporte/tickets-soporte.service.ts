@@ -11,6 +11,7 @@ import { CloseTicketDto } from './dto/CloseTicketDto .dto';
 import { GenerarMensajeSoporteService } from './generar-mensaje-soporte/generar-mensaje-soporte.service';
 import { MetasTicketsService } from 'src/metas-tickets/metas-tickets.service';
 import { UpdateTicketStatusDto } from './dto/updateStatus';
+import { WebSocketServices } from 'src/web-sockets/websocket.service';
 
 @Injectable()
 export class TicketsSoporteService {
@@ -19,6 +20,7 @@ export class TicketsSoporteService {
     private readonly prisma: PrismaService,
     private readonly twilioMessageSuport: GenerarMensajeSoporteService,
     private readonly metasTicketSoporte: MetasTicketsService,
+    private readonly ws: WebSocketServices,
   ) {}
   //Crear ticket soporte
   async create(createTicketsSoporteDto: CreateTicketsSoporteDto) {
@@ -514,30 +516,58 @@ export class TicketsSoporteService {
     }
   }
 
-  /**
-   * Actualiza el campo `estado` de un ticket de soporte.
-   */
-  async updateStatus(
-    ticketId: number,
-    dto: UpdateTicketStatusDto,
-  ): Promise<{ id: number; estado: string }> {
-    // Verificar que existe el ticket
-    console.log('la data llegnaod es', ticketId, dto);
+  // tickets-soporte.service.ts
 
+  async updateStatusEnProceso(
+    ticketId: number,
+  ): Promise<{ id: number; estado: string }> {
     const existing = await this.prisma.ticketSoporte.findUnique({
       where: { id: ticketId },
-      select: { id: true },
+      select: { id: true, empresaId: true },
     });
     if (!existing) {
       throw new NotFoundException(`Ticket con id ${ticketId} no encontrado`);
     }
 
-    // Actualizar el estado
     const updated = await this.prisma.ticketSoporte.update({
       where: { id: ticketId },
-      data: { estado: dto.estado },
+      data: { estado: 'EN_PROCESO' },
       select: { id: true, estado: true },
     });
+
+    const dtoWs = {
+      empresaId: existing.empresaId,
+      ticketId,
+      nuevoEstado: updated.estado,
+    };
+    await this.ws.sendTicketSuportChangeStatus(dtoWs);
+
+    return updated;
+  }
+
+  async updateStatusEnRevision(
+    ticketId: number,
+  ): Promise<{ id: number; estado: string }> {
+    const existing = await this.prisma.ticketSoporte.findUnique({
+      where: { id: ticketId },
+      select: { id: true, empresaId: true },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Ticket con id ${ticketId} no encontrado`);
+    }
+
+    const updated = await this.prisma.ticketSoporte.update({
+      where: { id: ticketId },
+      data: { estado: 'PENDIENTE_REVISION' },
+      select: { id: true, estado: true },
+    });
+
+    const dtoWs = {
+      empresaId: existing.empresaId,
+      ticketId,
+      nuevoEstado: updated.estado,
+    };
+    await this.ws.sendTicketSuportChangeStatus(dtoWs);
 
     return updated;
   }

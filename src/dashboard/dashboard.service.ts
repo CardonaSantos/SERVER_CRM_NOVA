@@ -1,8 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import * as dayjs from 'dayjs';
 import * as utc from 'dayjs/plugin/utc';
 import * as timezone from 'dayjs/plugin/timezone';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { throwFatalError } from 'src/Utils/CommonFatalError';
+import { TZ } from 'src/Utils/tzgt';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 @Injectable()
@@ -80,18 +87,17 @@ export class DashboardService {
 
   async findTicketsAsignados(tecnicoId: number) {
     try {
-      console.log('El id del tecnico es: ', tecnicoId);
-
       const user = await this.prisma.usuario.findUnique({
-        where: {
-          id: tecnicoId,
-        },
+        where: { id: tecnicoId },
       });
-      console.log('El usuario encontrado es: ', user);
+
+      if (!user) {
+        throw new BadRequestException('Usuario no encontrado');
+      }
 
       const rawTickets = await this.prisma.ticketSoporte.findMany({
         orderBy: {
-          fechaApertura: 'asc',
+          fechaAsignacion: 'asc',
         },
         where: {
           AND: [
@@ -104,15 +110,16 @@ export class DashboardService {
                   'PENDIENTE_CLIENTE',
                   'PENDIENTE_TECNICO',
                   'NUEVO',
+                  'PENDIENTE_REVISION',
                 ],
               },
             },
             {
               OR: [
-                { tecnicoId: tecnicoId },
+                { tecnicoId },
                 {
                   asignaciones: {
-                    some: { tecnicoId: tecnicoId },
+                    some: { tecnicoId },
                   },
                 },
               ],
@@ -130,39 +137,135 @@ export class DashboardService {
             select: {
               id: true,
               nombre: true,
-              direccion: true,
               apellidos: true,
+              direccion: true,
               telefono: true,
               contactoReferenciaTelefono: true,
               ubicacion: { select: { latitud: true, longitud: true } },
+              medias: {
+                select: {
+                  id: true,
+                  cdnUrl: true,
+                  creadoEn: true,
+                  actualizadoEn: true,
+                  titulo: true,
+                  descripcion: true,
+                  notas: true,
+                },
+              },
             },
           },
         },
       });
-      console.log('Los tickets asignados a este usuario son: ', rawTickets);
 
-      return rawTickets
-        .sort((a, b) => +a.fechaApertura - +b.fechaApertura)
-        .map((t) => {
-          const loc = t.cliente.ubicacion; // puede ser null
-          return {
-            id: t.id,
-            title: t.titulo,
-            openedAt: t.fechaApertura,
-            status: t.estado,
-            priority: t.prioridad,
-            description: t.descripcion,
-            clientId: t.cliente.id,
-            clientName: `${t.cliente.nombre} ${t.cliente.apellidos}`,
-            clientPhone: t.cliente.telefono,
-            referenceContact: t.cliente.contactoReferenciaTelefono,
-            direction: t.cliente.direccion,
-            location: loc ? { lat: loc.latitud, lng: loc.longitud } : null, // o undefined si prefieres
-          };
-        });
+      const formattedTickets = rawTickets.map((t) => {
+        const loc = t.cliente.ubicacion;
+        const medias = (t.cliente.medias ?? []).map((media) => ({
+          id: media.id,
+          titulo: media.titulo,
+          descripcion: media.descripcion,
+          notas: media.notas,
+          creadoEn: media.creadoEn,
+          actualizadoEn: media.actualizadoEn,
+          cdnUrl: media.cdnUrl,
+        }));
+
+        return {
+          id: t.id,
+          titulo: t.titulo,
+          abiertoEn: t.fechaApertura,
+          estado: t.estado,
+          prioridad: t.prioridad,
+          descripcion: t.descripcion,
+          clientId: t.cliente.id,
+          clienteNombre:
+            `${t.cliente.nombre ?? ''} ${t.cliente.apellidos ?? ''}`.trim(),
+          clienteTel: t.cliente.telefono,
+          referenciaContacto: t.cliente.contactoReferenciaTelefono,
+          direccion: t.cliente.direccion,
+          ubicacionMaps: loc ? { lat: loc.latitud, lng: loc.longitud } : null,
+          medias,
+        };
+      });
+
+      return formattedTickets;
     } catch (error) {
-      console.log('El error es:');
-      return error;
+      console.error('Error en findTicketsAsignados:', error);
+      throwFatalError(error, this.logger, 'Dashboard -ticketAsignados');
+    }
+  }
+
+  async ticketDetailsAsignado(ticketId: number) {
+    try {
+      const rawTicket = await this.prisma.ticketSoporte.findUnique({
+        where: { id: ticketId },
+        select: {
+          id: true,
+          titulo: true,
+          fechaApertura: true,
+          estado: true,
+          prioridad: true,
+          descripcion: true,
+          cliente: {
+            select: {
+              id: true,
+              nombre: true,
+              apellidos: true,
+              direccion: true,
+              telefono: true,
+              contactoReferenciaTelefono: true,
+              ubicacion: { select: { latitud: true, longitud: true } },
+              medias: {
+                select: {
+                  id: true,
+                  cdnUrl: true,
+                  creadoEn: true,
+                  actualizadoEn: true,
+                  titulo: true,
+                  descripcion: true,
+                  notas: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!rawTicket) {
+        throw new NotFoundException(`Ticket con id ${ticketId} no encontrado`);
+      }
+
+      const loc = rawTicket.cliente.ubicacion;
+      const medias = (rawTicket.cliente.medias ?? []).map((media) => ({
+        id: media.id,
+        titulo: media.titulo,
+        descripcion: media.descripcion,
+        notas: media.notas,
+        creadoEn: media.creadoEn,
+        actualizadoEn: media.actualizadoEn,
+        cdnUrl: media.cdnUrl,
+      }));
+
+      // 👇 misma estructura que en findTicketsAsignados, pero para 1 ticket
+      return {
+        id: rawTicket.id,
+        titulo: rawTicket.titulo,
+        abiertoEn: rawTicket.fechaApertura,
+        estado: rawTicket.estado,
+        prioridad: rawTicket.prioridad,
+        descripcion: rawTicket.descripcion,
+        clientId: rawTicket.cliente.id,
+        clienteNombre:
+          `${rawTicket.cliente.nombre ?? ''} ${rawTicket.cliente.apellidos ?? ''}`.trim(),
+        clienteTel: rawTicket.cliente.telefono,
+        referenciaContacto: rawTicket.cliente.contactoReferenciaTelefono,
+        direccion: rawTicket.cliente.direccion,
+        ubicacionMaps: loc ? { lat: loc.latitud, lng: loc.longitud } : null,
+        medias,
+      };
+    } catch (error) {
+      console.error('Error en ticketDetailsAsignado:', error);
+      throwFatalError(error, this.logger, 'Dashboard - ticketDetailsAsignado');
     }
   }
 
@@ -254,7 +357,7 @@ export class DashboardService {
       this.prisma.facturaInternet.count(), // todas
       this.prisma.facturaInternet.count({
         // generadas este mes
-        where: { creadoEn: { gte: inicioMes } },
+        where: { creadoEn: { gte: inicioMes, lte: finMes } },
       }),
 
       // Facturas cobradas
@@ -265,7 +368,13 @@ export class DashboardService {
         },
       }),
       this.prisma.facturaInternet.count({
-        where: { estadoFacturaInternet: 'PAGADA' },
+        where: {
+          estadoFacturaInternet: 'PAGADA',
+          fechaPagada: {
+            gte: inicioMes,
+            lte: finMes,
+          },
+        },
       }),
 
       // Suma de lo cobrado este mes
@@ -351,11 +460,489 @@ export class DashboardService {
     };
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} dashboard`;
+  /**
+   * GET DE KPIS PARA DASHBOARD
+   */
+  async dashboardData() {
+    try {
+      const today = dayjs().tz(TZ);
+      const inicioMes = today.startOf('month').toDate();
+      const finMes = today.endOf('month').toDate();
+
+      // CLIENTES POR ESTADO
+      const [
+        enSistema,
+        alDia,
+        suspendidos,
+        desinstalados,
+        pendienteActivo,
+        morosos,
+      ] = await Promise.all([
+        this.prisma.clienteInternet.count(),
+        this.prisma.clienteInternet.count({
+          where: { estadoCliente: 'ACTIVO' },
+        }),
+        this.prisma.clienteInternet.count({
+          where: { estadoCliente: 'SUSPENDIDO' },
+        }),
+        this.prisma.clienteInternet.count({
+          where: { estadoCliente: 'DESINSTALADO' },
+        }),
+        this.prisma.clienteInternet.count({
+          where: { estadoCliente: 'PENDIENTE_ACTIVO' },
+        }),
+        this.prisma.clienteInternet.count({
+          where: { estadoCliente: 'MOROSO' },
+        }),
+      ]);
+
+      // FACTURACION
+      const [
+        fEmitidasMes,
+        fPagadasMes,
+        fTotalGeneradas,
+        fTotalPagadas,
+        fGeneradasSinPagar,
+      ] = await Promise.all([
+        this.prisma.facturaInternet.count({
+          where: {
+            creadoEn: {
+              gte: inicioMes,
+              lte: finMes,
+            },
+          },
+        }),
+
+        this.prisma.facturaInternet.count({
+          where: {
+            creadoEn: {
+              gte: inicioMes,
+              lte: finMes,
+            },
+            estadoFacturaInternet: 'PAGADA',
+          },
+        }),
+
+        this.prisma.facturaInternet.aggregate({
+          where: {
+            creadoEn: {
+              gte: inicioMes,
+              lte: finMes,
+            },
+          },
+          _sum: {
+            montoPago: true,
+          },
+        }),
+
+        this.prisma.facturaInternet.aggregate({
+          where: {
+            creadoEn: {
+              gte: inicioMes,
+              lte: finMes,
+            },
+            estadoFacturaInternet: 'PAGADA',
+          },
+          _sum: {
+            montoPago: true,
+          },
+        }),
+
+        this.prisma.facturaInternet.aggregate({
+          where: {
+            creadoEn: {
+              gte: inicioMes,
+              lte: finMes,
+            },
+            estadoFacturaInternet: 'PENDIENTE',
+          },
+          _sum: {
+            montoPago: true,
+          },
+        }),
+      ]);
+
+      const data = {
+        clientes: {
+          totalEnSistema: enSistema,
+          activos: alDia,
+          suspendidos,
+          desinstalados,
+          pendientesActivacion: pendienteActivo,
+          morosos,
+        },
+        facturacion: {
+          facturasEmitidasMes: fEmitidasMes,
+          facturasPagadasMes: fPagadasMes,
+          montoFacturadoMes: fTotalGeneradas._sum.montoPago ?? 0,
+          montoCobradoMes: fTotalPagadas._sum.montoPago ?? 0,
+          montoPendienteMes: fGeneradasSinPagar._sum.montoPago ?? 0,
+        },
+      };
+
+      return data;
+    } catch (error) {
+      throwFatalError(
+        error,
+        this.logger,
+        'Dashboard service -getDashboardData',
+      );
+    }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} dashboard`;
+  /**
+   * INSTALACIONES DEL MES vs DESINSTALACIONES
+   * @returns ChartSeries[]
+   */
+  async getDashboardInstalacionesChart() {
+    try {
+      const [instalaciones, desinstalaciones] = await Promise.all([
+        this.getInstalacionesChart(),
+        this.getDesInstalacionesChart(),
+      ]);
+
+      // Esto ahora sí es ChartDataLineNivo (ChartSeries[])
+      return [instalaciones, desinstalaciones];
+    } catch (error) {
+      throwFatalError(
+        error,
+        this.logger,
+        'Dashboard service -getDashboardData',
+      );
+    }
+  }
+
+  /**
+   * DESINSTALACIONES DEL MES
+   * @returns ChartSeries
+   */
+  async getDesInstalacionesChart() {
+    try {
+      const today = dayjs().tz(TZ);
+      const inicioMes = today.startOf('month').toDate();
+      const finMes = today.endOf('month').toDate();
+
+      const desinstalacionesMes = await this.prisma.clienteInternet.findMany({
+        where: {
+          estadoCliente: 'DESINSTALADO',
+          desinstaladoEn: {
+            gte: inicioMes,
+            lte: finMes,
+          },
+        },
+        select: {
+          desinstaladoEn: true,
+        },
+      });
+
+      const countsMap = desinstalacionesMes.reduce(
+        (acc, item) => {
+          const fechaKey = dayjs(item.desinstaladoEn)
+            .tz(TZ)
+            .format('YYYY-MM-DD');
+          acc[fechaKey] = (acc[fechaKey] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+
+      const chartData = Object.entries(countsMap)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([dateIso, count]) => ({
+          x: dayjs(dateIso).format('DD/MM'),
+          y: count,
+        }));
+
+      return {
+        id: 'Desinstalaciones',
+        data: chartData,
+      };
+    } catch (error) {
+      throwFatalError(
+        error,
+        this.logger,
+        'Dashboard service -desinstalacionesMes',
+      );
+    }
+  }
+
+  /**
+   * INSTALACIONES DEL MES
+   * @returns ChartSeries
+   */
+  async getInstalacionesChart() {
+    try {
+      const today = dayjs().tz(TZ);
+      const inicioMes = today.startOf('month').toDate();
+      const finMes = today.endOf('month').toDate();
+
+      const instalacionesMes = await this.prisma.clienteInternet.findMany({
+        where: {
+          creadoEn: {
+            gte: inicioMes,
+            lte: finMes,
+          },
+        },
+        select: {
+          creadoEn: true,
+        },
+      });
+
+      const countsMap = instalacionesMes.reduce(
+        (acc, item) => {
+          const fechaKey = dayjs(item.creadoEn).tz(TZ).format('YYYY-MM-DD');
+          acc[fechaKey] = (acc[fechaKey] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+
+      const chartData = Object.entries(countsMap)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([dateIso, count]) => ({
+          x: dayjs(dateIso).format('DD/MM'),
+          y: count,
+        }));
+
+      return {
+        id: 'Instalaciones',
+        data: chartData,
+      };
+    } catch (error) {
+      throwFatalError(
+        error,
+        this.logger,
+        'Dashboard service -getDashboardData',
+      );
+    }
+  }
+
+  /**
+   * HISTÓRICO DE INSTALACIONES POR MES (AÑO ACTUAL)
+   * Formato para Nivo Bar:
+   *   { label: '2025-01', instalaciones: 10 }
+   */
+  async getDashboardInstalacionesHistoricasChart() {
+    try {
+      type InstalacionesHistoricasBarPoint = {
+        label: string; // ej: "2025-01"
+        instalaciones: number;
+      };
+
+      const today = dayjs().tz(TZ);
+      const inicioAnio = today.startOf('year').toDate();
+      const finAnio = today.endOf('year').toDate();
+
+      const instalacionesAnio = await this.prisma.clienteInternet.findMany({
+        where: {
+          creadoEn: {
+            gte: inicioAnio,
+            lte: finAnio,
+          },
+        },
+        select: {
+          creadoEn: true,
+        },
+      });
+
+      const countsMap = instalacionesAnio.reduce(
+        (acc, item) => {
+          const fechaKey = dayjs(item.creadoEn).tz(TZ).format('YYYY-MM');
+          acc[fechaKey] = (acc[fechaKey] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+
+      const chartData: InstalacionesHistoricasBarPoint[] = Object.entries(
+        countsMap,
+      )
+        .sort(([a], [b]) => a.localeCompare(b)) // orden cronológico por YYYY-MM
+        .map(([yearMonth, count]) => ({
+          label: yearMonth, // ej: "2025-01"
+          instalaciones: count, // ej: 12
+        }));
+
+      return chartData;
+    } catch (error) {
+      throwFatalError(
+        error,
+        this.logger,
+        'Dashboard service -getDashboardInstalacionesHistoricasChart',
+      );
+    }
+  }
+
+  /**
+   * RETORNO DE DATOS SIN
+   * @returns
+   */
+  async getDashboardTicketProceso() {
+    try {
+      const ticketsProceso = await this.prisma.ticketSoporte.findMany({
+        orderBy: {
+          actualizadoEn: 'desc',
+        },
+        where: {
+          estado: 'EN_PROCESO',
+        },
+        select: {
+          id: true,
+          titulo: true,
+          cliente: {
+            select: {
+              id: true,
+              nombre: true,
+            },
+          },
+          tecnico: {
+            select: {
+              id: true,
+              nombre: true,
+            },
+          },
+          asignaciones: {
+            select: {
+              tecnico: {
+                select: {
+                  id: true,
+                  nombre: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const ticketDisponibles = await this.prisma.ticketSoporte.count({
+        where: {
+          estado: {
+            notIn: ['RESUELTA'],
+          },
+        },
+      });
+
+      // En tu getDashboardTicketProceso dentro del map:
+
+      const formatted = ticketsProceso.map((t) => {
+        const ticket = {
+          id: t.id,
+          titulo: t.titulo,
+          cliente: t.cliente.nombre,
+          tecnico: t.tecnico ? t.tecnico.nombre : null,
+          acompanantes: t.asignaciones.map((a) => a.tecnico.nombre),
+        };
+
+        return ticket;
+      });
+
+      const objt = {
+        tickets: formatted,
+        ticketsMetricas: {
+          enLinea: ticketDisponibles ?? 0,
+        },
+      };
+
+      return objt;
+    } catch (error) {
+      throwFatalError(
+        error,
+        this.logger,
+        'Dashboard service -getDashboardTicketProceso',
+      );
+    }
+  }
+
+  /**
+   * MOROSOS Y RUTAS COBRO
+   */
+  async getTopMorososDashboard() {
+    try {
+      const topMorososRaw = await this.prisma.facturaInternet.groupBy({
+        by: ['clienteId'],
+        where: {
+          estadoFacturaInternet: {
+            in: ['PENDIENTE', 'VENCIDA', 'PARCIAL'],
+          },
+        },
+        _count: {
+          id: true,
+        },
+        orderBy: {
+          _count: {
+            id: 'desc',
+          },
+        },
+        take: 10,
+      });
+
+      const clientes = await this.prisma.clienteInternet.findMany({
+        where: {
+          id: {
+            in: topMorososRaw.map((f) => f.clienteId),
+          },
+        },
+        select: {
+          id: true,
+          nombre: true,
+          apellidos: true,
+        },
+      });
+
+      const formatted = topMorososRaw.map((c) => {
+        const cliente = clientes.find((cliente) => c.clienteId == cliente.id);
+        return {
+          id: cliente.id,
+          nombre: `${cliente.nombre ?? ''} ${cliente.apellidos ?? ''}`,
+          cantidad: c._count.id,
+        };
+      });
+
+      const rutasActualesAbiertas = await this.prisma.ruta.findMany({
+        where: {
+          estadoRuta: {
+            in: ['ACTIVO', 'ASIGNADA', 'EN_CURSO'],
+          },
+        },
+        orderBy: {
+          actualizadoEn: 'desc',
+        },
+        take: 10,
+        select: {
+          id: true,
+          nombreRuta: true,
+          cobrador: {
+            select: {
+              id: true,
+              nombre: true,
+            },
+          },
+          clientes: {
+            select: {
+              id: true,
+            },
+          },
+        },
+      });
+
+      const rutasFormatted = rutasActualesAbiertas.map((r) => {
+        return {
+          nombreRuta: r.nombreRuta,
+          cobrador: r.cobrador.nombre,
+          totalClientes: r.clientes.length,
+        };
+      });
+
+      return {
+        rutasActiva: rutasFormatted,
+        morosoTop: formatted,
+      };
+    } catch (error) {
+      throwFatalError(
+        error,
+        this.logger,
+        'Dashboard service -getDashboardTicketProceso',
+      );
+    }
   }
 }

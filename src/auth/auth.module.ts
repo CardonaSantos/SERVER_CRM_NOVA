@@ -24,5 +24,6 @@ import { JwtStrategy } from './JwtGuard/JwtStrategy';
       inject: [ConfigService], // Inyecta el ConfigService para acceder a las variables de entorno
     }),
   ],
+  exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

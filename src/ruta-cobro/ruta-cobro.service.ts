@@ -16,6 +16,7 @@ import * as dayjs from 'dayjs';
 import * as utc from 'dayjs/plugin/utc';
 import * as timezone from 'dayjs/plugin/timezone';
 import * as ExcelJS from 'exceljs';
+import { WebSocketServices } from 'src/web-sockets/websocket.service';
 // Extiende dayjs con los plugins
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -38,7 +39,10 @@ function makeSheetName(name: string, fallback = 'Ruta'): string {
 export class RutaCobroService {
   private readonly logger = new Logger(RutaCobroService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly ws: WebSocketServices,
+  ) {}
 
   async create(createRutaCobroDto: CreateNewRutaDto) {
     const {
@@ -50,15 +54,21 @@ export class RutaCobroService {
       asignadoPor,
     } = createRutaCobroDto;
 
-    if (facturas.length <= 0) {
+    if (!facturas || facturas.length <= 0) {
       throw new BadRequestException('Facturas seleccionadas no válidas');
     }
 
-    return await this.prisma.$transaction(async (tx) => {
+    const newRuta = await this.prisma.$transaction(async (tx) => {
       const facturasFound = await tx.facturaInternet.findMany({
         where: { id: { in: facturas } },
         select: { id: true, clienteId: true },
       });
+
+      if (facturasFound.length !== facturas.length) {
+        throw new BadRequestException(
+          'Algunas facturas seleccionadas no existen',
+        );
+      }
 
       const newRuta = await tx.ruta.create({
         data: {
@@ -71,7 +81,6 @@ export class RutaCobroService {
         },
       });
 
-      // Vincular facturas
       await Promise.all(
         facturasFound.map((f) =>
           tx.facturaRuta.create({
@@ -84,7 +93,6 @@ export class RutaCobroService {
         ),
       );
 
-      // Vincular clientes únicos
       const clientesIds = [...new Set(facturasFound.map((f) => f.clienteId))];
       if (clientesIds.length > 0) {
         await tx.ruta.update({
@@ -97,6 +105,15 @@ export class RutaCobroService {
 
       return newRuta;
     });
+
+    const dtoEvent = {
+      empresaId,
+      rutaId: newRuta.id,
+    };
+
+    this.ws.sendRutaCobroEvent(dtoEvent);
+
+    return newRuta;
   }
 
   async updateOneRutaCobro(id: number, updateRuta: UpdateRutaDto) {
@@ -142,6 +159,11 @@ export class RutaCobroService {
           },
         },
       });
+      const dtoEvent = {
+        empresaId,
+        rutaId: id,
+      };
+      this.ws.sendRutaCobroEvent(dtoEvent);
 
       return rutaActualizada;
     });
@@ -528,6 +550,12 @@ export class RutaCobroService {
         throw new NotFoundException('Error al encontrar ruta de eliminación');
       }
 
+      const dtoEvent = {
+        empresaId: rutaToDelete.empresaId,
+        rutaId: rutaId,
+      };
+      this.ws.sendRutaCobroEvent(dtoEvent);
+
       return await this.prisma.ruta.delete({
         where: {
           id: rutaToDelete.id,
@@ -566,6 +594,13 @@ export class RutaCobroService {
           estadoRuta: 'CERRADO',
         },
       });
+
+      const dtoEvent = {
+        empresaId: rutaToClose.empresaId,
+        rutaId: rutaToClose.id,
+      };
+
+      this.ws.sendRutaCobroEvent(dtoEvent);
 
       return rutaclosed;
     } catch (error) {

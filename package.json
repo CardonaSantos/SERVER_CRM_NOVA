@@ -36,7 +36,9 @@
     "@nestjs/mapped-types": "*",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^10.4.20",
+    "@nestjs/platform-socket.io": "^10.4.20",
     "@nestjs/schedule": "^4.1.1",
+    "@nestjs/websockets": "^10.4.20",
     "@prisma/client": "^6.18.0",
     "bcryptjs": "^3.0.2",
     "class-transformer": "^0.5.1",
@@ -52,6 +54,7 @@
     "reflect-metadata": "^0.2.0",
     "routeros-client": "^1.1.1",
     "rxjs": "^7.8.2",
+    "socket.io": "^4.8.1",
     "twilio": "^5.5.1",
     "uuid": "^11.1.0"
   },

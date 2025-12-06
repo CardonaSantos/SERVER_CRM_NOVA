@@ -8,7 +8,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL_CRM")
+  // url      = env("DATABASE_URL_CRM")
 }
 // comentario nuevo
 
@@ -356,6 +356,8 @@ model ClienteInternet {
   // Metadatos
   creadoEn                   DateTime                  @default(now())
   actualizadoEn              DateTime                  @updatedAt
+  desinstaladoEn             DateTime?
+
   // Relaciones principales
   empresa                    Empresa?                  @relation(fields: [empresaId], references: [id])
   asesor                     Usuario?                  @relation(fields: [asesorId], references: [id])
@@ -757,6 +759,9 @@ model TicketSoporte {
   fechaInicioAtencion    DateTime?
   fechaResolucionTecnico DateTime?
   // FIJAR
+  creadoEn     DateTime? @default(now())
+  actualizadoEn DateTime @updatedAt @default(now())
+
   fijado                 Boolean                @default(false)
   // --- NUEVO: resumen / responsable cierre ---
   resumen                TicketResumen?         @relation("TicketResumenTicket")

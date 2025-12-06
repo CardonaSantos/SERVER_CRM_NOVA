@@ -43,6 +43,7 @@ import { FireworksIaModule } from './fireworks-ia/fireworks-ia.module';
 import { WhatsappApiMetaModule } from './whatsapp-api-meta/whatsapp-api-meta.module';
 import { TwilioMensajesModule } from './twilio-mensajes/twilio-mensajes.module';
 import { OpenIaModule } from './open-ia/open-ia.module';
+import { GatewayModule } from './web-sockets/websocket.module';
 
 @Module({
   imports: [
@@ -92,6 +93,7 @@ import { OpenIaModule } from './open-ia/open-ia.module';
     WhatsappApiMetaModule,
     TwilioMensajesModule,
     OpenIaModule,
+    GatewayModule,
   ],
   controllers: [AppController],
   providers: [AppService],
