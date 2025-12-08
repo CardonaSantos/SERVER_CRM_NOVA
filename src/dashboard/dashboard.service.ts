@@ -215,6 +215,26 @@ export class DashboardService {
               telefono: true,
               contactoReferenciaTelefono: true,
               ubicacion: { select: { latitud: true, longitud: true } },
+              sector: {
+                select: {
+                  id: true,
+                  nombre: true,
+                },
+              },
+              municipio: {
+                select: {
+                  id: true,
+                  nombre: true,
+                },
+              },
+              departamento: {
+                select: {
+                  id: true,
+                  nombre: true,
+                },
+              },
+              observaciones: true,
+
               medias: {
                 select: {
                   id: true,
@@ -259,7 +279,12 @@ export class DashboardService {
           `${rawTicket.cliente.nombre ?? ''} ${rawTicket.cliente.apellidos ?? ''}`.trim(),
         clienteTel: rawTicket.cliente.telefono,
         referenciaContacto: rawTicket.cliente.contactoReferenciaTelefono,
-        direccion: rawTicket.cliente.direccion,
+        direccion: {
+          direccion: rawTicket.cliente.direccion ?? 'N/A',
+          sector: rawTicket.cliente.sector.nombre ?? 'N/A',
+          municipio: rawTicket.cliente.municipio.nombre ?? 'N/A',
+        },
+        observaciones: rawTicket.cliente.observaciones ?? 'N/A',
         ubicacionMaps: loc ? { lat: loc.latitud, lng: loc.longitud } : null,
         medias,
       };
