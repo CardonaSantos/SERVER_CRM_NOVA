@@ -1,20 +1,12 @@
 import { IsArray, IsInt, IsString } from 'class-validator';
 
+// create-new-ruta.dto.ts (ejemplo)
 export class CreateNewRutaDto {
-  @IsString()
-  nombreRuta: string;
-  @IsInt()
-  cobradorId: number;
-  @IsInt()
   empresaId: number;
-  @IsArray()
-  clientes?: number[];
-  @IsString()
-  observaciones: string;
+  nombreRuta: string;
+  observaciones?: string;
+  cobradorId?: number; // puede ser opcional
+  asignadoPor: number; // si lo sigues enviando desde el front
 
-  @IsArray()
-  facturas?: [];
-
-  @IsInt()
-  asignadoPor: number;
+  clientesIds: number[]; // 👈 ahora esto es lo importante
 }

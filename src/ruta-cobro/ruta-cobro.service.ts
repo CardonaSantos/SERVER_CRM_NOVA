@@ -50,60 +50,54 @@ export class RutaCobroService {
       empresaId,
       nombreRuta,
       observaciones,
-      facturas,
-      asignadoPor,
+      clientesIds,
+      asignadoPor, // si tienes campo en la tabla ruta, lo usamos, si no, puedes ignorarlo
     } = createRutaCobroDto;
 
-    if (!facturas || facturas.length <= 0) {
-      throw new BadRequestException('Facturas seleccionadas no válidas');
+    if (!clientesIds || clientesIds.length <= 0) {
+      throw new BadRequestException('Clientes seleccionados no válidos');
     }
 
     const newRuta = await this.prisma.$transaction(async (tx) => {
-      const facturasFound = await tx.facturaInternet.findMany({
-        where: { id: { in: facturas } },
-        select: { id: true, clienteId: true },
+      // 1) Verificar que los clientes existan (y opcionalmente que pertenezcan a la empresa)
+      const clientesFound = await tx.clienteInternet.findMany({
+        where: {
+          id: { in: clientesIds },
+        },
+        select: { id: true },
       });
 
-      if (facturasFound.length !== facturas.length) {
+      if (clientesFound.length !== clientesIds.length) {
         throw new BadRequestException(
-          'Algunas facturas seleccionadas no existen',
+          'Algunos clientes seleccionados no existen o no pertenecen a la empresa',
         );
       }
 
-      const newRuta = await tx.ruta.create({
+      // 2) Crear la ruta
+      const ruta = await tx.ruta.create({
         data: {
           estadoRuta: 'ASIGNADA',
           montoCobrado: 0,
           observaciones,
           nombreRuta,
-          cobrador: { connect: { id: cobradorId } },
           empresa: { connect: { id: empresaId } },
+          ...(cobradorId && { cobrador: { connect: { id: cobradorId } } }),
+          // si tu modelo ruta tiene un campo asignadaPorId o similar:
+          // asignadaPor: { connect: { id: asignadoPor } },
         },
       });
 
-      await Promise.all(
-        facturasFound.map((f) =>
-          tx.facturaRuta.create({
-            data: {
-              ruta: { connect: { id: newRuta.id } },
-              factura: { connect: { id: f.id } },
-              asignadaPor: { connect: { id: asignadoPor } },
-            },
-          }),
-        ),
-      );
-
-      const clientesIds = [...new Set(facturasFound.map((f) => f.clienteId))];
-      if (clientesIds.length > 0) {
-        await tx.ruta.update({
-          where: { id: newRuta.id },
-          data: {
-            clientes: { connect: clientesIds.map((id) => ({ id })) },
+      // 3) Asociar clientes a la ruta
+      await tx.ruta.update({
+        where: { id: ruta.id },
+        data: {
+          clientes: {
+            connect: clientesFound.map((c) => ({ id: c.id })),
           },
-        });
-      }
+        },
+      });
 
-      return newRuta;
+      return ruta;
     });
 
     const dtoEvent = {
