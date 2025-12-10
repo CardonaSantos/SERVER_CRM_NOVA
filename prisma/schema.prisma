@@ -353,6 +353,8 @@ model ClienteInternet {
   MikrotikRouter             MikrotikRouter?           @relation(fields: [mikrotikRouterId], references: [id])
   estadoServicioMikrotik     EstadoServicioMikrotik @default(SIN_MIKROTIK)
 
+  //BUSQUEDA
+  searchNombre              String?
   // Metadatos
   creadoEn                   DateTime                  @default(now())
   actualizadoEn              DateTime                  @updatedAt

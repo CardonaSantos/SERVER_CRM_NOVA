@@ -14,11 +14,15 @@ export class WebSocketServices {
     empresaId: number;
     ticketId: number;
     nuevoEstado: string;
+    titulo: string;
+    tecnico: string;
   }) {
     this.gateway.handleTicketChangeStatus(
       dto.empresaId,
       dto.ticketId,
       dto.nuevoEstado,
+      dto.titulo,
+      dto.tecnico,
     );
   }
 

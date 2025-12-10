@@ -532,13 +532,20 @@ export class TicketsSoporteService {
     const updated = await this.prisma.ticketSoporte.update({
       where: { id: ticketId },
       data: { estado: 'EN_PROCESO' },
-      select: { id: true, estado: true },
+      select: {
+        id: true,
+        estado: true,
+        titulo: true,
+        tecnico: { select: { nombre: true } },
+      },
     });
 
     const dtoWs = {
       empresaId: existing.empresaId,
       ticketId,
       nuevoEstado: updated.estado,
+      titulo: updated.titulo,
+      tecnico: updated.tecnico.nombre,
     };
     await this.ws.sendTicketSuportChangeStatus(dtoWs);
 
@@ -559,13 +566,20 @@ export class TicketsSoporteService {
     const updated = await this.prisma.ticketSoporte.update({
       where: { id: ticketId },
       data: { estado: 'PENDIENTE_REVISION' },
-      select: { id: true, estado: true },
+      select: {
+        id: true,
+        estado: true,
+        titulo: true,
+        tecnico: { select: { nombre: true } },
+      },
     });
 
     const dtoWs = {
       empresaId: existing.empresaId,
       ticketId,
       nuevoEstado: updated.estado,
+      titulo: updated.titulo,
+      tecnico: updated.tecnico.nombre,
     };
     await this.ws.sendTicketSuportChangeStatus(dtoWs);
 

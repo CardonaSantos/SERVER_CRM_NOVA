@@ -11,6 +11,6 @@ import { MikrotikCryptoService } from './helpers/mikrotik-crypto.service';
     PrismaService,
     MikrotikCryptoService,
   ],
-  // exports: [MikrotikCryptoService],
+  exports: [SshMikrotikConnectionService, MikrotikCryptoService],
 })
 export class SshMikrotikConnectionModule {}

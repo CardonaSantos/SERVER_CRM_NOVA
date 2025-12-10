@@ -19,7 +19,7 @@ import { JwtStrategy } from './JwtGuard/JwtStrategy';
       imports: [ConfigModule], // Necesario para cargar el ConfigService
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('MY_SECRET_TOKEN_KEY_CRM'), // Asegúrate de que esta variable esté en tu archivo .env
-        signOptions: { expiresIn: '1h' },
+        signOptions: { expiresIn: '7d' },
       }),
       inject: [ConfigService], // Inyecta el ConfigService para acceder a las variables de entorno
     }),

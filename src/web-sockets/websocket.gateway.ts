@@ -214,11 +214,15 @@ export class CrmGateway
     empresaId: number,
     ticketId: number,
     nuevoEstado: string,
+    titulo: string,
+    tecnico: string,
   ) {
     try {
       this.emitToEmpresa(empresaId, 'ticket-soporte:change-status', {
         ticketId,
         nuevoEstado,
+        titulo: titulo ?? 'NO ASIGNADO',
+        tecnico: tecnico ?? 'NO ASIGNADO',
       });
     } catch (error) {
       throwFatalError(error, this.logger, 'WebGateway - ticketChangeStatus');

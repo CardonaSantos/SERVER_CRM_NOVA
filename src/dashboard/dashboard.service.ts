@@ -523,11 +523,11 @@ export class DashboardService {
 
       // FACTURACION
       const [
-        fEmitidasMes,
-        fPagadasMes,
-        fTotalGeneradas,
-        fTotalPagadas,
-        fGeneradasSinPagar,
+        fEmitidasMes, //emisiones del mes
+        fPagadasMes, //creadas el mes, y ya están pagadas
+        fTotalGeneradas, //generadas del mes, y la suma total de esas facturas
+        fTotalPagadas, // Suma total de facturas pagadas del mes, generadas del mes
+        fGeneradasSinPagar, // suma total de facturas monto sin pagar aun, del mes
       ] = await Promise.all([
         this.prisma.facturaInternet.count({
           where: {
@@ -770,6 +770,7 @@ export class DashboardService {
         },
       });
 
+      // 1. Conteos por mes
       const countsMap = instalacionesAnio.reduce(
         (acc, item) => {
           const fechaKey = dayjs(item.creadoEn).tz(TZ).format('YYYY-MM');
@@ -779,13 +780,19 @@ export class DashboardService {
         {} as Record<string, number>,
       );
 
-      const chartData: InstalacionesHistoricasBarPoint[] = Object.entries(
-        countsMap,
-      )
-        .sort(([a], [b]) => a.localeCompare(b)) // orden cronológico por YYYY-MM
-        .map(([yearMonth, count]) => ({
-          label: yearMonth, // ej: "2025-01"
-          instalaciones: count, // ej: 12
+      // 2. Pasar a entries y ordenar por mes
+      const entriesOrdenadas = Object.entries(countsMap).sort(([a], [b]) =>
+        a.localeCompare(b),
+      );
+
+      // 3. Omitir el primer mes (el más antiguo)
+      const [, ...entriesSinPrimerMes] = entriesOrdenadas;
+
+      // 4. Construir el chartData
+      const chartData: InstalacionesHistoricasBarPoint[] =
+        entriesSinPrimerMes.map(([yearMonth, count]) => ({
+          label: yearMonth, // ej: "2025-04"
+          instalaciones: count,
         }));
 
       return chartData;
