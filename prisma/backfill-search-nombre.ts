@@ -1,6 +1,14 @@
 // scripts/backfill-search-nombre.ts
 import { PrismaClient } from '@prisma/client';
-import { normalizarTexto } from 'src/Utils/normalizarTexto';
+
+function normalizarTexto(str: string): string {
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 const prisma = new PrismaClient();
 
