@@ -44,6 +44,8 @@ import { WhatsappApiMetaModule } from './whatsapp-api-meta/whatsapp-api-meta.mod
 import { TwilioMensajesModule } from './twilio-mensajes/twilio-mensajes.module';
 import { OpenIaModule } from './open-ia/open-ia.module';
 import { GatewayModule } from './web-sockets/websocket.module';
+import { TicketResumenModule } from './ticket-resumen/ticket-resumen.module';
+import { CloudApiMetaModule } from './cloud-api-meta/cloud-api-meta.module';
 
 @Module({
   imports: [
@@ -94,6 +96,8 @@ import { GatewayModule } from './web-sockets/websocket.module';
     TwilioMensajesModule,
     OpenIaModule,
     GatewayModule,
+    TicketResumenModule,
+    CloudApiMetaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

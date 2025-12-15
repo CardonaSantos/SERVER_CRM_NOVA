@@ -1,18 +1,23 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { CloudApiMetaService } from 'src/cloud-api-meta/cloud-api-meta.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { TwilioService } from 'src/twilio/twilio.service';
 
 @Injectable()
 export class GenerarMensajeSoporteService {
+  private readonly logger = new Logger(GenerarMensajeSoporteService.name);
   constructor(
     private readonly twilio: TwilioService,
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+
+    private readonly cloudapi: CloudApiMetaService,
   ) {}
 
   async GenerarMensajeTicketSoporte(clienteId: number, ticketId: number) {

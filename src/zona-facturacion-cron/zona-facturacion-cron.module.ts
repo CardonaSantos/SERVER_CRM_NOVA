@@ -11,18 +11,25 @@ import { SegundoRecordatorioCronService } from './segundo-recordatorio-cron/segu
 import { RecordatorioDiaPagoService } from './recordatorio-dia-pago/recordatorio-dia-pago.service';
 // import { GenerarFacturaService } from './generar-factura/generar-factura.service';
 import { FacturaManagerService } from './factura-manager/factura-manager.service';
+import { CloudApiMetaService } from 'src/cloud-api-meta/cloud-api-meta.service';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
+  imports: [HttpModule, ConfigModule],
   controllers: [ZonaFacturacionCronController],
   providers: [
-    ZonaFacturacionCronService,
-    PrismaService,
-    TwilioService,
+    CloudApiMetaService, // API DE META
+    ZonaFacturacionCronService, // SERVICIO CRON MAIN
+    PrismaService, // PRISMA
+
+    TwilioService, //TWILIO YA NO SE UTILIZA
+
+    // GENERACION, PRIMER, SEGUNDO Y ULTIMO DIA DE PAGO
     GeneracionFacturaCronService,
     PrimerRecordatorioCronService,
     SegundoRecordatorioCronService,
     RecordatorioDiaPagoService,
-    // GenerarFacturaService, ya no sirve
     FacturaManagerService,
   ],
 })

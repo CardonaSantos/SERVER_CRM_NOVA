@@ -1,30 +1,47 @@
 import {
+  Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { CreateTicketsSoporteDto } from './dto/create-tickets-soporte.dto';
-import { UpdateTicketsSoporteDto } from './dto/update-tickets-soporte.dto';
+import { CreateTicketsSoporteDto } from '../dto/create-tickets-soporte.dto';
+import { UpdateTicketsSoporteDto } from '../dto/update-tickets-soporte.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CloseTicketDto } from './dto/CloseTicketDto .dto';
-import { GenerarMensajeSoporteService } from './generar-mensaje-soporte/generar-mensaje-soporte.service';
+import { CloseTicketDto } from '../dto/CloseTicketDto .dto';
+import { GenerarMensajeSoporteService } from '../generar-mensaje-soporte/generar-mensaje-soporte.service';
 import { MetasTicketsService } from 'src/metas-tickets/metas-tickets.service';
-import { UpdateTicketStatusDto } from './dto/updateStatus';
+import { UpdateTicketStatusDto } from '../dto/updateStatus';
 import { WebSocketServices } from 'src/web-sockets/websocket.service';
+import { EstadoTicketSoporte } from '@prisma/client';
+import {
+  TICKET_SOPORTE_REPOSITORY,
+  TicketSoporteRepository,
+} from '../domain/ticket-soporte-repository';
+import { CloudApiMetaService } from 'src/cloud-api-meta/cloud-api-meta.service';
+import { formatearTelefonosMeta } from 'src/cloud-api-meta/helpers/cleantelefono';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class TicketsSoporteService {
   private readonly logger = new Logger(TicketsSoporteService.name);
+
   constructor(
+    @Inject(TICKET_SOPORTE_REPOSITORY)
+    private readonly ticketsRepo: TicketSoporteRepository,
     private readonly prisma: PrismaService,
     private readonly twilioMessageSuport: GenerarMensajeSoporteService,
     private readonly metasTicketSoporte: MetasTicketsService,
     private readonly ws: WebSocketServices,
+
+    private readonly configService: ConfigService,
+
+    private readonly cloudApi: CloudApiMetaService,
   ) {}
-  //Crear ticket soporte
+
+  // ===================== CREATE =====================
   async create(createTicketsSoporteDto: CreateTicketsSoporteDto) {
-    console.log('La data del ticket soporte: ', createTicketsSoporteDto);
+    this.logger.debug('La data del ticket soporte: ', createTicketsSoporteDto);
 
     const newTicketSoporte = await this.prisma.$transaction(async (tx) => {
       const newTicketSoporte = await tx.ticketSoporte.create({
@@ -47,8 +64,8 @@ export class TicketsSoporteService {
             },
           },
           tecnico: createTicketsSoporteDto.tecnicoId
-            ? { connect: { id: createTicketsSoporteDto.tecnicoId } } // Si se pasa tecnicoId, conectamos
-            : {}, // Si no se pasa tecnicoId, desconectamos (o dejamos nulo)
+            ? { connect: { id: createTicketsSoporteDto.tecnicoId } }
+            : {},
 
           asignaciones:
             createTicketsSoporteDto.tecnicosAdicionales.length > 0
@@ -74,25 +91,64 @@ export class TicketsSoporteService {
       return newTicketSoporte;
     });
 
-    this.logger.debug(
-      'El nuevo ticket con formato de asistentes es: ',
-      newTicketSoporte,
+    // COMENTAR PROXIMAMENTE....
+    // await this.twilioMessageSuport.GenerarMensajeTicketSoporte(
+    //   createTicketsSoporteDto.clienteId,
+    //   newTicketSoporte.id,
+    // );
+
+    const TEMPLATE_NAME = this.configService.get<string>(
+      'TICKET_PLANTILLA_SID',
     );
 
-    await this.twilioMessageSuport.GenerarMensajeTicketSoporte(
-      createTicketsSoporteDto.clienteId,
-      newTicketSoporte.id,
-    );
+    const rawcliente = await this.prisma.clienteInternet.findUnique({
+      where: {
+        id: newTicketSoporte.clienteId,
+      },
+      select: {
+        id: true,
+        nombre: true,
+        telefono: true,
+        apellidos: true,
+      },
+    });
+
+    const rawTicket = await this.prisma.ticketSoporte.findUnique({
+      where: {
+        id: newTicketSoporte.id,
+      },
+      select: {
+        id: true,
+        titulo: true,
+        descripcion: true,
+      },
+    });
+
+    const rawTelefonoCliente = [rawcliente.telefono];
+    const telefonos = formatearTelefonosMeta(rawTelefonoCliente);
+
+    const variablesPlantilla = [
+      `${rawcliente.nombre} ${rawcliente.apellidos || ''}`.trim(), // {{1}}
+      rawTicket.titulo, // {{2}}
+      String(rawTicket.id), // {{3}}
+      rawTicket.descripcion, // {{4}}
+    ];
+
+    for (const tel of telefonos) {
+      const payload = this.cloudApi.crearPayloadTicket(
+        tel,
+        TEMPLATE_NAME,
+        variablesPlantilla,
+      );
+
+      const messageSended = await this.cloudApi.enviarMensaje(payload);
+      this.logger.log('El mensaje enviado es: ', messageSended);
+    }
+
+    return newTicketSoporte;
   }
 
-  findAll() {
-    return `This action returns all ticketsSoporte`;
-  }
-
-  findOne(id: number) {
-    return `This action returns a #${id} ticketsSoporte`;
-  }
-
+  // ===================== READ =====================
   async getTicketToBoleta(ticketId: number) {
     try {
       const ticketInfo = await this.prisma.ticketSoporte.findUnique({
@@ -156,7 +212,6 @@ export class TicketsSoporteService {
         empresa: {
           id: ticketInfo.empresa.id,
           nombre: ticketInfo.empresa.nombre,
-
           direccion: ticketInfo.empresa.direccion,
           correo: ticketInfo.empresa.correo,
           telefono: ticketInfo.empresa.telefono,
@@ -168,203 +223,9 @@ export class TicketsSoporteService {
 
       return boletaData;
     } catch (error) {
-      console.error('Error al generar boleta de ticket:', error);
+      this.logger.error('Error al generar boleta de ticket:', error);
       throw new InternalServerErrorException('Error al generar boleta');
     }
-  }
-
-  async update(id: number, updateTicketsSoporteDto: UpdateTicketsSoporteDto) {
-    console.log('ID: ', id);
-    console.log('Los datos entrantes son: ', updateTicketsSoporteDto);
-
-    return await this.prisma.$transaction(async (tx) => {
-      // Actualizamos los campos principales del ticket
-      const updatedTicket = await tx.ticketSoporte.update({
-        where: { id },
-        data: {
-          titulo: updateTicketsSoporteDto.title,
-          descripcion: updateTicketsSoporteDto.description,
-          estado: updateTicketsSoporteDto.status,
-          prioridad: updateTicketsSoporteDto.priority,
-          tecnico:
-            updateTicketsSoporteDto.assignee &&
-            updateTicketsSoporteDto.assignee.id
-              ? { connect: { id: updateTicketsSoporteDto.assignee.id } }
-              : { disconnect: true },
-        },
-      });
-
-      // Actualizamos las etiquetas:
-      // 1. Eliminamos todas las asociaciones actuales en la tabla intermedia
-      await tx.ticketEtiqueta.deleteMany({
-        where: { ticketId: id },
-      });
-
-      // 2) Limpia todas las asignaciones de técnicos
-      await tx.ticketSoporteTecnico.deleteMany({
-        where: { ticketId: id },
-      });
-
-      // 3) Vuelve a crear solo las que vienen en el DTO
-      if (updateTicketsSoporteDto.companios?.length) {
-        await tx.ticketSoporteTecnico.createMany({
-          data: updateTicketsSoporteDto.companios.map((tecnicoId) => ({
-            ticketId: id,
-            tecnicoId: tecnicoId,
-          })),
-        });
-      }
-
-      // 2. Si se envían etiquetas, creamos las nuevas asociaciones.
-      if (
-        updateTicketsSoporteDto.tags &&
-        updateTicketsSoporteDto.tags.length > 0
-      ) {
-        await tx.ticketSoporte.update({
-          where: { id },
-          data: {
-            etiquetas: {
-              create: updateTicketsSoporteDto.tags.map(
-                (tag: { value: number; label: string }) => ({
-                  etiqueta: {
-                    connect: { id: Number(tag.value) },
-                  },
-                }),
-              ),
-            },
-          },
-        });
-      }
-
-      console.log('El ticket actualizado es: ', updatedTicket);
-
-      return updatedTicket;
-    });
-  }
-
-  /**
-   *
-   * @param id Id del ticket a cerrar
-   * @param dto comentario, ticketId e id del usuario que cerró
-   * @returns
-   */
-  async closeTickets(id: number, dto: CloseTicketDto) {
-    try {
-      const ticketToClose = await this.prisma.ticketSoporte.findUnique({
-        where: { id },
-      });
-
-      if (!ticketToClose) {
-        throw new NotFoundException('Ticket no encontrado');
-      }
-
-      // 1. Eliminar etiquetas actuales
-      await this.prisma.ticketEtiqueta.deleteMany({
-        where: {
-          ticketId: id,
-        },
-      });
-
-      // 2. Asignar nuevas etiquetas
-      const etiquetasToAssign =
-        dto.tags?.map((tag) => ({
-          ticketId: id,
-          etiquetaId: tag.value,
-        })) ?? [];
-
-      if (etiquetasToAssign.length > 0) {
-        await this.prisma.ticketEtiqueta.createMany({
-          data: etiquetasToAssign,
-          skipDuplicates: true,
-        });
-      }
-
-      // 3. Actualizar ticket
-      const ticketClosed = await this.prisma.ticketSoporte.update({
-        where: { id },
-        data: {
-          titulo: dto.title,
-          descripcion: dto.description,
-          estado: 'RESUELTA',
-          prioridad: dto.priority,
-          fechaCierre: new Date(),
-          tecnico: dto.assignee?.id
-            ? { connect: { id: dto.assignee.id } }
-            : undefined,
-        },
-      });
-
-      const companios = await this.prisma.ticketSoporte.findUnique({
-        where: {
-          id: ticketClosed.id,
-        },
-        select: {
-          asignaciones: {
-            select: {
-              tecnico: {
-                select: {
-                  id: true,
-                },
-              },
-            },
-          },
-        },
-      });
-
-      const acompanantes = companios?.asignaciones?.map(
-        (tec) => tec.tecnico.id,
-      );
-
-      // 4. Agregar seguimiento
-      await this.prisma.seguimientoTicket.create({
-        data: {
-          descripcion: dto.comentario,
-          ticket: { connect: { id: dto.ticketId } },
-          usuario: { connect: { id: dto.usuarioId } },
-        },
-      });
-      const user = await this.prisma.clienteInternet.findUnique({
-        where: {
-          id: ticketClosed.tecnicoId,
-        },
-      });
-      if (ticketClosed.tecnicoId) {
-        this.logger.debug('Incrementando meta para tecnico main', user);
-
-        await this.metasTicketSoporte.incrementMeta(ticketClosed.tecnicoId);
-      }
-
-      if (acompanantes.length > 0) {
-        this.logger.debug('Incrementando resultos en metas para acompanantes');
-        for (const tec of acompanantes) {
-          this.logger.debug('Incrementando meta para: ', tec);
-
-          await this.metasTicketSoporte.incrementMeta(tec);
-        }
-      }
-
-      return {
-        message: 'Ticket cerrado con éxito',
-        ticket: ticketClosed,
-      };
-    } catch (error) {
-      console.error('Error al cerrar ticket: ', error);
-      throw new InternalServerErrorException('No se pudo cerrar el ticket');
-    }
-  }
-
-  async delete(ticketId: number) {
-    return await this.prisma.$transaction(async (tx) => {
-      // Luego, eliminamos el ticket
-      const deletedTicket = await tx.ticketSoporte.delete({
-        where: {
-          id: ticketId,
-        },
-      });
-      console.log('El ticket eliminado es: ', deletedTicket);
-
-      return deletedTicket;
-    });
   }
 
   // Obtener todos los tickets con sus detalles y comentarios
@@ -381,7 +242,6 @@ export class TicketsSoporteService {
           estado: true,
           prioridad: true,
           tecnico: {
-            // Obtener el técnico asignado
             select: {
               id: true,
               nombre: true,
@@ -415,7 +275,6 @@ export class TicketsSoporteService {
             },
           },
           etiquetas: {
-            // Obtener etiquetas asociadas
             select: {
               etiqueta: {
                 select: {
@@ -426,12 +285,10 @@ export class TicketsSoporteService {
             },
           },
           SeguimientoTicket: {
-            // Obtener comentarios o seguimientos del ticket
             select: {
               descripcion: true,
               fechaRegistro: true,
               usuario: {
-                // Obtener el usuario que dejó el comentario
                 select: {
                   id: true,
                   nombre: true,
@@ -442,9 +299,6 @@ export class TicketsSoporteService {
         },
       });
 
-      // const flatAcompanantes = tickets
-
-      // Transformar los datos para adaptarlos a la estructura del tipo Ticket
       const ticketsFormateados = tickets.map((ticket) => {
         const acompanantes = ticket.asignaciones.map(({ tecnico }) => ({
           id: tecnico.id,
@@ -462,7 +316,7 @@ export class TicketsSoporteService {
             ? {
                 id: ticket.tecnico.id,
                 name: ticket.tecnico.nombre,
-                initials: ticket.tecnico.nombre.slice(0, 2).toUpperCase(), // Tomar las iniciales
+                initials: ticket.tecnico.nombre.slice(0, 2).toUpperCase(),
               }
             : null,
           companios: acompanantes.length > 0 ? acompanantes : [],
@@ -474,12 +328,11 @@ export class TicketsSoporteService {
                 rol: ticket.creadoPor.rol,
               }
             : null,
-          date: ticket.fechaApertura.toISOString(), // Formato de fecha
+          date: ticket.fechaApertura.toISOString(),
           closedAt: ticket.fechaCierre
             ? ticket.fechaCierre.toISOString()
             : null,
-
-          unread: ticket.estado === 'ABIERTA', // Definir si está "sin leer" basado en el estado
+          unread: ticket.estado === 'ABIERTA',
           tags: ticket.etiquetas.map((tag) => ({
             label: tag.etiqueta.nombre,
             value: tag.etiqueta.id,
@@ -502,9 +355,189 @@ export class TicketsSoporteService {
 
       return ticketsFormateados;
     } catch (error) {
-      console.error('Error al obtener los tickets:', error);
-      throw new Error('No se pudo obtener los tickets');
+      this.logger.error('Error al obtener los tickets:', error);
+      throw new InternalServerErrorException('No se pudo obtener los tickets');
     }
+  }
+
+  // ===================== UPDATE GENERAL =====================
+  async update(id: number, updateTicketsSoporteDto: UpdateTicketsSoporteDto) {
+    this.logger.debug('ID: ', id);
+    this.logger.debug('Los datos entrantes son: ', updateTicketsSoporteDto);
+
+    return await this.prisma.$transaction(async (tx) => {
+      const updatedTicket = await tx.ticketSoporte.update({
+        where: { id },
+        data: {
+          titulo: updateTicketsSoporteDto.title,
+          descripcion: updateTicketsSoporteDto.description,
+          estado: updateTicketsSoporteDto.status,
+          prioridad: updateTicketsSoporteDto.priority,
+          tecnico:
+            updateTicketsSoporteDto.assignee &&
+            updateTicketsSoporteDto.assignee.id
+              ? { connect: { id: updateTicketsSoporteDto.assignee.id } }
+              : { disconnect: true },
+        },
+      });
+
+      await tx.ticketEtiqueta.deleteMany({
+        where: { ticketId: id },
+      });
+
+      await tx.ticketSoporteTecnico.deleteMany({
+        where: { ticketId: id },
+      });
+
+      if (updateTicketsSoporteDto.companios?.length) {
+        await tx.ticketSoporteTecnico.createMany({
+          data: updateTicketsSoporteDto.companios.map((tecnicoId) => ({
+            ticketId: id,
+            tecnicoId,
+          })),
+        });
+      }
+
+      if (
+        updateTicketsSoporteDto.tags &&
+        updateTicketsSoporteDto.tags.length > 0
+      ) {
+        await tx.ticketSoporte.update({
+          where: { id },
+          data: {
+            etiquetas: {
+              create: updateTicketsSoporteDto.tags.map(
+                (tag: { value: number; label: string }) => ({
+                  etiqueta: {
+                    connect: { id: Number(tag.value) },
+                  },
+                }),
+              ),
+            },
+          },
+        });
+      }
+
+      this.logger.debug('El ticket actualizado es: ', updatedTicket);
+
+      return updatedTicket;
+    });
+  }
+
+  // ===================== CLOSE =====================
+  async closeTickets(id: number, dto: CloseTicketDto) {
+    try {
+      const ticketToClose = await this.prisma.ticketSoporte.findUnique({
+        where: { id },
+      });
+
+      if (!ticketToClose) {
+        throw new NotFoundException('Ticket no encontrado');
+      }
+
+      await this.prisma.ticketEtiqueta.deleteMany({
+        where: {
+          ticketId: id,
+        },
+      });
+
+      const etiquetasToAssign =
+        dto.tags?.map((tag) => ({
+          ticketId: id,
+          etiquetaId: tag.value,
+        })) ?? [];
+
+      if (etiquetasToAssign.length > 0) {
+        await this.prisma.ticketEtiqueta.createMany({
+          data: etiquetasToAssign,
+          skipDuplicates: true,
+        });
+      }
+
+      const ticketClosed = await this.prisma.ticketSoporte.update({
+        where: { id },
+        data: {
+          titulo: dto.title,
+          descripcion: dto.description,
+          estado: EstadoTicketSoporte.RESUELTA,
+          prioridad: dto.priority,
+          fechaCierre: new Date(),
+          tecnico: dto.assignee?.id
+            ? { connect: { id: dto.assignee.id } }
+            : undefined,
+        },
+      });
+
+      const companios = await this.prisma.ticketSoporte.findUnique({
+        where: {
+          id: ticketClosed.id,
+        },
+        select: {
+          asignaciones: {
+            select: {
+              tecnico: {
+                select: {
+                  id: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const acompanantes =
+        companios?.asignaciones?.map((tec) => tec.tecnico.id) ?? [];
+
+      await this.prisma.seguimientoTicket.create({
+        data: {
+          descripcion: dto.comentario,
+          ticket: { connect: { id: dto.ticketId } },
+          usuario: { connect: { id: dto.usuarioId } },
+        },
+      });
+
+      const user = ticketClosed.tecnicoId
+        ? await this.prisma.clienteInternet.findUnique({
+            where: {
+              id: ticketClosed.tecnicoId,
+            },
+          })
+        : null;
+
+      if (ticketClosed.tecnicoId) {
+        this.logger.debug('Incrementando meta para tecnico main', user);
+        await this.metasTicketSoporte.incrementMeta(ticketClosed.tecnicoId);
+      }
+
+      if (acompanantes.length > 0) {
+        this.logger.debug('Incrementando resultos en metas para acompanantes');
+        for (const tec of acompanantes) {
+          this.logger.debug('Incrementando meta para: ', tec);
+          await this.metasTicketSoporte.incrementMeta(tec);
+        }
+      }
+
+      return {
+        message: 'Ticket cerrado con éxito',
+        ticket: ticketClosed,
+      };
+    } catch (error) {
+      this.logger.error('Error al cerrar ticket: ', error);
+      throw new InternalServerErrorException('No se pudo cerrar el ticket');
+    }
+  }
+
+  // ===================== DELETE =====================
+  async delete(ticketId: number) {
+    return await this.prisma.$transaction(async (tx) => {
+      const deletedTicket = await tx.ticketSoporte.delete({
+        where: {
+          id: ticketId,
+        },
+      });
+      this.logger.debug('El ticket eliminado es: ', deletedTicket);
+      return deletedTicket;
+    });
   }
 
   async removeAll() {
@@ -512,77 +545,83 @@ export class TicketsSoporteService {
       const ticketToDelete = await this.prisma.ticketSoporte.deleteMany({});
       return ticketToDelete;
     } catch (error) {
-      console.log(error);
+      this.logger.error(error);
+      throw new InternalServerErrorException('No se pudieron eliminar tickets');
     }
   }
 
-  // tickets-soporte.service.ts
-
+  // ===================== STATUS (DOMINIO + WS) =====================
   async updateStatusEnProceso(
     ticketId: number,
   ): Promise<{ id: number; estado: string }> {
-    const existing = await this.prisma.ticketSoporte.findUnique({
-      where: { id: ticketId },
-      select: { id: true, empresaId: true },
-    });
-    if (!existing) {
+    const ticket = await this.ticketsRepo.findById(ticketId);
+
+    if (!ticket) {
       throw new NotFoundException(`Ticket con id ${ticketId} no encontrado`);
     }
 
-    const updated = await this.prisma.ticketSoporte.update({
-      where: { id: ticketId },
-      data: { estado: 'EN_PROCESO' },
-      select: {
-        id: true,
-        estado: true,
-        titulo: true,
-        tecnico: { select: { nombre: true } },
-      },
-    });
+    ticket.marcarEnProceso();
+    const updated = await this.ticketsRepo.update(ticket);
+
+    const tecnicoNombre = updated.tecnicoId
+      ? (
+          await this.prisma.usuario.findUnique({
+            where: { id: updated.tecnicoId },
+            select: { nombre: true },
+          })
+        )?.nombre
+      : null;
 
     const dtoWs = {
-      empresaId: existing.empresaId,
-      ticketId,
+      empresaId: updated.empresaId,
+      ticketId: updated.id!,
       nuevoEstado: updated.estado,
       titulo: updated.titulo,
-      tecnico: updated.tecnico.nombre,
+      tecnico: tecnicoNombre,
     };
+
     await this.ws.sendTicketSuportChangeStatus(dtoWs);
 
-    return updated;
+    return {
+      id: updated.id!,
+      estado: updated.estado,
+    };
   }
 
   async updateStatusEnRevision(
     ticketId: number,
   ): Promise<{ id: number; estado: string }> {
-    const existing = await this.prisma.ticketSoporte.findUnique({
-      where: { id: ticketId },
-      select: { id: true, empresaId: true },
-    });
-    if (!existing) {
+    const ticket = await this.ticketsRepo.findById(ticketId);
+
+    if (!ticket) {
       throw new NotFoundException(`Ticket con id ${ticketId} no encontrado`);
     }
 
-    const updated = await this.prisma.ticketSoporte.update({
-      where: { id: ticketId },
-      data: { estado: 'PENDIENTE_REVISION' },
-      select: {
-        id: true,
-        estado: true,
-        titulo: true,
-        tecnico: { select: { nombre: true } },
-      },
-    });
+    ticket.marcarEnRevision();
+    const updated = await this.ticketsRepo.update(ticket);
+
+    const tecnicoNombre = updated.tecnicoId
+      ? (
+          await this.prisma.usuario.findUnique({
+            where: { id: updated.tecnicoId },
+            select: { nombre: true },
+          })
+        )?.nombre
+      : null;
 
     const dtoWs = {
-      empresaId: existing.empresaId,
-      ticketId,
+      empresaId: updated.empresaId,
+      ticketId: updated.id!,
       nuevoEstado: updated.estado,
       titulo: updated.titulo,
-      tecnico: updated.tecnico.nombre,
+      tecnico: tecnicoNombre,
     };
+
     await this.ws.sendTicketSuportChangeStatus(dtoWs);
 
-    return updated;
+    return {
+      id: updated.id!,
+      estado: updated.estado,
+    };
   }
 }

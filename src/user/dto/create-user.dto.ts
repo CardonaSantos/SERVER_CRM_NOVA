@@ -5,6 +5,7 @@ import {
   IsEnum,
   IsInt,
   IsNumber,
+  IsOptional,
   IsString,
   Min,
 } from 'class-validator';
@@ -19,6 +20,10 @@ export class CreateUserDto {
   @IsEmail()
   @IsString()
   correo: string;
+
+  @IsString()
+  @IsOptional()
+  telefono?: string;
 
   @IsEnum(RolUsuario)
   rol: RolUsuario;

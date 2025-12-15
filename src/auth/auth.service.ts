@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { CreateAuthDto } from './dto/create-auth.dto';
-import { UserService } from 'src/user/user.service';
+import { UserService } from 'src/user/app/user.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 
@@ -64,14 +64,15 @@ export class AuthService {
       const hashedPassword = await bcrypt.hash(createAuthDto.contrasena, salt);
       const { nombre, rol, correo, empresaId } = createAuthDto;
       // Creamos el usuario
-      const nuevoUsuario = await this.userService.create({
+      const obj = {
         nombre,
         contrasena: hashedPassword,
         rol,
         correo,
         activo: true,
         empresaId,
-      });
+      };
+      const nuevoUsuario = await this.userService.create(obj);
 
       //EL PAYLOAD SE PUEDE CREAR CUANDO YA TENEMOS EL USER
       const payload = {

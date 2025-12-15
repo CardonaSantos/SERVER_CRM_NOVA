@@ -17,6 +17,8 @@ import {
   shouldSkipClient,
   shouldSkipZoneToday,
 } from '../Functions';
+import { CloudApiMetaService } from 'src/cloud-api-meta/cloud-api-meta.service';
+import { formatearTelefonosMeta } from 'src/cloud-api-meta/helpers/cleantelefono';
 // Extiende dayjs con los plugins
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -30,109 +32,90 @@ export class SegundoRecordatorioCronService {
     private readonly twilioService: TwilioService,
     private readonly configService: ConfigService,
     private readonly facturaManager: FacturaManagerService,
+    private readonly cloudApi: CloudApiMetaService,
   ) {}
 
   // @Cron(CronExpression.EVERY_10_SECONDS)
-  @Cron('0 10 * * *', { timeZone: 'America/Guatemala' }) // ⏰ 10:00 AM GT
+  // @Cron('0 10 * * *', { timeZone: 'America/Guatemala' }) //
+  @Cron('0 15 * * *', { timeZone: 'America/Guatemala' })
   async generarMensajeSegundoRecordatorio(): Promise<void> {
     this.logger.debug('Verificando zonas de facturación: Recordatorio 2');
-    const hoy = dayjs().tz('America/Guatemala');
 
-    const TEMPLATE_SID = this.configService.get<string>(
-      'RECORDATORIO_PAGO_2_SID',
-    );
-    if (!TEMPLATE_SID)
-      throw new InternalServerErrorException('SID plantilla faltante');
+    const TEMPLATE_NAME =
+      this.configService.get<string>('RECORDATORIO_PAGO_1_PLANTILLA') ??
+      (() => {
+        throw new InternalServerErrorException(
+          'Nombre de plantilla faltante: RECORDATORIO_PAGO_2_PLANTILLA',
+        );
+      })();
 
     const empresa = await this.prisma.empresa.findFirst({
       select: { nombre: true },
     });
-    if (!empresa) {
-      this.logger.error('Empresa no encontrada; abortando cron.');
-      return;
-    }
+    if (!empresa) return;
 
     const zonas = await this.prisma.facturacionZona.findMany({
       include: { clientes: { include: { servicioInternet: true } } },
     });
 
     for (const zona of zonas) {
-      if (
-        shouldSkipZoneToday(zona.diaSegundoRecordatorio) ||
-        !(zona.enviarRecordatorio && zona.enviarRecordatorio2)
-      ) {
-        continue;
-      }
+      if (shouldSkipZoneToday(zona.diaSegundoRecordatorio)) continue;
+      if (!(zona.enviarRecordatorio && zona.enviarRecordatorio2)) continue;
 
       for (const cliente of zona.clientes) {
         if (shouldSkipClient(cliente.estadoCliente, cliente.servicioInternet))
           continue;
+        if (!cliente.enviarRecordatorio) continue;
 
-        //nueva flag
-        if (!cliente.enviarRecordatorio) {
-          this.logger.debug(
-            `Cliente ${cliente.id} tiene enviarRecordatorio=false; no se envía Recordatorio 1.`,
-          );
+        const { factura } = await this.facturaManager.obtenerOcrearFactura(
+          cliente,
+          zona,
+          false,
+        );
+
+        if (
+          !['PENDIENTE', 'PARCIAL', 'VENCIDA'].includes(
+            factura.estadoFacturaInternet,
+          )
+        )
           continue;
-        }
 
-        try {
-          /* SOLO buscar la factura: crearSiNoExiste = false */
-          const { factura } = await this.facturaManager.obtenerOcrearFactura(
-            cliente,
-            zona,
-            false,
+        const mesFactura = dayjs(factura.fechaPagoEsperada)
+          .tz('America/Guatemala')
+          .locale('es')
+          .format('MMMM YYYY')
+          .toUpperCase();
+
+        const monto = Number(factura.montoPago).toFixed(2);
+
+        const destinos = Array.from(
+          new Set(formatearTelefonosMeta([cliente.telefono])),
+        );
+        if (destinos.length === 0) continue;
+
+        const variablesPlantilla = [
+          `${cliente.nombre ?? ''} ${cliente.apellidos ?? ''}`.trim() ||
+            'Nombre no disponible', // {{1}}
+          empresa.nombre ?? 'Nova Sistemas S.A.', // {{2}}
+          mesFactura, // {{3}}
+        ];
+
+        for (const tel of destinos) {
+          const payload = this.cloudApi.crearPayloadTicket(
+            tel,
+            TEMPLATE_NAME,
+            variablesPlantilla,
           );
+          const resp = await this.cloudApi.enviarMensaje(payload);
+          const msgId = resp?.messages?.[0]?.id;
 
-          if (
-            !['PENDIENTE', 'PARCIAL', 'VENCIDA'].includes(
-              factura.estadoFacturaInternet,
-            )
-          ) {
-            this.logger.debug(`Factura ya pagada; cliente ${cliente.id}.`);
-            continue;
-          }
-
-          const monto = factura.montoPago.toFixed(2);
-          const fechaL = dayjs(factura.fechaPagoEsperada)
-            .locale('es')
-            .format('MMMM YYYY')
-            .toUpperCase();
-          const destinos = formatearTelefonos([
-            cliente.telefono,
-            // cliente.contactoReferenciaTelefono, //COMENTADO POR EL MOMENTO, NO REFERENCIAS
-          ]);
-
-          for (const numero of destinos) {
-            await this.twilioService.sendWhatsAppTemplate(
-              numero,
-              TEMPLATE_SID,
-              {
-                '1':
-                  `${cliente.nombre ?? ''} ${cliente.apellidos ?? ''}`.trim() ||
-                  'Nombre no disponible',
-                '2': empresa.nombre,
-                '3': monto,
-                '4': '', // no la uso aqui
-                '5': empresa.nombre,
-              },
-            );
-            this.logger.log(
-              `📨 Recordatorio 2 enviado a ${numero} (cliente ${cliente.id})`,
-            );
-          }
-        } catch (err) {
-          if (err instanceof NotFoundException) {
-            this.logger.debug(
-              `Sin factura para cliente ${cliente.id}; no se envía recordatorio.`,
-            );
-            continue;
-          }
-          this.logger.warn(
-            `Zona ${zona.id} cliente ${cliente.id}: ${err.message}`,
+          this.logger.log(
+            `📨 Recordatorio 2 enviado a ${tel} (cliente ${cliente.id})${msgId ? ` (msgId: ${msgId})` : ''}`,
           );
         }
       }
     }
   }
 }
+
+// generarMensajeSegundoRecordatorio

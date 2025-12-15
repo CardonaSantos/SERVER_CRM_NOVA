@@ -64,7 +64,6 @@ export class EmpresaService {
       });
 
       if (!empresa) throw new NotFoundException('Empresa no encontrada');
-      this.logger.log('La empresa encontrada es: ', empresa);
       return empresa;
     } catch (error) {
       throwFatalError(error, this.logger, 'Empresa');
