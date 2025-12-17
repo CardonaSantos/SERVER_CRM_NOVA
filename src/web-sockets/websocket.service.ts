@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { CrmGateway } from './websocket.gateway';
+import { BroadCastNewMessage } from './websocket.controller';
+import { throwFatalError } from 'src/Utils/CommonFatalError';
 
 @Injectable()
 export class WebSocketServices {
@@ -41,5 +43,18 @@ export class WebSocketServices {
    */
   async sendFacturacionEvent(empresaId: number) {
     this.gateway.handleFacturacionChangeEvent(empresaId);
+  }
+
+  /**
+   * Servicio que lanza evento socket, para la UI del CRM.
+   * Primero recibe una peticion POST de nuestro servidor BOT
+   * @param body EVENT:NOMBRE DE EVENTO, DATA:MENSAJE
+   */
+  async emitNewMessageNuvia(body: BroadCastNewMessage) {
+    try {
+      this.gateway.handleEmitNewNuviaMessage(1, body); //ARCODEADO POR EL MOMENTO
+    } catch (error) {
+      throwFatalError(error, this.logger, 'emitNewMessageNuvia');
+    }
   }
 }

@@ -46,6 +46,7 @@ import { OpenIaModule } from './open-ia/open-ia.module';
 import { GatewayModule } from './web-sockets/websocket.module';
 import { TicketResumenModule } from './ticket-resumen/ticket-resumen.module';
 import { CloudApiMetaModule } from './cloud-api-meta/cloud-api-meta.module';
+import { BroadcastModule } from './broadcast/broadcast.module';
 
 @Module({
   imports: [
@@ -98,6 +99,7 @@ import { CloudApiMetaModule } from './cloud-api-meta/cloud-api-meta.module';
     GatewayModule,
     TicketResumenModule,
     CloudApiMetaModule,
+    BroadcastModule,
   ],
   controllers: [AppController],
   providers: [AppService],

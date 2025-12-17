@@ -16,6 +16,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
+import { BroadCastNewMessage } from './websocket.controller';
 
 interface JwtUserPayload {
   nombre: string;
@@ -248,6 +249,16 @@ export class CrmGateway
         this.logger,
         'WebGateway - facturacionChangeEvent',
       );
+    }
+  }
+
+  // En CrmGateway
+  handleEmitNewNuviaMessage(empresaId: number, body: BroadCastNewMessage) {
+    try {
+      // Tu código UI escucha "nuvia:new-message".
+      this.emitToEmpresa(empresaId, 'nuvia:new-message', body.data);
+    } catch (error) {
+      throwFatalError(error, this.logger, 'handleEmitNewNuviaMessage');
     }
   }
 
