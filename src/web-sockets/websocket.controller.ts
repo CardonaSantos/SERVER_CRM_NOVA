@@ -2,33 +2,50 @@ import {
   Body,
   Controller,
   Headers,
-  Injectable,
   Post,
   UnauthorizedException,
+  Logger, // Opcional: para loguear si falta la config
 } from '@nestjs/common';
 import { WebSocketServices } from './websocket.service';
+import { ConfigService } from '@nestjs/config';
 
+// Nota: data suele ser un objeto JSON, no string, a menos que lo envíes stringify manualmente dos veces.
+// Te sugiero usar 'any' o un genérico aquí si mandas objetos.
 export interface BroadCastNewMessage {
   event: string;
-  data: string;
+  data: any;
 }
 
 @Controller('internal/server')
 export class WebSocketController {
-  constructor(private readonly gatewayService: WebSocketServices) {}
+  private readonly logger = new Logger(WebSocketController.name);
+
+  constructor(
+    private readonly gatewayService: WebSocketServices,
+    private readonly config: ConfigService,
+  ) {}
 
   @Post('broadcast')
-  // Protege esto con un API Key secreta para que solo tu Bot pueda llamar
   async broadcastEvent(
     @Body() body: BroadCastNewMessage,
     @Headers('x-internal-secret') secret: string,
   ) {
-    if (secret !== process.env.INTERNAL_SECRET)
-      throw new UnauthorizedException();
+    const configSecret = this.config.get<string>('INTERNAL_SECRET');
 
-    // El CRM emite el evento a la UI conectada
-    // body.event podría ser 'whatsapp-message-received'
-    // body.data sería el mensaje
+    // 1. Seguridad: Si el servidor no tiene configurada la clave, bloqueamos todo por precaución.
+    if (!configSecret) {
+      this.logger.error(
+        'CRITICAL: INTERNAL_SECRET no está configurado en el .env',
+      );
+      throw new UnauthorizedException('Server misconfiguration');
+    }
+
+    // 2. Comparación
+    if (secret !== configSecret) {
+      throw new UnauthorizedException();
+    }
+
+    // 3. Emitir
     this.gatewayService.emitNewMessageNuvia(body);
 
     return { ok: true };
