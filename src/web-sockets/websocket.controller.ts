@@ -9,8 +9,6 @@ import {
 import { WebSocketServices } from './websocket.service';
 import { ConfigService } from '@nestjs/config';
 
-// Nota: data suele ser un objeto JSON, no string, a menos que lo envíes stringify manualmente dos veces.
-// Te sugiero usar 'any' o un genérico aquí si mandas objetos.
 export interface BroadCastNewMessage {
   event: string;
   data: any;
@@ -40,12 +38,10 @@ export class WebSocketController {
       throw new UnauthorizedException('Server misconfiguration');
     }
 
-    // 2. Comparación
     if (secret !== configSecret) {
       throw new UnauthorizedException();
     }
 
-    // 3. Emitir
     this.gatewayService.emitNewMessageNuvia(body);
 
     return { ok: true };
