@@ -47,11 +47,7 @@ export class GeneracionFacturaCronService {
     private readonly cloudApi: CloudApiMetaService,
   ) {}
 
-  // @Cron(CronExpression.EVERY_10_SECONDS, {
-  //   timeZone: 'America/Guatemala',
-  // }) //comentado
-  // @Cron('0 10 * * *', { timeZone: 'America/Guatemala' })
-  @Cron('0 15 * * *', { timeZone: 'America/Guatemala' })
+  @Cron('0 10 * * *', { timeZone: 'America/Guatemala' })
   async gerarFacturacionAutomaticaCron() {
     const TEMPLATE_NAME =
       this.configService.get<string>('GENERACION_FACTURA_PLANTILLA') ??

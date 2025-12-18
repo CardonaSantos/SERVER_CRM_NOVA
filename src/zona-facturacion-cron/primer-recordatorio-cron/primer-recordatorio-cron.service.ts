@@ -44,9 +44,7 @@ export class PrimerRecordatorioCronService {
     private readonly cloudApi: CloudApiMetaService,
   ) {}
 
-  // @Cron(CronExpression.EVERY_10_SECONDS)
-  // @Cron('0 10 * * *', { timeZone: 'America/Guatemala' })
-  @Cron('0 15 * * *', { timeZone: 'America/Guatemala' })
+  @Cron('0 10 * * *', { timeZone: 'America/Guatemala' })
   async generarMensajePrimerRecordatorio(): Promise<void> {
     this.logger.debug('Verificando zonas de facturacion: Recordatorio 1');
 
