@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-const port = process.env.PORT || 4000;
+const port = process.env.PORT || 3000;
 
 //importar algo aqui VERGA-error
 async function bootstrap() {
@@ -30,6 +30,6 @@ async function bootstrap() {
     preflightContinue: false,
     optionsSuccessStatus: 204,
   });
-  await app.listen(port || 4000);
+  await app.listen(port || 3000);
 }
 bootstrap();

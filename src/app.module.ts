@@ -47,6 +47,7 @@ import { GatewayModule } from './web-sockets/websocket.module';
 import { TicketResumenModule } from './ticket-resumen/ticket-resumen.module';
 import { CloudApiMetaModule } from './cloud-api-meta/cloud-api-meta.module';
 import { BroadcastModule } from './broadcast/broadcast.module';
+import { BotFunctionsModule } from './bot-functions/bot-functions.module';
 
 @Module({
   imports: [
@@ -100,6 +101,7 @@ import { BroadcastModule } from './broadcast/broadcast.module';
     TicketResumenModule,
     CloudApiMetaModule,
     BroadcastModule,
+    BotFunctionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

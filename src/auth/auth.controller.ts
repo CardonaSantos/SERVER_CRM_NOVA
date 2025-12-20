@@ -1,31 +1,22 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-} from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateAuthDto } from './dto/create-auth.dto';
-import { UpdateAuthDto } from './dto/update-auth.dto';
-import { LoginDto } from './dto/login.dto';
+import { LoginDto } from './dto/login.dto'; // Asumo que tienes este DTO
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('/regist-user')
+  @HttpCode(HttpStatus.CREATED)
   createUserWithAuth(@Body() createAuthDto: CreateAuthDto) {
-    console.log('La data llegando al regist user es: ', createAuthDto);
-
     return this.authService.register(createAuthDto);
   }
 
   @Post('/login-user')
+  @HttpCode(HttpStatus.OK)
   loginUserWithAuth(@Body() loginUserDto: LoginDto) {
-    console.log('La data llegando al login es: ', loginUserDto);
+    console.log(`Intento de login para: ${loginUserDto.correo}`);
     return this.authService.login(loginUserDto.correo, loginUserDto.contrasena);
   }
 }

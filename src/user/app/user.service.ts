@@ -66,11 +66,12 @@ export class UserService {
     this.logger.debug('Al findByGmail llega: ' + correo);
 
     const user = await this.usuariosRepo.findByCorreo(correo);
+
+    // Si no existe, devolvemos null para que el AuthService sepa
     if (!user) {
-      throw new NotFoundException('Usuario no encontrado');
+      return null;
     }
 
-    // Antes hacías include.empresa.id, ahora ya tienes empresaId
     const obj = user.toObject();
     return {
       ...obj,
