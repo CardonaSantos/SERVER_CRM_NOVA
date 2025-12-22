@@ -12,4 +12,5 @@ export class UpdateTicketsSoporteDto extends PartialType(
   status: EstadoTicketSoporte;
   priority: PrioridadTicketSoporte;
   companios: number[];
+  fixed: boolean;
 }

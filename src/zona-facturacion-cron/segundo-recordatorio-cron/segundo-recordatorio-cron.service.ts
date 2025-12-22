@@ -2,21 +2,16 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
-  NotFoundException,
 } from '@nestjs/common';
 import * as dayjs from 'dayjs';
 import * as utc from 'dayjs/plugin/utc';
 import * as timezone from 'dayjs/plugin/timezone';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { TwilioService } from 'src/twilio/twilio.service';
 import { FacturaManagerService } from '../factura-manager/factura-manager.service';
-import {
-  formatearTelefonos,
-  shouldSkipClient,
-  shouldSkipZoneToday,
-} from '../Functions';
+import { shouldSkipClient, shouldSkipZoneToday } from '../Functions';
 import { CloudApiMetaService } from 'src/cloud-api-meta/cloud-api-meta.service';
 import { formatearTelefonosMeta } from 'src/cloud-api-meta/helpers/cleantelefono';
 // Extiende dayjs con los plugins

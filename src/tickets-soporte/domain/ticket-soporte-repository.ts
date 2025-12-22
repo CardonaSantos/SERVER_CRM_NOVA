@@ -1,4 +1,5 @@
 // src/tickets/domain/ticket-soporte.repository.ts
+import { CreateBotFunctionDto } from 'src/bot-functions/dto/create-bot-function.dto';
 import { TicketSoporte } from '../entities/tickets-soporte.entity';
 
 export const TICKET_SOPORTE_REPOSITORY = Symbol('TICKET_SOPORTE_REPOSITORY');

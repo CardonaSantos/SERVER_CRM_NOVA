@@ -747,8 +747,10 @@ model CobroRuta {
 /// [09] Soporte y Tickets
 model TicketSoporte {
   id                     Int                    @id @default(autoincrement())
-  clienteId              Int
-  empresaId              Int
+  // clienteId              Int
+  clienteId Int?  // <--- Agrega el signo de interrogación
+
+  empresaId              Int?
   tecnicoId              Int?
   creadoPorId            Int?
   estado                 EstadoTicketSoporte    @default(ABIERTA)
@@ -771,9 +773,10 @@ model TicketSoporte {
   boleta            BoletaSoporte?
   SeguimientoTicket SeguimientoTicket[]
   etiquetas         TicketEtiqueta[]
-  cliente           ClienteInternet        @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  // cliente           ClienteInternet        @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  cliente           ClienteInternet? @relation(fields: [clienteId], references: [id], onDelete: Cascade) 
   creadoPor         Usuario?               @relation("TicketCreador", fields: [creadoPorId], references: [id])
-  empresa           Empresa                @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresa           Empresa?                @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   tecnico           Usuario?               @relation("TicketTecnico", fields: [tecnicoId], references: [id])
   asignaciones      TicketSoporteTecnico[]
 }

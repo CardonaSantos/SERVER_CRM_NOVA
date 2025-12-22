@@ -862,8 +862,6 @@ export class ClienteInternetService {
         sectorIds,
       } = q;
 
-      this.logger.log('El Q en fetch clientes es: ', JSON.stringify(q));
-
       // Normaliza arrays y limpia 0/NaN
       const zonas = (zonaIds ?? []).filter((n) => Number.isFinite(n) && n > 0);
       const sectores = (sectorIds ?? []).filter(

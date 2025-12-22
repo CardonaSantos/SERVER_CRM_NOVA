@@ -3,7 +3,7 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { TwilioService } from 'src/twilio/twilio.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { getEstadoCliente, PENDIENTES_ENUM } from '../utils';
@@ -13,11 +13,7 @@ import {
   FacturaInternet,
 } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
-import {
-  formatearTelefonos,
-  shouldSkipClient,
-  shouldSkipZoneToday,
-} from '../Functions';
+import { shouldSkipClient, shouldSkipZoneToday } from '../Functions';
 import { FacturaManagerService } from '../factura-manager/factura-manager.service';
 import { formatearTelefonosMeta } from 'src/cloud-api-meta/helpers/cleantelefono';
 import { CloudApiMetaService } from 'src/cloud-api-meta/cloud-api-meta.service';

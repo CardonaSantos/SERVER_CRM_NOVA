@@ -12,15 +12,15 @@ import {
 export class CreateTicketsSoporteDto {
   @IsNumber()
   @IsNotEmpty()
+  @IsOptional()
   clienteId: number;
   //los otros asoociados
   @IsOptional()
   @IsArray()
   @IsInt({ each: true })
   tecnicosAdicionales?: number[]; // IDs de técnicos secundarios
-
   @IsNumber()
-  @IsNotEmpty()
+  @IsOptional()
   empresaId: number;
   @IsNumber()
   @IsOptional()

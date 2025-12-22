@@ -1,19 +1,10 @@
-import {
-  Injectable,
-  InternalServerErrorException,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Injectable, Logger } from '@nestjs/common';
 import { TwilioService } from 'src/twilio/twilio.service';
 import * as dayjs from 'dayjs';
 import * as utc from 'dayjs/plugin/utc';
 import * as timezone from 'dayjs/plugin/timezone';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { DatosFacturaGenerate, DatosFacturaGenerateIndividual } from '../utils';
-import { EstadoCliente } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
-import { periodoFrom } from 'src/facturacion/Utils';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 

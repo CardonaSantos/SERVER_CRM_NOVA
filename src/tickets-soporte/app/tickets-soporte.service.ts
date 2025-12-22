@@ -21,6 +21,8 @@ import {
 import { CloudApiMetaService } from 'src/cloud-api-meta/cloud-api-meta.service';
 import { formatearTelefonosMeta } from 'src/cloud-api-meta/helpers/cleantelefono';
 import { ConfigService } from '@nestjs/config';
+import { throwFatalError } from 'src/Utils/CommonFatalError';
+import { CreateBotFunctionDto } from 'src/bot-functions/dto/create-bot-function.dto';
 
 @Injectable()
 export class TicketsSoporteService {
@@ -43,32 +45,35 @@ export class TicketsSoporteService {
   async create(createTicketsSoporteDto: CreateTicketsSoporteDto) {
     this.logger.debug('La data del ticket soporte: ', createTicketsSoporteDto);
 
-    const newTicketSoporte = await this.prisma.$transaction(async (tx) => {
+    return await this.prisma.$transaction(async (tx) => {
       const newTicketSoporte = await tx.ticketSoporte.create({
         data: {
-          cliente: {
-            connect: {
-              id: createTicketsSoporteDto.clienteId,
-            },
-          },
+          // Campos escalares
           titulo: createTicketsSoporteDto.titulo,
           descripcion: createTicketsSoporteDto.descripcion,
-          creadoPor: {
-            connect: {
-              id: createTicketsSoporteDto.userId,
-            },
-          },
-          empresa: {
-            connect: {
-              id: createTicketsSoporteDto.empresaId,
-            },
-          },
+          prioridad: createTicketsSoporteDto.prioridad,
+          estado: createTicketsSoporteDto.estado,
+
+          cliente: createTicketsSoporteDto.clienteId
+            ? { connect: { id: createTicketsSoporteDto.clienteId } }
+            : undefined,
+
+          creadoPor: createTicketsSoporteDto.userId
+            ? { connect: { id: createTicketsSoporteDto.userId } }
+            : undefined,
+
+          empresa: createTicketsSoporteDto.empresaId
+            ? { connect: { id: createTicketsSoporteDto.empresaId } }
+            : undefined,
+
           tecnico: createTicketsSoporteDto.tecnicoId
             ? { connect: { id: createTicketsSoporteDto.tecnicoId } }
-            : {},
+            : undefined,
+
+          // RELACIONES ONE-TO-MANY (Tablas intermedias)
 
           asignaciones:
-            createTicketsSoporteDto.tecnicosAdicionales.length > 0
+            createTicketsSoporteDto.tecnicosAdicionales?.length > 0
               ? {
                   create: createTicketsSoporteDto.tecnicosAdicionales.map(
                     (tecnicoId) => ({ tecnicoId }),
@@ -76,76 +81,46 @@ export class TicketsSoporteService {
                 }
               : undefined,
 
-          prioridad: createTicketsSoporteDto.prioridad,
-          estado: createTicketsSoporteDto.estado,
-          etiquetas: {
-            create: createTicketsSoporteDto.etiquetas.map((tagId) => ({
-              etiqueta: {
-                connect: { id: tagId },
-              },
-            })),
-          },
+          etiquetas:
+            createTicketsSoporteDto.etiquetas?.length > 0
+              ? {
+                  create: createTicketsSoporteDto.etiquetas.map((tagId) => ({
+                    etiqueta: {
+                      connect: { id: tagId },
+                    },
+                  })),
+                }
+              : undefined,
         },
       });
 
       return newTicketSoporte;
     });
+  }
 
-    // COMENTAR PROXIMAMENTE....
-    // await this.twilioMessageSuport.GenerarMensajeTicketSoporte(
-    //   createTicketsSoporteDto.clienteId,
-    //   newTicketSoporte.id,
-    // );
+  async createBotTicket(dto: CreateBotFunctionDto) {
+    try {
+      const { descripcion, titulo } = dto;
 
-    const TEMPLATE_NAME = this.configService.get<string>(
-      'TICKET_PLANTILLA_SID',
-    );
+      const desc = `${descripcion}     ~ Creado por Botsito`;
 
-    const rawcliente = await this.prisma.clienteInternet.findUnique({
-      where: {
-        id: newTicketSoporte.clienteId,
-      },
-      select: {
-        id: true,
-        nombre: true,
-        telefono: true,
-        apellidos: true,
-      },
-    });
+      const ticket = await this.prisma.$transaction(async (tx) => {
+        await tx.ticketSoporte.create({
+          data: {
+            titulo: titulo,
+            descripcion: desc,
+            estado: 'NUEVO',
+            fijado: true,
+            prioridad: 'URGENTE',
+          },
+        });
+      });
 
-    const rawTicket = await this.prisma.ticketSoporte.findUnique({
-      where: {
-        id: newTicketSoporte.id,
-      },
-      select: {
-        id: true,
-        titulo: true,
-        descripcion: true,
-      },
-    });
-
-    const rawTelefonoCliente = [rawcliente.telefono];
-    const telefonos = formatearTelefonosMeta(rawTelefonoCliente);
-
-    const variablesPlantilla = [
-      `${rawcliente.nombre} ${rawcliente.apellidos || ''}`.trim(), // {{1}}
-      rawTicket.titulo, // {{2}}
-      String(rawTicket.id), // {{3}}
-      rawTicket.descripcion, // {{4}}
-    ];
-
-    for (const tel of telefonos) {
-      const payload = this.cloudApi.crearPayloadTicket(
-        tel,
-        TEMPLATE_NAME,
-        variablesPlantilla,
-      );
-
-      const messageSended = await this.cloudApi.enviarMensaje(payload);
-      this.logger.log('El mensaje enviado es: ', messageSended);
+      this.logger.log(`Ticket creado:\n${JSON.stringify(ticket, null, 2)}`);
+      return ticket;
+    } catch (error) {
+      throwFatalError(error, this.logger, 'TicketSoporte -createBotTicket');
     }
-
-    return newTicketSoporte;
   }
 
   // ===================== READ =====================
@@ -241,6 +216,7 @@ export class TicketsSoporteService {
           descripcion: true,
           estado: true,
           prioridad: true,
+          fijado: true,
           tecnico: {
             select: {
               id: true,
@@ -312,6 +288,8 @@ export class TicketsSoporteService {
           description: ticket.descripcion,
           status: ticket.estado,
           priority: ticket.prioridad,
+          fixed: ticket.fijado,
+
           assignee: ticket.tecnico
             ? {
                 id: ticket.tecnico.id,
@@ -324,10 +302,17 @@ export class TicketsSoporteService {
             ? {
                 id: ticket.creadoPor.id,
                 name: ticket.creadoPor.nombre,
-                initials: ticket.creadoPor.nombre.slice(0, 2).toUpperCase(),
+                initials: ticket.creadoPor.nombre
+                  ? ticket.creadoPor.nombre.slice(0, 2).toUpperCase()
+                  : '?',
                 rol: ticket.creadoPor.rol,
               }
-            : null,
+            : {
+                id: 0, // ID ficticio para el bot
+                name: 'Sistema (Bot)', // Nombre amigable para mostrar
+                initials: 'BT',
+                rol: 'SISTEMA',
+              },
           date: ticket.fechaApertura.toISOString(),
           closedAt: ticket.fechaCierre
             ? ticket.fechaCierre.toISOString()
@@ -337,16 +322,20 @@ export class TicketsSoporteService {
             label: tag.etiqueta.nombre,
             value: tag.etiqueta.id,
           })),
-          customer: {
-            id: ticket.cliente.id,
-            name: `${ticket.cliente.nombre} ${ticket.cliente.apellidos}`,
-          },
+          customer: ticket.cliente
+            ? {
+                id: ticket.cliente.id,
+                name: `${ticket.cliente.nombre} ${ticket.cliente.apellidos}`,
+              }
+            : null,
           comments: ticket.SeguimientoTicket.map((comment) => ({
-            user: {
-              id: comment.usuario.id,
-              name: comment.usuario.nombre,
-              initials: comment.usuario.nombre.slice(0, 2).toUpperCase(),
-            },
+            user: comment.usuario // Validación extra por si se borró el usuario del comentario
+              ? {
+                  id: comment.usuario.id,
+                  name: comment.usuario.nombre,
+                  initials: comment.usuario.nombre.slice(0, 2).toUpperCase(),
+                }
+              : { id: -1, name: 'Usuario Eliminado', initials: 'NA' },
             text: comment.descripcion,
             date: comment.fechaRegistro.toISOString(),
           })),
@@ -362,8 +351,11 @@ export class TicketsSoporteService {
 
   // ===================== UPDATE GENERAL =====================
   async update(id: number, updateTicketsSoporteDto: UpdateTicketsSoporteDto) {
-    this.logger.debug('ID: ', id);
-    this.logger.debug('Los datos entrantes son: ', updateTicketsSoporteDto);
+    this.logger.debug('ID Actualización: ', id);
+
+    this.logger.log(
+      `UpdateTicketsSoporteDto: \n${JSON.stringify(updateTicketsSoporteDto, null, 2)}`,
+    );
 
     return await this.prisma.$transaction(async (tx) => {
       const updatedTicket = await tx.ticketSoporte.update({
@@ -373,11 +365,15 @@ export class TicketsSoporteService {
           descripcion: updateTicketsSoporteDto.description,
           estado: updateTicketsSoporteDto.status,
           prioridad: updateTicketsSoporteDto.priority,
-          tecnico:
-            updateTicketsSoporteDto.assignee &&
-            updateTicketsSoporteDto.assignee.id
-              ? { connect: { id: updateTicketsSoporteDto.assignee.id } }
-              : { disconnect: true },
+          fijado: updateTicketsSoporteDto.fixed,
+
+          tecnico: updateTicketsSoporteDto.tecnicoId
+            ? { connect: { id: updateTicketsSoporteDto.tecnicoId } }
+            : { disconnect: true }, // Si envían null, desconectamos
+
+          cliente: updateTicketsSoporteDto.clienteId
+            ? { connect: { id: updateTicketsSoporteDto.clienteId } }
+            : { disconnect: true },
         },
       });
 
@@ -385,40 +381,39 @@ export class TicketsSoporteService {
         where: { ticketId: id },
       });
 
-      await tx.ticketSoporteTecnico.deleteMany({
-        where: { ticketId: id },
-      });
+      const tagsIds = updateTicketsSoporteDto.tags;
 
-      if (updateTicketsSoporteDto.companios?.length) {
-        await tx.ticketSoporteTecnico.createMany({
-          data: updateTicketsSoporteDto.companios.map((tecnicoId) => ({
-            ticketId: id,
-            tecnicoId,
-          })),
-        });
-      }
+      if (tagsIds && tagsIds.length > 0) {
+        const cleanTagIds = tagsIds.map((id) => Number(id));
 
-      if (
-        updateTicketsSoporteDto.tags &&
-        updateTicketsSoporteDto.tags.length > 0
-      ) {
         await tx.ticketSoporte.update({
           where: { id },
           data: {
             etiquetas: {
-              create: updateTicketsSoporteDto.tags.map(
-                (tag: { value: number; label: string }) => ({
-                  etiqueta: {
-                    connect: { id: Number(tag.value) },
-                  },
-                }),
-              ),
+              create: cleanTagIds.map((tagId) => ({
+                etiqueta: {
+                  connect: { id: tagId },
+                },
+              })),
             },
           },
         });
       }
 
-      this.logger.debug('El ticket actualizado es: ', updatedTicket);
+      await tx.ticketSoporteTecnico.deleteMany({
+        where: { ticketId: id },
+      });
+
+      if (updateTicketsSoporteDto.tecnicosAdicionales?.length > 0) {
+        await tx.ticketSoporteTecnico.createMany({
+          data: updateTicketsSoporteDto.tecnicosAdicionales.map(
+            (tecnicoId) => ({
+              ticketId: id,
+              tecnicoId: Number(tecnicoId),
+            }),
+          ),
+        });
+      }
 
       return updatedTicket;
     });
