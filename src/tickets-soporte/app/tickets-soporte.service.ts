@@ -105,9 +105,9 @@ export class TicketsSoporteService {
       const desc = `${descripcion}     ~ Creado por Botsito`;
 
       const ticket = await this.prisma.$transaction(async (tx) => {
-        await tx.ticketSoporte.create({
+        return tx.ticketSoporte.create({
           data: {
-            titulo: titulo,
+            titulo,
             descripcion: desc,
             estado: 'NUEVO',
             fijado: true,
