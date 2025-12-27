@@ -127,8 +127,19 @@ export class TicketSolucionRepositoryPrisma extends TicketSolucionRepository {
 
   async getAll(): Promise<SolucionTicket[] | null> {
     try {
-      const records = await this.prisma.solucionTicket.findMany({});
-      return records;
+      const records = await this.prisma.solucionTicket.findMany({
+      include: {
+        _count: { select: { tickets: true } }
+      }
+    });
+    
+    return records.map(record => new SolucionTicket({
+      id: record.id,
+      solucion: record.solucion,
+      descripcion: record.descripcion,
+      isEliminado: record.isEliminado,
+      ticketsCount: record._count.tickets 
+    }));
     } catch (error) {
       throwFatalError(
         error,

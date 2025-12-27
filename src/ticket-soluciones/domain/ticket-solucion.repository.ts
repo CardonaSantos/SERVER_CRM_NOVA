@@ -14,4 +14,5 @@ export abstract class TicketSolucionRepository {
   //DELETE
   abstract deleteById(id: number): Promise<SolucionTicket | null>;
   abstract deleteAll(): Promise<number | null>;
+
 }

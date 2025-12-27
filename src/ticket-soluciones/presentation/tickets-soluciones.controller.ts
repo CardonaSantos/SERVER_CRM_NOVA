@@ -7,6 +7,7 @@ import {
   Param,
   ParseIntPipe,
   Delete,
+  Patch,
 } from '@nestjs/common';
 import { CreateTicketSolucioneDto } from '../dto/create-ticket-solucione.dto';
 import { TicketSolucionesService } from '../app/ticket-soluciones.service';
@@ -26,12 +27,17 @@ export class TicketSolucionesController {
   //GET
   @Get('')
   async getAll() {
-    return this.ticketSolucionesService.getAll();
+    return await this.ticketSolucionesService.getAll();
   }
 
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number) {
     return this.ticketSolucionesService.getById(id);
+  }
+   @Delete(':id',)
+  async deleteById(@Param('id',  ParseIntPipe)id:number) {
+    return await this.ticketSolucionesService.deleteById(id)
+
   }
 
   //DELETE
@@ -39,4 +45,15 @@ export class TicketSolucionesController {
   async findAll() {
     return this.ticketSolucionesService.deleteAll();
   }
+
+  // PATCH
+  @Patch('')
+  async update(
+    // @Param('id', ParseIntPipe) id:number,
+    @Body() dto: CreateTicketSolucioneDto
+  ) {
+    const id = dto.id
+    return this.ticketSolucionesService.update(id, dto);
+  }
+ 
 }

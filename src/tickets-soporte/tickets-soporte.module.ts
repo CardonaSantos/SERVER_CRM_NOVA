@@ -9,9 +9,10 @@ import { GatewayModule } from 'src/web-sockets/websocket.module';
 import { TICKET_SOPORTE_REPOSITORY } from './domain/ticket-soporte-repository';
 import { PrismaTicketSoporteRepository } from './infraestructure/prisma-ticket-soporte';
 import { CloudApiMetaModule } from 'src/cloud-api-meta/cloud-api-meta.module';
+import { TicketResumenModule } from 'src/ticket-resumen/ticket-resumen.module';
 
 @Module({
-  imports: [GatewayModule, CloudApiMetaModule],
+  imports: [GatewayModule, CloudApiMetaModule, TicketResumenModule],
   controllers: [TicketsSoporteController],
   providers: [
     TicketsSoporteService,

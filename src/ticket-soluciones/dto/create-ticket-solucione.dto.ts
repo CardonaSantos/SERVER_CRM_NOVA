@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsInt } from 'class-validator';
 
 export class CreateTicketSolucioneDto {
   @IsString()
@@ -10,4 +10,8 @@ export class CreateTicketSolucioneDto {
   @IsOptional()
   @IsBoolean()
   isEliminado?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  id?: number;
 }

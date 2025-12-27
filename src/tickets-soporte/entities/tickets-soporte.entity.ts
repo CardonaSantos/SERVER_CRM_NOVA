@@ -29,6 +29,7 @@ export interface TicketSoporteProps {
   actualizadoEn: Date;
 
   fijado: boolean;
+  tiempoTotalMinutos?: number
 }
 
 export class TicketSoporte {
@@ -53,6 +54,7 @@ export class TicketSoporte {
     id?: number;
     creadoEn?: Date;
     actualizadoEn?: Date;
+    tiempoTotalMinutos?: number | null;
   }): TicketSoporte {
     const {
       clienteId,
@@ -68,6 +70,7 @@ export class TicketSoporte {
       id,
       creadoEn,
       actualizadoEn,
+      tiempoTotalMinutos
     } = params;
 
     if (!clienteId) throw new Error('clienteId es requerido');
@@ -93,6 +96,8 @@ export class TicketSoporte {
       creadoEn: creadoEn ?? now,
       actualizadoEn: actualizadoEn ?? now,
       fijado: fijado ?? false,
+      tiempoTotalMinutos: tiempoTotalMinutos
+      
     };
 
     return new TicketSoporte(props);

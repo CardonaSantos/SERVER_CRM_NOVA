@@ -65,6 +65,7 @@ export class PrismaTicketSoporteRepository implements TicketSoporteRepository {
           fechaInicioAtencion: data.fechaInicioAtencion,
           fechaResolucionTecnico: data.fechaResolucionTecnico,
           fijado: data.fijado,
+          
         },
       });
       return this.toDomain(updated);
@@ -162,4 +163,15 @@ export class PrismaTicketSoporteRepository implements TicketSoporteRepository {
       );
     }
   }
+
+  async obtenerTiempoTotalTrabajado(ticketId: number): Promise<number> {
+    const result = await this.prisma.ticketTimeLog.aggregate({
+        where: { ticketId },
+        _sum: {
+            duracionMinutos: true
+        }
+    });
+    return result._sum.duracionMinutos || 0;
+}
+
 }

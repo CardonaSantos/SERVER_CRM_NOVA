@@ -34,6 +34,16 @@ export class TicketsSoporteController {
     return this.ticketsSoporteService.getTicketToBoleta(id);
   }
 
+    // ===== CLOSE =====
+  @Patch('/close-ticket-soporte')
+  closeTickets(
+    @Body() dto: CloseTicketDto,
+  ) {
+    const id = dto.ticketId
+    return this.ticketsSoporteService.closeTickets(id, dto);
+  }
+
+
   // ===== UPDATE (datos generales) =====
   @Patch('/update-ticket-soporte/:id')
   update(
@@ -54,14 +64,7 @@ export class TicketsSoporteController {
     return this.ticketsSoporteService.updateStatusEnRevision(id);
   }
 
-  // ===== CLOSE =====
-  @Patch('/close-ticket-soporte/:id')
-  closeTickets(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: CloseTicketDto,
-  ) {
-    return this.ticketsSoporteService.closeTickets(id, dto);
-  }
+
 
   // ===== DELETE =====
   @Delete('/delete-ticket/:id')

@@ -9,10 +9,11 @@ export class TicketSolucionesService {
   private readonly logger = new Logger(TicketSolucionesService.name);
   constructor(private readonly ticketSolucionRepo: TicketSolucionRepository) {}
 
+  // POST
   async createSolucionTicket(dto: CreateTicketSolucioneDto) {
     try {
       const entidad = SolucionTicket.create(dto.solucion, dto.descripcion);
-      return this.ticketSolucionRepo.create(entidad);
+      return await this.ticketSolucionRepo.create(entidad);
     } catch (error) {
       throwFatalError(
         error,
@@ -21,7 +22,7 @@ export class TicketSolucionesService {
       );
     }
   }
-
+  // GET ONE
   async getById(id: number) {
     try {
       const record = await this.ticketSolucionRepo.findById(id);
@@ -38,7 +39,7 @@ export class TicketSolucionesService {
       );
     }
   }
-
+// DELETE ALL 
   async deleteAll() {
     try {
       const deletedSolutions = await this.ticketSolucionRepo.deleteAll();
@@ -52,7 +53,7 @@ export class TicketSolucionesService {
       );
     }
   }
-
+// GET ALL 
   async getAll() {
     try {
       const records = await this.ticketSolucionRepo.getAll();
@@ -64,5 +65,24 @@ export class TicketSolucionesService {
         'TicketSolucinoesService - deleteAll',
       );
     }
+  }
+
+  // DELETE ALL
+  async deleteById(id:number){
+    try {
+      const record_deleted = await this.ticketSolucionRepo.deleteById(id)
+      return record_deleted
+    } catch (error) {
+      throwFatalError(
+        error,
+        this.logger,
+        'TicketSolucinoesService - deleteById',
+      );
+    }
+  }
+
+  // UPDATE
+  async update(id:number, dto:CreateTicketSolucioneDto ){
+    return await this.ticketSolucionRepo.update(id, dto)
   }
 }

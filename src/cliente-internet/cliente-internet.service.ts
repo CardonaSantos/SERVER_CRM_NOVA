@@ -1182,7 +1182,6 @@ export class ClienteInternetService {
           },
         }),
       ]);
-    this.logger.log('Los clientes encontrados son: ', customers);
 
     const formattedCustomers = customers.map((customer) => ({
       id: customer.id,

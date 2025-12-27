@@ -18,6 +18,23 @@ export class PrismaTicketResumenRepository implements TicketResumenRepository {
   async create(ticketResumen: TicketResumen): Promise<TicketResumen> {
     try {
       const data = ticketResumen.toObject();
+const ticketTimeLog = await this.prisma.ticketSoporte.findUnique({
+  where: {
+    id: data.ticketId
+  },
+  select: {
+    logsTiempo: {
+      select: {
+        id: true,
+        duracionMinutos: true,
+        inicio: true,
+        fin: true,
+      }
+    }
+  }
+})
+
+      const totalTiempo =  ticketTimeLog.logsTiempo.reduce((acc, tiempo)=> acc + tiempo.duracionMinutos,0)
 
       const created = await this.prisma.ticketResumen.create({
         data: {
@@ -28,7 +45,7 @@ export class PrismaTicketResumenRepository implements TicketResumenRepository {
           reabierto: data.reabierto,
           numeroReaperturas: data.numeroReaperturas,
           intentos: data.intentos,
-          tiempoTotalMinutos: data.tiempoTotalMinutos,
+          tiempoTotalMinutos: totalTiempo,
           tiempoTecnicoMinutos: data.tiempoTecnicoMinutos,
         },
       });

@@ -103,6 +103,7 @@ model Usuario {
 
   notificacionesRecibidas NotificacionUsuario[]
   notificacionesEnviadas  Notificacion[]        @relation("NotificacionRemitente")
+  logsTiempo       TicketTimeLog[] @relation("LogTecnico")
 }
 
 model PerfilUsuario {
@@ -749,7 +750,6 @@ model TicketSoporte {
   id                     Int                    @id @default(autoincrement())
   // clienteId              Int
   clienteId Int?  // <--- Agrega el signo de interrogación
-
   empresaId              Int?
   tecnicoId              Int?
   creadoPorId            Int?
@@ -779,7 +779,23 @@ model TicketSoporte {
   empresa           Empresa?                @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   tecnico           Usuario?               @relation("TicketTecnico", fields: [tecnicoId], references: [id])
   asignaciones      TicketSoporteTecnico[]
+  logsTiempo             TicketTimeLog[]
 }
+
+model TicketTimeLog {
+  id        Int      @id @default(autoincrement())
+  // Relación con el Ticket
+  ticketId  Int
+  ticket    TicketSoporte @relation(fields: [ticketId], references: [id])
+  // Relación con el Usuario (Técnico)
+  tecnicoId Int
+  tecnico   Usuario @relation("LogTecnico", fields: [tecnicoId], references: [id])
+  
+  inicio          DateTime @default(now())
+  fin             DateTime?
+  duracionMinutos Int?
+}
+
 
 model BoletaSoporte {
   id            Int            @id @default(autoincrement())

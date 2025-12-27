@@ -18,7 +18,6 @@ export class TicketResumenService {
 
   // CREATE
   async create(dto: CreateTicketResumenDto) {
-    // Map DTO -> entidad de dominio
     const resumen = TicketResumen.create({
       ticketId: dto.ticketId,
       solucionId: dto.solucionId ?? null,
@@ -27,9 +26,10 @@ export class TicketResumenService {
       reabierto: dto.reabierto,
       numeroReaperturas: dto.numeroReaperturas,
       intentos: dto.intentos,
-      tiempoTotalMinutos: dto.tiempoTotalMinutos,
-      tiempoTecnicoMinutos: dto.tiempoTecnicoMinutos,
+      // tiempoTotalMinutos: dto.tiempoTotalMinutos,
+      // tiempoTecnicoMinutos: dto.tiempoTecnicoMinutos,
     });
+
 
     const created = await this.repo.create(resumen);
 

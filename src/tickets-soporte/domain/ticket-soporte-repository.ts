@@ -24,4 +24,7 @@ export interface TicketSoporteRepository {
     page: number;
     limit: number;
   }>;
+
+  obtenerTiempoTotalTrabajado(ticketId: number): Promise<number>;
+  
 }
