@@ -1052,7 +1052,6 @@ export class ClienteInternetService {
 
     if (paramSearch && paramSearch.trim() !== '') {
       const cleanSearch = this.normalizeString(paramSearch);
-      this.logger.debug(`cleanSearch normalizado = "${cleanSearch}"`);
 
       terms = cleanSearch
         .split(/\s+/) // Divide por espacios
@@ -1061,8 +1060,6 @@ export class ClienteInternetService {
 
     //Construir condiciones dinámicas
     const andConditions: Prisma.ClienteInternetWhereInput[] = [];
-    this.logger.debug(`paramSearch bruto = "${paramSearch}"`);
-    this.logger.debug(`terms = ${JSON.stringify(terms)}`);
 
     for (const term of terms) {
       andConditions.push({
@@ -1070,6 +1067,20 @@ export class ClienteInternetService {
           { searchNombre: { contains: term, mode: 'insensitive' } },
           { telefono: { contains: term, mode: 'insensitive' } },
           { IP: { direccionIp: { contains: term, mode: 'insensitive' } } },
+          {
+            sector: {
+              nombre: {
+                contains: term,
+                mode: 'insensitive',
+              },
+            },
+          },
+          {
+            direccion: {
+              contains: term,
+              mode: 'insensitive',
+            },
+          },
         ],
       });
     }
@@ -1085,12 +1096,6 @@ export class ClienteInternetService {
 
     const whereCondition: Prisma.ClienteInternetWhereInput =
       andConditions.length > 0 ? { AND: andConditions } : {};
-    // DEBUG
-    this.logger.debug(
-      'whereCondition:',
-      JSON.stringify(whereCondition, null, 2),
-    );
-    this.logger.debug(`page=${page}, limit=${limit}`);
 
     const [customers, totalCount, activo, pendiente_activo, atrasado, moroso] =
       await this.prisma.$transaction([

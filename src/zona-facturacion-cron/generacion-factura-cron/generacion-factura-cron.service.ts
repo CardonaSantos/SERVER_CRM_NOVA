@@ -7,11 +7,7 @@ import { Cron } from '@nestjs/schedule';
 import { TwilioService } from 'src/twilio/twilio.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { getEstadoCliente, PENDIENTES_ENUM } from '../utils';
-import {
-  ClienteInternet,
-  // EstadoCliente,
-  FacturaInternet,
-} from '@prisma/client';
+import { ClienteInternet, FacturaInternet } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { shouldSkipClient, shouldSkipZoneToday } from '../Functions';
 import { FacturaManagerService } from '../factura-manager/factura-manager.service';

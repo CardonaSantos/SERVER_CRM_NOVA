@@ -721,6 +721,24 @@ export class FacturacionService {
                 IP: { direccionIp: { contains: term, mode: 'insensitive' } },
               },
             },
+            {
+              cliente: {
+                sector: {
+                  nombre: {
+                    contains: term,
+                    mode: 'insensitive',
+                  },
+                },
+              },
+            },
+            {
+              cliente: {
+                direccion: {
+                  contains: term,
+                  mode: 'insensitive',
+                },
+              },
+            },
           ],
         });
       }
@@ -746,11 +764,6 @@ export class FacturacionService {
       // 3) Armamos el where final
       const whereCondition: Prisma.FacturaInternetWhereInput =
         andConditions.length > 0 ? { AND: andConditions } : {};
-
-      this.logger.debug(
-        'whereCondition:',
-        JSON.stringify(whereCondition, null, 2),
-      );
 
       const [facturas, totalCount] = await this.prisma.$transaction([
         this.prisma.facturaInternet.findMany({
