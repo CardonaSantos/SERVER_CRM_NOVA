@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { CrmGateway } from './websocket.gateway';
 import { AuthModule } from 'src/auth/auth.module';
 import { WebSocketServices } from './websocket.service';

@@ -7,14 +7,14 @@ import {
   Param,
   Delete,
 } from '@nestjs/common';
-import { NotificacionesService } from '../notificaciones.service';
+import { NotificacionesService } from '../app/notificaciones.service';
 
 @Controller('notificaciones')
 export class NotificacionesController {
   constructor(private readonly notificacionesService: NotificacionesService) {}
 
-  @Get('/:id')
-  async getMyNotifications() {
-    //servicio
+  @Get('/system')
+  async getNotifications() {
+    return await this.notificacionesService.findAll();
   }
 }

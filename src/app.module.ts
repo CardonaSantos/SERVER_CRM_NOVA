@@ -48,6 +48,7 @@ import { TicketResumenModule } from './ticket-resumen/ticket-resumen.module';
 import { CloudApiMetaModule } from './cloud-api-meta/cloud-api-meta.module';
 import { BroadcastModule } from './broadcast/broadcast.module';
 import { BotFunctionsModule } from './bot-functions/bot-functions.module';
+import { NotificacionesUsuarioModule } from './notificaciones-usuario/notificaciones-usuario.module';
 
 @Module({
   imports: [
@@ -102,6 +103,7 @@ import { BotFunctionsModule } from './bot-functions/bot-functions.module';
     CloudApiMetaModule,
     BroadcastModule,
     BotFunctionsModule,
+    NotificacionesUsuarioModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -8,6 +8,14 @@ export class WebSocketServices {
   private readonly logger = new Logger(WebSocketServices.name);
   constructor(private readonly gateway: CrmGateway) {}
 
+  async emitSystemNotification(empresaId: number, notification: any) {
+    return await this.gateway.emitToEmpresa(
+      empresaId,
+      'notifications:system',
+      notification,
+    );
+  }
+
   /**
    * Emitir el cambio de estado de un ticket de soporte a la UI Dashboard
    * @param dto

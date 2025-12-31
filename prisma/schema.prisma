@@ -969,7 +969,6 @@ model Test {
 /// [12] Notificaciones
 model Notificacion {
   id Int @id @default(autoincrement())
-
   empresaId Int? // noti pertenece a una empresa (o null si GLOBAL)
   empresa   Empresa? @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
@@ -985,7 +984,6 @@ model Notificacion {
   referenciaId   Int? // ID de la entidad referenciada
   route          String? // ej: '/tickets/123' o '/facturacion/internet?zona=1&periodo=202501'
   actionLabel    String? // ej: 'Ver detalle'
-  // meta           Json? // payload extra: { zonaId, periodo, totalFacturas }
 
   // Emisor / auditoría
   remitenteId Int?
@@ -1085,6 +1083,7 @@ enum CategoriaNotificacion {
   SOPORTE // tickets de soporte
   RUTA_COBRO // eventos de rutas / cobradores
   CLIENTE // alta/baja de clientes, cambios de servicio
+  BOT
   OTROS
 }
 

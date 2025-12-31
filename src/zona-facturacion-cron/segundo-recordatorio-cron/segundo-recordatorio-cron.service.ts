@@ -9,7 +9,6 @@ import * as timezone from 'dayjs/plugin/timezone';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
-import { TwilioService } from 'src/twilio/twilio.service';
 import { FacturaManagerService } from '../factura-manager/factura-manager.service';
 import { shouldSkipClient, shouldSkipZoneToday } from '../Functions';
 import { CloudApiMetaService } from 'src/cloud-api-meta/cloud-api-meta.service';
@@ -24,7 +23,6 @@ export class SegundoRecordatorioCronService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly twilioService: TwilioService,
     private readonly configService: ConfigService,
     private readonly facturaManager: FacturaManagerService,
     private readonly cloudApi: CloudApiMetaService,

@@ -30,7 +30,6 @@ export function formatearNumeroWhatsApp(numero: string): string {
 }
 
 export const formatearFecha = (fecha: string) => {
-  // Formateo en UTC sin conversión a local
   return dayjs(fecha).format('DD/MM/YYYY');
 };
 
@@ -52,38 +51,22 @@ export interface DatosFacturaGenerate {
   cliente: number;
   facturacionZona: number;
   nombreClienteFactura: string;
-  // Otros campos para el mensaje
   datalleFacturaParaMensaje?: string;
   numerosTelefono?: string[];
 }
 
 export interface DatosFacturaGenerateIndividual {
-  datalleFactura: string; // detalle o descripción de la factura
-  fechaPagoEsperada: string | Date; // fecha esperada de pago, puede ser string ISO o Date
-  montoPago: number; // monto total a pagar
-  saldoPendiente: number; // saldo pendiente (usualmente igual a montoPago)
-  estadoFacturaInternet: 'PENDIENTE' | 'PARCIAL' | 'PAGADA' | string; // estado de la factura
-  cliente: number; // id del cliente (según tipo, string o number)
-  facturacionZona: number; // id de la zona de facturación
-  nombreClienteFactura: string; // nombre completo para mostrar en la factura
-  numerosTelefono?: string[]; // opcional, lista de números de teléfono asociados
+  datalleFactura: string;
+  fechaPagoEsperada: string | Date;
+  montoPago: number;
+  saldoPendiente: number;
+  estadoFacturaInternet: 'PENDIENTE' | 'PARCIAL' | 'PAGADA' | string;
+  cliente: number;
+  facturacionZona: number;
+  nombreClienteFactura: string;
+  numerosTelefono?: string[];
 }
 
-//ACTUALIZAR SALDO Y ESTADO DE FACTURAS:
-//  await this.prisma.saldoCliente.update({
-//         where: { clienteId: newFactura.clienteId },
-//         data: { saldoPendiente: { increment: newFactura.montoPago } },
-//       });
-
-// const facturasPendientes = await this.prisma.facturaInternet.findMany({
-//   where: {
-//     clienteId: newFactura.clienteId,
-//     estadoFacturaInternet: {
-//       in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'],
-//     },
-//   },
-// });
-/* ---------- helpers.ts (exportables) ------------- */
 export const PENDIENTES_ENUM: StateFacturaInternet[] = [
   'PENDIENTE',
   'PARCIAL',

@@ -82,8 +82,8 @@ export class FacturaManagerService {
     const existente = await this.prisma.facturaInternet.findFirst({
       where: { clienteId: cliente.id, facturacionZonaId: zona.id, periodo },
     });
+    // NOTIFICAR
     if (existente) {
-      /* Notificamos SOLO si está pendiente de pago */
       const notificar = ['PENDIENTE', 'PARCIAL', 'VENCIDA'].includes(
         existente.estadoFacturaInternet,
       );
@@ -98,6 +98,7 @@ export class FacturaManagerService {
         estadoFacturaInternet: 'PAGADA',
       },
     });
+
     if (adelantada)
       throw new InternalServerErrorException('Cliente pagado adelantado');
 
@@ -105,6 +106,7 @@ export class FacturaManagerService {
       where: { id: cliente.id },
       include: { servicioInternet: true },
     });
+
     if (!clienteDb?.servicioInternet)
       throw new InternalServerErrorException('Cliente sin plan');
 
@@ -114,13 +116,12 @@ export class FacturaManagerService {
     const fechaPagoEsperada = dayjs(fechaPago);
     const mesYAnio = fechaPagoEsperada
       .locale('es')
-      .format('MMMM YYYY') // "septiembre 2025"
+      .format('MMMM YYYY')
       .toUpperCase(); // "SEPTIEMBRE 2025"
 
     const plan = clienteDb.servicioInternet.nombre;
 
     const monto = clienteDb.servicioInternet.precio.toFixed(2);
-    // const detalleSimple = `Factura correspondiente a ${mesCapitalizado} por Q${monto} | ${clienteDb.servicioInternet.nombre}`;
     const detalleSimple = `Factura correspondiente a ${mesYAnio} por Q${monto} | ${plan}`;
     const factura = await this.prisma.facturaInternet.create({
       data: {

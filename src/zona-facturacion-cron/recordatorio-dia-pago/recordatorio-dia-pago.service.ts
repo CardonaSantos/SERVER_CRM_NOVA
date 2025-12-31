@@ -10,14 +10,8 @@ import * as dayjs from 'dayjs';
 import * as utc from 'dayjs/plugin/utc';
 import * as timezone from 'dayjs/plugin/timezone';
 import { ConfigService } from '@nestjs/config';
-import { TwilioService } from 'src/twilio/twilio.service';
-// import { GenerarFacturaService } from '../generar-factura/generar-factura.service';
 import { FacturaManagerService } from '../factura-manager/factura-manager.service';
-import {
-  formatearTelefonos,
-  shouldSkipClient,
-  shouldSkipZoneToday,
-} from '../Functions';
+import { shouldSkipClient, shouldSkipZoneToday } from '../Functions';
 import { formatearTelefonosMeta } from 'src/cloud-api-meta/helpers/cleantelefono';
 import { CloudApiMetaService } from 'src/cloud-api-meta/cloud-api-meta.service';
 dayjs.extend(utc);
@@ -27,11 +21,8 @@ export class RecordatorioDiaPagoService {
   private readonly logger = new Logger(RecordatorioDiaPagoService.name);
 
   constructor(
-    private readonly twilioService: TwilioService,
-
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-    // private readonly generarFactura: GenerarFacturaService,
     private readonly facturaManager: FacturaManagerService,
     private readonly cloudApi: CloudApiMetaService,
   ) {}

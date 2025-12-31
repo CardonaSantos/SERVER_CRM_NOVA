@@ -37,7 +37,6 @@ dayjs.locale('es');
 export class PrimerRecordatorioCronService {
   private readonly logger = new Logger(PrimerRecordatorioCronService.name);
   constructor(
-    private readonly twilioService: TwilioService,
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly facturaManager: FacturaManagerService,
@@ -56,7 +55,6 @@ export class PrimerRecordatorioCronService {
         );
       })();
 
-    /** 1. Empresa para variable {{2}} */
     const empresa = await this.prisma.empresa.findFirst({
       select: { nombre: true },
     });
@@ -66,7 +64,6 @@ export class PrimerRecordatorioCronService {
       return;
     }
 
-    /** 2. Zonas y clientes */
     const zonas = await this.prisma.facturacionZona.findMany({
       include: { clientes: { include: { servicioInternet: true } } },
     });
@@ -74,14 +71,12 @@ export class PrimerRecordatorioCronService {
     for (const zona of zonas) {
       if (shouldSkipZoneToday(zona.diaRecordatorio)) continue;
 
-      // flags zona (mantengo tu lógica)
       if (!zona.enviarRecordatorio1 || !zona.enviarRecordatorio) continue;
 
       for (const cliente of zona.clientes) {
         if (shouldSkipClient(cliente.estadoCliente, cliente.servicioInternet))
           continue;
 
-        // flag cliente (mantengo tu lógica)
         if (!cliente.enviarRecordatorio) {
           this.logger.debug(
             `Cliente ${cliente.id} tiene enviarRecordatorio=false; no se envía Recordatorio 1.`,
@@ -90,7 +85,6 @@ export class PrimerRecordatorioCronService {
         }
 
         try {
-          /** 3. Obtener / crear factura pendiente del periodo */
           const { factura } = await this.facturaManager.obtenerOcrearFactura(
             cliente,
             zona,

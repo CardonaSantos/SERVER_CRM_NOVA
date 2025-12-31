@@ -3,16 +3,12 @@ import {
   MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
-  OnGatewayInit, // 👈 importa esto
+  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
-import {
-  Injectable,
-  Logger,
-  OnModuleInit, // 👈 opcional, si quieres este hook también
-} from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { throwFatalError } from 'src/Utils/CommonFatalError';

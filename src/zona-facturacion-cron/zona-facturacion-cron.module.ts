@@ -14,9 +14,10 @@ import { FacturaManagerService } from './factura-manager/factura-manager.service
 import { CloudApiMetaService } from 'src/cloud-api-meta/cloud-api-meta.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { HttpModule } from '@nestjs/axios';
+import { NotificacionesModule } from 'src/notificaciones/notificaciones.module';
 
 @Module({
-  imports: [HttpModule, ConfigModule],
+  imports: [HttpModule, ConfigModule, NotificacionesModule],
   controllers: [ZonaFacturacionCronController],
   providers: [
     CloudApiMetaService, // API DE META
