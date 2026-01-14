@@ -104,6 +104,8 @@ model Usuario {
   notificacionesRecibidas NotificacionUsuario[]
   notificacionesEnviadas  Notificacion[]        @relation("NotificacionRemitente")
   logsTiempo       TicketTimeLog[] @relation("LogTecnico")
+
+  creditosRegistrados Credito[]
 }
 
 model PerfilUsuario {
@@ -390,7 +392,11 @@ model ClienteInternet {
   ruta                       Ruta[]                    @relation("ClienteInternetToRuta")
   eliminadoPorId             Int?
   eliminadoPor               Usuario?                  @relation("ClienteEliminadoPor", fields: [eliminadoPorId], references: [id], onDelete: SetNull)
-  
+
+  creditos  Credito[] 
+  expediente ClienteExpediente? //DE CREDITO
+  documentosCredito DocumentoCredito[] 
+
 }
 
 model IP {
@@ -1072,6 +1078,271 @@ model MikrotikRouter {
   actualizadoEn DateTime @updatedAt
 
   @@unique([empresaId, nombre])
+}
+
+// [15] CREDITO MODULO
+
+model Credito {
+  id                Int      @id @default(autoincrement())
+  clienteId         Int
+  cliente           ClienteInternet  @relation(fields: [clienteId], references: [id])
+
+  montoCapital      Decimal  @db.Decimal(12,2)
+  interesPorcentaje Decimal @db.Decimal(6,4)
+
+  intervaloDias     Int
+
+
+  interesTipo       InteresTipo
+  plazoCuotas       Int
+  frecuencia        FrecuenciaPago
+
+  montoTotal        Decimal  @db.Decimal(12,2) // capital + interés
+  montoCuota        Decimal  @db.Decimal(12,2)
+
+  estado            EstadoCredito
+  fechaInicio       DateTime
+  fechaFinEstimada  DateTime
+
+  creadoEn         DateTime @default(now())
+  actualizadoEn         DateTime @updatedAt
+
+  cuotas            CuotaCredito[]
+  pagos             PagoCredito[]      
+
+  historialEstados  CreditoEstadoHistorial[]
+  documentos DocumentoCredito[]   
+
+  origenCredito OrigenCredito @default(USUARIO)
+
+  contratoSnapshot  CreditoContrato?
+  observaciones String?
+
+
+  creadoPorId Int?
+  creadoPor   Usuario? @relation(fields: [creadoPorId],references: [id],onDelete: SetNull)
+}
+
+enum OrigenCredito {
+  TIENDA
+  CAMPO
+  ONLINE
+  REFERIDO
+  USUARIO
+}
+
+model CuotaCredito {
+  id           Int      @id @default(autoincrement())
+  creditoId    Int
+  credito      Credito  @relation(fields: [creditoId], references: [id])
+
+  numeroCuota  Int
+  fechaVenc    DateTime
+
+  montoCapital Decimal  @db.Decimal(12,2)
+  montoInteres Decimal  @db.Decimal(14,4)
+  montoTotal   Decimal  @db.Decimal(12,2)
+
+  montoPagado  Decimal  @db.Decimal(12,2) @default(0)
+  estado       EstadoCuota
+  pagos        PagoCuota[]
+  moras MoraCredito[]
+
+  creadoEn         DateTime @default(now())
+  actualizadoEn         DateTime @updatedAt
+  @@unique([creditoId, numeroCuota])
+}
+
+model PagoCuota {
+  id            Int @id @default(autoincrement())
+
+  cuotaId       Int
+  cuota         CuotaCredito @relation(fields: [cuotaId], references: [id])
+
+  pagoCreditoId Int
+  pagoCredito   PagoCredito @relation(fields: [pagoCreditoId], references: [id])
+
+  monto         Decimal @db.Decimal(12,2)
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  @@unique([cuotaId, pagoCreditoId])
+}
+
+model PagoCredito {
+  id           Int @id @default(autoincrement())
+
+  creditoId    Int
+  credito      Credito @relation(fields: [creditoId], references: [id])
+
+  montoTotal   Decimal @db.Decimal(12,2)
+  fechaPago    DateTime
+
+  metodoPago   String?
+  referencia   String?
+  observacion  String?
+
+  creadoEn     DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  // BACK-RELATION
+  aplicaciones PagoCuota[]
+}
+
+model CreditoEstadoHistorial {
+  id         Int @id @default(autoincrement())
+  creditoId  Int
+  credito    Credito @relation(fields: [creditoId], references: [id])
+
+  estado     EstadoCredito
+  motivo     String?
+  
+  creadoEn         DateTime @default(now())
+  actualizadoEn         DateTime @updatedAt
+}
+
+model MoraCredito {
+  id         Int @id @default(autoincrement())
+  cuotaId    Int
+  cuota      CuotaCredito @relation(fields: [cuotaId], references: [id])
+
+  diasMora   Int
+  interes    Decimal @db.Decimal(14,4)
+
+  calculadoEn DateTime @default(now())
+
+  creadoEn         DateTime @default(now())
+  actualizadoEn         DateTime @updatedAt
+}
+
+model CreditoContrato {
+  id          Int @id @default(autoincrement())
+  creditoId   Int @unique
+  credito     Credito @relation(fields: [creditoId], references: [id])
+
+  contenido   String // HTML / Markdown / Texto legal
+  version     String
+  firmadoEn   DateTime?
+
+  creadoEn         DateTime @default(now())
+  actualizadoEn         DateTime @updatedAt
+}
+
+// [16] CREDITO CREDENCIALES
+
+model PlantillaLegal {
+  id          Int @id @default(autoincrement())
+
+  tipo        TipoPlantillaLegal
+  nombre      String
+  contenido   String   // HTML o Markdown con placeholders
+  version     String
+  activa      Boolean @default(true)
+
+  creadoEn    DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+}
+
+model DocumentoCredito {
+  id           Int @id @default(autoincrement())
+
+  creditoId    Int
+  credito      Credito @relation(fields: [creditoId], references: [id])
+
+  clienteId    Int
+  cliente      ClienteInternet @relation(fields: [clienteId], references: [id])
+
+  tipo         TipoPlantillaLegal
+  versionPlantilla String
+
+  contenidoFinal String   // HTML final ya renderizado
+  firmadoEn     DateTime?
+  archivoUrl    String?
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+}
+
+model ClienteExpediente {
+  id           Int @id @default(autoincrement())
+  clienteId    Int @unique
+  cliente      ClienteInternet @relation(fields: [clienteId], references: [id])
+
+  fuenteIngresos String?
+  tieneDeudas    Boolean?
+  detalleDeudas  String?
+
+  creadoEn       DateTime @default(now())
+  actualizadoEn  DateTime @updatedAt
+
+  referencias    ClienteReferencia[]
+  archivos       ClienteArchivo[]
+}
+
+model ClienteArchivo {
+  id            Int @id @default(autoincrement())
+  expedienteId  Int
+  expediente    ClienteExpediente @relation(fields: [expedienteId], references: [id])
+
+  tipo          TipoArchivoCliente
+  url           String
+  descripcion   String?
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn  DateTime @updatedAt
+}
+
+model ClienteReferencia {
+  id            Int @id @default(autoincrement())
+  expedienteId  Int
+  expediente    ClienteExpediente @relation(fields: [expedienteId], references: [id])
+
+  nombre        String
+  telefono      String
+  relacion      String
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn  DateTime @updatedAt
+}
+
+enum TipoPlantillaLegal {
+  CONTRATO
+  PAGARE
+}
+
+enum TipoArchivoCliente {
+  DPI
+  CASA
+  NEGOCIO
+  RECIBO_LUZ
+  OTRO
+}
+
+enum EstadoCredito {
+  ACTIVO
+  EN_MORA
+  COMPLETADO
+  CANCELADO
+}
+
+enum EstadoCuota {
+  PENDIENTE
+  PARCIAL
+  PAGADA
+  VENCIDA
+}
+
+enum FrecuenciaPago {
+  MENSUAL
+  QUINCENAL
+  SEMANAL
+  CUSTOM
+}
+
+enum InteresTipo {
+  FIJO
+  VARIABLE
 }
 
 /// [X] Enumeraciones

@@ -49,6 +49,7 @@ import { CloudApiMetaModule } from './cloud-api-meta/cloud-api-meta.module';
 import { BroadcastModule } from './broadcast/broadcast.module';
 import { BotFunctionsModule } from './bot-functions/bot-functions.module';
 import { NotificacionesUsuarioModule } from './notificaciones-usuario/notificaciones-usuario.module';
+import { CreditoModule } from './credito/credito.module';
 
 @Module({
   imports: [
@@ -104,6 +105,7 @@ import { NotificacionesUsuarioModule } from './notificaciones-usuario/notificaci
     BroadcastModule,
     BotFunctionsModule,
     NotificacionesUsuarioModule,
+    CreditoModule,
   ],
   controllers: [AppController],
   providers: [AppService],
