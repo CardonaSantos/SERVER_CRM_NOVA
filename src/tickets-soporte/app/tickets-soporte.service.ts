@@ -37,7 +37,7 @@ export class TicketsSoporteService {
     @Inject(TICKET_SOPORTE_REPOSITORY)
     private readonly ticketsRepo: TicketSoporteRepository,
     private readonly prisma: PrismaService,
-    private readonly twilioMessageSuport: GenerarMensajeSoporteService,
+    // private readonly twilioMessageSuport: GenerarMensajeSoporteService,
     private readonly metasTicketSoporte: MetasTicketsService,
     private readonly ws: WebSocketServices,
 
@@ -49,9 +49,11 @@ export class TicketsSoporteService {
 
   // ===================== CREATE =====================
   async create(createTicketsSoporteDto: CreateTicketsSoporteDto) {
-    this.logger.debug('La data del ticket soporte: ', createTicketsSoporteDto);
+    this.logger.log(
+      `DTO recibido en TicketSoporteService:\n${JSON.stringify(createTicketsSoporteDto, null, 2)}`,
+    );
 
-    return await this.prisma.$transaction(async (tx) => {
+    const ticketCreated = await this.prisma.$transaction(async (tx) => {
       const newTicketSoporte = await tx.ticketSoporte.create({
         data: {
           // Campos escalares
@@ -102,6 +104,68 @@ export class TicketsSoporteService {
 
       return newTicketSoporte;
     });
+
+    if (!ticketCreated.clienteId) {
+      this.logger.debug(`Ticket ${ticketCreated.id} sin cliente asignado`);
+      return;
+    }
+
+    const customer = await this.prisma.clienteInternet.findUnique({
+      where: {
+        id: ticketCreated.clienteId,
+      },
+      select: {
+        id: true,
+        nombre: true,
+        apellidos: true,
+        telefono: true,
+        contactoReferenciaTelefono: true,
+        empresa: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
+      },
+    });
+
+    if (!customer) {
+      this.logger.warn(
+        `Ticket ${ticketCreated.id} creado sin cliente válido (${ticketCreated.clienteId})`,
+      );
+      return ticketCreated;
+    }
+
+    const templateName = this.configService.get('TICKET_PLANTILLA_SID');
+
+    const variablesPlantilla = [
+      `${customer.nombre ?? ''} ${customer.apellidos ?? ''}`.trim() ||
+        'Nombre no disponible',
+      `${ticketCreated.titulo ?? 'N/A'}`,
+      `${ticketCreated.id ?? 9999}`,
+      `N/A`,
+    ];
+    const telefonosRaw = [
+      customer.telefono ?? customer.contactoReferenciaTelefono,
+    ];
+
+    const telefonos = formatearTelefonosMeta(telefonosRaw).filter(Boolean);
+
+    try {
+      for (const telefono of telefonos) {
+        const payload = this.cloudApi.crearPayloadTicket(
+          telefono,
+          templateName,
+          variablesPlantilla,
+        );
+        await this.cloudApi.enviarMensaje(payload);
+      }
+    } catch (err) {
+      this.logger.error(
+        `Error enviando notificación Meta para ticket ${ticketCreated.id}`,
+        err,
+      );
+    }
   }
 
   async createBotTicket(dto: CreateBotFunctionDto) {

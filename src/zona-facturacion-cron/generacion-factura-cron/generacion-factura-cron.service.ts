@@ -41,6 +41,7 @@ export class GeneracionFacturaCronService {
   ) {}
 
   @Cron('0 10 * * *', { timeZone: 'America/Guatemala' })
+  // @Cron(CronExpression.EVERY_MINUTE)
   async gerarFacturacionAutomaticaCron() {
     const TEMPLATE_NAME =
       this.configService.get<string>('GENERACION_FACTURA_PLANTILLA') ??

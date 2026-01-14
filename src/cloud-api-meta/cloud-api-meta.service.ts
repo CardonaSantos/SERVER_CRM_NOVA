@@ -37,7 +37,6 @@ export class CloudApiMetaService {
         components: [
           {
             type: 'body',
-            // Mapeo limpio y directo
             parameters: variables.map((variable) => ({
               type: 'text',
               text: String(variable), // Aseguramos que sea string

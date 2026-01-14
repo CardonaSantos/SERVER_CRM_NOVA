@@ -1,5 +1,4 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-
 import { Notificacion } from '../entities/notificacione.entity';
 import { UpdateNotificacioneDto } from '../dto/update-notificacione.dto';
 import {
@@ -7,6 +6,7 @@ import {
   NotificationRepository,
 } from '../domain/notification-repository';
 import { WebSocketServices } from 'src/web-sockets/websocket.service';
+import { CategoriaNotificacion } from '@prisma/client';
 
 @Injectable()
 export class NotificacionesService {
@@ -30,11 +30,23 @@ export class NotificacionesService {
     return recordNotification;
   }
 
-  async findAll(): Promise<Notificacion[]> {
+  async findAll(): Promise<{
+    botsNotifications: Notificacion[];
+    notifications: Notificacion[];
+  }> {
     const records = await this.notificationRepo.findMany();
 
-    // const recor
-    return this.notificationRepo.findMany();
+    const botsNotifications = records.filter(
+      (not) => not.categoria === CategoriaNotificacion.BOT,
+    );
+    const notifications = records.filter(
+      (not) => not.categoria !== CategoriaNotificacion.BOT,
+    );
+    const results = {
+      botsNotifications: botsNotifications,
+      notifications: notifications,
+    };
+    return results;
   }
 
   async findOne(id: number): Promise<Notificacion> {
