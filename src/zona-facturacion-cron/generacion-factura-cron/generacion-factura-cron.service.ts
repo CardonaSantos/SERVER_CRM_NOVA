@@ -11,7 +11,6 @@ import { shouldSkipClient, shouldSkipZoneToday } from '../Functions';
 import { FacturaManagerService } from '../factura-manager/factura-manager.service';
 import { formatearTelefonosMeta } from 'src/cloud-api-meta/helpers/cleantelefono';
 import { CloudApiMetaService } from 'src/cloud-api-meta/cloud-api-meta.service';
-// CONFIG DE DAYJS
 import * as dayjs from 'dayjs';
 import 'dayjs/locale/es';
 import * as utc from 'dayjs/plugin/utc';
@@ -41,7 +40,6 @@ export class GeneracionFacturaCronService {
   ) {}
 
   @Cron('0 10 * * *', { timeZone: 'America/Guatemala' })
-  // @Cron(CronExpression.EVERY_MINUTE)
   async gerarFacturacionAutomaticaCron() {
     const TEMPLATE_NAME =
       this.configService.get<string>('GENERACION_FACTURA_PLANTILLA') ??
@@ -95,6 +93,9 @@ export class GeneracionFacturaCronService {
                 factura,
                 TEMPLATE_NAME,
               );
+
+              // mini market el crucero
+              //
               contador.clientesRecordados++;
             } catch (notifyError: any) {
               this.logger.error(
@@ -192,19 +193,3 @@ export class GeneracionFacturaCronService {
     }
   }
 }
-
-// private async actualizarEstadoCliente(
-//   factura: FacturaInternet,
-// ): Promise<void> {
-//   const pendientes = await this.prisma.facturaInternet.count({
-//     where: {
-//       clienteId: factura.clienteId,
-//       estadoFacturaInternet: { in: PENDIENTES_ENUM },
-//     },
-//   });
-
-//   await this.prisma.clienteInternet.update({
-//     where: { id: factura.clienteId },
-//     data: { estadoCliente: getEstadoCliente(pendientes) },
-//   });
-// }

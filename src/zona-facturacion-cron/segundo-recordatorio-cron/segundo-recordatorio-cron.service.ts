@@ -13,7 +13,6 @@ import { FacturaManagerService } from '../factura-manager/factura-manager.servic
 import { shouldSkipClient, shouldSkipZoneToday } from '../Functions';
 import { CloudApiMetaService } from 'src/cloud-api-meta/cloud-api-meta.service';
 import { formatearTelefonosMeta } from 'src/cloud-api-meta/helpers/cleantelefono';
-// Extiende dayjs con los plugins
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
@@ -54,59 +53,62 @@ export class SegundoRecordatorioCronService {
       if (!(zona.enviarRecordatorio && zona.enviarRecordatorio2)) continue;
 
       for (const cliente of zona.clientes) {
-        if (shouldSkipClient(cliente.estadoCliente, cliente.servicioInternet))
-          continue;
-        if (!cliente.enviarRecordatorio) continue;
+        try {
+          if (shouldSkipClient(cliente.estadoCliente, cliente.servicioInternet))
+            continue;
+          if (!cliente.enviarRecordatorio) continue;
 
-        const { factura } = await this.facturaManager.obtenerOcrearFactura(
-          cliente,
-          zona,
-          false,
-        );
-
-        if (
-          !['PENDIENTE', 'PARCIAL', 'VENCIDA'].includes(
-            factura.estadoFacturaInternet,
-          )
-        )
-          continue;
-
-        const mesFactura = dayjs(factura.fechaPagoEsperada)
-          .tz('America/Guatemala')
-          .locale('es')
-          .format('MMMM YYYY')
-          .toUpperCase();
-
-        const monto = Number(factura.montoPago).toFixed(2);
-
-        const destinos = Array.from(
-          new Set(formatearTelefonosMeta([cliente.telefono])),
-        );
-        if (destinos.length === 0) continue;
-
-        const variablesPlantilla = [
-          `${cliente.nombre ?? ''} ${cliente.apellidos ?? ''}`.trim() ||
-            'Nombre no disponible', // {{1}}
-          empresa.nombre ?? 'Nova Sistemas S.A.', // {{2}}
-          mesFactura, // {{3}}
-        ];
-
-        for (const tel of destinos) {
-          const payload = this.cloudApi.crearPayloadTicket(
-            tel,
-            TEMPLATE_NAME,
-            variablesPlantilla,
+          const { factura } = await this.facturaManager.obtenerOcrearFactura(
+            cliente,
+            zona,
+            false,
           );
-          const resp = await this.cloudApi.enviarMensaje(payload);
-          const msgId = resp?.messages?.[0]?.id;
 
-          this.logger.log(
-            `📨 Recordatorio 2 enviado a ${tel} (cliente ${cliente.id})${msgId ? ` (msgId: ${msgId})` : ''}`,
+          if (
+            !['PENDIENTE', 'PARCIAL', 'VENCIDA'].includes(
+              factura.estadoFacturaInternet,
+            )
+          )
+            continue;
+
+          const mesFactura = dayjs(factura.fechaPagoEsperada)
+            .tz('America/Guatemala')
+            .locale('es')
+            .format('MMMM YYYY')
+            .toUpperCase();
+
+          const destinos = Array.from(
+            new Set(formatearTelefonosMeta([cliente.telefono])),
+          );
+
+          if (destinos.length === 0) continue;
+
+          const variablesPlantilla = [
+            `${cliente.nombre ?? ''} ${cliente.apellidos ?? ''}`.trim() ||
+              'Nombre no disponible', // {{1}}
+            empresa.nombre ?? 'Nova Sistemas S.A.', // {{2}}
+            mesFactura, // {{3}}
+          ];
+
+          for (const tel of destinos) {
+            const payload = this.cloudApi.crearPayloadTicket(
+              tel,
+              TEMPLATE_NAME,
+              variablesPlantilla,
+            );
+            const resp = await this.cloudApi.enviarMensaje(payload);
+            const msgId = resp?.messages?.[0]?.id;
+
+            this.logger.log(
+              `📨 Recordatorio 2 enviado a ${tel} (cliente ${cliente.id})${msgId ? ` (msgId: ${msgId})` : ''}`,
+            );
+          }
+        } catch (error: any) {
+          this.logger.warn(
+            `Recordatorio 2 falló | Zona ${zona.id} Cliente ${cliente.id}: ${error?.message ?? error}`,
           );
         }
       }
     }
   }
 }
-
-// generarMensajeSegundoRecordatorio
