@@ -50,6 +50,8 @@ import { BroadcastModule } from './broadcast/broadcast.module';
 import { BotFunctionsModule } from './bot-functions/bot-functions.module';
 import { NotificacionesUsuarioModule } from './notificaciones-usuario/notificaciones-usuario.module';
 import { CreditoModule } from './credito/credito.module';
+import { CustomerNetworkConfigModule } from './customer-network-config/customer-network-config.module';
+import { NetworkServiceModule } from './network-service/network-service.module';
 
 @Module({
   imports: [
@@ -106,6 +108,8 @@ import { CreditoModule } from './credito/credito.module';
     BotFunctionsModule,
     NotificacionesUsuarioModule,
     CreditoModule,
+    CustomerNetworkConfigModule,
+    NetworkServiceModule,
   ],
   controllers: [AppController],
   providers: [AppService],

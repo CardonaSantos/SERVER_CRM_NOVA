@@ -6,16 +6,13 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { verifyProps } from 'src/Utils/verifyProps';
 import { CreditoMapper } from './toPersistence';
 
-// CREDITO
 export class PrismaCreditoRepository implements CreditoRepository {
   private readonly logger = new Logger(PrismaCreditoRepository.name);
   constructor(private readonly prisma: PrismaService) {}
 
   async save(credito: Credito): Promise<Credito> {
     try {
-      // mapear datos a una persistencia
       const data = CreditoMapper.toPersistence(credito);
-
       //   si viene con id es una actualizacion, sino create
       const record = credito.getId()
         ? await this.prisma.credito.update({

@@ -396,7 +396,6 @@ model ClienteInternet {
   creditos  Credito[] 
   expediente ClienteExpediente? //DE CREDITO
   documentosCredito DocumentoCredito[] 
-
 }
 
 model IP {
@@ -1086,49 +1085,29 @@ model Credito {
   id                Int      @id @default(autoincrement())
   clienteId         Int
   cliente           ClienteInternet  @relation(fields: [clienteId], references: [id])
-
   montoCapital      Decimal  @db.Decimal(12,2)
   interesPorcentaje Decimal @db.Decimal(6,4)
-
   intervaloDias     Int
-
-
   interesTipo       InteresTipo
   plazoCuotas       Int
   frecuencia        FrecuenciaPago
-
   montoTotal        Decimal  @db.Decimal(12,2) // capital + interés
   montoCuota        Decimal  @db.Decimal(12,2)
-
   estado            EstadoCredito
   fechaInicio       DateTime
   fechaFinEstimada  DateTime
+  cuotas            CuotaCredito[]
+  pagos             PagoCredito[]      
+  historialEstados  CreditoEstadoHistorial[]
+  documentos DocumentoCredito[]   
+  origenCredito OrigenCredito @default(USUARIO)
+  contratoSnapshot  CreditoContrato?
+  observaciones String?
+  creadoPorId Int?
+  creadoPor   Usuario? @relation(fields: [creadoPorId],references: [id],onDelete: SetNull)
 
   creadoEn         DateTime @default(now())
   actualizadoEn         DateTime @updatedAt
-
-  cuotas            CuotaCredito[]
-  pagos             PagoCredito[]      
-
-  historialEstados  CreditoEstadoHistorial[]
-  documentos DocumentoCredito[]   
-
-  origenCredito OrigenCredito @default(USUARIO)
-
-  contratoSnapshot  CreditoContrato?
-  observaciones String?
-
-
-  creadoPorId Int?
-  creadoPor   Usuario? @relation(fields: [creadoPorId],references: [id],onDelete: SetNull)
-}
-
-enum OrigenCredito {
-  TIENDA
-  CAMPO
-  ONLINE
-  REFERIDO
-  USUARIO
 }
 
 model CuotaCredito {
@@ -1228,6 +1207,16 @@ model CreditoContrato {
   creadoEn         DateTime @default(now())
   actualizadoEn         DateTime @updatedAt
 }
+
+enum OrigenCredito {
+  TIENDA
+  CAMPO
+  ONLINE
+  REFERIDO
+  USUARIO
+}
+
+
 
 // [16] CREDITO CREDENCIALES
 

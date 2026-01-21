@@ -20,12 +20,15 @@ import { GetUserAuthToken } from 'src/CustomDecoratorAuthToken/GetUserAuthToken'
 import { GetToken } from 'src/auth/JwtGuard/getUserDecorator';
 import { updateCustomerService } from './dto/update-customer-service';
 import { GetClientesRutaQueryDto } from './pagination/cliente-internet.dto';
+import { NetworkServiceService } from 'src/network-service/network-service.service';
 // import { IdContratoService } from 'src/id-contrato/id-contrato.service';
 
 @Controller('internet-customer')
 export class ClienteInternetController {
   constructor(
     private readonly clienteInternetService: ClienteInternetService,
+
+    private readonly networkService: NetworkServiceService,
   ) {}
 
   @Post('/create-new-customer')
@@ -126,19 +129,22 @@ export class ClienteInternetController {
   }
 
   /**
-   * ACTUALIZAR CLIENTE
+   * Actualizar cliente normal inlcluyendo IP
    * @param updateCustomerService DTO de nuevoc cambios
    * @param id
    * @returns
    */
   @Patch('/update-customer/:id')
-  updateClienteInternet(
+  async updateClienteInternet(
     @Body() updateCustomerService: UpdateClienteInternetDto,
     @Param('id', ParseIntPipe) id: number,
   ) {
-    return this.clienteInternetService.updateClienteInternet(
+    const result = await this.clienteInternetService.updateClienteInternet(
       id,
       updateCustomerService,
     );
+
+    await this.networkService.syncCustomerNetwork(id);
+    return result;
   }
 }

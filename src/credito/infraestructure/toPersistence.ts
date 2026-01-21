@@ -3,9 +3,6 @@ import Decimal from 'decimal.js';
 import { Credito } from '../entities/credito.entity';
 
 export class CreditoMapper {
-  // =========================
-  // Domain → Persistence
-  // =========================
   static toPersistence(credito: Credito): Prisma.CreditoUncheckedCreateInput {
     return {
       id: credito.getId() ?? undefined,
@@ -35,9 +32,6 @@ export class CreditoMapper {
     };
   }
 
-  // =========================
-  // Persistence → Domain
-  // =========================
   static toDomain(record: PrismaCredito): Credito {
     return Credito.rehidratar({
       id: record.id,
