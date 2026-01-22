@@ -1,6 +1,7 @@
 import Decimal from 'decimal.js';
 import { EstadoCuota } from '@prisma/client';
 
+export const CREDITO_CUOTA = Symbol('CREDITO_CUOTA');
 export class CuotaCredito {
   // Estado interno
   private estado: EstadoCuota;

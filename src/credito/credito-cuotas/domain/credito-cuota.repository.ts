@@ -9,4 +9,5 @@ export interface CuotaCreditoRepository {
     dto: CreateCuotaCustomDto,
     creditoId: number,
   ): Promise<Array<CuotaCredito>>;
+  saveMany(cuotas: CuotaCredito[]): Promise<void>;
 }

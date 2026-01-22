@@ -5,13 +5,25 @@ import {
   InteresTipo,
   OrigenCredito,
 } from '@prisma/client';
+import { CuotaCredito } from '../credito-cuotas/entities/credito-cuota.entity';
+export interface CreditoRelations {
+  cuotas?: CuotaCredito[];
+  // Si tienes entidad de Pago, agrégala aquí. Si no, usa any temporalmente o crea la entidad
+  pagos?: any[];
+  clienteNombre?: string;
+  usuarioNombre?: string;
+}
 
 export class Credito {
   // Estado interno (privado)
   private estado: EstadoCredito;
   private montoTotal: Decimal;
   private montoCuota: Decimal;
-
+  // NUEVAS PROPIEDADES OPCIONALES
+  private cuotas?: CuotaCredito[];
+  private pagos?: any[];
+  private clienteNombre?: string;
+  private usuarioNombre?: string;
   // Constructor (privado)
   private constructor(
     private readonly id: number | null,
@@ -108,22 +120,16 @@ export class Credito {
   static rehidratar(props: {
     id: number;
     clienteId: number;
-
     montoCapital: Decimal;
     interesPorcentaje: Decimal;
     interesMoraPorcentaje: Decimal;
-
     engancheMonto: Decimal;
-
     interesTipo: InteresTipo;
-
     plazoCuotas: number;
     frecuencia: FrecuenciaPago;
     intervaloDias: number;
-
     montoTotal: Decimal;
     montoCuota: Decimal;
-
     estado: EstadoCredito;
     fechaInicio: Date;
     fechaFinEstimada: Date;
@@ -131,6 +137,8 @@ export class Credito {
     origenCredito: OrigenCredito;
     observaciones?: string;
     creadoPorId?: number;
+
+    relations?: CreditoRelations;
   }): Credito {
     const credito = new Credito(
       props.id,
@@ -155,7 +163,24 @@ export class Credito {
     credito.montoTotal = props.montoTotal;
     credito.montoCuota = props.montoCuota;
 
+    // Asignar relaciones si existen
+    if (props.relations) {
+      credito.cuotas = props.relations.cuotas;
+      credito.pagos = props.relations.pagos;
+      credito.clienteNombre = props.relations.clienteNombre;
+      credito.usuarioNombre = props.relations.usuarioNombre;
+    }
+
     return credito;
+  }
+
+  // GETTERS PARA LAS RELACIONES
+  public getCuotas(): CuotaCredito[] | undefined {
+    return this.cuotas;
+  }
+
+  public getClienteNombre(): string | undefined {
+    return this.clienteNombre;
   }
 
   // getters usados por el mapper
@@ -243,7 +268,6 @@ export class Credito {
   }
 
   // Métodos de consulta (read)
-
   public getEstado(): EstadoCredito {
     return this.estado;
   }

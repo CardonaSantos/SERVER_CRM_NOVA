@@ -20,7 +20,6 @@ dayjs.extend(timezone);
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 dayjs.extend(customParseFormat);
-
 dayjs.tz.setDefault('America/Guatemala');
 
 interface CuotaCreate {
@@ -67,7 +66,13 @@ export class PrismaCuotaCreditoRepository implements CuotaCreditoRepository {
         fechaVencimiento = dayjs(fechaVencimiento)
           .add(credito.intervaloDias, 'day')
           .toDate();
+        arrayCuotasCredito.push(cuota);
       }
+
+      const newCuotasCredito = await this.prisma.cuotaCredito.createMany({
+        data: arrayCuotasCredito,
+      });
+
       const newCuotas = await this.prisma.cuotaCredito.findMany({
         where: {
           creditoId: credito.id,
@@ -136,5 +141,11 @@ export class PrismaCuotaCreditoRepository implements CuotaCreditoRepository {
     } catch (error) {
       throwFatalError(error, this.logger, 'createCuotaCreditoCustom.create');
     }
+  }
+
+  async saveMany(cuotas: CuotaCredito[]) {
+    await this.prisma.cuotaCredito.createMany({
+      data: cuotas.map(CuotaCreditoMapper.toPersistence),
+    });
   }
 }

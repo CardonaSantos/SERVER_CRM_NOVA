@@ -1,26 +1,26 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { CrearCreditoDto } from '../dto/create-credito.dto';
-import { CREDITO } from '../domain/credito.repository';
-import { PrismaCreditoRepository } from '../infraestructure/prisma-credito.repository';
+import { CREDITO, CreditoRepository } from '../domain/credito.repository';
 import { Credito } from '../entities/credito.entity';
 import Decimal from 'decimal.js';
-import { GetCreditosQueryDto } from '../dto/query';
 import { CreditoCuotasService } from 'src/credito/credito-cuotas/app/credito-cuotas.service';
+import { GetCreditosQueryDto } from '../dto/get-creditos-query.dto';
 
 @Injectable()
 export class CreditoService {
   private readonly logger = new Logger(CreditoService.name);
   constructor(
-    @Inject(CREDITO)
-    private readonly creditoRepo: PrismaCreditoRepository,
     private readonly creditoCuotasService: CreditoCuotasService,
+
+    @Inject(CREDITO)
+    private readonly creditoRepo: CreditoRepository,
   ) {}
 
   async create(dto: CrearCreditoDto) {
     try {
-      const entity = Credito.crear({
+      const credito = Credito.crear({
         clienteId: dto.clienteId,
-        fechaInicio: dto.fechaInicio,
+        fechaInicio: new Date(dto.fechaInicio),
         frecuencia: dto.frecuencia,
         interesPorcentaje: new Decimal(dto.interesPorcentaje),
         interesMoraPorcentaje: new Decimal(dto.interesMoraPorcentaje),
@@ -34,25 +34,28 @@ export class CreditoService {
         observaciones: dto.observaciones,
       });
 
+      const creditoPersistido = await this.creditoRepo.save(credito);
+
       const isCuotasCustom =
         dto.cuotasCustom.length > 0 && dto.tipoGeneracionCuotas === 'CUSTOM';
 
       if (isCuotasCustom) {
-        await this.creditoCuotasService.create(dto.cuotasCustom);
+        await this.creditoCuotasService.crearCustom(
+          creditoPersistido.getId(),
+          dto.cuotasCustom,
+        );
+      } else {
+        await this.creditoCuotasService.crearAutomaticas(creditoPersistido);
       }
 
-      return await this.creditoRepo.save(entity);
+      return creditoPersistido;
     } catch (error) {
       this.logger.error(error);
       throw error;
     }
   }
 
-  async finMany() {
-    return await this.creditoRepo.findMany();
-  }
-
-  async getClienteCredito(query: GetCreditosQueryDto) {
-    return await this.creditoRepo.findByCliente(query.id);
+  async finMany(query: GetCreditosQueryDto) {
+    return await this.creditoRepo.findAll(query);
   }
 }

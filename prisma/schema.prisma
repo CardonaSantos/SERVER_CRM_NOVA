@@ -1107,7 +1107,6 @@ model Credito {
   observaciones String?
   creadoPorId Int?
   creadoPor   Usuario? @relation(fields: [creadoPorId],references: [id],onDelete: SetNull)
-
   engancheMonto Decimal? @db.Decimal(12,2)
   engancheFecha DateTime?
 

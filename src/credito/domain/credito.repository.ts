@@ -1,3 +1,4 @@
+import { GetCreditosQueryDto } from '../dto/get-creditos-query.dto';
 import { Credito } from '../entities/credito.entity';
 
 export const CREDITO = Symbol('CREDITO');
@@ -11,5 +12,10 @@ export interface CreditoRepository {
 
   existsActiveByCliente(clienteId: number): Promise<boolean>;
 
-  findMany(): Promise<Array<Credito>>;
+  findAll(query: GetCreditosQueryDto): Promise<{
+    data: Credito[];
+    meta: { total: number; page: number; lastPage: number };
+  }>;
+
+  deleteAll(): Promise<number>;
 }

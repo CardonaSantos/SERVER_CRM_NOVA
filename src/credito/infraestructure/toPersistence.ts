@@ -1,6 +1,12 @@
-import { Prisma, Credito as PrismaCredito } from '@prisma/client';
+import {
+  Prisma,
+  Credito as PrismaCredito,
+  CuotaCredito as PrismaCuotaCreditoModel, // <--- Importa el tipo de PRISMA, ponle alias para no confundir
+} from '@prisma/client';
 import Decimal from 'decimal.js';
 import { Credito } from '../entities/credito.entity';
+import { PrismaCuotaCreditoRepository } from '../credito-cuotas/infraestructure/prisma-cuota-credito.repository';
+import { CuotaCreditoMapper } from '../credito-cuotas/infraestructure/cuota-credito.mapper.ts';
 
 export class CreditoMapper {
   static toPersistence(credito: Credito): Prisma.CreditoUncheckedCreateInput {
@@ -38,35 +44,52 @@ export class CreditoMapper {
     };
   }
 
-  static toDomain(record: PrismaCredito): Credito {
+  static toDomain(
+    record: PrismaCredito & {
+      cuotas?: PrismaCuotaCreditoModel[];
+      pagos?: any[];
+      cliente?: { nombre: string; apellido?: string }; // Ajusta según tu modelo Cliente
+      creadoPor?: { nombre: string };
+    },
+  ): Credito {
+    // Mapeamos las cuotas si vienen en el record
+    const cuotasDomain = record.cuotas
+      ? record.cuotas.map((c) => CuotaCreditoMapper.toDomain(c))
+      : undefined;
+
     return Credito.rehidratar({
       id: record.id,
       clienteId: record.clienteId,
-
       montoCapital: new Decimal(record.montoCapital.toString()),
       interesPorcentaje: new Decimal(record.interesPorcentaje.toString()),
       interesMoraPorcentaje: new Decimal(
         record.interesMoraPorcentaje.toString(),
       ),
-
-      engancheMonto: new Decimal(record.engancheMonto.toString()),
-
+      engancheMonto: record.engancheMonto
+        ? new Decimal(record.engancheMonto.toString())
+        : new Decimal(0),
       interesTipo: record.interesTipo,
-
       plazoCuotas: record.plazoCuotas,
       frecuencia: record.frecuencia,
       intervaloDias: record.intervaloDias,
-
       montoTotal: new Decimal(record.montoTotal.toString()),
       montoCuota: new Decimal(record.montoCuota.toString()),
-
       estado: record.estado,
       fechaInicio: record.fechaInicio,
       fechaFinEstimada: record.fechaFinEstimada,
-
       origenCredito: record.origenCredito,
       observaciones: record.observaciones ?? undefined,
       creadoPorId: record.creadoPorId ?? undefined,
+
+      // Pasamos las relaciones hidratadas
+      relations: {
+        cuotas: cuotasDomain,
+        pagos: record.pagos, // Si tienes Mapper de Pagos, úsalo aquí
+        clienteNombre: record.cliente
+          ? `${record.cliente.nombre} ${record.cliente.apellido ?? ''}`.trim()
+          : undefined,
+        usuarioNombre: record.creadoPor?.nombre,
+      },
     });
   }
 }

@@ -89,5 +89,6 @@ export class CuotaCustomDto {
   montoCapital: string;
 
   @IsString()
+  @IsOptional()
   montoInteres: string;
 }

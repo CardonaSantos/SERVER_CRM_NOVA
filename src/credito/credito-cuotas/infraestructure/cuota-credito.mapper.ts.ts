@@ -1,3 +1,4 @@
+import { Injectable } from '@nestjs/common';
 import { Prisma, CuotaCredito as PrismaCuotaCredito } from '@prisma/client';
 import Decimal from 'decimal.js';
 import { CuotaCredito } from 'src/credito/credito-cuotas/entities/credito-cuota.entity';
