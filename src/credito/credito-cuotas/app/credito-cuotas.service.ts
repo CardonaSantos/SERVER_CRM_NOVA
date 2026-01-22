@@ -1,10 +1,14 @@
-import { Injectable } from '@nestjs/common';
-import { CreateCreditoCuotaDto } from './dto/create-credito-cuota.dto';
-import { UpdateCreditoCuotaDto } from './dto/update-credito-cuota.dto';
+import { Injectable, Logger } from '@nestjs/common';
+import { CreateCreditoCuotaDto } from '../dto/create-credito-cuota.dto';
+import { UpdateCreditoCuotaDto } from '../dto/update-credito-cuota.dto';
+import { CreateCuotaCustomDto } from 'src/credito/credito-cuotas/dto/create-cuota-custom.dto';
 
 @Injectable()
 export class CreditoCuotasService {
-  create(createCreditoCuotaDto: CreateCreditoCuotaDto) {
+  private readonly logger = new Logger(CreditoCuotasService.name);
+  create(dto: CreateCreditoCuotaDto) {
+    this.logger.log('Cuotas son: ', dto);
+
     return 'This action adds a new creditoCuota';
   }
 

@@ -1,7 +1,15 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { CreditoCuotasService } from './credito-cuotas.service';
-import { CreateCreditoCuotaDto } from './dto/create-credito-cuota.dto';
-import { UpdateCreditoCuotaDto } from './dto/update-credito-cuota.dto';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
+import { CreditoCuotasService } from '../app/credito-cuotas.service';
+import { UpdateCreditoCuotaDto } from '../dto/update-credito-cuota.dto';
+import { CreateCreditoCuotaDto } from 'src/credito/credito-cuotas/dto/create-credito-cuota.dto';
 
 @Controller('credito-cuotas')
 export class CreditoCuotasController {
@@ -9,7 +17,7 @@ export class CreditoCuotasController {
 
   @Post()
   create(@Body() createCreditoCuotaDto: CreateCreditoCuotaDto) {
-    return this.creditoCuotasService.create(createCreditoCuotaDto);
+    return this.creditoCuotasService.create(CreateCreditoCuotaDto);
   }
 
   @Get()
@@ -23,7 +31,10 @@ export class CreditoCuotasController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateCreditoCuotaDto: UpdateCreditoCuotaDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateCreditoCuotaDto: UpdateCreditoCuotaDto,
+  ) {
     return this.creditoCuotasService.update(+id, updateCreditoCuotaDto);
   }
 

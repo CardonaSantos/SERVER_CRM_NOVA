@@ -19,6 +19,11 @@ export class Credito {
 
     private readonly montoCapital: Decimal,
     private readonly interesPorcentaje: Decimal,
+
+    private readonly interesMoraPorcentaje: Decimal,
+
+    private readonly engancheMonto: Decimal,
+
     private readonly interesTipo: InteresTipo,
 
     private readonly plazoCuotas: number,
@@ -43,6 +48,8 @@ export class Credito {
     clienteId: number;
     montoCapital: Decimal;
     interesPorcentaje: Decimal;
+    interesMoraPorcentaje: Decimal;
+    engancheMonto: Decimal;
     interesTipo: InteresTipo;
     plazoCuotas: number;
     frecuencia: FrecuenciaPago;
@@ -79,6 +86,8 @@ export class Credito {
       params.clienteId,
       params.montoCapital,
       params.interesPorcentaje,
+      params.interesMoraPorcentaje,
+      params.engancheMonto,
       params.interesTipo,
       params.plazoCuotas,
       params.frecuencia,
@@ -102,6 +111,10 @@ export class Credito {
 
     montoCapital: Decimal;
     interesPorcentaje: Decimal;
+    interesMoraPorcentaje: Decimal;
+
+    engancheMonto: Decimal;
+
     interesTipo: InteresTipo;
 
     plazoCuotas: number;
@@ -124,6 +137,8 @@ export class Credito {
       props.clienteId,
       props.montoCapital,
       props.interesPorcentaje,
+      props.interesMoraPorcentaje,
+      props.engancheMonto,
       props.interesTipo,
       props.plazoCuotas,
       props.frecuencia,
@@ -150,6 +165,14 @@ export class Credito {
 
   getInteresPorcentaje() {
     return this.interesPorcentaje;
+  }
+
+  getInteresMoraPorcentaje() {
+    return this.interesMoraPorcentaje;
+  }
+
+  getEngancheMonto() {
+    return this.engancheMonto;
   }
 
   getInteresTipo() {

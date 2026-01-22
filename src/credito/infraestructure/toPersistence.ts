@@ -13,6 +13,12 @@ export class CreditoMapper {
         credito.getInteresPorcentaje().toString(),
       ),
 
+      interesMoraPorcentaje: new Prisma.Decimal(
+        credito.getInteresMoraPorcentaje().toString(),
+      ),
+
+      engancheMonto: new Prisma.Decimal(credito.getEngancheMonto().toString()),
+
       interesTipo: credito.getInteresTipo(),
       plazoCuotas: credito.getPlazoCuotas(),
       frecuencia: credito.getFrecuencia(),
@@ -39,6 +45,12 @@ export class CreditoMapper {
 
       montoCapital: new Decimal(record.montoCapital.toString()),
       interesPorcentaje: new Decimal(record.interesPorcentaje.toString()),
+      interesMoraPorcentaje: new Decimal(
+        record.interesMoraPorcentaje.toString(),
+      ),
+
+      engancheMonto: new Decimal(record.engancheMonto.toString()),
+
       interesTipo: record.interesTipo,
 
       plazoCuotas: record.plazoCuotas,
