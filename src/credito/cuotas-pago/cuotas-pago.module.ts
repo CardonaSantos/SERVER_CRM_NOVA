@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { CuotasPagoService } from './cuotas-pago.service';
-import { CuotasPagoController } from './cuotas-pago.controller';
+import { CuotasPagoService } from './app/cuotas-pago.service';
+import { CuotasPagoController } from './presentation/cuotas-pago.controller';
 
 @Module({
   controllers: [CuotasPagoController],

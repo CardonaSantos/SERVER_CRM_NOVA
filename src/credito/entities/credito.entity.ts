@@ -305,17 +305,28 @@ export class Credito {
   }
 
   // Pendiente (intencional)
+  // private calcularMontosPendiente(): void {
+  //   /**
+  //    * TODO:
+  //    * - Generar cuotas
+  //    * - Calcular montoCapital por cuota
+  //    * - Calcular interés por cuota
+  //    * - Definir montoTotal del crédito
+  //    * - Definir montoCuota
+  //    *
+  //    * Este método DEBE dejar el agregado
+  //    * en estado consistente.
+  //    */
+  // }
+
   private calcularMontosPendiente(): void {
-    /**
-     * TODO:
-     * - Generar cuotas
-     * - Calcular montoCapital por cuota
-     * - Calcular interés por cuota
-     * - Definir montoTotal del crédito
-     * - Definir montoCuota
-     *
-     * Este método DEBE dejar el agregado
-     * en estado consistente.
-     */
+    const enganche = this.engancheMonto ?? new Decimal(0);
+
+    const capitalFinanciado = this.montoCapital.minus(enganche);
+
+    const interes = capitalFinanciado.mul(this.interesPorcentaje).div(100);
+
+    this.montoTotal = capitalFinanciado.plus(interes);
+    this.montoCuota = this.montoTotal.div(this.plazoCuotas);
   }
 }

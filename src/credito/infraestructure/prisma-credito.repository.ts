@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreditoRepository } from '../domain/credito.repository';
 import { Credito } from '../entities/credito.entity';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
@@ -15,27 +15,14 @@ export class PrismaCreditoRepository implements CreditoRepository {
   async save(credito: Credito): Promise<Credito> {
     try {
       const data = CreditoMapper.toPersistence(credito);
-      //   si viene con id es una actualizacion, sino create
-
-      const capital = credito.getMontoCapital();
-      const enganche = credito.getEngancheMonto();
-      const cuotas = credito.getPlazoCuotas();
-
-      const capitalWithEnganche = capital.minus(enganche ?? 0).div(cuotas);
 
       const record = credito.getId()
         ? await this.prisma.credito.update({
             where: { id: credito.getId() },
-            data: {
-              ...data,
-              montoCapital: capitalWithEnganche,
-            },
+            data,
           })
         : await this.prisma.credito.create({
-            data: {
-              ...data,
-              montoCapital: capitalWithEnganche,
-            },
+            data,
           });
 
       return CreditoMapper.toDomain(record);
@@ -52,7 +39,14 @@ export class PrismaCreditoRepository implements CreditoRepository {
         },
       });
 
-      return CreditoMapper.toDomain(record);
+      if (!record) throw new NotFoundException('Error al encontrar registro');
+
+      const rawRegistro = await this.findAll({
+        search: id.toString(),
+      });
+
+      const registro = rawRegistro.data[0];
+      return registro;
     } catch (error) {
       throwFatalError(error, this.logger, 'PrismaCreditoRepository.findById');
     }
@@ -103,26 +97,21 @@ export class PrismaCreditoRepository implements CreditoRepository {
       const { page = 1, limit = 10, search, estado } = query;
       const skip = (page - 1) * limit;
 
-      // 1. Construir Filtros Dinámicos
       const where: Prisma.CreditoWhereInput = {};
 
       const conditions: Prisma.CreditoWhereInput[] = [];
 
-      // Filtro por Estado
       if (estado) {
         conditions.push({ estado });
       }
 
-      // Filtro por Búsqueda (ID o Cliente)
       if (search) {
         const searchConditions: Prisma.CreditoWhereInput[] = [
-          // Buscar por nombre del cliente (case insensitive)
           {
             cliente: {
               nombre: { contains: search, mode: 'insensitive' },
             },
           },
-          // Buscar por apellido del cliente
           {
             cliente: {
               apellidos: { contains: search, mode: 'insensitive' },
@@ -130,7 +119,6 @@ export class PrismaCreditoRepository implements CreditoRepository {
           },
         ];
 
-        // Si el search es un número, intentar buscar por ID exacto
         if (!isNaN(Number(search))) {
           searchConditions.push({ id: Number(search) });
         }
@@ -142,33 +130,27 @@ export class PrismaCreditoRepository implements CreditoRepository {
         where.AND = conditions;
       }
 
-      // 2. Ejecutar Transacción (Count + FindMany)
       const [total, records] = await this.prisma.$transaction([
         this.prisma.credito.count({ where }),
-
         this.prisma.credito.findMany({
           where,
           skip,
           take: limit,
-          orderBy: { creadoEn: 'desc' }, // Ordenar: Más recientes primero
+          orderBy: { creadoEn: 'desc' },
 
-          // 3. INCLUIR RELACIONES (Eager Loading)
           include: {
             cuotas: {
-              orderBy: { numeroCuota: 'asc' }, // Cuotas en orden 1,2,3...
+              orderBy: { numeroCuota: 'asc' },
             },
-            // Pagos y sus detalles
             pagos: {
               include: {
                 aplicaciones: true,
               },
               orderBy: { fechaPago: 'desc' },
             },
-            // Datos básicos del cliente
             cliente: {
               select: { nombre: true, apellidos: true },
             },
-            // Datos del creador
             creadoPor: {
               select: { nombre: true },
             },
@@ -176,7 +158,6 @@ export class PrismaCreditoRepository implements CreditoRepository {
         }),
       ]);
 
-      // 4. Calcular metadata y mapear
       const lastPage = Math.ceil(total / limit);
 
       return {
@@ -189,7 +170,7 @@ export class PrismaCreditoRepository implements CreditoRepository {
       };
     } catch (error) {
       throwFatalError(error, this.logger, 'PrismaCreditoRepository.findAll');
-      throw error; // Necesario para TS si throwFatalError no retorna never
+      throw error;
     }
   }
 

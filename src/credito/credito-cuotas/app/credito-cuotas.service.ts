@@ -36,9 +36,19 @@ export class CreditoCuotasService {
 
   async crearAutomaticas(credito: Credito) {
     const cuotas: CuotaCredito[] = [];
-
     let fecha = dayjs(credito.getFechaInicio());
-    let fechaInicial = this.calculateDaysAmount(credito.getFrecuencia(), fecha);
+    let calculoFecha = this.calculateDaysAmount(credito.getFrecuencia(), fecha);
+    let fechaInicial = calculoFecha.fecha;
+
+    //calculo
+    const capitalFinanciado = credito
+      .getMontoCapital()
+      .minus(credito.getEngancheMonto());
+
+    const capitalPorCuota = capitalFinanciado.div(credito.getPlazoCuotas());
+    const interesTotal = credito.getMontoTotal().minus(capitalFinanciado);
+
+    const interesPorCuota = interesTotal.div(credito.getPlazoCuotas());
 
     for (let i = 1; i <= credito.getPlazoCuotas(); i++) {
       cuotas.push(
@@ -46,29 +56,36 @@ export class CreditoCuotasService {
           creditoId: credito.getId()!,
           numeroCuota: i,
           fechaVenc: fechaInicial.toDate(),
-          montoCapital: credito.getMontoCapital().div(credito.getPlazoCuotas()),
-          montoInteres: new Decimal(0),
+          montoCapital: capitalPorCuota,
+          montoInteres: interesPorCuota,
         }),
       );
 
-      fechaInicial = fechaInicial.add(credito.getIntervaloDias(), 'day');
+      fechaInicial = fechaInicial.add(calculoFecha.cantidadDias, 'day');
     }
-
     await this.cuotaRepo.saveMany(cuotas);
   }
 
   // helper dates amount
-
   calculateDaysAmount(frecuencia: FrecuenciaPago, fecha: dayjs.Dayjs) {
     switch (frecuencia) {
       case 'SEMANAL':
-        return dayjs(fecha).add(7, 'day');
+        return {
+          fecha: dayjs(fecha).add(7, 'day'),
+          cantidadDias: 7,
+        };
 
       case 'QUINCENAL':
-        return dayjs(fecha).add(15, 'day');
+        return {
+          fecha: dayjs(fecha).add(15, 'day'),
+          cantidadDias: 15,
+        };
 
       case 'MENSUAL':
-        return dayjs(fecha).add(30, 'day');
+        return {
+          fecha: dayjs(fecha).add(30, 'day'),
+          cantidadDias: 30,
+        };
 
       default:
         break;

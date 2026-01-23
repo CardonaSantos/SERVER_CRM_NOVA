@@ -35,7 +35,6 @@ export class CreditoService {
       });
 
       const creditoPersistido = await this.creditoRepo.save(credito);
-
       const isCuotasCustom =
         dto.cuotasCustom.length > 0 && dto.tipoGeneracionCuotas === 'CUSTOM';
 
@@ -57,5 +56,9 @@ export class CreditoService {
 
   async finMany(query: GetCreditosQueryDto) {
     return await this.creditoRepo.findAll(query);
+  }
+
+  async getCredito(id: number) {
+    return await this.creditoRepo.findById(id);
   }
 }

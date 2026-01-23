@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { CreateCuotasPagoDto } from './dto/create-cuotas-pago.dto';
-import { UpdateCuotasPagoDto } from './dto/update-cuotas-pago.dto';
+import { CreateCuotasPagoDto } from '../dto/create-cuotas-pago.dto';
+import { UpdateCuotasPagoDto } from '../dto/update-cuotas-pago.dto';
 
 @Injectable()
 export class CuotasPagoService {

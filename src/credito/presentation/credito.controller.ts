@@ -7,6 +7,8 @@ import {
   ValidationPipe,
   Query,
   Logger,
+  Param,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { CreditoService } from '../app/credito.service';
 import { CrearCreditoDto } from '../dto/create-credito.dto';
@@ -31,7 +33,26 @@ export class CreditoController {
   }
 
   @Get('find-many')
+  @UsePipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  )
   async getAllCreditos(@Query() query: GetCreditosQueryDto) {
     return await this.creditoService.finMany(query);
+  }
+
+  @Get(':id')
+  @UsePipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  )
+  async getCredito(@Param('id', ParseIntPipe) id: number) {
+    return await this.creditoService.getCredito(id);
   }
 }
