@@ -15,31 +15,8 @@ import { UpdateCuotasPagoDto } from '../dto/update-cuotas-pago.dto';
 export class CuotasPagoController {
   constructor(private readonly cuotasPagoService: CuotasPagoService) {}
 
-  @Post()
-  create(@Body() createCuotasPagoDto: CreateCuotasPagoDto) {
-    return this.cuotasPagoService.create(createCuotasPagoDto);
-  }
-
-  @Get()
-  findAll() {
-    return this.cuotasPagoService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.cuotasPagoService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() updateCuotasPagoDto: UpdateCuotasPagoDto,
-  ) {
-    return this.cuotasPagoService.update(+id, updateCuotasPagoDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.cuotasPagoService.remove(+id);
+  @Post('create-pago')
+  async createPagoCuota(@Body() dto: CreateCuotasPagoDto) {
+    return this.cuotasPagoService.registrarPago(dto);
   }
 }

@@ -61,4 +61,12 @@ export class CreditoService {
   async getCredito(id: number) {
     return await this.creditoRepo.findById(id);
   }
+
+  async deleteAll() {
+    return await this.creditoRepo.deleteAll();
+  }
+
+  async verifyCustomer() {
+    // return await this.cre
+  }
 }

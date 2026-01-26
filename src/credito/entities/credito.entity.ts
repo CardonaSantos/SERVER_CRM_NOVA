@@ -1,6 +1,7 @@
 import Decimal from 'decimal.js';
 import {
   EstadoCredito,
+  EstadoCuota,
   FrecuenciaPago,
   InteresTipo,
   OrigenCredito,
@@ -183,7 +184,6 @@ export class Credito {
     return this.clienteNombre;
   }
 
-  // getters usados por el mapper
   getId() {
     return this.id;
   }
@@ -221,22 +221,58 @@ export class Credito {
   }
 
   // Comportamiento de dominio
-
-  public aplicarPago(monto: Decimal): void {
-    if (this.estado === EstadoCredito.CANCELADO) {
-      throw new Error('No se puede pagar un crédito cancelado');
+  public registrarPagoCuota(params: { cuotaId: number; monto: Decimal }): {
+    cuota: CuotaCredito;
+    montoAplicado: Decimal;
+    cuotaCompletada: boolean;
+  } {
+    if (!this.cuotas || this.cuotas.length === 0) {
+      throw new Error('El credito no tiene cuotas cargadas');
     }
 
-    if (this.estado === EstadoCredito.COMPLETADO) {
-      throw new Error('El crédito ya está completamente pagado');
+    const cuota = this.cuotas.find((c) => c.getId() === params.cuotaId);
+
+    if (!cuota) {
+      throw new Error('La cuota no pertenece a este credito');
     }
 
-    if (monto.lte(0)) {
-      throw new Error('El monto del pago debe ser mayor a 0');
+    cuota.aplicarPago(params.monto);
+
+    if (this.cuotas.every((c) => c.getEstado() === 'PAGADA')) {
+      this.marcarComoCompletado();
     }
 
-    // Aquí NO se modifica montoTotal directamente.
-    // El pago real se aplica a cuotas (otra entidad).
+    return {
+      cuota,
+      montoAplicado: params.monto,
+      cuotaCompletada: true,
+    };
+  }
+
+  public registrarPagoEnCuota(params: { cuotaId: number; monto: Decimal }): {
+    cuota: CuotaCredito;
+    montoAplicado: Decimal;
+  } {
+    if (!this.cuotas || this.cuotas.length === 0) {
+      throw new Error('El crédito no tiene cuotas cargadas');
+    }
+
+    const cuota = this.cuotas.find((c) => c.getId() === params.cuotaId);
+
+    if (!cuota) {
+      throw new Error('La cuota no pertenece a este crédito');
+    }
+
+    cuota.aplicarPago(params.monto);
+
+    if (this.cuotas.every((c) => c.estaPagada())) {
+      this.marcarComoCompletado();
+    }
+
+    return {
+      cuota,
+      montoAplicado: params.monto,
+    };
   }
 
   public cancelar(): void {
@@ -267,7 +303,7 @@ export class Credito {
     this.estado = EstadoCredito.COMPLETADO;
   }
 
-  // Métodos de consulta (read)
+  // Métodos de consulta
   public getEstado(): EstadoCredito {
     return this.estado;
   }
@@ -303,21 +339,6 @@ export class Credito {
   public getCreadoPorId(): number | undefined {
     return this.creadoPorId;
   }
-
-  // Pendiente (intencional)
-  // private calcularMontosPendiente(): void {
-  //   /**
-  //    * TODO:
-  //    * - Generar cuotas
-  //    * - Calcular montoCapital por cuota
-  //    * - Calcular interés por cuota
-  //    * - Definir montoTotal del crédito
-  //    * - Definir montoCuota
-  //    *
-  //    * Este método DEBE dejar el agregado
-  //    * en estado consistente.
-  //    */
-  // }
 
   private calcularMontosPendiente(): void {
     const enganche = this.engancheMonto ?? new Decimal(0);

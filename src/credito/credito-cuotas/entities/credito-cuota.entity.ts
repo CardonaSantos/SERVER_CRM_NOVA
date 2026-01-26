@@ -97,26 +97,27 @@ export class CuotaCredito {
   /* ============================
    * COMPORTAMIENTO DE DOMINIO
    * ============================ */
+  public estaPagada(): boolean {
+    return this.estado === EstadoCuota.PAGADA;
+  }
 
-  aplicarPago(monto: Decimal): void {
-    if (this.estado === EstadoCuota.PAGADA) {
-      throw new Error('La cuota ya está pagada');
-    }
-
+  public aplicarPago(monto: Decimal): void {
     if (monto.lte(0)) {
-      throw new Error('El monto del pago debe ser mayor a 0');
+      throw new Error('El monto debe ser mayor a 0');
     }
 
-    const pendiente = this.getMontoPendiente();
+    const nuevoMonto = this.montoPagado.plus(monto);
 
-    if (monto.gt(pendiente)) {
-      throw new Error('El pago excede el monto pendiente de la cuota');
+    if (nuevoMonto.gt(this.montoTotal)) {
+      throw new Error('El monto excede el saldo de la cuota');
     }
 
-    this.montoPagado = this.montoPagado.plus(monto);
+    this.montoPagado = nuevoMonto;
 
     if (this.montoPagado.eq(this.montoTotal)) {
       this.estado = EstadoCuota.PAGADA;
+    } else {
+      this.estado = EstadoCuota.PARCIAL;
     }
   }
 

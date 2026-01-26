@@ -182,4 +182,21 @@ export class PrismaCreditoRepository implements CreditoRepository {
       throwFatalError(error, this.logger, 'PrismaCreditoRepository.deleteAll');
     }
   }
+
+  async findByIdWithCuotas(id: number): Promise<Credito> {
+    const record = await this.prisma.credito.findUnique({
+      where: { id },
+      include: {
+        cuotas: {
+          orderBy: { numeroCuota: 'asc' },
+        },
+      },
+    });
+
+    if (!record) {
+      throw new NotFoundException('Crédito no encontrado');
+    }
+
+    return CreditoMapper.toDomain(record);
+  }
 }

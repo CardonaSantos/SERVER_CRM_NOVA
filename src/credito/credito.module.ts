@@ -8,22 +8,24 @@ import { CREDITO } from './domain/credito.repository';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { PrismaCreditoRepository } from './infraestructure/prisma-credito.repository';
 import { CreditoClienteExpedienteModule } from './credito-cliente-expediente/credito-cliente-expediente.module';
+import { VerifyCustomerModule } from './verify-customer/verify-customer.module';
 
 @Module({
   controllers: [CreditoController],
   providers: [
     CreditoService,
     {
-      useClass: PrismaCreditoRepository,
       provide: CREDITO,
+      useClass: PrismaCreditoRepository,
     },
   ],
+  exports: [CREDITO],
   imports: [
     CreditoCuotasModule,
     CreditoCronModule,
-    CuotasPagoModule,
     PrismaModule,
     CreditoClienteExpedienteModule,
+    VerifyCustomerModule,
   ],
 })
 export class CreditoModule {}

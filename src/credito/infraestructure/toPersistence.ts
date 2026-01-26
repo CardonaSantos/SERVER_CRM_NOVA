@@ -84,7 +84,7 @@ export class CreditoMapper {
       // Pasamos las relaciones hidratadas
       relations: {
         cuotas: cuotasDomain,
-        pagos: record.pagos, // Si tienes Mapper de Pagos, úsalo aquí
+        pagos: record.pagos,
         clienteNombre: record.cliente
           ? `${record.cliente.nombre} ${record.cliente.apellido ?? ''}`.trim()
           : undefined,

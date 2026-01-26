@@ -1,26 +1,39 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { CreateCuotasPagoDto } from '../dto/create-cuotas-pago.dto';
 import { UpdateCuotasPagoDto } from '../dto/update-cuotas-pago.dto';
+import { PrismaCuotasPago } from '../infraestructure/prisma-cuotas-pago.repo';
+import { CUOTA_PAGO } from '../domain/cuota-pago.repository';
+import Decimal from 'decimal.js';
+import { CREDITO } from 'src/credito/domain/credito.repository';
+import { PrismaCreditoRepository } from 'src/credito/infraestructure/prisma-credito.repository';
 
 @Injectable()
 export class CuotasPagoService {
-  create(createCuotasPagoDto: CreateCuotasPagoDto) {
-    return 'This action adds a new cuotasPago';
-  }
+  constructor(
+    @Inject(CREDITO)
+    private readonly creditoRepository: PrismaCreditoRepository,
 
-  findAll() {
-    return `This action returns all cuotasPago`;
-  }
+    @Inject(CUOTA_PAGO)
+    private readonly cuotasPagoRepo: PrismaCuotasPago,
+  ) {}
 
-  findOne(id: number) {
-    return `This action returns a #${id} cuotasPago`;
-  }
+  async registrarPago(dto: CreateCuotasPagoDto) {
+    const credito = await this.creditoRepository.findByIdWithCuotas(
+      dto.creditoId,
+    );
 
-  update(id: number, updateCuotasPagoDto: UpdateCuotasPagoDto) {
-    return `This action updates a #${id} cuotasPago`;
-  }
+    // 2. Dominio decide
+    const resultado = credito.registrarPagoEnCuota({
+      cuotaId: dto.cuotaId,
+      monto: new Decimal(dto.monto),
+    });
 
-  remove(id: number) {
-    return `This action removes a #${id} cuotasPago`;
+    // 3. Persistencia
+    await this.cuotasPagoRepo.persistirPago({
+      credito,
+      cuota: resultado.cuota,
+      monto: resultado.montoAplicado,
+      dto,
+    });
   }
 }
