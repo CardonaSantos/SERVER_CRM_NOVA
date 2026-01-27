@@ -275,6 +275,30 @@ export class Credito {
     };
   }
 
+  public eliminarPagoDeCuota(params: { pagoCuotaId: number }): {
+    cuota: CuotaCredito;
+    montoRevertido: Decimal;
+  } {
+    if (!this.cuotas) {
+      throw new Error('El crédito no tiene cuotas');
+    }
+
+    const cuota = this.cuotas.find((c) => c.tienePago(params.pagoCuotaId));
+
+    if (!cuota) {
+      throw new Error('El pago no pertenece a este crédito');
+    }
+
+    const monto = cuota.eliminarPago(params.pagoCuotaId);
+
+    this.recalcularEstado();
+
+    return {
+      cuota,
+      montoRevertido: monto,
+    };
+  }
+
   public cancelar(): void {
     if (this.estado === EstadoCredito.COMPLETADO) {
       throw new Error('No se puede cancelar un crédito completado');
@@ -349,5 +373,27 @@ export class Credito {
 
     this.montoTotal = capitalFinanciado.plus(interes);
     this.montoCuota = this.montoTotal.div(this.plazoCuotas);
+  }
+
+  private recalcularEstado(): void {
+    if (!this.cuotas || this.cuotas.length === 0) {
+      this.estado = EstadoCredito.ACTIVO;
+      return;
+    }
+
+    // Si todas las cuotas están pagadas → COMPLETADO
+    if (this.cuotas.every((c) => c.estaPagada())) {
+      this.estado = EstadoCredito.COMPLETADO;
+      return;
+    }
+
+    // Si alguna está vencida → EN_MORA
+    if (this.cuotas.some((c) => c.getEstado() === EstadoCuota.VENCIDA)) {
+      this.estado = EstadoCredito.EN_MORA;
+      return;
+    }
+
+    // Caso normal
+    this.estado = EstadoCredito.ACTIVO;
   }
 }

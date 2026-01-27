@@ -17,17 +17,37 @@ export class CreditoService {
   ) {}
 
   async create(dto: CrearCreditoDto) {
+    const engancheMonto =
+      dto.engancheMonto && dto.engancheMonto.trim() !== ''
+        ? new Decimal(dto.engancheMonto)
+        : new Decimal(0);
+
+    const interesMoraPorcentaje =
+      dto.interesMoraPorcentaje && dto.interesMoraPorcentaje.trim() !== ''
+        ? new Decimal(dto.interesMoraPorcentaje)
+        : new Decimal(0);
+
+    const montoCapital =
+      dto.montoCapital && dto.montoCapital.trim() !== ''
+        ? new Decimal(dto.montoCapital)
+        : new Decimal(0);
+
+    const interesPorcentaje =
+      dto.interesPorcentaje && dto.interesPorcentaje.trim() !== ''
+        ? new Decimal(dto.interesPorcentaje)
+        : new Decimal(0);
+
     try {
       const credito = Credito.crear({
         clienteId: dto.clienteId,
         fechaInicio: new Date(dto.fechaInicio),
         frecuencia: dto.frecuencia,
-        interesPorcentaje: new Decimal(dto.interesPorcentaje),
-        interesMoraPorcentaje: new Decimal(dto.interesMoraPorcentaje),
-        engancheMonto: new Decimal(dto.engancheMonto),
+        interesPorcentaje: interesPorcentaje,
+        interesMoraPorcentaje: interesMoraPorcentaje,
+        engancheMonto: engancheMonto,
         interesTipo: dto.interesTipo,
         intervaloDias: dto.intervaloDias,
-        montoCapital: new Decimal(dto.montoCapital),
+        montoCapital: montoCapital,
         origenCredito: dto.origenCredito,
         plazoCuotas: dto.plazoCuotas,
         creadoPorId: dto.creadoPorId,

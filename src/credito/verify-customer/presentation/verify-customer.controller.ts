@@ -1,17 +1,11 @@
 import {
   Controller,
-  Get,
   Post,
   Body,
-  Patch,
-  Param,
-  Delete,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
 import { VerifyCustomerService } from '../app/verify-customer.service';
-import { CreateVerifyCustomerDto } from '../dto/create-verify-customer.dto';
-import { UpdateVerifyCustomerDto } from '../dto/update-verify-customer.dto';
 import { verifyClientDto } from '../dto/verify-customer.dto';
 
 @Controller('verify-customer')

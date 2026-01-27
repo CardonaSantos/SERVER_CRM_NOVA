@@ -52,6 +52,7 @@ import { NotificacionesUsuarioModule } from './notificaciones-usuario/notificaci
 import { CreditoModule } from './credito/credito.module';
 import { CustomerNetworkConfigModule } from './customer-network-config/customer-network-config.module';
 import { NetworkServiceModule } from './network-service/network-service.module';
+import { CuotasPagoModule } from './credito/cuotas-pago/cuotas-pago.module';
 
 @Module({
   imports: [
@@ -110,6 +111,7 @@ import { NetworkServiceModule } from './network-service/network-service.module';
     CreditoModule,
     CustomerNetworkConfigModule,
     NetworkServiceModule,
+    CuotasPagoModule,
   ],
   controllers: [AppController],
   providers: [AppService],

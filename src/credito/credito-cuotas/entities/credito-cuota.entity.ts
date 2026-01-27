@@ -1,13 +1,20 @@
 import Decimal from 'decimal.js';
 import { EstadoCuota } from '@prisma/client';
+import { PagoCuota } from 'src/credito/cuotas-pago/entities/cuotas-pago.entity';
 
 export const CREDITO_CUOTA = Symbol('CREDITO_CUOTA');
+
 export class CuotaCredito {
-  // Estado interno
+  /* ============================
+   * ESTADO INTERNO
+   * ============================ */
   private estado: EstadoCuota;
   private montoPagado: Decimal;
+  private pagos: PagoCuota[] = [];
 
-  // Constructor privado
+  /* ============================
+   * CONSTRUCTOR
+   * ============================ */
   private constructor(
     private readonly id: number | null,
     private readonly creditoId: number,
@@ -27,13 +34,12 @@ export class CuotaCredito {
   }
 
   /* ============================
-   * FACTORY
+   * FACTORIES (Creación y Rehidratación)
    * ============================ */
   static crear(params: {
     creditoId: number;
     numeroCuota: number;
     fechaVenc: Date;
-
     montoCapital: Decimal;
     montoInteres: Decimal;
   }): CuotaCredito {
@@ -64,24 +70,19 @@ export class CuotaCredito {
     );
   }
 
-  /* ============================
-   * REHIDRATACIÓN
-   * ============================ */
   static rehidratar(props: {
     id: number;
     creditoId: number;
-
     numeroCuota: number;
     fechaVenc: Date;
-
     montoCapital: Decimal;
     montoInteres: Decimal;
     montoTotal: Decimal;
-
     montoPagado: Decimal;
     estado: EstadoCuota;
+    pagos?: PagoCuota[];
   }): CuotaCredito {
-    return new CuotaCredito(
+    const cuota = new CuotaCredito(
       props.id,
       props.creditoId,
       props.numeroCuota,
@@ -92,15 +93,17 @@ export class CuotaCredito {
       props.estado,
       props.montoPagado,
     );
+
+    if (props.pagos) {
+      cuota.pagos = props.pagos;
+    }
+
+    return cuota;
   }
 
   /* ============================
-   * COMPORTAMIENTO DE DOMINIO
+   * DOMINIO: ACCIONES (Modifican estado)
    * ============================ */
-  public estaPagada(): boolean {
-    return this.estado === EstadoCuota.PAGADA;
-  }
-
   public aplicarPago(monto: Decimal): void {
     if (monto.lte(0)) {
       throw new Error('El monto debe ser mayor a 0');
@@ -121,15 +124,64 @@ export class CuotaCredito {
     }
   }
 
-  marcarEnMora(): void {
+  public aplicarPagoEntidad(pago: PagoCuota): void {
+    this.aplicarPago(pago.getMonto());
+    this.pagos.push(pago);
+  }
+
+  public eliminarPago(pagoId: number): Decimal {
+    const pagoIndex = this.pagos.findIndex((p) => p.getId() === pagoId);
+
+    if (pagoIndex === -1) {
+      throw new Error('El pago no pertenece a esta cuota');
+    }
+
+    const pago = this.pagos[pagoIndex];
+
+    this.pagos.splice(pagoIndex, 1);
+    this.montoPagado = this.montoPagado.minus(pago.getMonto());
+
+    if (this.montoPagado.lt(0)) {
+      throw new Error('Estado inválido: montoPagado negativo');
+    }
+
+    this.recalcularEstado();
+
+    return pago.getMonto();
+  }
+
+  public marcarEnMora(): void {
     if (this.estado === EstadoCuota.PAGADA) return;
     this.estado = EstadoCuota.VENCIDA;
   }
 
   /* ============================
-   * GETTERS (para mapper)
+   * DOMINIO: CONSULTAS (Lectura lógica)
    * ============================ */
+  public estaPagada(): boolean {
+    return this.estado === EstadoCuota.PAGADA;
+  }
 
+  public tienePago(pagoId: number): boolean {
+    return this.pagos.some((p) => p.getId() === pagoId);
+  }
+
+  /* ============================
+   * MÉTODOS PRIVADOS (Helpers)
+   * ============================ */
+  private recalcularEstado(): void {
+    if (this.montoPagado.eq(0)) {
+      this.estado = EstadoCuota.PENDIENTE;
+    } else if (this.montoPagado.eq(this.montoTotal)) {
+      this.estado = EstadoCuota.PAGADA;
+    } else {
+      this.estado = EstadoCuota.PARCIAL;
+    }
+  }
+
+  /* ============================
+   * GETTERS (Acceso a propiedades)
+   * ============================ */
   getId() {
     return this.id;
   }
@@ -168,5 +220,9 @@ export class CuotaCredito {
 
   getEstado() {
     return this.estado;
+  }
+
+  getPagos(): PagoCuota[] {
+    return this.pagos;
   }
 }

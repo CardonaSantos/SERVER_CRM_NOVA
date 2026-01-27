@@ -11,4 +11,13 @@ export interface CuotaPagoRepository {
     monto: Decimal;
     dto: CreateCuotasPagoDto;
   }): Promise<void>;
+
+  findByIdWithCuotas(id: number): Promise<Credito>;
+  findByPagoCuotaId(pagoCuotaId: number): Promise<Credito>;
+
+  persistirEliminacionPago(params: {
+    credito: Credito;
+    cuota: CuotaCredito;
+    pagoCuotaId: number;
+  }): Promise<void>;
 }
