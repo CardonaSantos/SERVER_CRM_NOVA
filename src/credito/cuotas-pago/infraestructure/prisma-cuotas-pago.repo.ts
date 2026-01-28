@@ -48,6 +48,7 @@ export class PrismaCuotasPago implements CuotaPagoRepository {
           metodoPago: params.dto.metodoPago,
           referencia: params.dto.referencia,
           observacion: params.dto.observacion,
+          registradoPorId: params.dto.userId,
         },
       });
 

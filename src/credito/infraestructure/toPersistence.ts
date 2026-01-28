@@ -52,7 +52,6 @@ export class CreditoMapper {
       creadoPor?: { nombre: string };
     },
   ): Credito {
-    // Mapeamos las cuotas si vienen en el record
     const cuotasDomain = record.cuotas
       ? record.cuotas.map((c) => CuotaCreditoMapper.toDomain(c))
       : undefined;
@@ -81,7 +80,6 @@ export class CreditoMapper {
       observaciones: record.observaciones ?? undefined,
       creadoPorId: record.creadoPorId ?? undefined,
 
-      // Pasamos las relaciones hidratadas
       relations: {
         cuotas: cuotasDomain,
         pagos: record.pagos,

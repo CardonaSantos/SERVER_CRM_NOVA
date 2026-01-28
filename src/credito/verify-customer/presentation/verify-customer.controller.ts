@@ -13,14 +13,7 @@ export class VerifyCustomerController {
   constructor(private readonly verifyCustomerService: VerifyCustomerService) {}
 
   @Post()
-  @UsePipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  )
-  verifyClient(@Body() dto: verifyClientDto) {
-    return this.verifyCustomerService.verifyCustomer(dto);
+  async verifyClient(@Body() dto: verifyClientDto) {
+    return await this.verifyCustomerService.verifyCustomer(dto);
   }
 }

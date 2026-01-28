@@ -12,6 +12,10 @@ export class CreateCuotasPagoDto {
   @IsInt()
   cuotaId: number;
 
+  @Type(() => Number)
+  @IsInt()
+  userId: number;
+
   //   @Transform(({ value }) => Number(value))
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })

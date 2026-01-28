@@ -106,6 +106,7 @@ model Usuario {
   logsTiempo       TicketTimeLog[] @relation("LogTecnico")
 
   creditosRegistrados Credito[]
+  pagosCredito        PagoCredito[]
 }
 
 model PerfilUsuario {
@@ -1084,7 +1085,7 @@ model MikrotikRouter {
 model Credito {
   id                Int      @id @default(autoincrement())
   clienteId         Int
-  cliente           ClienteInternet  @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  cliente           ClienteInternet  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   montoCapital      Decimal  @db.Decimal(12,2)
   interesPorcentaje Decimal @db.Decimal(6,4)
   interesMoraPorcentaje Decimal @db.Decimal(6,4)
@@ -1157,7 +1158,10 @@ model PagoCredito {
   id           Int @id @default(autoincrement())
 
   creditoId    Int
-  credito      Credito @relation(fields: [creditoId], references: [id], onDelete: SetNull)
+  credito      Credito @relation(fields: [creditoId], references: [id], onDelete: Cascade)
+
+  registradoPorId Int?
+  registradoPor   Usuario? @relation(fields: [registradoPorId], references: [id], onDelete: SetNull)
 
   montoTotal   Decimal @db.Decimal(12,2)
   fechaPago    DateTime
@@ -1176,7 +1180,7 @@ model PagoCredito {
 model CreditoEstadoHistorial {
   id         Int @id @default(autoincrement())
   creditoId  Int
-  credito    Credito @relation(fields: [creditoId], references: [id], onDelete: SetNull)
+  credito    Credito @relation(fields: [creditoId], references: [id], onDelete: Cascade)
 
   estado     EstadoCredito
   motivo     String?
@@ -1202,7 +1206,7 @@ model MoraCredito {
 model CreditoContrato {
   id          Int @id @default(autoincrement())
   creditoId   Int @unique
-  credito     Credito @relation(fields: [creditoId], references: [id], onDelete: SetNull)
+  credito     Credito @relation(fields: [creditoId], references: [id], onDelete: Cascade)
 
   contenido   String // HTML / Markdown / Texto legal
   version     String

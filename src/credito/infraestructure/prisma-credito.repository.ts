@@ -145,7 +145,16 @@ export class PrismaCreditoRepository implements CreditoRepository {
             pagos: {
               include: {
                 aplicaciones: true,
+                registradoPor: {
+                  select: {
+                    id: true,
+                    nombre: true,
+                    correo: true,
+                    rol: true,
+                  },
+                },
               },
+
               orderBy: { fechaPago: 'desc' },
             },
             cliente: {

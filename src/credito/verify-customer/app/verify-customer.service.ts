@@ -1,15 +1,17 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { CreateVerifyCustomerDto } from '../dto/create-verify-customer.dto';
-import { UpdateVerifyCustomerDto } from '../dto/update-verify-customer.dto';
-import { PrismaVerifyCustomerRepository } from '../infraestructure/prisma-verify-customer.repo';
-import { VERIFY_CUSTOMER_REPOSITORY } from '../domain/verify-customer.repo';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  VERIFY_CUSTOMER_REPOSITORY,
+  verifyCustomerRepository,
+} from '../domain/verify-customer.repo';
 import { verifyClientDto } from '../dto/verify-customer.dto';
 
 @Injectable()
 export class VerifyCustomerService {
+  private readonly logger = new Logger(VerifyCustomerService.name);
+
   constructor(
     @Inject(VERIFY_CUSTOMER_REPOSITORY)
-    private readonly verifyRepo: PrismaVerifyCustomerRepository,
+    private readonly verifyRepo: verifyCustomerRepository,
   ) {}
 
   /**
@@ -18,6 +20,7 @@ export class VerifyCustomerService {
    * @returns
    */
   async verifyCustomer(dto: verifyClientDto) {
+    this.logger.log(`DTO recibido:\n${JSON.stringify(dto, null, 2)}`);
     return await this.verifyRepo.verifyCustomer(dto);
   }
 }
