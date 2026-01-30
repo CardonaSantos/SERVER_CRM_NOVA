@@ -4,9 +4,10 @@ import { CreditoClienteExpedienteController } from './presentation/credito-clien
 import { DigitalOceanMediaModule } from 'src/modules/digital-ocean-media/digital-ocean-media.module';
 import { PrismaCreditoExpedienteRepository } from './infraestructure/PrismaCreditoClienteExpediente.repository';
 import { CLIENTE_EXPEDIENTE_REPOSITORY } from './domain/credito-cliente-expediente.repository';
+import { PrismaModule } from 'src/prisma/prisma.module';
 
 @Module({
-  imports: [DigitalOceanMediaModule],
+  imports: [DigitalOceanMediaModule, PrismaModule],
   controllers: [CreditoClienteExpedienteController],
   providers: [
     CreditoClienteExpedienteService,

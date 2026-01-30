@@ -1,16 +1,5 @@
 import { TipoArchivoCliente } from '@prisma/client';
 
-// id            Int @id @default(autoincrement())
-//   expedienteId  Int
-//   expediente    ClienteExpediente @relation(fields: [expedienteId], references: [id])
-
-//   tipo          TipoArchivoCliente
-//   url           String
-//   descripcion   String?
-
-//   creadoEn      DateTime @default(now())
-//   actualizadoEn  DateTime @updatedAt
-
 export class ClienteArchivo {
   private constructor(
     private readonly id: number | null,

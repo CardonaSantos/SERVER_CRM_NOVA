@@ -1,4 +1,6 @@
+import { Prisma } from '@prisma/client';
 import { ClienteArchivo } from '../entities/cliente-archivo.entity';
+import { ClienteReferencia } from '../entities/cliente-referencia.entity';
 import { ClienteExpediente } from '../entities/credito-cliente-expediente.entity';
 
 export const CLIENTE_EXPEDIENTE_REPOSITORY = Symbol(
@@ -6,11 +8,20 @@ export const CLIENTE_EXPEDIENTE_REPOSITORY = Symbol(
 );
 
 export interface CreditoClienteExpedienteRepository {
-  findByClienteId(clienteId: number): Promise<ClienteExpediente | null>;
+  saveExpediente(
+    expediente: ClienteExpediente,
+    tx?: Prisma.TransactionClient,
+  ): Promise<ClienteExpediente>;
 
-  save(expediente: ClienteExpediente): Promise<ClienteExpediente>;
+  saveMedia(
+    clienteArchivo: ClienteArchivo,
+    tx?: Prisma.TransactionClient,
+  ): Promise<ClienteArchivo>;
 
-  saveMedia(clienteArchivo: ClienteArchivo): Promise<ClienteArchivo>;
+  saveReferencia(
+    referencia: ClienteReferencia,
+    tx?: Prisma.TransactionClient,
+  ): Promise<ClienteReferencia>;
 
-  getAllMedia(): Promise<Array<ClienteArchivo>>;
+  getAllMedia(): Promise<ClienteArchivo[]>;
 }
