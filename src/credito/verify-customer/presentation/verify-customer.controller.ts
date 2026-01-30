@@ -4,16 +4,18 @@ import {
   Body,
   UsePipes,
   ValidationPipe,
+  Get,
+  Param,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { VerifyCustomerService } from '../app/verify-customer.service';
-import { verifyClientDto } from '../dto/verify-customer.dto';
 
 @Controller('verify-customer')
 export class VerifyCustomerController {
   constructor(private readonly verifyCustomerService: VerifyCustomerService) {}
 
-  @Post()
-  async verifyClient(@Body() dto: verifyClientDto) {
-    return await this.verifyCustomerService.verifyCustomer(dto);
+  @Get(':id')
+  async verifyClient(@Param('id', ParseIntPipe) id: number) {
+    return await this.verifyCustomerService.verifyCustomer(id);
   }
 }

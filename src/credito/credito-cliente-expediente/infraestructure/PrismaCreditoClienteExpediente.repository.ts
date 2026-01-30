@@ -4,6 +4,8 @@ import { Logger } from '@nestjs/common';
 import { ClienteExpediente } from '../entities/credito-cliente-expediente.entity';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { ClienteExpedienteMapper } from '../common/cliente-expediente.mapper';
+import { ClienteArchivo } from '../entities/cliente-archivo.entity';
+import { ClienteArchivoMapper } from '../common/cliente-archivo.mapper';
 
 export class PrismaCreditoExpedienteRepository
   implements CreditoClienteExpedienteRepository
@@ -12,42 +14,31 @@ export class PrismaCreditoExpedienteRepository
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async saveExpediente(
-    expediente: ClienteExpediente,
-  ): Promise<ClienteExpediente> {
+  async findByClienteId(clienteId: number): Promise<ClienteExpediente | null> {
     try {
-      //  Dominio → Persistencia
-      const data = ClienteExpedienteMapper.toPersistence(expediente);
+      const record = await this.prisma.clienteExpediente.findUnique({
+        where: {
+          id: clienteId,
+        },
+      });
 
-      //  Persistir
-      const record = expediente.getId()
-        ? await this.prisma.clienteExpediente.update({
-            where: { id: expediente.getId() },
-            data,
-          })
-        : await this.prisma.clienteExpediente.create({
-            data,
-          });
+      if (!record) throw Error('Registro no encontrado');
 
-      //  Persistencia → Dominio
       return ClienteExpedienteMapper.toDomain(record);
     } catch (error) {
       throwFatalError(
         error,
         this.logger,
-        'PrismaCreditoExpedienteRepository.saveExpediente',
+        'PrismaCreditoExpedienteRepository.findByClienteId',
       );
-      throw error; // seguridad de tipado
     }
   }
-  async getExpedienteByIdCredito(
-    id: number,
-  ): Promise<ClienteExpediente | null> {
+  async save(expediente: ClienteExpediente): Promise<ClienteExpediente> {
     try {
-      const record = await this.prisma.clienteExpediente.findUnique({
-        where: {
-          id,
-        },
+      const data = ClienteExpedienteMapper.toPersistence(expediente);
+
+      const record = await this.prisma.clienteExpediente.create({
+        data: data,
       });
 
       return ClienteExpedienteMapper.toDomain(record);
@@ -55,9 +46,39 @@ export class PrismaCreditoExpedienteRepository
       throwFatalError(
         error,
         this.logger,
-        'PrismaCreditoExpedienteRepository.saveExpediente',
+        'PrismaCreditoExpedienteRepository.save',
       );
-      throw error; // seguridad de tipado
+    }
+  }
+
+  async saveMedia(clienteArchivo: ClienteArchivo): Promise<ClienteArchivo> {
+    try {
+      const mediaData = ClienteArchivoMapper.toPersistence(clienteArchivo);
+
+      const newRecord = await this.prisma.clienteArchivo.create({
+        data: mediaData,
+      });
+
+      return ClienteArchivo.rehidratar(newRecord);
+    } catch (error) {
+      throwFatalError(
+        error,
+        this.logger,
+        'PrismaCreditoExpedienteRepository.saveMedia',
+      );
+    }
+  }
+
+  async getAllMedia(): Promise<Array<ClienteArchivo>> {
+    try {
+      const records = await this.prisma.clienteArchivo.findMany({});
+      return records.map((r) => ClienteArchivo.rehidratar(r));
+    } catch (error) {
+      throwFatalError(
+        error,
+        this.logger,
+        'PrismaCreditoExpedienteRepository.getAllMedia',
+      );
     }
   }
 }

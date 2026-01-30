@@ -1,6 +1,5 @@
 import { TipoMedia } from '@prisma/client';
 
-// src/modules/media/application/dto/subir-media.dto.ts
 export type SubirMediaCommand = {
   empresaId: number;
   clienteId?: number;

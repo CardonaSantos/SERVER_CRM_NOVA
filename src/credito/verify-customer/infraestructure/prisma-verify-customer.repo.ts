@@ -19,6 +19,15 @@ dayjs.extend(isSameOrBefore);
 dayjs.extend(isSameOrAfter);
 dayjs.locale('es');
 
+interface HistorialPago {
+  facturaId: number;
+  pagadaATiempo: boolean;
+  diferencia: number; // días (negativo = atraso)
+  fechaVencimiento: string; // DD/MM/YYYY
+  fechaPagada: string; // DD/MM/YYYY
+}
+const TOLERANCIA_DIAS = 3;
+
 @Injectable()
 export class PrismaVerifyCustomerRepository
   implements verifyCustomerRepository
@@ -26,9 +35,8 @@ export class PrismaVerifyCustomerRepository
   private readonly logger = new Logger(PrismaVerifyCustomerRepository.name);
   constructor(private readonly prisma: PrismaService) {}
 
-  async verifyCustomer(dto: verifyClientDto) {
+  async verifyCustomer(id: number) {
     try {
-      const { id } = dto;
       const customer = await this.prisma.clienteInternet.findUnique({
         where: {
           id,
@@ -66,7 +74,9 @@ export class PrismaVerifyCustomerRepository
         this.logger.log(`Factura ${f.id} - pagos: ${f.pagos.length}`),
       );
 
-      return await this.calculatePunctuality(facturas);
+      let historialPagos = await this.calculatePunctuality(facturas);
+      const resultado = this.generarResultado(historialPagos);
+      return resultado;
     } catch (error) {
       throwFatalError(
         error,
@@ -91,14 +101,6 @@ export class PrismaVerifyCustomerRepository
       }[];
     }[],
   ) {
-    interface pagoResult {
-      id: number;
-      pagadaATiempo: boolean;
-      diferencia: number;
-      fechaVencimiento: string;
-      fechaPagada: string;
-    }
-
     try {
       let arrayFacturasPrcesadas = [];
       for (const factura of facturas) {
@@ -112,9 +114,11 @@ export class PrismaVerifyCustomerRepository
           .startOf('day')
           .diff(dayjs(primerPago.fechaPago).startOf('day'), 'days');
 
+        const pagadaATiempo = diferenciaDias >= -TOLERANCIA_DIAS;
+
         arrayFacturasPrcesadas.push({
           facturaId: factura.id,
-          pagadaATiempo: diferenciaDias >= 0,
+          pagadaATiempo: pagadaATiempo,
           diferencia: diferenciaDias,
           fechaVencimiento: dayjs(factura.fechaPagoEsperada).format(
             'DD/MM/YYYY',
@@ -131,5 +135,92 @@ export class PrismaVerifyCustomerRepository
         'PrismaVerifyCustomerRepository.VerifyCustomer',
       );
     }
+  }
+
+  calcularResumen(historial: HistorialPago[]) {
+    const base = {
+      total: historial.length,
+      aTiempo: 0,
+      atrasadas: 0,
+      sumaAtraso: 0,
+      atrasos: [] as number[],
+      rachaActual: 0,
+    };
+
+    const ULTIMAS = 6;
+    const recientes = historial.slice(-ULTIMAS);
+
+    for (const h of historial) {
+      if (h.pagadaATiempo) {
+        base.aTiempo++;
+      } else {
+        base.atrasadas++;
+        const atraso = Math.abs(h.diferencia);
+        base.sumaAtraso += atraso;
+        base.atrasos.push(atraso);
+      }
+    }
+
+    base.rachaActual = recientes.filter((h) => h.pagadaATiempo).length;
+
+    return base;
+  }
+
+  mediana(valores: number[]) {
+    if (valores.length === 0) return 0;
+
+    const sorted = [...valores].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+
+    return sorted.length % 2 !== 0
+      ? sorted[mid]
+      : (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+
+  scoreInvertido(valor: number, max: number) {
+    if (valor <= 0) return 100;
+    if (valor >= max) return 0;
+    return Math.round(100 - (valor / max) * 100);
+  }
+
+  generarResultado(historial: HistorialPago[]) {
+    const acc = this.calcularResumen(historial);
+
+    const puntualidadPct = acc.total > 0 ? (acc.aTiempo / acc.total) * 100 : 0;
+
+    const promedioAtraso =
+      acc.atrasadas > 0 ? acc.sumaAtraso / acc.atrasadas : 0;
+
+    const medianaAtraso = this.mediana(acc.atrasos);
+
+    const puntualidadScore = puntualidadPct;
+    const promedioScore = this.scoreInvertido(promedioAtraso, 120);
+    const medianaScore = this.scoreInvertido(medianaAtraso, 120);
+    const rachaScore = Math.min(acc.rachaActual * 20, 100);
+
+    const scoreFinal = Math.round(
+      puntualidadScore * 0.4 +
+        medianaScore * 0.25 +
+        promedioScore * 0.15 +
+        rachaScore * 0.2,
+    );
+
+    let clasificacion: string;
+    if (scoreFinal >= 80) clasificacion = 'CONFIABLE';
+    else if (scoreFinal >= 60) clasificacion = 'RIESGO_MEDIO';
+    else if (scoreFinal >= 40) clasificacion = 'RIESGO_ALTO';
+    else clasificacion = 'NO_APROBABLE';
+
+    return {
+      historial,
+      resumen: {
+        puntualidadPct: Number(puntualidadPct.toFixed(1)),
+        promedioAtraso: Math.round(promedioAtraso),
+        medianaAtraso,
+        rachaActual: acc.rachaActual,
+        score: scoreFinal,
+        clasificacion,
+      },
+    };
   }
 }

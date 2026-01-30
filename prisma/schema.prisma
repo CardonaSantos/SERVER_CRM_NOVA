@@ -1102,17 +1102,17 @@ model Credito {
   cuotas            CuotaCredito[]
   pagos             PagoCredito[]      
   historialEstados  CreditoEstadoHistorial[]
-  documentos DocumentoCredito[]   
-  origenCredito OrigenCredito @default(USUARIO)
+  documentos        DocumentoCredito[]   
+  origenCredito     OrigenCredito @default(USUARIO)
   contratoSnapshot  CreditoContrato?
-  observaciones String?
-  creadoPorId Int?
-  creadoPor   Usuario? @relation(fields: [creadoPorId],references: [id],onDelete: SetNull)
-  engancheMonto Decimal? @db.Decimal(12,2)
-  engancheFecha DateTime?
+  observaciones     String?
+  creadoPorId       Int?
+  creadoPor         Usuario? @relation(fields: [creadoPorId],references: [id],onDelete: SetNull)
+  engancheMonto     Decimal? @db.Decimal(12,2)
+  engancheFecha     DateTime?
 
-  creadoEn         DateTime @default(now())
-  actualizadoEn         DateTime @updatedAt
+  creadoEn          DateTime @default(now())
+  actualizadoEn     DateTime @updatedAt
 }
 
 model CuotaCredito {

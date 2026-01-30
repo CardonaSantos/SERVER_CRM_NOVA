@@ -1,4 +1,3 @@
-// src/modules/media/application/use-cases/subir-media.usecase.ts
 import { MediaAsset } from '../../domain/file-aset';
 import { FileStoragePort } from '../../domain/ports/file-storage.port';
 import { MediaRepositoryPort } from '../../domain/ports/media-repository.port';
@@ -17,23 +16,23 @@ export class SubirMediaUseCase {
   ) {}
 
   async execute(cmd: SubirMediaCommand): Promise<SubirMediaResult> {
-    // 1) Validaciones mínimas
+    //  Validaciones
     if (!cmd.empresaId) throw new Error('empresaId requerido');
     if (!cmd.buffer?.length) throw new Error('Archivo vacío');
     if (!cmd.mime?.includes('/')) throw new Error('mime inválido');
 
-    // 2) Generar key (usa tu convención)
+    //  Generar key
     const ext = inferExtension(cmd.mime, cmd.fileName);
     const key = generarKey({
       empresaId: cmd.empresaId,
       clienteId: cmd.clienteId,
-      albumId: cmd.albumId, // opcional: para meter albums en la ruta
-      tipo: cmd.tipo, // opcional: para carpeta por tipo (imagenes/videos)
-      extension: ext, // 👈 la extensión real
-      basePrefix: cmd.basePrefix ?? process.env.MEDIA_BASE_PREFIX ?? 'crm', // 👈 prefijo
+      albumId: cmd.albumId,
+      tipo: cmd.tipo,
+      extension: ext, // la extensión real
+      basePrefix: cmd.basePrefix ?? process.env.MEDIA_BASE_PREFIX ?? 'crm', // prefijo
     });
 
-    // 3) Subir a storage (ACL pública + CDN)
+    //Subir a storage (ACL pública + CDN)
     const put = await this.storage.upload({
       bucket: this.defaults.bucket,
       key,
@@ -43,7 +42,7 @@ export class SubirMediaUseCase {
       acl: 'public-read',
     });
 
-    // 4) Construir entidad de dominio
+    // Construir entidad de dominio
     const asset: MediaAsset = {
       empresaId: cmd.empresaId,
       clienteId: cmd.clienteId,

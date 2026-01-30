@@ -19,8 +19,8 @@ export class VerifyCustomerService {
    * @param dto
    * @returns
    */
-  async verifyCustomer(dto: verifyClientDto) {
-    this.logger.log(`DTO recibido:\n${JSON.stringify(dto, null, 2)}`);
-    return await this.verifyRepo.verifyCustomer(dto);
+  async verifyCustomer(id: number) {
+    this.logger.log('El id es: ', id);
+    return await this.verifyRepo.verifyCustomer(id);
   }
 }

@@ -14,10 +14,11 @@ export class ClienteArchivoMapper {
 
   static toPersistence(archivo: ClienteArchivo) {
     return {
-      expedienteId: archivo.getExpedienteId(),
       tipo: archivo.getTipo(),
       url: archivo.getUrl(),
       descripcion: archivo.getDescripcion(),
+
+      expedienteId: archivo.getExpedienteId(),
     };
   }
 }

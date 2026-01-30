@@ -55,6 +55,13 @@ export class ClienteExpediente {
   }
   // Comportamiento
   agregarArchivo(archivo: ClienteArchivo) {
+    const existe = this.archivos.some(
+      (a) =>
+        a.getTipo() === archivo.getTipo() && a.getUrl() === archivo.getUrl(),
+    );
+
+    if (existe) return;
+
     this.archivos.push(archivo);
   }
 

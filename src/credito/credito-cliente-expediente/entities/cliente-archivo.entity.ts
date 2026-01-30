@@ -1,9 +1,21 @@
 import { TipoArchivoCliente } from '@prisma/client';
 
+// id            Int @id @default(autoincrement())
+//   expedienteId  Int
+//   expediente    ClienteExpediente @relation(fields: [expedienteId], references: [id])
+
+//   tipo          TipoArchivoCliente
+//   url           String
+//   descripcion   String?
+
+//   creadoEn      DateTime @default(now())
+//   actualizadoEn  DateTime @updatedAt
+
 export class ClienteArchivo {
   private constructor(
     private readonly id: number | null,
-    private readonly expedienteId: number,
+
+    private readonly expedienteId: number | null,
     private readonly tipo: TipoArchivoCliente,
     private readonly url: string,
     private readonly descripcion?: string,
@@ -15,6 +27,10 @@ export class ClienteArchivo {
     url: string;
     descripcion?: string;
   }): ClienteArchivo {
+    if (!params.url) {
+      throw new Error('URL requerida');
+    }
+
     return new ClienteArchivo(
       null,
       params.expedienteId,
@@ -27,6 +43,7 @@ export class ClienteArchivo {
   static rehidratar(props: {
     id: number;
     expedienteId: number;
+
     tipo: TipoArchivoCliente;
     url: string;
     descripcion?: string;
@@ -43,9 +60,11 @@ export class ClienteArchivo {
   getId() {
     return this.id;
   }
+
   getExpedienteId() {
     return this.expedienteId;
   }
+
   getTipo() {
     return this.tipo;
   }
