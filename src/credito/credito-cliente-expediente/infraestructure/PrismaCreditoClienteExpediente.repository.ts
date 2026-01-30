@@ -157,4 +157,20 @@ export class PrismaCreditoExpedienteRepository
       );
     }
   }
+
+  async deleteExpediente(expedienteId: number): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.clienteArchivo.deleteMany({
+        where: { expedienteId },
+      });
+
+      await tx.clienteReferencia.deleteMany({
+        where: { expedienteId },
+      });
+
+      await tx.clienteExpediente.delete({
+        where: { id: expedienteId },
+      });
+    });
+  }
 }

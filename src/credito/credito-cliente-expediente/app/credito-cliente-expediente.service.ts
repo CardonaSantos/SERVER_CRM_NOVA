@@ -163,7 +163,7 @@ export class CreditoClienteExpedienteService {
       throw new NotFoundException('Crédito no encontrado');
     }
 
-    const expediente = await this.prisma.clienteExpediente.findFirst({
+    const expediente = await this.prisma.clienteExpediente.findMany({
       where: {
         clienteId: credito.clienteId,
       },
@@ -182,5 +182,9 @@ export class CreditoClienteExpedienteService {
     }
 
     return expediente;
+  }
+
+  async deleteExpediente(id: number) {
+    return await this.clienteExpedienteRepo.deleteExpediente(id);
   }
 }

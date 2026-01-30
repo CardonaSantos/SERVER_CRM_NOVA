@@ -11,6 +11,7 @@ import {
   Logger,
   UsePipes,
   ValidationPipe,
+  Delete,
 } from '@nestjs/common';
 import { CreditoClienteExpedienteService } from '../app/credito-cliente-expediente.service';
 import { UploadArchivosDto } from '../dto/create-credito-cliente-expediente.dto';
@@ -69,5 +70,10 @@ export class CreditoClienteExpedienteController {
     return this.creditoClienteExpedienteService.obtenerExpedientePorCredito(
       creditoId,
     );
+  }
+
+  @Delete(':id')
+  async deleteExpediente(@Param('id', ParseIntPipe) id: number) {
+    return this.creditoClienteExpedienteService.deleteExpediente(id);
   }
 }

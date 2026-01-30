@@ -24,4 +24,6 @@ export interface CreditoClienteExpedienteRepository {
   ): Promise<ClienteReferencia>;
 
   getAllMedia(): Promise<ClienteArchivo[]>;
+
+  deleteExpediente(expedienteId: number): Promise<void>;
 }
