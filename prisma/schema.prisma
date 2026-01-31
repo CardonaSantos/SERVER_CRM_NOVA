@@ -1286,6 +1286,17 @@ model ClienteArchivo {
   url           String
   descripcion   String?
 
+   // NUEVOS (claves)
+  key    String      // key en DigitalOcean
+  bucket        String
+  mimeType      String
+  size          Int
+
+  // control
+  estado        String      @default("LISTO")
+  eliminadoAt   DateTime?
+
+
   creadoEn      DateTime @default(now())
   actualizadoEn  DateTime @updatedAt
 }

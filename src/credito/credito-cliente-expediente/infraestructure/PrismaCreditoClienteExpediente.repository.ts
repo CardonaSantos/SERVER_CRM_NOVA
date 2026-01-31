@@ -40,8 +40,9 @@ export class PrismaCreditoExpedienteRepository
     tx?: Prisma.TransactionClient,
   ): Promise<ClienteExpediente> {
     const prisma = tx ?? this.prisma;
-
     try {
+      // const recordExist = await prisma.clienteExpediente.delete
+
       const persisted = await prisma.clienteExpediente.upsert({
         where: { clienteId: expediente.getClienteId() },
         update: {

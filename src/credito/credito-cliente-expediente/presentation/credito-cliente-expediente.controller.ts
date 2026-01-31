@@ -72,6 +72,11 @@ export class CreditoClienteExpedienteController {
     );
   }
 
+  @Delete('delete-all-archivo')
+  async deleteAllArchivos() {
+    return this.creditoClienteExpedienteService.deleteAllArchivos();
+  }
+
   @Delete(':id')
   async deleteExpediente(@Param('id', ParseIntPipe) id: number) {
     return this.creditoClienteExpedienteService.deleteExpediente(id);

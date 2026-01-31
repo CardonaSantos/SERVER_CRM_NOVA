@@ -123,6 +123,11 @@ import { UPLOAD_FILE_USECASE } from './tokens/tokens';
       inject: [STORAGE_PORT, MEDIA_REPOSITORY, SPACES_CFG],
     },
   ],
-  exports: [SUBIR_MEDIA_USECASE, UPLOAD_FILE_USECASE],
+  exports: [
+    SUBIR_MEDIA_USECASE,
+    UPLOAD_FILE_USECASE,
+    ELIMINAR_MEDIA_USECASE,
+    STORAGE_PORT,
+  ],
 })
 export class DigitalOceanMediaModule {}

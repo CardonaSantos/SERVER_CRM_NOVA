@@ -10,7 +10,11 @@ import {
   CLIENTE_EXPEDIENTE_REPOSITORY,
   CreditoClienteExpedienteRepository,
 } from '../domain/credito-cliente-expediente.repository';
-import { UPLOAD_FILE_USECASE } from 'src/modules/digital-ocean-media/tokens/tokens';
+import {
+  ELIMINAR_MEDIA_USECASE,
+  STORAGE_PORT,
+  UPLOAD_FILE_USECASE,
+} from 'src/modules/digital-ocean-media/tokens/tokens';
 import { UploadFileUseCase } from 'src/modules/digital-ocean-media/application/use-cases/upload-file.usecase';
 import { ClienteArchivo } from '../entities/cliente-archivo.entity';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -18,6 +22,9 @@ import { ClienteExpediente } from '../entities/credito-cliente-expediente.entity
 import { ClienteReferencia } from '../entities/cliente-referencia.entity';
 import { Prisma } from '@prisma/client';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
+import { EliminarMediaUseCase } from 'src/modules/digital-ocean-media/application/use-cases/eliminar-media.usecase';
+import { EliminarMediaCommand } from 'src/modules/digital-ocean-media/dto/eliminar-media.dto';
+import { FileStoragePort } from 'src/modules/digital-ocean-media/domain/ports/file-storage.port';
 
 interface DtoCargarFile {
   buffer: Buffer;
@@ -35,6 +42,12 @@ export class CreditoClienteExpedienteService {
 
   constructor(
     private readonly prisma: PrismaService,
+
+    @Inject(ELIMINAR_MEDIA_USECASE)
+    private readonly deleteFile: EliminarMediaUseCase,
+
+    @Inject(STORAGE_PORT)
+    private readonly storage: FileStoragePort,
 
     @Inject(UPLOAD_FILE_USECASE)
     private readonly uploadFile: UploadFileUseCase,
@@ -137,6 +150,10 @@ export class CreditoClienteExpedienteService {
         tipo: dto.tipos[i],
         url: uploaded.cdnUrl,
         descripcion: dto.descripciones?.[i],
+        bucket: uploaded.bucket,
+        key: uploaded.key,
+        mimeType: uploaded.mimeType,
+        size: uploaded.size,
       });
 
       await this.clienteExpedienteRepo.saveMedia(archivo, tx);
@@ -185,6 +202,39 @@ export class CreditoClienteExpedienteService {
   }
 
   async deleteExpediente(id: number) {
-    return await this.clienteExpedienteRepo.deleteExpediente(id);
+    const archivos = await this.prisma.clienteArchivo.findMany({
+      where: {
+        expedienteId: id,
+        eliminadoAt: null,
+      },
+      select: {
+        id: true,
+        key: true,
+        bucket: true,
+      },
+    });
+
+    for (const archivo of archivos) {
+      if (archivo.key && archivo.bucket) {
+        await this.storage.delete({
+          key: archivo.key,
+          bucket: archivo.bucket,
+        });
+      }
+
+      await this.prisma.clienteArchivo.update({
+        where: { id: archivo.id },
+        data: {
+          estado: 'ELIMINADO',
+          eliminadoAt: new Date(),
+        },
+      });
+    }
+
+    return this.clienteExpedienteRepo.deleteExpediente(id);
+  }
+
+  async deleteAllArchivos() {
+    return await this.prisma.clienteArchivo.deleteMany({});
   }
 }
