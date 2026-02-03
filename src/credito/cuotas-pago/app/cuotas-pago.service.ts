@@ -5,6 +5,7 @@ import {
   CuotaPagoRepository,
 } from '../domain/cuota-pago.repository';
 import Decimal from 'decimal.js';
+import { PayMoraCuotaDto } from '../dto/pay-mora-cuota.dto';
 
 @Injectable()
 export class CuotasPagoService {
@@ -50,5 +51,9 @@ export class CuotasPagoService {
       cuota: resultado.cuota,
       pagoCuotaId,
     });
+  }
+
+  async papagoMoraCuotay(dto: PayMoraCuotaDto) {
+    return await this.creditoRepository.payMoraCuota(dto);
   }
 }

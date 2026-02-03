@@ -107,6 +107,7 @@ model Usuario {
 
   creditosRegistrados Credito[]
   pagosCredito        PagoCredito[]
+  morasPagadas        MoraCredito[]
 }
 
 model PerfilUsuario {
@@ -1198,10 +1199,22 @@ model MoraCredito {
   interes    Decimal @db.Decimal(14,4)
 
   calculadoEn DateTime @default(now())
+  
+  estado       EstadoMora @default(PENDIENTE)
+
+  pagadoEn     DateTime?
+  pagadoPorId  Int?
+  pagadoPor    Usuario? @relation(fields: [pagadoPorId], references: [id], onDelete: Cascade)
 
   creadoEn         DateTime @default(now())
   actualizadoEn         DateTime @updatedAt
 }
+
+enum EstadoMora {
+  PENDIENTE
+  PAGADA
+}
+
 
 model CreditoContrato {
   id          Int @id @default(autoincrement())
@@ -1223,8 +1236,6 @@ enum OrigenCredito {
   REFERIDO
   USUARIO
 }
-
-
 
 // [16] CREDITO CREDENCIALES
 

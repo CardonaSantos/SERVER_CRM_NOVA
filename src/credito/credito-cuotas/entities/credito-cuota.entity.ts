@@ -1,6 +1,7 @@
 import Decimal from 'decimal.js';
 import { EstadoCuota } from '@prisma/client';
 import { PagoCuota } from 'src/credito/cuotas-pago/entities/cuotas-pago.entity';
+import { MoraCuota } from './mora-cuota.entity';
 
 export const CREDITO_CUOTA = Symbol('CREDITO_CUOTA');
 
@@ -11,7 +12,7 @@ export class CuotaCredito {
   private estado: EstadoCuota;
   private montoPagado: Decimal;
   private pagos: PagoCuota[] = [];
-
+  private moras: MoraCuota[] = [];
   /* ============================
    * CONSTRUCTOR
    * ============================ */
@@ -81,6 +82,7 @@ export class CuotaCredito {
     montoPagado: Decimal;
     estado: EstadoCuota;
     pagos?: PagoCuota[];
+    moras?: MoraCuota[];
   }): CuotaCredito {
     const cuota = new CuotaCredito(
       props.id,
@@ -96,6 +98,10 @@ export class CuotaCredito {
 
     if (props.pagos) {
       cuota.pagos = props.pagos;
+    }
+
+    if (props.moras) {
+      cuota.moras = props.moras;
     }
 
     return cuota;
@@ -224,5 +230,9 @@ export class CuotaCredito {
 
   getPagos(): PagoCuota[] {
     return this.pagos;
+  }
+
+  getMoras(): MoraCuota[] {
+    return this.moras;
   }
 }

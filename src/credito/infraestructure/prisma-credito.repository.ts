@@ -141,6 +141,9 @@ export class PrismaCreditoRepository implements CreditoRepository {
           include: {
             cuotas: {
               orderBy: { numeroCuota: 'asc' },
+              include: {
+                moras: true,
+              },
             },
             pagos: {
               include: {

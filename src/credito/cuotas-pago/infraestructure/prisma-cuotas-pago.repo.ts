@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { CuotaPagoRepository } from '../domain/cuota-pago.repository';
 import { CreateCuotasPagoDto } from '../dto/create-cuotas-pago.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -17,6 +22,7 @@ import * as isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import * as customParseFormat from 'dayjs/plugin/customParseFormat';
 import { TZ } from 'src/Utils/tzgt';
 import { CreditoMapper } from 'src/credito/infraestructure/toPersistence';
+import { PayMoraCuotaDto } from '../dto/pay-mora-cuota.dto';
 dayjs.extend(customParseFormat);
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -175,5 +181,56 @@ export class PrismaCuotasPago implements CuotaPagoRepository {
     }
 
     return CreditoMapper.toDomain(pagoCuota.cuota.credito);
+  }
+
+  async payMoraCuota(dto: PayMoraCuotaDto): Promise<void> {
+    const { moraId, userId } = dto;
+
+    await this.prisma.$transaction(async (tx) => {
+      const mora = await tx.moraCredito.findUnique({
+        where: { id: moraId },
+        include: {
+          cuota: {
+            include: {
+              moras: true,
+            },
+          },
+        },
+      });
+
+      if (!mora) {
+        throw new NotFoundException('Mora no encontrada');
+      }
+
+      if (mora.estado === 'PAGADA') {
+        throw new BadRequestException('La mora ya está pagada');
+      }
+
+      await tx.moraCredito.update({
+        where: { id: moraId },
+        data: {
+          estado: 'PAGADA',
+          pagadoEn: new Date(),
+          pagadoPorId: userId,
+        },
+      });
+
+      const quedanMorasPendientes = mora.cuota.moras.some(
+        (m) => m.estado === 'PENDIENTE' && m.id !== moraId,
+      );
+
+      if (!quedanMorasPendientes) {
+        await tx.cuotaCredito.update({
+          where: { id: mora.cuotaId },
+          data: {
+            estado: mora.cuota.montoPagado.eq(mora.cuota.montoTotal)
+              ? 'PAGADA'
+              : mora.cuota.montoPagado.gt(0)
+                ? 'PARCIAL'
+                : 'PENDIENTE',
+          },
+        });
+      }
+    });
   }
 }

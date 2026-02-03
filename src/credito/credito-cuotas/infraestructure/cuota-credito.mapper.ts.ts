@@ -6,11 +6,14 @@ import {
   Prisma,
   CuotaCredito as PrismaCuotaCredito,
   PagoCuota as PrismaPagoCuota,
+  MoraCredito as PrismaMoraCredito,
 } from '@prisma/client';
 import { PagoCuota } from 'src/credito/cuotas-pago/entities/cuotas-pago.entity';
+import { MoraCuota } from '../entities/mora-cuota.entity';
 
 type PrismaCuotaConPagos = PrismaCuotaCredito & {
   pagos?: PrismaPagoCuota[];
+  moras?: PrismaMoraCredito[]; // <--- Importante
 };
 
 export class CuotaCreditoMapper {
@@ -48,7 +51,6 @@ export class CuotaCreditoMapper {
       montoPagado: new Decimal(record.montoPagado.toString()),
       estado: record.estado,
 
-      // 🔑 AQUÍ ESTABA TODO EL BUG
       pagos: record.pagos
         ? record.pagos.map((p) =>
             PagoCuota.rehidratar({
@@ -58,6 +60,18 @@ export class CuotaCreditoMapper {
               metodoPago: undefined,
               referencia: undefined,
               observacion: undefined,
+            }),
+          )
+        : [],
+
+      moras: record.moras
+        ? record.moras.map((m) =>
+            MoraCuota.rehidratar({
+              id: m.id,
+              diasMora: m.diasMora,
+              interes: new Decimal(m.interes.toString()),
+              calculadoEn: m.calculadoEn,
+              estado: m.estado,
             }),
           )
         : [],
