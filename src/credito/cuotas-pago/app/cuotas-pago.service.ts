@@ -24,13 +24,11 @@ export class CuotasPagoService {
       dto.creditoId,
     );
 
-    // 2. Dominio decide
     const resultado = credito.registrarPagoEnCuota({
       cuotaId: dto.cuotaId,
       monto: new Decimal(dto.monto),
     });
 
-    // 3. Persistencia
     await this.creditoRepository.persistirPago({
       credito,
       cuota: resultado.cuota,

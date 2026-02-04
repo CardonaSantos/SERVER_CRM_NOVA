@@ -40,14 +40,14 @@ export class UserService {
         throw new BadRequestException('Ya existe un usuario con ese correo');
       }
 
-      const salt = await bcrypt.genSalt(10);
-      const passwordHash = await bcrypt.hash(createUserDto.contrasena, salt);
+      // const salt = await bcrypt.genSalt(10);
+      // const passwordHash = await bcrypt.hash(createUserDto.contrasena, salt);
 
       const usuario = Usuario.create({
         empresaId: createUserDto.empresaId,
         nombre: createUserDto.nombre,
         correo: createUserDto.correo,
-        contrasena: passwordHash,
+        contrasena: createUserDto.contrasena,
         rol: createUserDto.rol,
         telefono: (createUserDto as any).telefono ?? null,
       });
