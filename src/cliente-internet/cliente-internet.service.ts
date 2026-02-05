@@ -1689,7 +1689,6 @@ export class ClienteInternetService {
     const nombreSearch = normalizarTexto(fullName);
     const serviceIds: number[] = servicesIds;
     await this.prisma.$transaction(async (prisma) => {
-      // 1) ANTES DEL UPDATE: estado relevante para Mikrotik
       const clienteBefore = await prisma.clienteInternet.findUnique({
         where: { id },
         select: {
@@ -1722,7 +1721,6 @@ export class ClienteInternetService {
         throw new Error('Cliente no encontrado');
       }
 
-      // 2) Ubicación
       let ubicacion;
       if (latitud !== null && longitud !== null) {
         ubicacion = await prisma.ubicacion.upsert({
@@ -1741,7 +1739,6 @@ export class ClienteInternetService {
           ? dayjs().tz(TZ).toDate()
           : null;
 
-      // 3) UPDATE del cliente
       const updatedCliente = await prisma.clienteInternet.update({
         where: { id },
         data: {
@@ -1754,7 +1751,6 @@ export class ClienteInternetService {
           direccion: updateCustomerService.direccion || null,
           dpi: updateCustomerService.dpi || null,
           observaciones: updateCustomerService.observaciones || null,
-
           contactoReferenciaNombre:
             updateCustomerService.contactoReferenciaNombre || null,
           contactoReferenciaTelefono:
@@ -1798,7 +1794,6 @@ export class ClienteInternetService {
         },
       });
 
-      // 5) DESPUÉS del update: estado actual para Mikrotik
       const clienteAfter = await prisma.clienteInternet.findUnique({
         where: { id },
         select: {
