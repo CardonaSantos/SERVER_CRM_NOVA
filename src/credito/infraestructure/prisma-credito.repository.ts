@@ -1,22 +1,21 @@
-import { Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreditoRepository } from '../domain/credito.repository';
 import { Credito } from '../entities/credito.entity';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { verifyProps } from 'src/Utils/verifyProps';
 import { CreditoMapper } from './toPersistence';
+import { Prisma } from '@prisma/client';
+import { GetCreditosQueryDto } from '../dto/get-creditos-query.dto';
 
-// CREDITO
+@Injectable()
 export class PrismaCreditoRepository implements CreditoRepository {
   private readonly logger = new Logger(PrismaCreditoRepository.name);
   constructor(private readonly prisma: PrismaService) {}
 
   async save(credito: Credito): Promise<Credito> {
     try {
-      // mapear datos a una persistencia
       const data = CreditoMapper.toPersistence(credito);
 
-      //   si viene con id es una actualizacion, sino create
       const record = credito.getId()
         ? await this.prisma.credito.update({
             where: { id: credito.getId() },
@@ -40,7 +39,14 @@ export class PrismaCreditoRepository implements CreditoRepository {
         },
       });
 
-      return CreditoMapper.toDomain(record);
+      if (!record) throw new NotFoundException('Error al encontrar registro');
+
+      const rawRegistro = await this.findAll({
+        search: id.toString(),
+      });
+
+      const registro = rawRegistro.data[0];
+      return registro;
     } catch (error) {
       throwFatalError(error, this.logger, 'PrismaCreditoRepository.findById');
     }
@@ -83,12 +89,126 @@ export class PrismaCreditoRepository implements CreditoRepository {
     }
   }
 
-  async findMany(): Promise<Array<Credito>> {
+  async findAll(query: GetCreditosQueryDto): Promise<{
+    data: Credito[];
+    meta: { total: number; page: number; lastPage: number };
+  }> {
     try {
-      const records = await this.prisma.credito.findMany({});
-      return records.map((r) => CreditoMapper.toDomain(r));
+      const { page = 1, limit = 10, search, estado } = query;
+      const skip = (page - 1) * limit;
+
+      const where: Prisma.CreditoWhereInput = {};
+
+      const conditions: Prisma.CreditoWhereInput[] = [];
+
+      if (estado) {
+        conditions.push({ estado });
+      }
+
+      if (search) {
+        const searchConditions: Prisma.CreditoWhereInput[] = [
+          {
+            cliente: {
+              nombre: { contains: search, mode: 'insensitive' },
+            },
+          },
+          {
+            cliente: {
+              apellidos: { contains: search, mode: 'insensitive' },
+            },
+          },
+        ];
+
+        if (!isNaN(Number(search))) {
+          searchConditions.push({ id: Number(search) });
+        }
+
+        conditions.push({ OR: searchConditions });
+      }
+
+      if (conditions.length > 0) {
+        where.AND = conditions;
+      }
+
+      const [total, records] = await this.prisma.$transaction([
+        this.prisma.credito.count({ where }),
+        this.prisma.credito.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { creadoEn: 'desc' },
+
+          include: {
+            cuotas: {
+              orderBy: { numeroCuota: 'asc' },
+              include: {
+                moras: true,
+              },
+            },
+            pagos: {
+              include: {
+                aplicaciones: true,
+                registradoPor: {
+                  select: {
+                    id: true,
+                    nombre: true,
+                    correo: true,
+                    rol: true,
+                  },
+                },
+              },
+
+              orderBy: { fechaPago: 'desc' },
+            },
+            cliente: {
+              select: { nombre: true, apellidos: true },
+            },
+            creadoPor: {
+              select: { nombre: true },
+            },
+          },
+        }),
+      ]);
+
+      const lastPage = Math.ceil(total / limit);
+
+      return {
+        data: records.map((record) => CreditoMapper.toDomain(record)),
+        meta: {
+          total,
+          page,
+          lastPage,
+        },
+      };
     } catch (error) {
-      throwFatalError(error, this.logger, 'PrismaCreditoRepository.findMany');
+      throwFatalError(error, this.logger, 'PrismaCreditoRepository.findAll');
+      throw error;
     }
+  }
+
+  async deleteAll(): Promise<number> {
+    try {
+      const creditosToDelete = await this.prisma.credito.deleteMany({});
+      return creditosToDelete.count;
+    } catch (error) {
+      throwFatalError(error, this.logger, 'PrismaCreditoRepository.deleteAll');
+    }
+  }
+
+  async findByIdWithCuotas(id: number): Promise<Credito> {
+    const record = await this.prisma.credito.findUnique({
+      where: { id },
+      include: {
+        cuotas: {
+          orderBy: { numeroCuota: 'asc' },
+        },
+      },
+    });
+
+    if (!record) {
+      throw new NotFoundException('Crédito no encontrado');
+    }
+
+    return CreditoMapper.toDomain(record);
   }
 }

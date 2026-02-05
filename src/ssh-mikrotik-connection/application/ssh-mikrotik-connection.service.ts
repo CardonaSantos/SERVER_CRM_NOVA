@@ -24,7 +24,6 @@ interface MkConfig {
 @Injectable()
 export class SshMikrotikConnectionService {
   private readonly logger = new Logger(SshMikrotikConnectionService.name);
-  private connected = false;
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
@@ -65,6 +64,16 @@ export class SshMikrotikConnectionService {
       );
       ssh.dispose(); // no hace falta await, es sync
     }
+  }
+
+  /**
+   * Helper eliminacion de ip de cualquier lista
+   * @param routerId
+   * @param ip
+   */
+  async clearIpFromAllLists(routerId: number, ip: string) {
+    await this.removeIpFromSuspendedListByRouterId(routerId, ip);
+    await this.removeIpFromListarInternetOkByRouterId(routerId, ip);
   }
 
   // SUSPENDER
@@ -247,6 +256,13 @@ export class SshMikrotikConnectionService {
         `Error activando cliente en Mikrotik: ${stderr}`,
       );
     }
+    // MEJORAR LUEGO
+
+    await this.addIpToInternetListByRouterId(
+      cliente.MikrotikRouter.id,
+      cliente.IP.direccionIp,
+      'Re-Activación ',
+    );
 
     await this.prisma.clienteInternet.update({
       where: {
@@ -258,6 +274,40 @@ export class SshMikrotikConnectionService {
     });
 
     return { ok: true, stdout };
+  }
+
+  /**
+   * Metodo para cuando sea una instalacion
+   * @param routerId
+   * @param ip
+   * @param comment
+   */
+  async addIpToInternetListByRouterId(
+    routerId: number,
+    ip: string,
+    comment: string,
+  ): Promise<void> {
+    const config = await this.buildConfigFromRouterId(routerId);
+
+    const addressList =
+      this.config.get<string>('LISTA_INTERNET_OK') ?? 'internet_ok';
+
+    const cmd = `/ip firewall address-list add list=${addressList} address=${ip} comment="${comment}"`;
+
+    const { stderr } = await this.runCommand(cmd, config);
+
+    if (stderr) {
+      this.logger.error(
+        `Error agregando IP ${ip} a lista ${addressList} en router ${routerId}: ${stderr}`,
+      );
+      throw new InternalServerErrorException(
+        'Error autorizando IP en Mikrotik',
+      );
+    }
+
+    this.logger.log(
+      `IP ${ip} agregada a lista ${addressList} en router ${routerId}`,
+    );
   }
 
   // VERIFICAR QUE ESTE EN LISTA
@@ -378,6 +428,11 @@ export class SshMikrotikConnectionService {
     }
   }
 
+  /**
+   * Limpiar de la lista de suspendidos
+   * @param routerId
+   * @param ip
+   */
   async removeIpFromSuspendedListByRouterId(
     routerId: number,
     ip: string,
@@ -386,6 +441,29 @@ export class SshMikrotikConnectionService {
 
     const addressList =
       this.config.get<string>('SUSPENDED_LIST') ?? 'clientes_suspendidos';
+    const cmd = `/ip firewall address-list remove [find list=${addressList} address=${ip}]`;
+
+    const { stderr } = await this.runCommand(cmd, config);
+    if (stderr) {
+      this.logger.error(
+        `Error removiendo IP ${ip} de lista ${addressList} en router ${routerId}: ${stderr}`,
+      );
+    }
+  }
+
+  /**
+   * Limpiar de la lista de internet ok
+   * @param routerId
+   * @param ip
+   */
+  async removeIpFromListarInternetOkByRouterId(
+    routerId: number,
+    ip: string,
+  ): Promise<void> {
+    const config = await this.buildConfigFromRouterId(routerId);
+
+    const addressList =
+      this.config.get<string>('LISTA_INTERNET_OK') ?? 'internet_ok';
     const cmd = `/ip firewall address-list remove [find list=${addressList} address=${ip}]`;
 
     const { stderr } = await this.runCommand(cmd, config);

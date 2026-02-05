@@ -106,6 +106,8 @@ model Usuario {
   logsTiempo       TicketTimeLog[] @relation("LogTecnico")
 
   creditosRegistrados Credito[]
+  pagosCredito        PagoCredito[]
+  morasPagadas        MoraCredito[]
 }
 
 model PerfilUsuario {
@@ -396,7 +398,6 @@ model ClienteInternet {
   creditos  Credito[] 
   expediente ClienteExpediente? //DE CREDITO
   documentosCredito DocumentoCredito[] 
-
 }
 
 model IP {
@@ -1085,56 +1086,40 @@ model MikrotikRouter {
 model Credito {
   id                Int      @id @default(autoincrement())
   clienteId         Int
-  cliente           ClienteInternet  @relation(fields: [clienteId], references: [id])
-
+  cliente           ClienteInternet  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   montoCapital      Decimal  @db.Decimal(12,2)
   interesPorcentaje Decimal @db.Decimal(6,4)
+  interesMoraPorcentaje Decimal @db.Decimal(6,4)
 
   intervaloDias     Int
-
-
   interesTipo       InteresTipo
   plazoCuotas       Int
   frecuencia        FrecuenciaPago
-
-  montoTotal        Decimal  @db.Decimal(12,2) // capital + interés
+  montoTotal        Decimal  @db.Decimal(12,2) 
   montoCuota        Decimal  @db.Decimal(12,2)
-
   estado            EstadoCredito
   fechaInicio       DateTime
   fechaFinEstimada  DateTime
-
-  creadoEn         DateTime @default(now())
-  actualizadoEn         DateTime @updatedAt
-
   cuotas            CuotaCredito[]
   pagos             PagoCredito[]      
-
   historialEstados  CreditoEstadoHistorial[]
-  documentos DocumentoCredito[]   
-
-  origenCredito OrigenCredito @default(USUARIO)
-
+  documentos        DocumentoCredito[]   
+  origenCredito     OrigenCredito @default(USUARIO)
   contratoSnapshot  CreditoContrato?
-  observaciones String?
+  observaciones     String?
+  creadoPorId       Int?
+  creadoPor         Usuario? @relation(fields: [creadoPorId],references: [id],onDelete: SetNull)
+  engancheMonto     Decimal? @db.Decimal(12,2)
+  engancheFecha     DateTime?
 
-
-  creadoPorId Int?
-  creadoPor   Usuario? @relation(fields: [creadoPorId],references: [id],onDelete: SetNull)
-}
-
-enum OrigenCredito {
-  TIENDA
-  CAMPO
-  ONLINE
-  REFERIDO
-  USUARIO
+  creadoEn          DateTime @default(now())
+  actualizadoEn     DateTime @updatedAt
 }
 
 model CuotaCredito {
   id           Int      @id @default(autoincrement())
   creditoId    Int
-  credito      Credito  @relation(fields: [creditoId], references: [id])
+  credito      Credito  @relation(fields: [creditoId], references: [id], onDelete: Cascade)
 
   numeroCuota  Int
   fechaVenc    DateTime
@@ -1157,10 +1142,10 @@ model PagoCuota {
   id            Int @id @default(autoincrement())
 
   cuotaId       Int
-  cuota         CuotaCredito @relation(fields: [cuotaId], references: [id])
+  cuota         CuotaCredito @relation(fields: [cuotaId], references: [id],onDelete:  Cascade)
 
   pagoCreditoId Int
-  pagoCredito   PagoCredito @relation(fields: [pagoCreditoId], references: [id])
+  pagoCredito   PagoCredito @relation(fields: [pagoCreditoId], references: [id], onDelete:  Cascade)
 
   monto         Decimal @db.Decimal(12,2)
 
@@ -1174,7 +1159,10 @@ model PagoCredito {
   id           Int @id @default(autoincrement())
 
   creditoId    Int
-  credito      Credito @relation(fields: [creditoId], references: [id])
+  credito      Credito @relation(fields: [creditoId], references: [id], onDelete: Cascade)
+
+  registradoPorId Int?
+  registradoPor   Usuario? @relation(fields: [registradoPorId], references: [id], onDelete: SetNull)
 
   montoTotal   Decimal @db.Decimal(12,2)
   fechaPago    DateTime
@@ -1193,7 +1181,7 @@ model PagoCredito {
 model CreditoEstadoHistorial {
   id         Int @id @default(autoincrement())
   creditoId  Int
-  credito    Credito @relation(fields: [creditoId], references: [id])
+  credito    Credito @relation(fields: [creditoId], references: [id], onDelete: Cascade)
 
   estado     EstadoCredito
   motivo     String?
@@ -1205,21 +1193,33 @@ model CreditoEstadoHistorial {
 model MoraCredito {
   id         Int @id @default(autoincrement())
   cuotaId    Int
-  cuota      CuotaCredito @relation(fields: [cuotaId], references: [id])
+  cuota      CuotaCredito @relation(fields: [cuotaId], references: [id], onDelete: Cascade)
 
   diasMora   Int
   interes    Decimal @db.Decimal(14,4)
 
   calculadoEn DateTime @default(now())
+  
+  estado       EstadoMora @default(PENDIENTE)
+
+  pagadoEn     DateTime?
+  pagadoPorId  Int?
+  pagadoPor    Usuario? @relation(fields: [pagadoPorId], references: [id], onDelete: Cascade)
 
   creadoEn         DateTime @default(now())
   actualizadoEn         DateTime @updatedAt
 }
 
+enum EstadoMora {
+  PENDIENTE
+  PAGADA
+}
+
+
 model CreditoContrato {
   id          Int @id @default(autoincrement())
   creditoId   Int @unique
-  credito     Credito @relation(fields: [creditoId], references: [id])
+  credito     Credito @relation(fields: [creditoId], references: [id], onDelete: Cascade)
 
   contenido   String // HTML / Markdown / Texto legal
   version     String
@@ -1227,6 +1227,14 @@ model CreditoContrato {
 
   creadoEn         DateTime @default(now())
   actualizadoEn         DateTime @updatedAt
+}
+
+enum OrigenCredito {
+  TIENDA
+  CAMPO
+  ONLINE
+  REFERIDO
+  USUARIO
 }
 
 // [16] CREDITO CREDENCIALES
@@ -1288,6 +1296,17 @@ model ClienteArchivo {
   tipo          TipoArchivoCliente
   url           String
   descripcion   String?
+
+   // NUEVOS (claves)
+  key    String      // key en DigitalOcean
+  bucket        String
+  mimeType      String
+  size          Int
+
+  // control
+  estado        String      @default("LISTO")
+  eliminadoAt   DateTime?
+
 
   creadoEn      DateTime @default(now())
   actualizadoEn  DateTime @updatedAt

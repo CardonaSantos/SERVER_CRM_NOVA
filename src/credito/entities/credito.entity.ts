@@ -1,17 +1,30 @@
 import Decimal from 'decimal.js';
 import {
   EstadoCredito,
+  EstadoCuota,
   FrecuenciaPago,
   InteresTipo,
   OrigenCredito,
 } from '@prisma/client';
+import { CuotaCredito } from '../credito-cuotas/entities/credito-cuota.entity';
+export interface CreditoRelations {
+  cuotas?: CuotaCredito[];
+  // Si tienes entidad de Pago, agrégala aquí. Si no, usa any temporalmente o crea la entidad
+  pagos?: any[];
+  clienteNombre?: string;
+  usuarioNombre?: string;
+}
 
 export class Credito {
   // Estado interno (privado)
   private estado: EstadoCredito;
   private montoTotal: Decimal;
   private montoCuota: Decimal;
-
+  // NUEVAS PROPIEDADES OPCIONALES
+  private cuotas?: CuotaCredito[];
+  private pagos?: any[];
+  private clienteNombre?: string;
+  private usuarioNombre?: string;
   // Constructor (privado)
   private constructor(
     private readonly id: number | null,
@@ -19,6 +32,11 @@ export class Credito {
 
     private readonly montoCapital: Decimal,
     private readonly interesPorcentaje: Decimal,
+
+    private readonly interesMoraPorcentaje: Decimal,
+
+    private readonly engancheMonto: Decimal,
+
     private readonly interesTipo: InteresTipo,
 
     private readonly plazoCuotas: number,
@@ -43,6 +61,8 @@ export class Credito {
     clienteId: number;
     montoCapital: Decimal;
     interesPorcentaje: Decimal;
+    interesMoraPorcentaje: Decimal;
+    engancheMonto: Decimal;
     interesTipo: InteresTipo;
     plazoCuotas: number;
     frecuencia: FrecuenciaPago;
@@ -79,6 +99,8 @@ export class Credito {
       params.clienteId,
       params.montoCapital,
       params.interesPorcentaje,
+      params.interesMoraPorcentaje,
+      params.engancheMonto,
       params.interesTipo,
       params.plazoCuotas,
       params.frecuencia,
@@ -99,18 +121,16 @@ export class Credito {
   static rehidratar(props: {
     id: number;
     clienteId: number;
-
     montoCapital: Decimal;
     interesPorcentaje: Decimal;
+    interesMoraPorcentaje: Decimal;
+    engancheMonto: Decimal;
     interesTipo: InteresTipo;
-
     plazoCuotas: number;
     frecuencia: FrecuenciaPago;
     intervaloDias: number;
-
     montoTotal: Decimal;
     montoCuota: Decimal;
-
     estado: EstadoCredito;
     fechaInicio: Date;
     fechaFinEstimada: Date;
@@ -118,12 +138,16 @@ export class Credito {
     origenCredito: OrigenCredito;
     observaciones?: string;
     creadoPorId?: number;
+
+    relations?: CreditoRelations;
   }): Credito {
     const credito = new Credito(
       props.id,
       props.clienteId,
       props.montoCapital,
       props.interesPorcentaje,
+      props.interesMoraPorcentaje,
+      props.engancheMonto,
       props.interesTipo,
       props.plazoCuotas,
       props.frecuencia,
@@ -140,16 +164,40 @@ export class Credito {
     credito.montoTotal = props.montoTotal;
     credito.montoCuota = props.montoCuota;
 
+    // Asignar relaciones si existen
+    if (props.relations) {
+      credito.cuotas = props.relations.cuotas;
+      credito.pagos = props.relations.pagos;
+      credito.clienteNombre = props.relations.clienteNombre;
+      credito.usuarioNombre = props.relations.usuarioNombre;
+    }
+
     return credito;
   }
 
-  // getters usados por el mapper
+  // GETTERS PARA LAS RELACIONES
+  public getCuotas(): CuotaCredito[] | undefined {
+    return this.cuotas;
+  }
+
+  public getClienteNombre(): string | undefined {
+    return this.clienteNombre;
+  }
+
   getId() {
     return this.id;
   }
 
   getInteresPorcentaje() {
     return this.interesPorcentaje;
+  }
+
+  getInteresMoraPorcentaje() {
+    return this.interesMoraPorcentaje;
+  }
+
+  getEngancheMonto() {
+    return this.engancheMonto;
   }
 
   getInteresTipo() {
@@ -173,22 +221,82 @@ export class Credito {
   }
 
   // Comportamiento de dominio
-
-  public aplicarPago(monto: Decimal): void {
-    if (this.estado === EstadoCredito.CANCELADO) {
-      throw new Error('No se puede pagar un crédito cancelado');
+  public registrarPagoCuota(params: { cuotaId: number; monto: Decimal }): {
+    cuota: CuotaCredito;
+    montoAplicado: Decimal;
+    cuotaCompletada: boolean;
+  } {
+    if (!this.cuotas || this.cuotas.length === 0) {
+      throw new Error('El credito no tiene cuotas cargadas');
     }
 
-    if (this.estado === EstadoCredito.COMPLETADO) {
-      throw new Error('El crédito ya está completamente pagado');
+    const cuota = this.cuotas.find((c) => c.getId() === params.cuotaId);
+
+    if (!cuota) {
+      throw new Error('La cuota no pertenece a este credito');
     }
 
-    if (monto.lte(0)) {
-      throw new Error('El monto del pago debe ser mayor a 0');
+    cuota.aplicarPago(params.monto);
+
+    if (this.cuotas.every((c) => c.getEstado() === 'PAGADA')) {
+      this.marcarComoCompletado();
     }
 
-    // Aquí NO se modifica montoTotal directamente.
-    // El pago real se aplica a cuotas (otra entidad).
+    return {
+      cuota,
+      montoAplicado: params.monto,
+      cuotaCompletada: true,
+    };
+  }
+
+  public registrarPagoEnCuota(params: { cuotaId: number; monto: Decimal }): {
+    cuota: CuotaCredito;
+    montoAplicado: Decimal;
+  } {
+    if (!this.cuotas || this.cuotas.length === 0) {
+      throw new Error('El crédito no tiene cuotas cargadas');
+    }
+
+    const cuota = this.cuotas.find((c) => c.getId() === params.cuotaId);
+
+    if (!cuota) {
+      throw new Error('La cuota no pertenece a este crédito');
+    }
+
+    cuota.aplicarPago(params.monto);
+
+    if (this.cuotas.every((c) => c.estaPagada())) {
+      this.marcarComoCompletado();
+    }
+
+    return {
+      cuota,
+      montoAplicado: params.monto,
+    };
+  }
+
+  public eliminarPagoDeCuota(params: { pagoCuotaId: number }): {
+    cuota: CuotaCredito;
+    montoRevertido: Decimal;
+  } {
+    if (!this.cuotas) {
+      throw new Error('El crédito no tiene cuotas');
+    }
+
+    const cuota = this.cuotas.find((c) => c.tienePago(params.pagoCuotaId));
+
+    if (!cuota) {
+      throw new Error('El pago no pertenece a este crédito');
+    }
+
+    const monto = cuota.eliminarPago(params.pagoCuotaId);
+
+    this.recalcularEstado();
+
+    return {
+      cuota,
+      montoRevertido: monto,
+    };
   }
 
   public cancelar(): void {
@@ -219,8 +327,7 @@ export class Credito {
     this.estado = EstadoCredito.COMPLETADO;
   }
 
-  // Métodos de consulta (read)
-
+  // Métodos de consulta
   public getEstado(): EstadoCredito {
     return this.estado;
   }
@@ -257,18 +364,36 @@ export class Credito {
     return this.creadoPorId;
   }
 
-  // Pendiente (intencional)
   private calcularMontosPendiente(): void {
-    /**
-     * TODO:
-     * - Generar cuotas
-     * - Calcular montoCapital por cuota
-     * - Calcular interés por cuota
-     * - Definir montoTotal del crédito
-     * - Definir montoCuota
-     *
-     * Este método DEBE dejar el agregado
-     * en estado consistente.
-     */
+    const enganche = this.engancheMonto ?? new Decimal(0);
+
+    const capitalFinanciado = this.montoCapital.minus(enganche);
+
+    const interes = capitalFinanciado.mul(this.interesPorcentaje).div(100);
+
+    this.montoTotal = capitalFinanciado.plus(interes);
+    this.montoCuota = this.montoTotal.div(this.plazoCuotas);
+  }
+
+  private recalcularEstado(): void {
+    if (!this.cuotas || this.cuotas.length === 0) {
+      this.estado = EstadoCredito.ACTIVO;
+      return;
+    }
+
+    // Si todas las cuotas están pagadas → COMPLETADO
+    if (this.cuotas.every((c) => c.estaPagada())) {
+      this.estado = EstadoCredito.COMPLETADO;
+      return;
+    }
+
+    // Si alguna está vencida → EN_MORA
+    if (this.cuotas.some((c) => c.getEstado() === EstadoCuota.VENCIDA)) {
+      this.estado = EstadoCredito.EN_MORA;
+      return;
+    }
+
+    // Caso normal
+    this.estado = EstadoCredito.ACTIVO;
   }
 }

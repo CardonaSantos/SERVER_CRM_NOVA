@@ -22,6 +22,8 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { FileStoragePort } from './domain/ports/file-storage.port';
 import { MediaRepositoryPort } from './domain/ports/media-repository.port';
 import { EliminarMediaUseCase } from './application/use-cases/eliminar-media.usecase';
+import { UploadFileUseCase } from './application/use-cases/upload-file.usecase';
+import { UPLOAD_FILE_USECASE } from './tokens/tokens';
 
 @Module({
   controllers: [MediaController],
@@ -97,6 +99,17 @@ import { EliminarMediaUseCase } from './application/use-cases/eliminar-media.use
       provide: MEDIA_REPOSITORY,
       useClass: PrismaMediaRepository,
     },
+    // CASO ESPECIAL SOLO SUBIDA UTILITARIA
+    {
+      provide: UPLOAD_FILE_USECASE,
+      useFactory: (storage, cfg) =>
+        new UploadFileUseCase(storage, {
+          bucket: cfg.defaultBucket,
+          cdnBase: cfg.cdnBase,
+          provider: 'do-spaces',
+        }),
+      inject: [STORAGE_PORT, SPACES_CFG],
+    },
 
     // 6) Caso de uso: Subir media
     {
@@ -110,6 +123,11 @@ import { EliminarMediaUseCase } from './application/use-cases/eliminar-media.use
       inject: [STORAGE_PORT, MEDIA_REPOSITORY, SPACES_CFG],
     },
   ],
-  exports: [SUBIR_MEDIA_USECASE],
+  exports: [
+    SUBIR_MEDIA_USECASE,
+    UPLOAD_FILE_USECASE,
+    ELIMINAR_MEDIA_USECASE,
+    STORAGE_PORT,
+  ],
 })
 export class DigitalOceanMediaModule {}

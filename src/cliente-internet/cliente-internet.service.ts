@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common';
 import { CreateClienteInternetDto } from './dto/create-cliente-internet.dto';
 import { UpdateClienteInternetDto } from './dto/update-cliente-internet.dto';
-import { UserTokenAuth } from 'src/auth/dto/userToken.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { updateCustomerService } from './dto/update-customer-service';
 import {
@@ -24,15 +23,10 @@ import * as utc from 'dayjs/plugin/utc';
 import * as timezone from 'dayjs/plugin/timezone';
 import { IdContratoService } from 'src/id-contrato/id-contrato.service';
 import { periodoFrom } from 'src/facturacion/Utils';
-import ExcelJS from 'exceljs';
 import { GetClientesRutaQueryDto } from './pagination/cliente-internet.dto';
-import { calcularEstadoServicioMikrotik } from './helper/mikrotik-estado.helper';
 import { TZ } from 'src/Utils/tzgt';
 import { normalizarTexto } from 'src/Utils/normalizarTexto';
-import { SshMikrotikConnectionService } from 'src/ssh-mikrotik-connection/application/ssh-mikrotik-connection.service';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
-import { MikrotikCryptoService } from 'src/ssh-mikrotik-connection/helpers/mikrotik-crypto.service';
-// Extiende dayjs con los plugins
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.locale('es'); // Establece español como idioma predeterminado
@@ -42,29 +36,19 @@ const strip = (s: string) =>
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase();
 const formatearFecha = (fecha: string) => {
-  // Formateo en UTC sin conversión a local
   return dayjs(fecha).format('DD/MM/YYYY');
 };
 const ACCENT_FROM = 'ÁÀÂÄÃáàâäãÉÈÊËéèêëÍÌÎÏíìîïÓÒÔÖÕóòôöõÚÙÛÜúùûüÇçÑñÝŸýÿ';
 const ACCENT_TO = 'AAAAAaaaaaEEEEeeeeIIIIiiiiOOOOOoooooUUUUuuuuCcNnYYyy';
 
-const ESTADOS_MK_ACTIVOS: EstadoServicioMikrotik[] = [
-  EstadoServicioMikrotik.ACTIVO,
-  EstadoServicioMikrotik.PENDIENTE_APLICAR, // si quieres considerar este como "activo"
-];
-
-const esServicioMikrotikActivo = (
-  estado: EstadoServicioMikrotik | null | undefined,
-) => !!estado && ESTADOS_MK_ACTIVOS.includes(estado);
+const esServicioMikrotikActivo = (estado?: EstadoServicioMikrotik) =>
+  estado === EstadoServicioMikrotik.ACTIVO;
 
 @Injectable()
 export class ClienteInternetService {
   private readonly logger = new Logger(ClienteInternetService.name);
   constructor(
     private readonly prisma: PrismaService,
-    private readonly sshMikrotikService: SshMikrotikConnectionService,
-    private readonly mkCrypto: MikrotikCryptoService,
-
     private readonly idContradoService: IdContratoService,
   ) {}
 
@@ -1670,6 +1654,12 @@ export class ClienteInternetService {
     }
   }
 
+  /**
+   * Actualizacion de cliente sin tocar IP
+   * @param id
+   * @param updateCustomerService
+   * @returns
+   */
   async updateClienteInternet(
     id: number,
     updateCustomerService: UpdateClienteInternetDto,
@@ -1681,9 +1671,6 @@ export class ClienteInternetService {
       empresaId,
       servicesIds,
       asesorId,
-      ip,
-      mascara,
-      gateway,
       servicioWifiId,
       zonaFacturacionId,
       archivoContrato,
@@ -1695,19 +1682,13 @@ export class ClienteInternetService {
       enviarRecordatorio,
     } = updateCustomerService;
 
-    this.logger.log('El dto para actualizar es: ', updateCustomerService);
-
     const latitud = coordenadas?.[0] ? Number(coordenadas[0]) : null;
     const longitud = coordenadas?.[1] ? Number(coordenadas[1]) : null;
-
     const fullName =
       `${updateCustomerService.nombre ?? ''} ${updateCustomerService.apellidos ?? ''}`.trim();
     const nombreSearch = normalizarTexto(fullName);
-
     const serviceIds: number[] = servicesIds;
-
-    const result = await this.prisma.$transaction(async (prisma) => {
-      // 1) ANTES DEL UPDATE: estado relevante para Mikrotik
+    await this.prisma.$transaction(async (prisma) => {
       const clienteBefore = await prisma.clienteInternet.findUnique({
         where: { id },
         select: {
@@ -1723,11 +1704,23 @@ export class ClienteInternetService {
         },
       });
 
+      let nuevoEstadoServicioMk: EstadoServicioMikrotik | undefined;
+
+      if (clienteBefore.mikrotikRouterId && mikrotikRouterId === null) {
+        nuevoEstadoServicioMk = EstadoServicioMikrotik.SIN_MIKROTIK;
+      }
+
+      if (
+        clienteBefore.mikrotikRouterId === null &&
+        mikrotikRouterId !== null
+      ) {
+        nuevoEstadoServicioMk = EstadoServicioMikrotik.SUSPENDIDO;
+      }
+
       if (!clienteBefore) {
         throw new Error('Cliente no encontrado');
       }
 
-      // 2) Ubicación
       let ubicacion;
       if (latitud !== null && longitud !== null) {
         ubicacion = await prisma.ubicacion.upsert({
@@ -1746,20 +1739,18 @@ export class ClienteInternetService {
           ? dayjs().tz(TZ).toDate()
           : null;
 
-      // 3) UPDATE del cliente
       const updatedCliente = await prisma.clienteInternet.update({
         where: { id },
         data: {
           searchNombre: nombreSearch,
           nombre: updateCustomerService.nombre,
           enviarRecordatorio,
-
+          estadoServicioMikrotik: nuevoEstadoServicioMk,
           apellidos: updateCustomerService.apellidos || null,
           telefono: updateCustomerService.telefono || null,
           direccion: updateCustomerService.direccion || null,
           dpi: updateCustomerService.dpi || null,
           observaciones: updateCustomerService.observaciones || null,
-
           contactoReferenciaNombre:
             updateCustomerService.contactoReferenciaNombre || null,
           contactoReferenciaTelefono:
@@ -1803,27 +1794,6 @@ export class ClienteInternetService {
         },
       });
 
-      // 4) IP
-      const ipRecord = await prisma.iP.upsert({
-        where: { clienteId: id },
-        update: { direccionIp: ip, gateway, mascara },
-        create: {
-          direccionIp: ip,
-          gateway,
-          mascara,
-          cliente: { connect: { id } },
-        },
-      });
-
-      // 5) Sincronizar estadoServicioMikrotik en BD
-      await this.syncEstadoServicioMikrotik({
-        tx: prisma,
-        clienteId: id,
-        estadoCliente: updatedCliente.estadoCliente,
-        mikrotikRouterId: updatedCliente.mikrotikRouterId,
-      });
-
-      // 6) DESPUÉS del update: estado actual para Mikrotik
       const clienteAfter = await prisma.clienteInternet.findUnique({
         where: { id },
         select: {
@@ -1856,230 +1826,31 @@ export class ClienteInternetService {
         clienteAfter,
         updatedCliente,
         ubicacion,
-        ip: ipRecord,
       };
     });
-
-    const {
-      clienteBefore,
-      clienteAfter,
-      updatedCliente,
-      ubicacion,
-      ip: ipRecord,
-    } = result;
-
-    // 7) Manejar cambios de Mikrotik a nivel de red (Mikrotik)
-    await this.handleMikrotikChangeOnUpdate(clienteBefore, clienteAfter);
-
-    return {
-      cliente: updatedCliente,
-      ubicacion,
-      ip: ipRecord,
-    };
   }
 
-  // HELPERS
-  /**
-   * Maneja el mikrotik
-   * @param before Cliente antes de la actualizacion
-   * @param after Mikrotik despues de la actualizacion, id.
-   * @returns
-   */
-  private async handleMikrotikChangeOnUpdate(
-    before: {
-      id: number;
-      estadoCliente: EstadoCliente;
-      mikrotikRouterId: number | null;
-      estadoServicioMikrotik: EstadoServicioMikrotik;
-      IP: { direccionIp: string | null } | null;
-    },
-    after: {
-      id: number;
-      estadoCliente: EstadoCliente;
-      mikrotikRouterId: number | null;
-      estadoServicioMikrotik: EstadoServicioMikrotik;
-      IP: { direccionIp: string | null } | null;
-    },
-  ) {
-    const mkAntes = before.mikrotikRouterId;
-    const mkDespues = after.mikrotikRouterId;
-    const ipAntes = before.IP?.direccionIp ?? null;
-    const ipDespues = after.IP?.direccionIp ?? null;
-
-    // Estado final que manda: después de syncEstadoServicioMikrotik
-    const shouldBeSuspended =
-      after.estadoServicioMikrotik === EstadoServicioMikrotik.SUSPENDIDO;
-    const shouldHaveMikrotik =
-      after.mikrotikRouterId !== null &&
-      after.estadoServicioMikrotik !== EstadoServicioMikrotik.SIN_MIKROTIK;
-
-    // 1) Si no hay cambios de Mikrotik, no hacemos nada
-    if (mkAntes === mkDespues) {
-      this.logger.debug(
-        `Cliente ${after.id} sin cambios de Mikrotik (id=${mkAntes}). No se toca Mikrotik.`,
-      );
-      return;
-    }
-
-    // 2) Caso: antes TENÍA Mikrotik y ahora NO tiene => limpiar en router anterior si aplica
-    if (mkAntes && !mkDespues && ipAntes) {
-      this.logger.log(
-        `Cliente ${after.id} ha perdido Mikrotik (router ${mkAntes} -> null). Limpieza de lista de suspendidos si aplica...`,
-      );
-
-      // Si estaba suspendido antes o después, intentamos limpiar la lista en el router anterior
-      if (
-        before.estadoServicioMikrotik === EstadoServicioMikrotik.SUSPENDIDO ||
-        shouldBeSuspended
-      ) {
-        await this.sshMikrotikService.removeIpFromSuspendedListByRouterId(
-          mkAntes,
-          ipAntes,
-        );
-      }
-    }
-
-    // 3) Caso: antes NO tenía Mikrotik y ahora SÍ tiene
-    if (!mkAntes && mkDespues && ipDespues) {
-      this.logger.log(
-        `Cliente ${after.id} ahora tiene Mikrotik asignado (null -> ${mkDespues}).`,
-      );
-
-      if (shouldBeSuspended) {
-        // El cliente en BD está marcado como SUSPENDIDO => lo enviamos a lista del nuevo router
-        const comment = `crm-suspendido-${after.id}`;
-        await this.sshMikrotikService.addIpToSuspendedListByRouterId(
-          mkDespues,
-          ipDespues,
-          comment,
-        );
-      }
-    }
-
-    // 4) Caso: cambia de un Mikrotik a otro diferente
-    if (mkAntes && mkDespues && mkAntes !== mkDespues) {
-      this.logger.log(
-        `Cliente ${after.id} ha cambiado de Mikrotik ${mkAntes} -> ${mkDespues}.`,
-      );
-
-      // Si tiene IP anterior, limpiamos en el router viejo
-      if (ipAntes) {
-        await this.sshMikrotikService.removeIpFromSuspendedListByRouterId(
-          mkAntes,
-          ipAntes,
-        );
-      }
-
-      // Si debe seguir suspendido y tiene IP nueva, lo agregamos en el router nuevo
-      if (shouldBeSuspended && ipDespues) {
-        const comment = `crm-suspendido-${after.id}`;
-        await this.sshMikrotikService.addIpToSuspendedListByRouterId(
-          mkDespues,
-          ipDespues,
-          comment,
-        );
-      }
-    }
-  }
-
-  /**
-   * Sincroniza el estadoServicioMikrotik de un cliente en base a:
-   * - su estadoCliente
-   * - si tiene Mikrotik asignado o no
-   *
-   * Puede usar una transacción (tx) o el prisma global.
-   * Permite pasar overrides ya conocidos (estadoCliente, mikrotikRouterId) para evitar un SELECT extra.
-   */
-  async syncEstadoServicioMikrotik(opts: {
-    tx?: Prisma.TransactionClient;
-    clienteId: number;
-    estadoCliente?: EstadoCliente;
-    mikrotikRouterId?: number | null;
-  }) {
-    const { tx, clienteId } = opts;
-    const prisma = tx ?? this.prisma;
-
-    const clienteDb = await prisma.clienteInternet.findUnique({
-      where: { id: clienteId },
-      select: {
-        estadoCliente: true,
-        mikrotikRouterId: true,
-        estadoServicioMikrotik: true,
-      },
-    });
-
-    if (!clienteDb) {
-      throw new Error('Cliente no encontrado al sincronizar estado Mikrotik');
-    }
-
-    const estadoCliente = opts.estadoCliente ?? clienteDb.estadoCliente;
-    const mikrotikRouterId =
-      opts.mikrotikRouterId ?? clienteDb.mikrotikRouterId;
-    const estadoServicioActual = clienteDb.estadoServicioMikrotik;
-
-    const nuevoEstado = calcularEstadoServicioMikrotik({
-      estadoCliente,
-      mikrotikRouterId,
-      estadoServicioActual,
-    });
-
-    if (nuevoEstado === estadoServicioActual) {
-      return;
-    }
-
-    await prisma.clienteInternet.update({
-      where: { id: clienteId },
-      data: {
-        estadoServicioMikrotik: nuevoEstado,
-      },
-    });
-  }
-
-  async verifyIsSuspended(id: number) {
+  // HELPER
+  async findWithNetwork(clienteId: number) {
     try {
-      const clienteInternet = await this.prisma.clienteInternet.findUnique({
+      const customer = await this.prisma.clienteInternet.findUnique({
         where: {
-          id,
+          id: clienteId,
         },
         select: {
-          IP: {
-            select: {
-              id: true,
-              direccionIp: true,
-            },
-          },
+          id: true,
+          estadoCliente: true,
           MikrotikRouter: {
             select: {
               id: true,
-              host: true,
-              sshPort: true,
-              usuario: true,
-              passwordEnc: true,
             },
           },
+          IP: true,
         },
       });
-
-      const password = this.mkCrypto.decrypt(
-        clienteInternet.MikrotikRouter.passwordEnc,
-      );
-
-      const config = {
-        host: clienteInternet.MikrotikRouter.host,
-        port: clienteInternet.MikrotikRouter.sshPort,
-        username: clienteInternet.MikrotikRouter.usuario,
-        password: password,
-      };
-
-      const isSuspended =
-        await this.sshMikrotikService.isCustomerSuspendedInMikrotik(
-          config,
-          clienteInternet.IP.direccionIp,
-        );
-
-      return isSuspended;
+      return customer;
     } catch (error) {
-      throwFatalError(error, this.logger, 'ClienteInternet -verifyIp');
+      throwFatalError(error, this.logger, 'findWithNetwork');
     }
   }
 }

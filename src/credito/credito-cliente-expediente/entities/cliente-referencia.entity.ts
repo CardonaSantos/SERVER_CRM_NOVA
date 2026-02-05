@@ -1,7 +1,8 @@
 export class ClienteReferencia {
   private constructor(
     private readonly id: number | null,
-    private readonly expedienteId: number,
+    private readonly expedienteId: number | null,
+
     private readonly nombre: string,
     private readonly telefono: string,
     private readonly relacion: string,
@@ -13,6 +14,10 @@ export class ClienteReferencia {
     telefono: string;
     relacion: string;
   }): ClienteReferencia {
+    if (!params.nombre || !params.telefono) {
+      throw new Error('Referencia inválida');
+    }
+
     return new ClienteReferencia(
       null,
       params.expedienteId,
@@ -24,6 +29,7 @@ export class ClienteReferencia {
 
   static rehidratar(props: {
     id: number;
+
     expedienteId: number;
     nombre: string;
     telefono: string;
@@ -41,9 +47,11 @@ export class ClienteReferencia {
   getId() {
     return this.id;
   }
+
   getExpedienteId() {
     return this.expedienteId;
   }
+
   getNombre() {
     return this.nombre;
   }

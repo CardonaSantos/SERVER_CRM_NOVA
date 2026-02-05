@@ -159,8 +159,10 @@ export class DashboardService {
       });
 
       const formattedTickets = rawTickets.map((t) => {
-        const loc = t.cliente.ubicacion;
-        const medias = (t.cliente.medias ?? []).map((media) => ({
+        const cliente = t.cliente;
+
+        const loc = cliente?.ubicacion ?? null;
+        const medias = (cliente?.medias ?? []).map((media) => ({
           id: media.id,
           titulo: media.titulo,
           descripcion: media.descripcion,
@@ -177,13 +179,18 @@ export class DashboardService {
           estado: t.estado,
           prioridad: t.prioridad,
           descripcion: t.descripcion,
-          clientId: t.cliente.id,
-          clienteNombre:
-            `${t.cliente.nombre ?? ''} ${t.cliente.apellidos ?? ''}`.trim(),
-          clienteTel: t.cliente.telefono,
-          referenciaContacto: t.cliente.contactoReferenciaTelefono,
-          direccion: t.cliente.direccion,
+
+          clientId: cliente?.id ?? null,
+          clienteNombre: cliente
+            ? `${cliente.nombre ?? ''} ${cliente.apellidos ?? ''}`.trim()
+            : 'SIN CLIENTE',
+
+          clienteTel: cliente?.telefono ?? null,
+          referenciaContacto: cliente?.contactoReferenciaTelefono ?? null,
+          direccion: cliente?.direccion ?? null,
+
           ubicacionMaps: loc ? { lat: loc.latitud, lng: loc.longitud } : null,
+
           medias,
         };
       });
