@@ -27,6 +27,7 @@ import { GetClientesRutaQueryDto } from './pagination/cliente-internet.dto';
 import { TZ } from 'src/Utils/tzgt';
 import { normalizarTexto } from 'src/Utils/normalizarTexto';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
+import { GetCustomersQueryDto } from './dto/query-table';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.locale('es'); // Establece español como idioma predeterminado
@@ -1019,17 +1020,18 @@ export class ClienteInternetService {
       .trim(); // recorta
   }
 
-  async findCustomersToTable(
-    page: number = 1,
-    limit: number = 10,
-    paramSearch?: string,
-    zona?: number,
-    municipio?: number,
-    departamento?: number,
-    sector?: number,
-    estado?: string,
-  ) {
-    const skip = (page - 1) * limit;
+  async findCustomersToTable(dto: GetCustomersQueryDto) {
+    const {
+      depaSelected,
+      estadoSelected,
+      limite,
+      muniSelected,
+      page,
+      paramSearch,
+      sectorSelected,
+      zonasFacturacionSelected,
+    } = dto;
+    const skip = (page - 1) * limite;
 
     // Preparar términos de búsqueda
     let terms: string[] = [];
@@ -1070,12 +1072,13 @@ export class ClienteInternetService {
     }
 
     // Filtros exactos
-    if (zona) andConditions.push({ facturacionZonaId: zona });
-    if (municipio) andConditions.push({ municipioId: municipio });
-    if (departamento) andConditions.push({ departamentoId: departamento });
-    if (sector) andConditions.push({ sectorId: sector });
-    if (estado) {
-      andConditions.push({ estadoCliente: estado as EstadoCliente });
+    if (zonasFacturacionSelected)
+      andConditions.push({ facturacionZonaId: zonasFacturacionSelected });
+    if (muniSelected) andConditions.push({ municipioId: muniSelected });
+    if (depaSelected) andConditions.push({ departamentoId: depaSelected });
+    if (sectorSelected) andConditions.push({ sectorId: sectorSelected });
+    if (estadoSelected) {
+      andConditions.push({ estadoCliente: estadoSelected as EstadoCliente });
     }
 
     const whereCondition: Prisma.ClienteInternetWhereInput =
@@ -1085,7 +1088,7 @@ export class ClienteInternetService {
       await this.prisma.$transaction([
         this.prisma.clienteInternet.findMany({
           skip,
-          take: limit,
+          take: limite,
           orderBy: {
             creadoEn: 'desc',
           },
@@ -1192,7 +1195,7 @@ export class ClienteInternetService {
         ? [
             {
               id: customer.servicioInternet.id,
-              nombreServicio: customer.servicioInternet.nombre,
+              nombre: customer.servicioInternet.nombre,
               velocidad: customer.servicioInternet.velocidad,
               precio: customer.servicioInternet.precio,
               estado: customer.servicioInternet.estado,

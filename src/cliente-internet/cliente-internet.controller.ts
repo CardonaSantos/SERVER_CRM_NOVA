@@ -17,6 +17,7 @@ import { UpdateClienteInternetDto } from './dto/update-cliente-internet.dto';
 import { updateCustomerService } from './dto/update-customer-service';
 import { GetClientesRutaQueryDto } from './pagination/cliente-internet.dto';
 import { NetworkServiceService } from 'src/network-service/network-service.service';
+import { GetCustomersQueryDto } from './dto/query-table';
 // import { IdContratoService } from 'src/id-contrato/id-contrato.service';
 
 @Controller('internet-customer')
@@ -39,38 +40,21 @@ export class ClienteInternetController {
 
   @Get('/customer-to-table')
   findCustomersToTable(
-    @Query('page') page: string,
-    @Query('limite') limite: string,
-    @Query('paramSearch') paramSearch: string,
+    // @Query('page') page: string,
+    // @Query('limite') limite: string,
+    // @Query('paramSearch') paramSearch: string,
 
-    //otros filtros
-    @Query('zonasFacturacionSelected') zonasFacturacionSelected: string,
-    @Query('muniSelected') muniSelected: string,
-    @Query('depaSelected') depaSelected: string,
-    @Query('sectorSelected') sectorSelected: string,
-    //nuevo state
-    @Query('estadoSelected') estadoSelected: string,
+    // //otros filtros
+    // @Query('zonasFacturacionSelected') zonasFacturacionSelected: string,
+    // @Query('muniSelected') muniSelected: string,
+    // @Query('depaSelected') depaSelected: string,
+    // @Query('sectorSelected') sectorSelected: string,
+    // //nuevo state
+    // @Query('estadoSelected') estadoSelected: string,
+    @Query(new ValidationPipe({ transform: true }))
+    queryParams: GetCustomersQueryDto,
   ) {
-    const pageNumber = parseInt(page, 10) || 1;
-    const limit = parseInt(limite, 10) || 1;
-    //otros filtros
-    const zona = parseInt(zonasFacturacionSelected, 10) || null;
-    const municipio = parseInt(muniSelected, 10) || null;
-    const departamento = parseInt(depaSelected, 10) || null;
-    const sector = parseInt(sectorSelected, 10) || null;
-    const estado = estadoSelected || null;
-
-    return this.clienteInternetService.findCustomersToTable(
-      pageNumber,
-      limit,
-      paramSearch,
-      //otro
-      zona,
-      municipio,
-      departamento,
-      sector,
-      estado,
-    );
+    return this.clienteInternetService.findCustomersToTable(queryParams);
   }
 
   @Get('/get-customer-details/:id')
