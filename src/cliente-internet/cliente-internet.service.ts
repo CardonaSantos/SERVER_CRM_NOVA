@@ -75,13 +75,12 @@ export class ClienteInternetService {
 
       ...restoData
     } = createClienteInternetDto;
-
-    console.log('el sector id es: ', sectorId);
-
+    this.logger.log(
+      `DTO recibido:\n${JSON.stringify(createClienteInternetDto, null, 2)}`,
+    );
     const serviceIds: number[] = createClienteInternetDto.servicesIds;
     const latitud = coordenadas?.[0] ? Number(coordenadas[0]) : null;
     const longitud = coordenadas?.[1] ? Number(coordenadas[1]) : null;
-
     const result = await this.prisma.$transaction(async (prisma) => {
       let ubicacion = null;
       const fullName =
@@ -189,7 +188,6 @@ export class ClienteInternetService {
       const siguientePago = fechaPrimerPagoInicial.add(1, 'month');
 
       const periodo = periodoFrom(fechaPrimerPagoInicial.toDate()); // o la fecha que uses
-      console.log('El periodo generando es: ', periodo);
       const newFacturaInternetPrimerPago = await prisma.facturaInternet.create({
         data: {
           periodo: periodo,
@@ -268,7 +266,6 @@ export class ClienteInternetService {
           });
         }
       }
-      console.log('el cliente creado es: ', cliente);
 
       return {
         cliente,
