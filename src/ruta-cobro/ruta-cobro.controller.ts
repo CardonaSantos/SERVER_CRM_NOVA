@@ -12,11 +12,14 @@ import {
   InternalServerErrorException,
   HttpException,
   Query,
+  ValidationPipe,
+  UsePipes,
 } from '@nestjs/common';
 import { RutaCobroService } from './ruta-cobro.service';
 import { UpdateRutaDto } from './dto/update-ruta-cobro.dto';
 import { CreateNewRutaDto } from './dto/create-new-ruta.dto';
 import { Response } from 'express';
+import { queryRutasDto } from './dto/query';
 
 @Controller('ruta-cobro')
 export class RutaCobroController {
@@ -54,14 +57,16 @@ export class RutaCobroController {
    * @returns todas las rutas de cobro para su vista y administracion
    */
   @Get('/get-rutas-cobros')
-  async getRutas() {
-    try {
-      const data = await this.rutaCobroService.findAllRutas();
-      return { items: data, total: data.length };
-    } catch (e) {
-      this.logger.error('get-rutas-cobros failed', e);
-      throw new InternalServerErrorException('Error recuperando rutas');
-    }
+  @UsePipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: false,
+      forbidNonWhitelisted: false,
+    }),
+  )
+  async getRutas(@Query() query: queryRutasDto) {
+    this.logger.log(`Dquery:\n${JSON.stringify(query, null, 2)}`);
+    return await this.rutaCobroService.findAllRutas(query);
   }
 
   @Get('rutas-cobros-asignadas')

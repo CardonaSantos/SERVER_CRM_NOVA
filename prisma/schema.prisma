@@ -108,7 +108,42 @@ model Usuario {
   creditosRegistrados Credito[]
   pagosCredito        PagoCredito[]
   morasPagadas        MoraCredito[]
+
+  ubicacionesHistoricas  UbicacionTecnico[]
+  ubicacionActual        UbicacionActual?
+
 }
+
+model UbicacionTecnico {
+  id          Int       @id @default(autoincrement())
+  usuarioId   Int
+  latitud     Float
+  longitud    Float
+  precision   Float?
+  velocidad   Float?
+  bateria     Int?
+  creadoEn    DateTime  @default(now())
+  actualizadoEn DateTime  @default(now())
+
+  usuario     Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([creadoEn])
+  @@index([usuarioId, creadoEn])
+}
+
+model UbicacionActual {
+  usuarioId     Int      @id
+  latitud       Float
+  longitud      Float
+  precision     Float?
+  velocidad     Float?
+  bateria       Int?
+  actualizadoEn DateTime @updatedAt
+
+  usuario       Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+}
+
 
 model PerfilUsuario {
   id        Int @id @default(autoincrement())

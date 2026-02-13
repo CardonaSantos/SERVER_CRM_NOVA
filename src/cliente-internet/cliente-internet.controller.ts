@@ -40,17 +40,6 @@ export class ClienteInternetController {
 
   @Get('/customer-to-table')
   findCustomersToTable(
-    // @Query('page') page: string,
-    // @Query('limite') limite: string,
-    // @Query('paramSearch') paramSearch: string,
-
-    // //otros filtros
-    // @Query('zonasFacturacionSelected') zonasFacturacionSelected: string,
-    // @Query('muniSelected') muniSelected: string,
-    // @Query('depaSelected') depaSelected: string,
-    // @Query('sectorSelected') sectorSelected: string,
-    // //nuevo state
-    // @Query('estadoSelected') estadoSelected: string,
     @Query(new ValidationPipe({ transform: true }))
     queryParams: GetCustomersQueryDto,
   ) {

@@ -1,0 +1,9 @@
+import { CreateRealTimeDto } from '../dto/create-real-time.dto';
+import { UpdateRealTimeDto } from '../dto/update-real-time.dto';
+import { RealTimeLocation } from '../entities/real-time.entity';
+
+export const REAL_TIME_LOCATION = Symbol('REAL_TIME_LOCATION');
+
+export interface RealTimeLocationRepository {
+  updateLocation(dto: CreateRealTimeDto): Promise<RealTimeLocation>;
+}
