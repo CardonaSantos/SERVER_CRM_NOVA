@@ -1,16 +1,27 @@
-import { UbicacionActual } from '@prisma/client';
 import { RealTimeLocation } from '../entities/real-time.entity';
+import { Usuario } from 'src/user/entities/user.entity';
+
+import { UbicacionActual, Usuario as UsuarioPrisma } from '@prisma/client';
+
+type UbicacionWithRelations = UbicacionActual & {
+  usuario?: UsuarioPrisma | null;
+};
 
 export class PrismaRealTimeMapper {
-  static toDomain(prisma: UbicacionActual): RealTimeLocation {
+  static toDomain(raw: UbicacionWithRelations): RealTimeLocation {
+    const userDomain = raw.usuario
+      ? Usuario.fromPrisma(raw.usuario)
+      : undefined;
+
     return RealTimeLocation.create({
-      usuarioId: prisma.usuarioId,
-      latitud: prisma.latitud,
-      longitud: prisma.longitud,
-      precision: prisma.precision ?? undefined,
-      velocidad: prisma.velocidad ?? undefined,
-      bateria: prisma.bateria ?? undefined,
-      actualizadoEn: prisma.actualizadoEn,
+      usuarioId: raw.usuarioId,
+      latitud: raw.latitud,
+      longitud: raw.longitud,
+      precision: raw.precision ?? undefined,
+      velocidad: raw.velocidad ?? undefined,
+      bateria: raw.bateria ?? undefined,
+      actualizadoEn: raw.actualizadoEn,
+      usuario: userDomain,
     });
   }
 

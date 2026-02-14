@@ -13,6 +13,7 @@ import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { BroadCastNewMessage } from './websocket.controller';
+import { RealTimeLocation } from 'src/real-time-location/entities/real-time.entity';
 
 interface JwtUserPayload {
   nombre: string;
@@ -255,6 +256,21 @@ export class CrmGateway
       this.emitToEmpresa(empresaId, 'nuvia:new-message', body.data);
     } catch (error) {
       throwFatalError(error, this.logger, 'handleEmitNewNuviaMessage');
+    }
+  }
+
+  handleEmitRealTimeLocation(dto: {
+    empresaId: number;
+    payload: RealTimeLocation;
+  }) {
+    try {
+      this.emitToEmpresa(dto.empresaId, 'emit:location:real-time', dto.payload);
+    } catch (error) {
+      throwFatalError(
+        error,
+        this.logger,
+        'CrmGateway.HandleEmitRealTimeLocation',
+      );
     }
   }
 

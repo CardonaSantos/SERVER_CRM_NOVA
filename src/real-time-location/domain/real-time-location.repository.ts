@@ -6,4 +6,6 @@ export const REAL_TIME_LOCATION = Symbol('REAL_TIME_LOCATION');
 
 export interface RealTimeLocationRepository {
   updateLocation(dto: CreateRealTimeDto): Promise<RealTimeLocation>;
+
+  getLastLocations(): Promise<RealTimeLocation[]>;
 }

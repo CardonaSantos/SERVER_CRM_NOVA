@@ -1,3 +1,6 @@
+import { UbicacionActual } from '@prisma/client';
+import { Usuario } from 'src/user/entities/user.entity';
+
 export class RealTimeLocation {
   private _latitud: number;
   private _longitud: number;
@@ -5,6 +8,7 @@ export class RealTimeLocation {
   private _velocidad?: number;
   private _bateria?: number;
   private _actualizadoEn?: Date;
+  private _usuario?: Usuario;
 
   private constructor(
     private readonly _usuarioId: number,
@@ -14,6 +18,7 @@ export class RealTimeLocation {
     velocidad?: number,
     bateria?: number,
     actualizadoEn?: Date,
+    usuario?: Usuario,
   ) {
     this._latitud = latitud;
     this._longitud = longitud;
@@ -21,9 +26,9 @@ export class RealTimeLocation {
     this._velocidad = velocidad;
     this._bateria = bateria;
     this._actualizadoEn = actualizadoEn ?? new Date();
+    this._usuario = usuario;
   }
 
-  // 🔹 Factory
   static create(props: {
     usuarioId: number;
     latitud: number;
@@ -32,6 +37,7 @@ export class RealTimeLocation {
     velocidad?: number;
     bateria?: number;
     actualizadoEn?: Date;
+    usuario?: Usuario;
   }): RealTimeLocation {
     return new RealTimeLocation(
       props.usuarioId,
@@ -41,7 +47,25 @@ export class RealTimeLocation {
       props.velocidad,
       props.bateria,
       props.actualizadoEn,
+      props.usuario,
     );
+  }
+
+  toJSON() {
+    return {
+      usuarioId: this.usuarioId,
+      latitud: this.latitud,
+      longitud: this.longitud,
+      precision: this.precision,
+      velocidad: this.velocidad,
+      bateria: this.bateria,
+      actualizadoEn: this.actualizadoEn,
+      usuario: this.usuario,
+    };
+  }
+
+  get usuario() {
+    return this._usuario;
   }
 
   // 🔹 Getters
@@ -73,7 +97,6 @@ export class RealTimeLocation {
     return this._actualizadoEn;
   }
 
-  // 🔹 Método de negocio
   updateLocation(
     latitud: number,
     longitud: number,

@@ -20,7 +20,40 @@ export class PrismaRealTimeLocation implements RealTimeLocationRepository {
         create: PrismaRealTimeMapper.toPersistence(entity),
       });
 
-      return PrismaRealTimeMapper.toDomain(result);
+      const newLocation = await this.prisma.ubicacionActual.findUnique({
+        where: {
+          usuarioId: result.usuarioId,
+        },
+        include: {
+          usuario: true,
+        },
+      });
+
+      return PrismaRealTimeMapper.toDomain(newLocation);
+    } catch (error) {
+      throwFatalError(
+        error,
+        this.logger,
+        'PrismaRealTimeLocation.updateLocation',
+      );
+    }
+  }
+
+  async getLastLocations(): Promise<RealTimeLocation[]> {
+    try {
+      const lastRecords = await this.prisma.ubicacionActual.findMany({
+        include: {
+          usuario: true,
+        },
+        orderBy: {
+          actualizadoEn: 'desc',
+        },
+      });
+
+      return (
+        Array.isArray(lastRecords) &&
+        lastRecords.map((r) => PrismaRealTimeMapper.toDomain(r))
+      );
     } catch (error) {
       throwFatalError(
         error,
