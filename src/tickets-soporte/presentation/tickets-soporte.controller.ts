@@ -7,11 +7,14 @@ import {
   Param,
   Delete,
   ParseIntPipe,
+  Query,
+  ValidationPipe,
 } from '@nestjs/common';
 import { TicketsSoporteService } from '../app/tickets-soporte.service';
 import { CreateTicketsSoporteDto } from '../dto/create-tickets-soporte.dto';
 import { UpdateTicketsSoporteDto } from '../dto/update-tickets-soporte.dto';
 import { CloseTicketDto } from '../dto/CloseTicketDto .dto';
+import { QuerySearchTickets } from '../dto/querySearch';
 
 @Controller('tickets-soporte')
 export class TicketsSoporteController {
@@ -25,8 +28,11 @@ export class TicketsSoporteController {
 
   // ===== READ =====
   @Get()
-  findAll() {
-    return this.ticketsSoporteService.getTickets();
+  findAll(
+    @Query(new ValidationPipe({ transform: true, whitelist: true }))
+    dto: QuerySearchTickets,
+  ) {
+    return this.ticketsSoporteService.getTickets(dto);
   }
 
   @Get('/get-ticket-boleta/:id')
@@ -34,15 +40,12 @@ export class TicketsSoporteController {
     return this.ticketsSoporteService.getTicketToBoleta(id);
   }
 
-    // ===== CLOSE =====
+  // ===== CLOSE =====
   @Patch('/close-ticket-soporte')
-  closeTickets(
-    @Body() dto: CloseTicketDto,
-  ) {
-    const id = dto.ticketId
+  closeTickets(@Body() dto: CloseTicketDto) {
+    const id = dto.ticketId;
     return this.ticketsSoporteService.closeTickets(id, dto);
   }
-
 
   // ===== UPDATE (datos generales) =====
   @Patch('/update-ticket-soporte/:id')
@@ -63,8 +66,6 @@ export class TicketsSoporteController {
   async updateTicketRevision(@Param('id', ParseIntPipe) id: number) {
     return this.ticketsSoporteService.updateStatusEnRevision(id);
   }
-
-
 
   // ===== DELETE =====
   @Delete('/delete-ticket/:id')

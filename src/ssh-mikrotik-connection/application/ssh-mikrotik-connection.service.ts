@@ -161,7 +161,6 @@ export class SshMikrotikConnectionService {
         `Error suspendiendo cliente en Mikrotik: ${stderr}`,
       );
     }
-    // TODO: aquí ya puedes crear tu entidad "SuspensionCliente", guardar log, enviar notificación, etc.
     await this.prisma.clienteInternet.update({
       where: {
         id: cliente.id,

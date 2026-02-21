@@ -31,6 +31,11 @@ export class CreateTicketsSoporteDto {
   @IsString()
   @IsOptional()
   descripcion: string;
+
+  @IsString()
+  @IsOptional()
+  telefonoTemporal?: string;
+
   @IsEnum(EstadoTicketSoporte)
   estado: EstadoTicketSoporte;
   @IsEnum(PrioridadTicketSoporte)
