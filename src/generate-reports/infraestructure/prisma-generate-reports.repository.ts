@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { GenerateReportsRepository } from '../domain/generate-reports.repository';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -11,6 +11,10 @@ import * as timezone from 'dayjs/plugin/timezone';
 import * as isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import * as isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import * as customParseFormat from 'dayjs/plugin/customParseFormat';
+import { QueryCobranzaReport } from '../dto/cobranza-query-report';
+import { Prisma } from '@prisma/client';
+import { formattShortFecha } from 'src/Utils/formattFecha.utils';
+import { formattMonedaGT } from 'src/Utils/formatt-moneda';
 dayjs.extend(customParseFormat);
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -286,6 +290,126 @@ export class PrismaGenerateReports implements GenerateReportsRepository {
         error,
         this.logger,
         'PrismaGenerateReports.GenerateHistorialPagos',
+      );
+    }
+  }
+
+  async cobranzaReport(dto: QueryCobranzaReport): Promise<Buffer> {
+    try {
+      const { endDate, startDate, userId } = dto;
+
+      const where: Prisma.FacturaInternetWhereInput = {};
+
+      if (startDate && endDate) {
+        where.fechaPagada = {
+          gte: new Date(startDate),
+          lte: new Date(endDate),
+        };
+      }
+
+      if (userId) {
+        where.pagos = {
+          some: {
+            cobradorId: userId,
+          },
+        };
+      }
+
+      this.logger.log('El where construido es: ', where);
+
+      const facturasRaw = await this.prisma.facturaInternet.findMany({
+        where,
+        select: {
+          id: true,
+          fechaPagada: true,
+          fechaPagoEsperada: true,
+          creadoEn: true,
+          estadoFacturaInternet: true,
+          montoPago: true,
+          pagos: {
+            select: {
+              id: true,
+              fechaPago: true,
+              montoPagado: true,
+              numeroBoleta: true,
+              cobrador: {
+                select: {
+                  id: true,
+                  nombre: true,
+                  rol: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      const montoTotalSum = facturasRaw.reduce(
+        (acc, fact) => acc + fact.montoPago,
+        0,
+      );
+      const totalFacturas = facturasRaw.length;
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Reporte Pagos');
+
+      worksheet.columns = [
+        { header: 'ID', width: 10 },
+        { header: 'Fecha Vencimiento', width: 18 },
+        { header: 'Fecha Pagada', width: 18 },
+        { header: 'Estado', width: 15 },
+        { header: 'Monto', width: 15 },
+        { header: 'Cobrador', width: 25 },
+
+        { header: 'Total Facturas', width: 25 },
+        { header: 'Monto Total', width: 25 },
+      ];
+
+      worksheet.getRow(1).font = { bold: true };
+
+      for (const fact of facturasRaw) {
+        const cobradores = fact.pagos
+          .map((p) => p?.cobrador?.nombre)
+          .filter(Boolean);
+        const cobradorNombres =
+          cobradores.length > 0 ? cobradores.join(', ') : 'N/A';
+
+        const id = fact.id;
+        const fVenc = fact.fechaPagoEsperada
+          ? formattShortFecha(fact.fechaPagoEsperada)
+          : 'N/A';
+        const fPagada = fact.fechaPagada
+          ? formattShortFecha(fact.fechaPagada)
+          : 'N/A';
+        const estado = fact.estadoFacturaInternet;
+        const monto = fact.pagos.reduce((acc, f) => acc + f.montoPagado, 0);
+
+        worksheet.addRow([
+          id,
+          fVenc,
+          fPagada,
+          estado,
+          formattMonedaGT(monto),
+          cobradorNombres,
+        ]);
+      }
+
+      worksheet.getCell('G2').value = totalFacturas;
+      worksheet.getCell('H2').value = formattMonedaGT(montoTotalSum);
+
+      worksheet.getCell('G2').font = { bold: true };
+      worksheet.getCell('H2').font = { bold: true };
+
+      const buff = await workbook.xlsx.writeBuffer();
+      return Buffer.from(buff);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      throwFatalError(
+        error,
+        this.logger,
+        'PrismaGenerateReports.cobranzaReport',
       );
     }
   }

@@ -568,6 +568,18 @@ export class ClienteInternetService {
                 nombre: true,
               },
             },
+            facturacionZona: {
+              select: {
+                id: true,
+                creadoEn: true,
+                actualizadoEn: true,
+                nombre: true,
+                diaGeneracionFactura: true,
+                diaPago: true,
+                diaCorte: true,
+                enviarRecordatorio: true,
+              },
+            },
           },
         });
 
@@ -699,6 +711,24 @@ export class ClienteInternetService {
           ? {
               id: clienteInternetWithRelations.MikrotikRouter.id,
               nombre: clienteInternetWithRelations.MikrotikRouter.nombre,
+            }
+          : null,
+        facturacionZona: clienteInternetWithRelations.facturacionZona
+          ? {
+              id: clienteInternetWithRelations.facturacionZona.id,
+              nombre: clienteInternetWithRelations.facturacionZona.nombre,
+              creadoEn: clienteInternetWithRelations.facturacionZona.creadoEn,
+              actualizadoEn:
+                clienteInternetWithRelations.facturacionZona.actualizadoEn,
+
+              enviarRecordatorio:
+                clienteInternetWithRelations.facturacionZona.enviarRecordatorio,
+              diaPago: clienteInternetWithRelations.facturacionZona.diaPago,
+
+              diaGeneracionFactura:
+                clienteInternetWithRelations.facturacionZona
+                  .diaGeneracionFactura,
+              diaCorte: clienteInternetWithRelations.facturacionZona.diaCorte,
             }
           : null,
 

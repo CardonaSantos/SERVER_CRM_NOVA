@@ -84,8 +84,6 @@ export class TicketsSoporteService {
             ? { connect: { id: createTicketsSoporteDto.tecnicoId } }
             : undefined,
 
-          // RELACIONES ONE-TO-MANY (Tablas intermedias)
-
           asignaciones:
             createTicketsSoporteDto.tecnicosAdicionales?.length > 0
               ? {
@@ -150,7 +148,7 @@ export class TicketsSoporteService {
 
     const variablesPlantilla = [
       `${customer?.nombre ?? ''} ${customer?.apellidos ?? ''}`.trim() ||
-        'Nombre no disponible',
+        'Estimado Cliente',
       `${ticketCreated?.titulo ?? 'N/A'}`,
       `${ticketCreated?.id ?? 9999}`,
       `N/A`,
