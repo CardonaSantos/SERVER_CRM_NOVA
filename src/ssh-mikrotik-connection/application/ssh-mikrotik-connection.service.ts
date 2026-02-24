@@ -173,7 +173,10 @@ export class SshMikrotikConnectionService {
   }
 
   // ACTIVAR
+
   async activateCustomer(dto: ActivateCustomerDto) {
+    let isValidPassword: boolean = false;
+
     const usuarioAdmin = await this.prisma.usuario.findUnique({
       where: {
         id: dto.userId,
@@ -222,10 +225,14 @@ export class SshMikrotikConnectionService {
       throw new NotFoundException('Usuario administrador no encontrado');
     }
 
-    const isValidPassword = await bycrypt.compare(
-      dto.password,
-      usuarioAdmin.contrasena,
-    );
+    if (dto.isPasswordRequired === true) {
+      isValidPassword = await bycrypt.compare(
+        dto.password,
+        usuarioAdmin.contrasena,
+      );
+    } else {
+      isValidPassword = true;
+    }
 
     if (!isValidPassword)
       throw new BadRequestException('CREDENCIALES NO VÁLIDAS');

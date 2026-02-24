@@ -5,7 +5,22 @@ import { UpdateRealTimeDto } from '../dto/update-real-time.dto';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { RealTimeLocation } from '../entities/real-time.entity';
 import { PrismaRealTimeMapper } from '../common/realtime-location.mappers';
-import { CreateRealTimeDto } from '../dto/create-real-time.dto';
+import * as dayjs from 'dayjs';
+import 'dayjs/locale/es';
+import * as utc from 'dayjs/plugin/utc';
+import * as timezone from 'dayjs/plugin/timezone';
+import * as isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
+import * as isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
+import * as customParseFormat from 'dayjs/plugin/customParseFormat';
+dayjs.extend(customParseFormat);
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.extend(isSameOrBefore);
+dayjs.extend(isSameOrAfter);
+dayjs.locale('es');
+
+import { TZ } from 'src/Utils/tzgt';
+import { RealTimeLocationMapDto } from '../dto/dto-shape';
 
 @Injectable()
 export class PrismaRealTimeLocation implements RealTimeLocationRepository {
@@ -39,21 +54,44 @@ export class PrismaRealTimeLocation implements RealTimeLocationRepository {
     }
   }
 
-  async getLastLocations(): Promise<RealTimeLocation[]> {
+  async getLastLocations(): Promise<RealTimeLocationMapDto[]> {
     try {
+      // const ultima_hora = dayjs().tz(TZ).subtract(1, 'hour');
       const lastRecords = await this.prisma.ubicacionActual.findMany({
-        include: {
-          usuario: true,
-        },
-        orderBy: {
-          actualizadoEn: 'desc',
+        orderBy: { actualizadoEn: 'desc' },
+        select: {
+          usuarioId: true,
+          latitud: true,
+          longitud: true,
+          bateria: true,
+          velocidad: true,
+          actualizadoEn: true,
+          usuario: {
+            select: {
+              id: true,
+              nombre: true,
+              rol: true,
+              telefono: true,
+              perfil: {
+                select: {
+                  avatarUrl: true,
+                },
+              },
+              ticketsAsignados: {
+                select: {
+                  id: true,
+                  titulo: true,
+                },
+                where: {
+                  estado: 'EN_PROCESO',
+                },
+              },
+            },
+          },
         },
       });
 
-      return (
-        Array.isArray(lastRecords) &&
-        lastRecords.map((r) => PrismaRealTimeMapper.toDomain(r))
-      );
+      return lastRecords.map((r) => this.toMapDto(r));
     } catch (error) {
       throwFatalError(
         error,
@@ -61,5 +99,28 @@ export class PrismaRealTimeLocation implements RealTimeLocationRepository {
         'PrismaRealTimeLocation.updateLocation',
       );
     }
+  }
+
+  private toMapDto(raw: any): RealTimeLocationMapDto {
+    return {
+      usuario: {
+        nombre: raw.usuario?.nombre ?? '',
+        rol: raw.usuario?.rol,
+        telefono: raw.usuario?.telefono,
+        avatarUrl: raw.usuario?.perfil?.avatarUrl,
+      },
+      precision: raw?.precision,
+      usuarioId: raw.usuarioId,
+      latitud: raw.latitud,
+      longitud: raw.longitud,
+      bateria: raw?.bateria,
+      velocidad: raw?.velocidad,
+      actualizadoEn: raw.actualizadoEn,
+      ticketsEnProceso:
+        raw.usuario?.ticketsAsignados?.map((t) => ({
+          id: t.id,
+          titulo: t.titulo,
+        })) ?? [],
+    };
   }
 }

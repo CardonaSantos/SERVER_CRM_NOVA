@@ -43,7 +43,12 @@ export class PrismaNotificationRepository implements NotificationRepository {
 
   async findMany(params?: { empresaId?: number }): Promise<Notificacion[]> {
     const where = params?.empresaId ? { empresaId: params.empresaId } : {};
-    const records = await this.prisma.notificacion.findMany({ where });
+    const records = await this.prisma.notificacion.findMany({
+      where: where,
+      orderBy: {
+        fechaCreacion: 'desc',
+      },
+    });
     return records.map(Notificacion.fromPrisma);
   }
 

@@ -28,6 +28,8 @@ import { TZ } from 'src/Utils/tzgt';
 import { normalizarTexto } from 'src/Utils/normalizarTexto';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { GetCustomersQueryDto } from './dto/query-table';
+import { SshMikrotikConnectionService } from 'src/ssh-mikrotik-connection/application/ssh-mikrotik-connection.service';
+import { ActivateCustomerDto } from 'src/ssh-mikrotik-connection/dto/activate-ssh-mikrotik.dto';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.locale('es'); // Establece español como idioma predeterminado
@@ -51,242 +53,306 @@ export class ClienteInternetService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly idContradoService: IdContratoService,
+    private readonly ssh: SshMikrotikConnectionService,
   ) {}
 
-  async create(createClienteInternetDto: CreateClienteInternetDto) {
-    const {
-      coordenadas,
-      municipioId,
-      departamentoId,
-      empresaId,
-      servicesIds,
-      asesorId,
-      ip,
-      mascara,
-      gateway,
-      servicioWifiId,
-      zonaFacturacionId,
-      archivoContrato,
-      fechaFirma,
-      idContrato,
-      observacionesContrato,
-      sectorId,
-      estado,
+  async create(dto: CreateClienteInternetDto) {
+    try {
+      this.logger.log(`DTO recibido:\n${JSON.stringify(dto, null, 2)}`);
 
-      ...restoData
-    } = createClienteInternetDto;
-    this.logger.log(
-      `DTO recibido:\n${JSON.stringify(createClienteInternetDto, null, 2)}`,
-    );
-    const serviceIds: number[] = createClienteInternetDto.servicesIds;
-    const latitud = coordenadas?.[0] ? Number(coordenadas[0]) : null;
-    const longitud = coordenadas?.[1] ? Number(coordenadas[1]) : null;
-    const result = await this.prisma.$transaction(async (prisma) => {
-      let ubicacion = null;
-      const fullName =
-        `${createClienteInternetDto.nombre ?? ''} ${createClienteInternetDto.apellidos ?? ''}`.trim();
-      const nombreSearch = normalizarTexto(fullName);
+      const result = await this.createClienteTransactional(dto);
 
-      // Si hay coordenadas válidas, se crea la ubicación
-      if (latitud !== null && longitud !== null) {
-        ubicacion = await prisma.ubicacion.create({
-          data: {
-            latitud,
-            longitud,
-            empresa: {
-              connect: { id: 1 },
-            },
-          },
-        });
-      }
+      await this.handlePostCreationProcesses(dto, result.cliente.id);
 
-      const cliente = await prisma.clienteInternet.create({
-        data: {
-          ...restoData,
-          servicioInternet: servicioWifiId
-            ? { connect: { id: servicioWifiId } }
-            : undefined,
-          municipio: municipioId ? { connect: { id: municipioId } } : undefined,
-          departamento: departamentoId
-            ? { connect: { id: departamentoId } }
-            : undefined,
-          empresa: { connect: { id: empresaId } },
-          clienteServicios: {
-            create: serviceIds.map((id) => ({
-              servicio: { connect: { id } },
-              fechaInicio: createClienteInternetDto.fechaInstalacion,
-              estado: 'ACTIVO',
-            })),
-          },
-          asesor: asesorId ? { connect: { id: asesorId } } : undefined,
-          ubicacion: ubicacion ? { connect: { id: ubicacion.id } } : undefined,
-          apellidos: restoData.apellidos || null,
-          telefono: restoData.telefono || null,
-          direccion: restoData.direccion || null,
-          dpi: restoData.dpi || null,
-          observaciones: restoData.observaciones || null,
-          contactoReferenciaNombre: restoData.contactoReferenciaNombre || null,
-          contactoReferenciaTelefono:
-            restoData.contactoReferenciaTelefono || null,
-          ssidRouter: restoData.ssidRouter || null,
-          fechaInstalacion: restoData.fechaInstalacion || null,
-          searchNombre: nombreSearch,
-          estadoCliente: estado || 'ACTIVO',
-          facturacionZona: {
-            connect: {
-              id: zonaFacturacionId,
-            },
+      return result;
+    } catch (error) {
+      throwFatalError(error, this.logger, 'ClienteInternetService.create');
+    }
+  }
+
+  async asigneeMk(
+    clienteId: number,
+    mkSelected: number,
+    tx?: Prisma.TransactionClient,
+  ) {
+    let connection = await tx.clienteInternet.update({
+      where: {
+        id: clienteId,
+      },
+      data: {
+        MikrotikRouter: {
+          connect: {
+            id: mkSelected,
           },
         },
-      });
-
-      // Solo se actualiza la ubicación si fue creada
-      if (ubicacion) {
-        await prisma.ubicacion.update({
-          where: { id: ubicacion.id },
-          data: { clienteId: cliente.id },
-        });
-      }
-
-      const ipRecord = await prisma.iP.create({
-        data: {
-          direccionIp: ip,
-          gateway: gateway,
-          mascara: mascara,
-          cliente: { connect: { id: cliente.id } },
-        },
-      });
-
-      const saldoClienteInternet = await prisma.saldoCliente.create({
-        data: {
-          cliente: {
-            connect: {
-              id: cliente.id,
-            },
-          },
-        },
-      });
-
-      const fechaFacturacionZona = await prisma.facturacionZona.findUnique({
-        where: {
-          id: createClienteInternetDto.zonaFacturacionId,
-        },
-      });
-
-      const servicioClienteInternet = await prisma.servicioInternet.findUnique({
-        where: {
-          id: servicioWifiId,
-        },
-      });
-
-      if (!servicioClienteInternet) {
-        throw new Error('Servicio de internet no encontrado');
-      }
-
-      const fechaPrimerPago = fechaFacturacionZona.diaPago;
-      const fechaPrimerPagoInicial = dayjs().date(fechaPrimerPago);
-      const siguientePago = fechaPrimerPagoInicial.add(1, 'month');
-
-      const periodo = periodoFrom(fechaPrimerPagoInicial.toDate()); // o la fecha que uses
-      const newFacturaInternetPrimerPago = await prisma.facturaInternet.create({
-        data: {
-          periodo: periodo,
-          fechaPagoEsperada: fechaPrimerPagoInicial.toDate(),
-          montoPago: servicioClienteInternet.precio,
-          saldoPendiente: servicioClienteInternet.precio,
-          empresa: {
-            connect: {
-              id: createClienteInternetDto.empresaId,
-            },
-          },
-          estadoFacturaInternet: 'PENDIENTE',
-          cliente: {
-            connect: {
-              id: cliente.id,
-            },
-          },
-          facturacionZona: {
-            connect: {
-              id: fechaFacturacionZona.id,
-            },
-          },
-          nombreClienteFactura: `${cliente.nombre}  ${cliente.apellidos}`,
-          detalleFactura: `Pago por suscripción mensual al servicio de internet, plan ${servicioClienteInternet.nombre} (${servicioClienteInternet.velocidad}), precio: ${servicioClienteInternet.precio} Fecha: ${formatearFecha(fechaPrimerPagoInicial.format())}`,
-        },
-      });
-
-      //ponerle el sado pendiente de la primera factura:
-
-      await prisma.saldoCliente.update({
-        where: {
-          clienteId: cliente.id,
-        },
-        data: {
-          saldoPendiente: {
-            increment: newFacturaInternetPrimerPago.montoPago,
-          },
-        },
-      });
-      // console.log('EL saldo inicial del nuevo cliente es: ', nuevoSaldoCliente);
-
-      const recordatorioPrimerPago = await prisma.recordatorioPago.create({
-        data: {
-          cliente: {
-            connect: {
-              id: cliente.id,
-            },
-          },
-          facturaInternet: {
-            connect: {
-              id: newFacturaInternetPrimerPago.id,
-            },
-          },
-          tipo: 'Sistema Auto',
-          mensaje: 'Recordatorio de primer pago de servicio',
-          fechaEnviado: fechaPrimerPagoInicial.toDate(),
-          resultado: 'PENDIENTE',
-        },
-      });
-
-      if (sectorId) {
-        if (sectorId) {
-          const sector = await prisma.sector.findUnique({
-            where: { id: sectorId },
-          });
-
-          if (!sector) {
-            throw new Error('Sector no encontrado');
-          }
-
-          await prisma.clienteInternet.update({
-            where: { id: cliente.id },
-            data: {
-              sector: { connect: { id: sectorId } },
-            },
-          });
-        }
-      }
-
-      return {
-        cliente,
-        ubicacion,
-        ip: ipRecord,
-        newFacturaInternetPrimerPago,
-      };
+      },
     });
 
-    if (createClienteInternetDto.idContrato) {
-      const clienteConcontratro = await this.idContradoService.create({
-        archivoContrato: archivoContrato,
-        clienteId: result.cliente.id,
-        fechaFirma: fechaFirma,
-        idContrato: idContrato,
-        observaciones: observacionesContrato,
+    if (connection)
+      this.logger.log(
+        `Cliente ${clienteId} conectado correctamente a mk ${mkSelected}`,
+      );
+    return;
+  }
+
+  private async createClienteTransactional(dto: CreateClienteInternetDto) {
+    return this.prisma.$transaction(async (tx) => {
+      const ubicacion = await this.createUbicacionIfNeeded(dto, tx);
+      const cliente = await this.createClienteEntity(dto, ubicacion?.id, tx);
+
+      await this.createIp(cliente.id, dto, tx);
+      await this.createSaldo(cliente.id, 1, tx);
+      await this.createPrimerFactura(cliente.id, dto, tx);
+
+      if (dto.sectorId) {
+        await this.assignSector(cliente.id, dto.sectorId, tx);
+      }
+
+      if (dto.mkSelected) {
+        await this.assignMk(cliente.id, dto.mkSelected, tx);
+      }
+
+      return { cliente };
+    });
+  }
+
+  private async createUbicacionIfNeeded(
+    dto: CreateClienteInternetDto,
+    tx: Prisma.TransactionClient,
+  ) {
+    if (!dto.coordenadas?.length) return null;
+
+    const lat = Number(dto.coordenadas[0]);
+    const lng = Number(dto.coordenadas[1]);
+
+    if (!lat || !lng) return null;
+
+    return tx.ubicacion.create({
+      data: {
+        latitud: lat,
+        longitud: lng,
+        empresa: {
+          connect: { id: dto.empresaId },
+        },
+      },
+    });
+  }
+
+  private async createSaldo(
+    clienteId: number,
+    empresaId: number,
+    tx: Prisma.TransactionClient,
+  ) {
+    return tx.saldoCliente.create({
+      data: {
+        cliente: {
+          connect: { id: clienteId },
+        },
+        totalPagos: 0,
+        saldoFavor: 0,
+        saldoPendiente: 0,
+      },
+    });
+  }
+
+  private async createClienteEntity(
+    dto: CreateClienteInternetDto,
+    ubicacionId: number | undefined,
+    tx: Prisma.TransactionClient,
+  ) {
+    const fullName = `${dto.nombre ?? ''} ${dto.apellidos ?? ''}`.trim();
+    const nombreSearch = normalizarTexto(fullName);
+
+    return tx.clienteInternet.create({
+      data: {
+        nombre: dto.nombre,
+        apellidos: dto.apellidos || null,
+        telefono: dto.telefono || null,
+        direccion: dto.direccion || null,
+        dpi: dto.dpi || null,
+        observaciones: dto.observaciones || null,
+        contactoReferenciaNombre: dto.contactoReferenciaNombre || null,
+        contactoReferenciaTelefono: dto.contactoReferenciaTelefono || null,
+        ssidRouter: dto.ssidRouter || null,
+        fechaInstalacion: dto.fechaInstalacion || null,
+        estadoCliente: dto.estado || 'ACTIVO',
+        searchNombre: nombreSearch,
+
+        empresa: { connect: { id: dto.empresaId } },
+
+        municipio: dto.municipioId
+          ? { connect: { id: dto.municipioId } }
+          : undefined,
+
+        departamento: dto.departamentoId
+          ? { connect: { id: dto.departamentoId } }
+          : undefined,
+
+        servicioInternet: dto.servicioWifiId
+          ? { connect: { id: dto.servicioWifiId } }
+          : undefined,
+
+        asesor: dto.asesorId ? { connect: { id: dto.asesorId } } : undefined,
+
+        facturacionZona: {
+          connect: { id: dto.zonaFacturacionId },
+        },
+
+        ubicacion: ubicacionId ? { connect: { id: ubicacionId } } : undefined,
+
+        clienteServicios: {
+          create: dto.servicesIds.map((id) => ({
+            servicio: { connect: { id } },
+            fechaInicio: dto.fechaInstalacion,
+            estado: 'ACTIVO',
+          })),
+        },
+      },
+    });
+  }
+
+  private async createPrimerFactura(
+    clienteId: number,
+    dto: CreateClienteInternetDto,
+    tx: Prisma.TransactionClient,
+  ) {
+    const zona = await tx.facturacionZona.findUnique({
+      where: { id: dto.zonaFacturacionId },
+    });
+
+    const servicio = await tx.servicioInternet.findUnique({
+      where: { id: dto.servicioWifiId },
+    });
+
+    if (!zona || !servicio) {
+      throw new Error('Zona o Servicio no encontrado');
+    }
+
+    const fechaBase = dayjs().date(zona.diaPago);
+    const periodo = periodoFrom(fechaBase.toDate());
+
+    const factura = await tx.facturaInternet.create({
+      data: {
+        periodo,
+        fechaPagoEsperada: fechaBase.toDate(),
+        montoPago: servicio.precio,
+        saldoPendiente: servicio.precio,
+        estadoFacturaInternet: 'PENDIENTE',
+
+        empresa: { connect: { id: dto.empresaId } },
+        cliente: { connect: { id: clienteId } },
+        facturacionZona: { connect: { id: zona.id } },
+
+        nombreClienteFactura: `${dto.nombre} ${dto.apellidos ?? ''}`,
+        detalleFactura: `Pago mensual servicio ${servicio.nombre} (${servicio.velocidad})`,
+      },
+    });
+
+    await tx.saldoCliente.update({
+      where: { clienteId },
+      data: {
+        saldoPendiente: { increment: servicio.precio },
+      },
+    });
+
+    return factura;
+  }
+
+  private async assignSector(
+    clienteId: number,
+    sectorId: number,
+    tx: Prisma.TransactionClient,
+  ) {
+    const sector = await tx.sector.findUnique({
+      where: { id: sectorId },
+    });
+
+    if (!sector) throw new Error('Sector no encontrado');
+
+    await tx.clienteInternet.update({
+      where: { id: clienteId },
+      data: {
+        sector: { connect: { id: sectorId } },
+      },
+    });
+  }
+
+  private async handlePostCreationProcesses(
+    dto: CreateClienteInternetDto,
+    clienteId: number,
+  ) {
+    // Crear contrato si aplica
+    if (dto.idContrato) {
+      await this.idContradoService.create({
+        archivoContrato: dto.archivoContrato,
+        clienteId,
+        fechaFirma: dto.fechaFirma,
+        idContrato: dto.idContrato,
+        observaciones: dto.observacionesContrato,
       });
     }
 
-    return result;
+    // Activación MikroTik opcional
+    if (dto.activateOnMk) {
+      await this.tryActivateOnMk(clienteId, dto);
+    }
   }
+
+  private async tryActivateOnMk(
+    clienteId: number,
+    dto: CreateClienteInternetDto,
+  ) {
+    try {
+      const activateDto: ActivateCustomerDto = {
+        clienteId,
+        userId: dto.userId,
+        password: '',
+        isPasswordRequired: false,
+      };
+
+      await this.ssh.activateCustomer(activateDto);
+
+      this.logger.log(`Cliente ${clienteId} activado en MK correctamente`);
+    } catch (error) {
+      this.logger.error(
+        `No se pudo activar MK para cliente ${clienteId}. Continuando sin bloquear.`,
+      );
+    }
+  }
+
+  private async assignMk(
+    clienteId: number,
+    mkId: number,
+    tx: Prisma.TransactionClient,
+  ) {
+    await tx.clienteInternet.update({
+      where: { id: clienteId },
+      data: {
+        MikrotikRouter: {
+          connect: { id: mkId },
+        },
+      },
+    });
+
+    this.logger.log(`Cliente ${clienteId} asignado a MK ${mkId}`);
+  }
+
+  private async createIp(
+    clienteId: number,
+    dto: CreateClienteInternetDto,
+    tx: Prisma.TransactionClient,
+  ) {
+    return tx.iP.create({
+      data: {
+        direccionIp: dto.ip,
+        gateway: dto.gateway,
+        mascara: dto.mascara,
+        cliente: { connect: { id: clienteId } },
+      },
+    });
+  }
+
+  // ------------------->
 
   async linkSector(clienteId: number, sectorId: number) {
     try {
@@ -1435,10 +1501,34 @@ export class ClienteInternetService {
     const clienteId = id;
     console.log('entrando a eliminar: ', id);
 
-    return await this.prisma.$transaction(async (tx) => {
+    const cliente = await this.prisma.clienteInternet.findUnique({
+      where: { id: clienteId },
+      select: {
+        mikrotikRouterId: true,
+        IP: {
+          select: {
+            direccionIp: true,
+          },
+        },
+      },
+    });
+
+    let direccionIP = cliente.IP.direccionIp;
+    let mikrotikId = cliente.mikrotikRouterId;
+
+    const userDeleted = await this.prisma.$transaction(async (tx) => {
       // Verificamos si existe el cliente
       const cliente = await tx.clienteInternet.findUnique({
         where: { id: clienteId },
+        select: {
+          IP: {
+            select: {
+              direccionIp: true,
+              mascara: true,
+            },
+          },
+          mikrotikRouterId: true,
+        },
       });
 
       if (!cliente) {
@@ -1484,14 +1574,36 @@ export class ClienteInternetService {
       });
 
       // 8. Finalmente, eliminar el cliente
-      await tx.clienteInternet.delete({
+      let c = await tx.clienteInternet.delete({
         where: { id: clienteId },
+        select: {
+          mikrotikRouterId: true,
+          IP: {
+            select: {
+              id: true,
+              direccionIp: true,
+            },
+          },
+        },
       });
 
       return {
         message: `Cliente con id ${clienteId} y todas sus relaciones han sido eliminados correctamente.`,
+        cliente: c,
       };
     });
+
+    if (mikrotikId && direccionIP) {
+      try {
+        await this.ssh.clearIpFromAllLists(mikrotikId, direccionIP);
+      } catch (error) {
+        this.logger.error(
+          `No se pudo limpiar IP ${direccionIP} del MK ${mikrotikId} | ERROR: ${error?.stack}`,
+        );
+      }
+    }
+
+    return userDeleted;
   }
 
   async deleteClientsWithRelations() {

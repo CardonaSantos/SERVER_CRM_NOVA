@@ -8,6 +8,7 @@ import {
   IsInt,
   IsArray,
   IsEnum,
+  IsBoolean,
 } from 'class-validator';
 
 export class CreateClienteInternetDto {
@@ -100,6 +101,15 @@ export class CreateClienteInternetDto {
   serviceId: number;
   @IsInt()
   zonaFacturacionId: number;
+
+  @IsInt()
+  userId: number;
+
+  @IsInt()
+  mkSelected: number;
+
+  @IsBoolean()
+  activateOnMk: boolean = false;
 
   //DATOS PARA EL CONTRATO
   @IsInt()

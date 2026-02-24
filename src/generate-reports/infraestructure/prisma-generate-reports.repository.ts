@@ -15,6 +15,7 @@ import { QueryCobranzaReport } from '../dto/cobranza-query-report';
 import { Prisma } from '@prisma/client';
 import { formattShortFecha } from 'src/Utils/formattFecha.utils';
 import { formattMonedaGT } from 'src/Utils/formatt-moneda';
+import { formattDateForFilter } from 'src/Utils/formattDateForFilter';
 dayjs.extend(customParseFormat);
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -296,14 +297,21 @@ export class PrismaGenerateReports implements GenerateReportsRepository {
 
   async cobranzaReport(dto: QueryCobranzaReport): Promise<Buffer> {
     try {
-      const { endDate, startDate, userId } = dto;
+      const { endDate, startDate, userId, estados, endDateG, startDateG } = dto;
 
       const where: Prisma.FacturaInternetWhereInput = {};
 
       if (startDate && endDate) {
         where.fechaPagada = {
-          gte: new Date(startDate),
-          lte: new Date(endDate),
+          gte: formattDateForFilter('start', startDate),
+          lte: formattDateForFilter('end', endDate),
+        };
+      }
+
+      if (startDateG && endDateG) {
+        where.creadoEn = {
+          gte: formattDateForFilter('start', startDateG),
+          lte: formattDateForFilter('end', endDateG),
         };
       }
 
@@ -312,6 +320,12 @@ export class PrismaGenerateReports implements GenerateReportsRepository {
           some: {
             cobradorId: userId,
           },
+        };
+      }
+
+      if (estados?.length > 0) {
+        where.estadoFacturaInternet = {
+          in: estados,
         };
       }
 
@@ -343,6 +357,7 @@ export class PrismaGenerateReports implements GenerateReportsRepository {
           },
         },
       });
+
       const montoTotalSum = facturasRaw.reduce(
         (acc, fact) => acc + fact.montoPago,
         0,
