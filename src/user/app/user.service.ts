@@ -10,8 +10,6 @@ import {
 import * as bcrypt from 'bcryptjs';
 
 import { CreateUserDto } from '../dto/create-user.dto';
-import { UpdateUserDto } from '../dto/update-user.dto';
-import { AdminUpdateUserDto } from '../dto/AdminUpdate.dto';
 import { UserTokenAuth } from 'src/auth/dto/userToken.dto';
 
 import { RolUsuario } from '@prisma/client';
@@ -20,6 +18,8 @@ import {
   UsuarioRepository,
 } from '../domain/user-repository';
 import { Usuario } from '../entities/user.entity';
+import { PerfilService } from 'src/perfil/app/perfil.service';
+import { UpdateUserDto } from '../dto/updateProfile';
 
 @Injectable()
 export class UserService {
@@ -28,6 +28,8 @@ export class UserService {
   constructor(
     @Inject(USUARIO_REPOSITORY)
     private readonly usuariosRepo: UsuarioRepository,
+
+    private readonly perfilService: PerfilService,
   ) {}
 
   // ===== CREATE =====
@@ -96,12 +98,22 @@ export class UserService {
       throw new NotFoundException('Error id no disponible');
     }
 
+    // 1. Obtener la data base del usuario
     const usuario = await this.usuariosRepo.findById(id);
     if (!usuario) {
       throw new NotFoundException('Usuario no encontrado');
     }
 
-    return usuario.toObject();
+    // 2. Obtener la data extendida del perfil
+    const perfil = await this.perfilService.obtenerPerfilPorUsuarioId(id);
+
+    // 3. Combinar ambos objetos
+    const usuarioObj = usuario.toObject();
+
+    return {
+      ...usuarioObj,
+      perfil: perfil, // Será null si no tiene, o el objeto completo si lo tiene
+    };
   }
 
   // ===== USERS PARA PROFILE CONFIG =====
@@ -127,8 +139,36 @@ export class UserService {
   }
 
   // ===== UPDATE / UPDATE ONE (comparten lógica) =====
-  async updateUser(id: number, data: UpdateUserDto) {
-    return this.updateUserInternal(id, data);
+  async updateUser(
+    id: number,
+    data: UpdateUserDto,
+    avatar?: Express.Multer.File,
+    portada?: Express.Multer.File,
+  ) {
+    const updatedUsuario = await this.updateUserInternal(id, data);
+
+    const hasProfileData =
+      data.bio !== undefined ||
+      data.notificarWhatsApp !== undefined ||
+      avatar ||
+      portada;
+
+    if (hasProfileData) {
+      await this.perfilService.upsertPerfil(
+        id,
+        {
+          bio: data.bio,
+          telefono: data.telefono,
+          notificarWhatsApp: data.notificarWhatsApp,
+          notificarPush: data.notificarPush,
+          notificarSonido: data.notificarSonido,
+        },
+        avatar,
+        portada,
+      );
+    }
+
+    return updatedUsuario;
   }
 
   async updateOneUser(id: number, dto: UpdateUserDto) {

@@ -149,19 +149,24 @@ model PerfilUsuario {
   id        Int @id @default(autoincrement())
   usuarioId Int @unique
 
-  // Visual
-  avatarUrl String? // URL de la foto de perfil (cdn, media, etc.)
-  portada   String? // URL de la foto de perfil (cdn, media, etc.)
+  avatarUrl   String?
+  avatarKey   String?
+  avatarBucket String?
+  avatarMimeType String?
+  avatarSize   Int?
+
+  portadaUrl   String?
+  portadaKey   String?
+  portadaBucket String?
+  portadaMimeType String?
+  portadaSize   Int?
+
   bio       String?
-  // Preferencias básicas
-  // tema            TemaUsuario @default(SISTEMA) aun no implementado
+  telefono  String?
 
-  // Notificaciones
   notificarWhatsApp Boolean @default(true)
-  notificarPush     Boolean @default(true) // para notificaciones in-app
-  notificarSonido   Boolean @default(true) // sonidos en la UI
-
-  telefono String?
+  notificarPush     Boolean @default(true)
+  notificarSonido   Boolean @default(true)
 
   creadoEn      DateTime @default(now())
   actualizadoEn DateTime @updatedAt

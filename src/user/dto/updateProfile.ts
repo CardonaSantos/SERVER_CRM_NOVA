@@ -1,4 +1,3 @@
-// src/user/dto/update-user.dto.ts
 import {
   IsOptional,
   IsString,
@@ -6,6 +5,7 @@ import {
   IsBoolean,
   IsEnum,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export enum RolUsuario {
   TECNICO = 'TECNICO',
@@ -15,7 +15,18 @@ export enum RolUsuario {
   COBRADOR = 'COBRADOR',
 }
 
+// Función auxiliar para transformar strings de FormData a booleanos
+const TransformBoolean = () =>
+  Transform(({ value }) => {
+    if (value === 'true' || value === true || value === '1' || value === 1)
+      return true;
+    if (value === 'false' || value === false || value === '0' || value === 0)
+      return false;
+    return value;
+  });
+
 export class UpdateUserDto {
+  // ===== DATOS DEL USUARIO =====
   @IsOptional()
   @IsString()
   nombre?: string;
@@ -34,9 +45,30 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsEnum(RolUsuario)
-  rolUsuario?: RolUsuario;
+  rol?: RolUsuario; // <--- CAMBIA 'rolUsuario' POR 'ro
 
   @IsOptional()
+  @TransformBoolean()
   @IsBoolean()
   activo?: boolean;
+
+  // ===== DATOS DEL PERFIL =====
+  @IsOptional()
+  @IsString()
+  bio?: string;
+
+  @IsOptional()
+  @TransformBoolean()
+  @IsBoolean()
+  notificarWhatsApp?: boolean;
+
+  @IsOptional()
+  @TransformBoolean()
+  @IsBoolean()
+  notificarPush?: boolean;
+
+  @IsOptional()
+  @TransformBoolean()
+  @IsBoolean()
+  notificarSonido?: boolean;
 }

@@ -54,6 +54,7 @@ import { CustomerNetworkConfigModule } from './customer-network-config/customer-
 import { NetworkServiceModule } from './network-service/network-service.module';
 import { CuotasPagoModule } from './credito/cuotas-pago/cuotas-pago.module';
 import { GenerateReportsModule } from './generate-reports/generate-reports.module';
+import { PerfilModule } from './perfil/perfil.module';
 
 @Module({
   imports: [
@@ -114,6 +115,7 @@ import { GenerateReportsModule } from './generate-reports/generate-reports.modul
     NetworkServiceModule,
     CuotasPagoModule,
     GenerateReportsModule,
+    PerfilModule,
   ],
   controllers: [AppController],
   providers: [AppService],

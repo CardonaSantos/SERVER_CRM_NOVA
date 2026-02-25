@@ -8,11 +8,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { JwtStrategy } from './JwtGuard/JwtStrategy';
+import { PerfilModule } from 'src/perfil/perfil.module';
 
 @Module({
   controllers: [AuthController],
   providers: [AuthService, UserService, PrismaService, JwtStrategy],
   imports: [
+    PerfilModule,
     UserModule,
     PassportModule,
     JwtModule.registerAsync({
