@@ -59,6 +59,11 @@ export class PrismaRealTimeLocation implements RealTimeLocationRepository {
       // const ultima_hora = dayjs().tz(TZ).subtract(1, 'hour');
       const lastRecords = await this.prisma.ubicacionActual.findMany({
         orderBy: { actualizadoEn: 'desc' },
+        // where: {
+        //   actualizadoEn: {
+        //     gte: ultima_hora.toDate(),
+        //   },
+        // },
         select: {
           usuarioId: true,
           latitud: true,
