@@ -47,7 +47,6 @@ export class PrimerRecordatorioCronService {
   ) {}
 
   @Cron('0 10 * * *', { timeZone: 'America/Guatemala' })
-  // @Cron(CronExpression.EVERY_MINUTE)
   async generarMensajePrimerRecordatorio(): Promise<void> {
     this.logger.debug('Verificando zonas de facturacion: Recordatorio 1');
 

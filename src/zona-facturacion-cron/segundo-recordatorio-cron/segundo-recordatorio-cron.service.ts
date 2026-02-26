@@ -32,7 +32,6 @@ export class SegundoRecordatorioCronService {
   ) {}
 
   @Cron('0 10 * * *', { timeZone: 'America/Guatemala' })
-  // @Cron(CronExpression.EVERY_MINUTE)
   async generarMensajeSegundoRecordatorio(): Promise<void> {
     this.logger.debug('Verificando zonas de facturación: Recordatorio 2');
 
