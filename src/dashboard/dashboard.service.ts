@@ -813,81 +813,77 @@ export class DashboardService {
   }
 
   /**
-   * RETORNO DE DATOS SIN
-   * @returns
+   * Obtiene los tickets en proceso y el conteo de tickets activos.
+   * @returns Objeto con métricas y lista de tickets formateada.
    */
   async getDashboardTicketProceso() {
     try {
-      const ticketsProceso = await this.prisma.ticketSoporte.findMany({
-        orderBy: {
-          actualizadoEn: 'desc',
-        },
-        where: {
-          estado: 'EN_PROCESO',
-        },
-        select: {
-          id: true,
-          titulo: true,
-          cliente: {
-            select: {
-              id: true,
-              nombre: true,
-            },
+      // OPTIMIZACIÓN: Ejecutamos ambas consultas en paralelo para mayor velocidad
+      const [ticketsProceso, ticketDisponibles] = await Promise.all([
+        this.prisma.ticketSoporte.findMany({
+          orderBy: {
+            actualizadoEn: 'desc',
           },
-          tecnico: {
-            select: {
-              id: true,
-              nombre: true,
-            },
+          where: {
+            estado: 'EN_PROCESO',
           },
-          asignaciones: {
-            select: {
-              tecnico: {
-                select: {
-                  id: true,
-                  nombre: true,
+          select: {
+            id: true,
+            titulo: true,
+            cliente: {
+              select: {
+                id: true,
+                nombre: true,
+              },
+            },
+            tecnico: {
+              select: {
+                id: true,
+                nombre: true,
+              },
+            },
+            asignaciones: {
+              select: {
+                tecnico: {
+                  select: {
+                    id: true,
+                    nombre: true,
+                  },
                 },
               },
             },
           },
-        },
-      });
-
-      const ticketDisponibles = await this.prisma.ticketSoporte.count({
-        where: {
-          estado: {
-            notIn: ['RESUELTA'],
+        }),
+        this.prisma.ticketSoporte.count({
+          where: {
+            estado: {
+              notIn: ['RESUELTA'],
+            },
           },
-        },
-      });
+        }),
+      ]);
 
-      // En tu getDashboardTicketProceso dentro del map:
+      // MAPEO SEGURO: Evita crasheos si cliente, tecnico o asignaciones son null
+      const formatted = ticketsProceso.map((t) => ({
+        id: t.id,
+        titulo: t.titulo,
+        cliente: t.cliente?.nombre ?? 'General / Sin Cliente', // <-- Aquí está la magia anti-crasheo
+        tecnico: t.tecnico?.nombre ?? 'Sin Asignar',
+        acompanantes:
+          t.asignaciones?.map((a) => a.tecnico?.nombre).filter(Boolean) ?? [],
+      }));
 
-      const formatted = ticketsProceso.map((t) => {
-        const ticket = {
-          id: t.id,
-          titulo: t.titulo,
-          cliente: t.cliente.nombre,
-          tecnico: t.tecnico ? t.tecnico.nombre : null,
-          acompanantes: t.asignaciones.map((a) => a.tecnico.nombre),
-        };
-
-        return ticket;
-      });
-
-      const objt = {
+      return {
         tickets: formatted,
         ticketsMetricas: {
-          enLinea: ticketDisponibles ?? 0,
+          enLinea: ticketDisponibles,
         },
       };
-
-      return objt;
     } catch (error) {
       throwFatalError(
         error,
         this.logger,
-        'Dashboard service -getDashboardTicketProceso',
+        'Dashboard service - getDashboardTicketProceso',
       );
     }
   }

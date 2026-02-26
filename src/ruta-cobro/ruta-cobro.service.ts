@@ -17,6 +17,7 @@ import * as utc from 'dayjs/plugin/utc';
 import * as timezone from 'dayjs/plugin/timezone';
 import * as ExcelJS from 'exceljs';
 import { WebSocketServices } from 'src/web-sockets/websocket.service';
+import { queryRutasDto } from './dto/query';
 // Extiende dayjs con los plugins
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -171,60 +172,86 @@ export class RutaCobroService {
    *
    * @returns Encuentra todas las rutas de cobros
    */
-  async findAllRutas() {
-    const rutas = await this.prisma.ruta.findMany({
-      orderBy: { creadoEn: 'desc' },
-      select: {
-        id: true,
-        nombreRuta: true,
-        cobradorId: true,
-        empresaId: true,
-        estadoRuta: true,
-        creadoEn: true,
-        actualizadoEn: true,
-        observaciones: true,
-        empresa: { select: { id: true, nombre: true } },
-        cobrador: {
-          select: {
-            id: true,
-            nombre: true,
-            correo: true,
-            telefono: true,
-            rol: true,
+  async findAllRutas(query: queryRutasDto) {
+    this.logger.log(`El query es:\n${JSON.stringify(query, null, 2)}`);
+
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+    const skip = (page - 1) * limit;
+
+    const whereCondition: any = {};
+
+    if (query.estado) whereCondition.estadoRuta = query.estado;
+    if (query.cobrador) whereCondition.cobradorId = query.cobrador;
+    if (query.nombreRuta) {
+      whereCondition.nombreRuta = {
+        contains: query.nombreRuta,
+        mode: 'insensitive', // Para que no importe mayúsculas/minúsculas
+      };
+    }
+
+    const [rutas, totalCount] = await Promise.all([
+      await this.prisma.ruta.findMany({
+        where: whereCondition,
+        skip: skip,
+        take: limit,
+        orderBy: { creadoEn: 'desc' },
+        select: {
+          id: true,
+          nombreRuta: true,
+          cobradorId: true,
+          empresaId: true,
+          estadoRuta: true,
+          creadoEn: true,
+          actualizadoEn: true,
+          observaciones: true,
+          empresa: { select: { id: true, nombre: true } },
+          cobrador: {
+            select: {
+              id: true,
+              nombre: true,
+              correo: true,
+              telefono: true,
+              rol: true,
+            },
           },
-        },
-        clientes: {
-          select: {
-            id: true,
-            nombre: true,
-            apellidos: true,
-            telefono: true,
-            contactoReferenciaTelefono: true,
-            direccion: true,
-            dpi: true,
-            estadoCliente: true,
-            empresaId: true,
-            empresa: { select: { id: true, nombre: true } },
-            ubicacion: { select: { id: true, latitud: true, longitud: true } },
-            facturacionZonaId: true,
-            saldoCliente: { select: { saldoPendiente: true } },
-            facturaInternet: {
-              where: {
-                estadoFacturaInternet: {
-                  in: ['VENCIDA', 'PENDIENTE', 'PARCIAL'],
-                },
+          clientes: {
+            select: {
+              id: true,
+              nombre: true,
+              apellidos: true,
+              telefono: true,
+              contactoReferenciaTelefono: true,
+              direccion: true,
+              dpi: true,
+              estadoCliente: true,
+              empresaId: true,
+              empresa: { select: { id: true, nombre: true } },
+              ubicacion: {
+                select: { id: true, latitud: true, longitud: true },
               },
-              select: {
-                id: true,
-                estadoFacturaInternet: true,
-                montoPago: true,
-                saldoPendiente: true,
+              facturacionZonaId: true,
+              saldoCliente: { select: { saldoPendiente: true } },
+              facturaInternet: {
+                where: {
+                  estadoFacturaInternet: {
+                    in: ['VENCIDA', 'PENDIENTE', 'PARCIAL'],
+                  },
+                },
+                select: {
+                  id: true,
+                  estadoFacturaInternet: true,
+                  montoPago: true,
+                  saldoPendiente: true,
+                },
               },
             },
           },
         },
-      },
-    });
+      }),
+
+      this.prisma.ruta.count({ where: whereCondition }),
+    ]);
 
     if (!rutas)
       throw new NotFoundException('No se encontraron rutas de cobros');
@@ -301,8 +328,17 @@ export class RutaCobroService {
         porCobrar: totalPendienteRuta,
       };
     });
+    const pageCount = Math.ceil(totalCount / limit);
 
-    return x;
+    return {
+      data: x,
+      meta: {
+        totalCount: totalCount,
+        pageCount: pageCount > 0 ? pageCount : 1,
+        currentPage: page,
+        pageSize: limit,
+      },
+    };
   }
 
   /**

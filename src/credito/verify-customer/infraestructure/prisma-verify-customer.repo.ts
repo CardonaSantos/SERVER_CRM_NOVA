@@ -19,7 +19,7 @@ dayjs.extend(isSameOrBefore);
 dayjs.extend(isSameOrAfter);
 dayjs.locale('es');
 
-interface HistorialPago {
+export interface HistorialPago {
   facturaId: number;
   pagadaATiempo: boolean;
   diferencia: number; // días (negativo = atraso)
@@ -86,6 +86,11 @@ export class PrismaVerifyCustomerRepository
     }
   }
 
+  /**
+   * SERVICIO INYECTABLE UTILITARIO
+   * @param facturas
+   * @returns
+   */
   async calculatePunctuality(
     facturas: {
       id: number;
@@ -183,7 +188,15 @@ export class PrismaVerifyCustomerRepository
     return Math.round(100 - (valor / max) * 100);
   }
 
-  generarResultado(historial: HistorialPago[]) {
+  /**
+   * SERVICIO INYECTABLE UTILITARIO
+   * @param historial
+   * @returns
+   */
+  async generarResultado(
+    historial: HistorialPago[],
+    includeHistorial: boolean = true,
+  ) {
     const acc = this.calcularResumen(historial);
 
     const puntualidadPct = acc.total > 0 ? (acc.aTiempo / acc.total) * 100 : 0;
@@ -212,7 +225,7 @@ export class PrismaVerifyCustomerRepository
     else clasificacion = 'NO_APROBABLE';
 
     return {
-      historial,
+      historial: includeHistorial ? historial : null,
       resumen: {
         puntualidadPct: Number(puntualidadPct.toFixed(1)),
         promedioAtraso: Math.round(promedioAtraso),

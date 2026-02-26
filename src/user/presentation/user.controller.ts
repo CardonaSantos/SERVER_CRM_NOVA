@@ -10,6 +10,11 @@ import {
   ParseIntPipe,
   Put,
   UseGuards,
+  UploadedFiles,
+  UseInterceptors,
+  Logger,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { UserService } from '../app/user.service';
 import { CreateUserDto } from '../dto/create-user.dto';
@@ -17,10 +22,12 @@ import { UpdateUserDto } from '../dto/updateProfile';
 import { UpdateOneUserDto } from '../dto/update-one-user.dto';
 import { UserTokenAuth } from 'src/auth/dto/userToken.dto';
 import { GetUserAuthToken } from 'src/CustomDecoratorAuthToken/GetUserAuthToken';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 // import { JwtAuthGuard } from 'src/auth/JwtGuard/JwtAuthGuard';
 
 @Controller('user')
 export class UserController {
+  private readonly logger = new Logger(UserController.name);
   constructor(private readonly userService: UserService) {}
 
   // ========= CREATE =========
@@ -82,11 +89,36 @@ export class UserController {
 
   // ========= UPDATE PERFIL (usuario normal) =========
   @Put('user-profile/:id')
-  updateUserProfile(
+  @UsePipes(
+    new ValidationPipe({
+      transform: true,
+      forbidNonWhitelisted: false,
+      whitelist: true,
+    }),
+  )
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'avatar', maxCount: 1 },
+      { name: 'portada', maxCount: 1 },
+    ]),
+  )
+  async updateUserProfile(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateUserDto: UpdateUserDto,
+    @UploadedFiles()
+    files: { avatar?: Express.Multer.File[]; portada?: Express.Multer.File[] },
   ) {
-    return this.userService.updateUser(id, updateUserDto);
+    const avatarFile = files?.avatar?.[0];
+    const portadaFile = files?.portada?.[0];
+    this.logger.log(
+      `DTO de actualizacion: \n${JSON.stringify(updateUserDto, null, 2)}`,
+    );
+    return this.userService.updateUser(
+      id,
+      updateUserDto,
+      avatarFile,
+      portadaFile,
+    );
   }
 
   // ========= UPDATE PERFIL (admin / otro usuario) =========

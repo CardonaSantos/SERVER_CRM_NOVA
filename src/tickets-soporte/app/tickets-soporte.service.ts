@@ -14,7 +14,11 @@ import { GenerarMensajeSoporteService } from '../generar-mensaje-soporte/generar
 import { MetasTicketsService } from 'src/metas-tickets/metas-tickets.service';
 import { UpdateTicketStatusDto } from '../dto/updateStatus';
 import { WebSocketServices } from 'src/web-sockets/websocket.service';
-import { EstadoTicketSoporte } from '@prisma/client';
+import {
+  EstadoTicketSoporte,
+  Prisma,
+  TicketSoporteTecnico,
+} from '@prisma/client';
 import {
   TICKET_SOPORTE_REPOSITORY,
   TicketSoporteRepository,
@@ -27,6 +31,8 @@ import { CreateBotFunctionDto } from 'src/bot-functions/dto/create-bot-function.
 import { dayjs } from '../../Utils/dayjs.config';
 import { TicketResumenService } from 'src/ticket-resumen/app/ticket-resumen.service';
 import { CreateTicketResumenDto } from 'src/ticket-resumen/dto/create-ticket-resuman.dto';
+import { QuerySearchTickets } from '../dto/querySearch';
+import { query } from 'express';
 // import { dayjs } from '';
 
 @Injectable()
@@ -78,8 +84,6 @@ export class TicketsSoporteService {
             ? { connect: { id: createTicketsSoporteDto.tecnicoId } }
             : undefined,
 
-          // RELACIONES ONE-TO-MANY (Tablas intermedias)
-
           asignaciones:
             createTicketsSoporteDto.tecnicosAdicionales?.length > 0
               ? {
@@ -105,52 +109,57 @@ export class TicketsSoporteService {
       return newTicketSoporte;
     });
 
-    if (!ticketCreated.clienteId) {
-      this.logger.debug(`Ticket ${ticketCreated.id} sin cliente asignado`);
-      return;
-    }
+    // if (!ticketCreated.clienteId) {
+    //   this.logger.debug(`Ticket ${ticketCreated.id} sin cliente asignado`);
+    //   return;
+    // }
 
-    const customer = await this.prisma.clienteInternet.findUnique({
-      where: {
-        id: ticketCreated.clienteId,
-      },
-      select: {
-        id: true,
-        nombre: true,
-        apellidos: true,
-        telefono: true,
-        contactoReferenciaTelefono: true,
-        empresa: {
-          select: {
-            id: true,
-            nombre: true,
+    let customer;
+
+    if (ticketCreated.clienteId) {
+      customer = await this.prisma.clienteInternet.findUnique({
+        where: {
+          id: ticketCreated.clienteId,
+        },
+        select: {
+          id: true,
+          nombre: true,
+          apellidos: true,
+          telefono: true,
+          contactoReferenciaTelefono: true,
+          empresa: {
+            select: {
+              id: true,
+              nombre: true,
+            },
           },
         },
-      },
-    });
-
-    if (!customer) {
-      this.logger.warn(
-        `Ticket ${ticketCreated.id} creado sin cliente válido (${ticketCreated.clienteId})`,
-      );
-      return ticketCreated;
+      });
     }
+
+    // if (!customer) {
+    //   this.logger.warn(
+    //     `Ticket ${ticketCreated.id} creado sin cliente válido (${ticketCreated.clienteId})`,
+    //   );
+    //   return ticketCreated;
+    // }
 
     const templateName = this.configService.get('TICKET_PLANTILLA_SID');
 
     const variablesPlantilla = [
-      `${customer.nombre ?? ''} ${customer.apellidos ?? ''}`.trim() ||
-        'Nombre no disponible',
-      `${ticketCreated.titulo ?? 'N/A'}`,
-      `${ticketCreated.id ?? 9999}`,
+      `${customer?.nombre ?? ''} ${customer?.apellidos ?? ''}`.trim() ||
+        'Estimado Cliente',
+      `${ticketCreated?.titulo ?? 'N/A'}`,
+      `${ticketCreated?.id ?? 9999}`,
       `N/A`,
     ];
     const telefonosRaw = [
-      customer.telefono ?? customer.contactoReferenciaTelefono,
+      customer?.telefono ?? customer?.contactoReferenciaTelefono,
+      createTicketsSoporteDto?.telefonoTemporal,
     ];
 
     const telefonos = formatearTelefonosMeta(telefonosRaw).filter(Boolean);
-
+    this.logger.log('Los telefonos a usar son: ', telefonos);
     try {
       for (const telefono of telefonos) {
         const payload = this.cloudApi.crearPayloadTicket(
@@ -284,84 +293,120 @@ export class TicketsSoporteService {
   }
 
   // Obtener todos los tickets con sus detalles y comentarios
-  async getTickets() {
+  async getTickets(query: QuerySearchTickets) {
     try {
-      const tickets = await this.prisma.ticketSoporte.findMany({
-        orderBy: {
-          fechaApertura: 'desc',
-        },
-        select: {
-          id: true,
-          titulo: true,
-          descripcion: true,
-          estado: true,
-          prioridad: true,
-          fijado: true,
-          // --- 1. DATOS DE RELACIONES (Usuarios) ---
-          tecnico: {
-            select: { id: true, nombre: true },
-          },
-          asignaciones: {
-            select: {
-              tecnico: { select: { id: true, nombre: true, rol: true } },
-            },
-          },
-          creadoPor: {
-            select: { id: true, nombre: true, rol: true },
-          },
-          cliente: {
-            select: { id: true, nombre: true, apellidos: true },
-          },
+      const where: Prisma.TicketSoporteWhereInput = {
+        ...(query.estado && { estado: query.estado }),
 
-          // --- 2. FECHAS CLAVE ---
-          fechaApertura: true,
-          fechaCierre: true,
+        ...(query.creadosPor && { creadoPorId: query.creadosPor }),
 
-          // --- 3. METADATA ---
+        ...(query.tecs?.length && {
+          tecnicoId: { in: query.tecs },
+        }),
+
+        ...(query.tags?.length && {
           etiquetas: {
-            select: {
-              etiqueta: { select: { nombre: true, id: true } },
+            some: {
+              etiquetaId: { in: query.tags },
             },
           },
-          SeguimientoTicket: {
-            select: {
-              descripcion: true,
-              fechaRegistro: true,
-              usuario: { select: { id: true, nombre: true } },
-            },
-          },
+        }),
 
-          // --- 4. NUEVAS MÉTRICAS: LOGS DE TIEMPO (Para cálculo en vivo) ---
-          logsTiempo: {
-            select: {
-              duracionMinutos: true,
-              // Opcional: si quieres mostrar quién trabajó cuánto en el front
-              // tecnico: { select: { nombre: true } },
+        ...(query.fechaInicio &&
+          query.fechaFin && {
+            fechaApertura: {
+              gte: new Date(query.fechaInicio),
+              lte: new Date(query.fechaFin),
             },
-          },
+          }),
 
-          // --- 5. NUEVAS MÉTRICAS: RESUMEN FINAL (Para tickets cerrados) ---
-          resumen: {
-            select: {
-              id: true,
-              notasInternas: true,
-              resueltoComo: true,
-              tiempoTotalMinutos: true, // El total guardado al cerrar
-              tiempoTecnicoMinutos: true,
-              solucion: {
-                select: {
-                  id: true,
-                  solucion: true,
-                  descripcion: true,
+        ...(query.search && {
+          OR: [
+            { titulo: { contains: query.search, mode: 'insensitive' } },
+            { descripcion: { contains: query.search, mode: 'insensitive' } },
+          ],
+        }),
+      };
+
+      this.logger.log(`Where :\n${JSON.stringify(query, null, 2)}`);
+
+      const [tickets, counts] = await Promise.all([
+        await this.prisma.ticketSoporte.findMany({
+          orderBy: {
+            fechaApertura: 'desc',
+          },
+          where: where,
+          skip: (query.page - 1) * query.limit,
+          take: query.limit,
+          select: {
+            id: true,
+            titulo: true,
+            descripcion: true,
+            estado: true,
+            prioridad: true,
+            fijado: true,
+            tecnico: {
+              select: { id: true, nombre: true },
+            },
+            asignaciones: {
+              select: {
+                tecnico: { select: { id: true, nombre: true, rol: true } },
+              },
+            },
+            creadoPor: {
+              select: { id: true, nombre: true, rol: true },
+            },
+            cliente: {
+              select: { id: true, nombre: true, apellidos: true },
+            },
+
+            // --- 2. FECHAS CLAVE ---
+            fechaApertura: true,
+            fechaCierre: true,
+
+            // --- 3. METADATA ---
+            etiquetas: {
+              select: {
+                etiqueta: { select: { nombre: true, id: true } },
+              },
+            },
+            SeguimientoTicket: {
+              select: {
+                descripcion: true,
+                fechaRegistro: true,
+                usuario: { select: { id: true, nombre: true } },
+              },
+            },
+
+            logsTiempo: {
+              select: {
+                duracionMinutos: true,
+              },
+            },
+
+            resumen: {
+              select: {
+                id: true,
+                notasInternas: true,
+                resueltoComo: true,
+                tiempoTotalMinutos: true,
+                tiempoTecnicoMinutos: true,
+                solucion: {
+                  select: {
+                    id: true,
+                    solucion: true,
+                    descripcion: true,
+                  },
                 },
               },
             },
           },
-        },
-      });
+        }),
+
+        await this.prisma.ticketSoporte.count({ where }),
+      ]);
 
       const ticketsFormateados = tickets.map((ticket) => {
-        // Helper para acompañantes
         const acompanantes = ticket.asignaciones.map(({ tecnico }) => ({
           id: tecnico.id,
           name: tecnico.nombre,
@@ -369,15 +414,11 @@ export class TicketsSoporteService {
         }));
 
         // --- CÁLCULO DE TIEMPO REAL (LIVE) ---
-        // Sumamos los minutos de los logs existentes.
-        // Esto sirve para ver el progreso en tickets ABIERTOS.
         const tiempoTrabajadoLive = ticket.logsTiempo.reduce((acc, log) => {
           return acc + (log.duracionMinutos || 0);
         }, 0);
 
         // Decisión de qué tiempo mostrar:
-        // Si está cerrado y tiene resumen, usamos el histórico guardado.
-        // Si está abierto, usamos la suma en vivo.
         const tiempoTotalDisplay =
           ticket.resumen?.tiempoTotalMinutos ?? tiempoTrabajadoLive;
 
@@ -420,20 +461,17 @@ export class TicketsSoporteService {
               }
             : null,
 
-          // --- FECHAS Y ESTADO ---
           date: ticket.fechaApertura.toISOString(),
           closedAt: ticket.fechaCierre
             ? ticket.fechaCierre.toISOString()
             : null,
           unread: ticket.estado === 'ABIERTA',
 
-          // --- TAGS ---
           tags: ticket.etiquetas.map((tag) => ({
             label: tag.etiqueta.nombre,
             value: tag.etiqueta.id,
           })),
 
-          // --- COMENTARIOS ---
           comments: ticket.SeguimientoTicket.map((comment) => ({
             user: comment.usuario
               ? {
@@ -446,11 +484,9 @@ export class TicketsSoporteService {
             date: comment.fechaRegistro.toISOString(),
           })),
 
-          // --- NUEVA SECCIÓN: METRICS & RESUMEN ---
           metrics: {
-            timeSpentMinutes: tiempoTotalDisplay, // Tiempo total (Vivo o Cerrado)
-            logsCount: ticket.logsTiempo.length, // Cuantas veces se trabajó
-
+            timeSpentMinutes: tiempoTotalDisplay,
+            logsCount: ticket.logsTiempo.length,
             resolution: ticket.resumen
               ? {
                   solutionName:
@@ -464,7 +500,22 @@ export class TicketsSoporteService {
         };
       });
 
-      return ticketsFormateados;
+      const total = counts;
+      const page = query.page ?? 1;
+      const limit = query.limit ?? 10;
+      const totalPages = Math.ceil(total / limit);
+
+      return {
+        data: ticketsFormateados,
+        meta: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      };
     } catch (error) {
       this.logger.error('Error al obtener los tickets:', error);
       throw new InternalServerErrorException('No se pudo obtener los tickets');

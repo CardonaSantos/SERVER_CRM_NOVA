@@ -108,25 +108,65 @@ model Usuario {
   creditosRegistrados Credito[]
   pagosCredito        PagoCredito[]
   morasPagadas        MoraCredito[]
+
+  ubicacionesHistoricas  UbicacionTecnico[]
+  ubicacionActual        UbicacionActual?
+
 }
+
+model UbicacionTecnico {
+  id          Int       @id @default(autoincrement())
+  usuarioId   Int
+  latitud     Float
+  longitud    Float
+  precision   Float?
+  velocidad   Float?
+  bateria     Int?
+  creadoEn    DateTime  @default(now())
+  actualizadoEn DateTime  @default(now())
+
+  usuario     Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([creadoEn])
+  @@index([usuarioId, creadoEn])
+}
+
+model UbicacionActual {
+  usuarioId     Int      @id
+  latitud       Float
+  longitud      Float
+  precision     Float?
+  velocidad     Float?
+  bateria       Int?
+  actualizadoEn DateTime @updatedAt
+
+  usuario       Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+}
+
 
 model PerfilUsuario {
   id        Int @id @default(autoincrement())
   usuarioId Int @unique
 
-  // Visual
-  avatarUrl String? // URL de la foto de perfil (cdn, media, etc.)
-  portada   String? // URL de la foto de perfil (cdn, media, etc.)
+  avatarUrl   String?
+  avatarKey   String?
+  avatarBucket String?
+  avatarMimeType String?
+  avatarSize   Int?
+
+  portadaUrl   String?
+  portadaKey   String?
+  portadaBucket String?
+  portadaMimeType String?
+  portadaSize   Int?
+
   bio       String?
-  // Preferencias básicas
-  // tema            TemaUsuario @default(SISTEMA) aun no implementado
+  telefono  String?
 
-  // Notificaciones
   notificarWhatsApp Boolean @default(true)
-  notificarPush     Boolean @default(true) // para notificaciones in-app
-  notificarSonido   Boolean @default(true) // sonidos en la UI
-
-  telefono String?
+  notificarPush     Boolean @default(true)
+  notificarSonido   Boolean @default(true)
 
   creadoEn      DateTime @default(now())
   actualizadoEn DateTime @updatedAt

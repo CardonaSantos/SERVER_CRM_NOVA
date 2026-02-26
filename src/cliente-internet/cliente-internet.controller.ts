@@ -18,7 +18,6 @@ import { updateCustomerService } from './dto/update-customer-service';
 import { GetClientesRutaQueryDto } from './pagination/cliente-internet.dto';
 import { NetworkServiceService } from 'src/network-service/network-service.service';
 import { GetCustomersQueryDto } from './dto/query-table';
-// import { IdContratoService } from 'src/id-contrato/id-contrato.service';
 
 @Controller('internet-customer')
 export class ClienteInternetController {
@@ -40,17 +39,6 @@ export class ClienteInternetController {
 
   @Get('/customer-to-table')
   findCustomersToTable(
-    // @Query('page') page: string,
-    // @Query('limite') limite: string,
-    // @Query('paramSearch') paramSearch: string,
-
-    // //otros filtros
-    // @Query('zonasFacturacionSelected') zonasFacturacionSelected: string,
-    // @Query('muniSelected') muniSelected: string,
-    // @Query('depaSelected') depaSelected: string,
-    // @Query('sectorSelected') sectorSelected: string,
-    // //nuevo state
-    // @Query('estadoSelected') estadoSelected: string,
     @Query(new ValidationPipe({ transform: true }))
     queryParams: GetCustomersQueryDto,
   ) {

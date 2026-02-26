@@ -161,7 +161,6 @@ export class SshMikrotikConnectionService {
         `Error suspendiendo cliente en Mikrotik: ${stderr}`,
       );
     }
-    // TODO: aquí ya puedes crear tu entidad "SuspensionCliente", guardar log, enviar notificación, etc.
     await this.prisma.clienteInternet.update({
       where: {
         id: cliente.id,
@@ -174,7 +173,10 @@ export class SshMikrotikConnectionService {
   }
 
   // ACTIVAR
+
   async activateCustomer(dto: ActivateCustomerDto) {
+    let isValidPassword: boolean = false;
+
     const usuarioAdmin = await this.prisma.usuario.findUnique({
       where: {
         id: dto.userId,
@@ -223,10 +225,14 @@ export class SshMikrotikConnectionService {
       throw new NotFoundException('Usuario administrador no encontrado');
     }
 
-    const isValidPassword = await bycrypt.compare(
-      dto.password,
-      usuarioAdmin.contrasena,
-    );
+    if (dto.isPasswordRequired === true) {
+      isValidPassword = await bycrypt.compare(
+        dto.password,
+        usuarioAdmin.contrasena,
+      );
+    } else {
+      isValidPassword = true;
+    }
 
     if (!isValidPassword)
       throw new BadRequestException('CREDENCIALES NO VÁLIDAS');

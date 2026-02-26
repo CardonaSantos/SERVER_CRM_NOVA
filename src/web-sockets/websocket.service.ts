@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { CrmGateway } from './websocket.gateway';
 import { BroadCastNewMessage } from './websocket.controller';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
+import { RealTimeLocation } from 'src/real-time-location/entities/real-time.entity';
 
 @Injectable()
 export class WebSocketServices {
@@ -63,6 +64,21 @@ export class WebSocketServices {
       this.gateway.handleEmitNewNuviaMessage(1, body); //ARCODEADO POR EL MOMENTO
     } catch (error) {
       throwFatalError(error, this.logger, 'emitNewMessageNuvia');
+    }
+  }
+
+  /**
+   * ENVIAR POR SOCKET LA UBICACION EN TIEMPO REAL DEL USUARIO
+   * @param dto
+   */
+  async emitRealTimeLocation(dto: {
+    empresaId: number;
+    payload: RealTimeLocation;
+  }) {
+    try {
+      this.gateway.handleEmitRealTimeLocation(dto);
+    } catch (error) {
+      throwFatalError(error, this.logger, 'emitRealTimeLocation');
     }
   }
 }

@@ -42,8 +42,8 @@ export class CustomerNetworkConfigService {
 
       ipActualizada = await this.ipRepo.create(ipDomain);
     }
-
-    await this.networkService.syncCustomerNetwork(dto.clienteId);
+    // DES COMENTAR LUEGO
+    // await this.networkService.syncCustomerNetwork(dto.clienteId);
     return ipActualizada;
   }
 }

@@ -34,7 +34,7 @@ export class NotificacionesService {
     botsNotifications: Notificacion[];
     notifications: Notificacion[];
   }> {
-    const records = await this.notificationRepo.findMany();
+    const records = await this.notificationRepo.findMany({});
 
     const botsNotifications = records.filter(
       (not) => not.categoria === CategoriaNotificacion.BOT,
