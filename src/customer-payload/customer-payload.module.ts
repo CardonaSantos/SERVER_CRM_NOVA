@@ -2,18 +2,12 @@ import { Module } from '@nestjs/common';
 import { CustomerPayloadService } from './customer-payload.service';
 import { CustomerPayloadController } from './customer-payload.controller';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ClienteInternetService } from 'src/cliente-internet/cliente-internet.service';
-import { IdContratoService } from 'src/id-contrato/id-contrato.service';
-import { SshMikrotikConnectionModule } from 'src/ssh-mikrotik-connection/ssh-mikrotik-connection.module';
+import { ClienteInternetModule } from 'src/cliente-internet/cliente-internet.module';
+import { PrismaModule } from 'src/prisma/prisma.module';
 
 @Module({
-  imports: [SshMikrotikConnectionModule],
+  imports: [ClienteInternetModule, PrismaModule],
   controllers: [CustomerPayloadController],
-  providers: [
-    CustomerPayloadService,
-    PrismaService,
-    ClienteInternetService,
-    IdContratoService,
-  ],
+  providers: [CustomerPayloadService],
 })
 export class CustomerPayloadModule {}

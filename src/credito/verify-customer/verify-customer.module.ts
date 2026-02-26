@@ -15,5 +15,6 @@ import { VERIFY_CUSTOMER_REPOSITORY } from './domain/verify-customer.repo';
       provide: VERIFY_CUSTOMER_REPOSITORY,
     },
   ],
+  exports: [VerifyCustomerService],
 })
 export class VerifyCustomerModule {}

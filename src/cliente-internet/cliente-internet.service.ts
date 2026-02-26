@@ -30,6 +30,7 @@ import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { GetCustomersQueryDto } from './dto/query-table';
 import { SshMikrotikConnectionService } from 'src/ssh-mikrotik-connection/application/ssh-mikrotik-connection.service';
 import { ActivateCustomerDto } from 'src/ssh-mikrotik-connection/dto/activate-ssh-mikrotik.dto';
+import { VerifyCustomerService } from 'src/credito/verify-customer/app/verify-customer.service';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.locale('es'); // Establece español como idioma predeterminado
@@ -54,6 +55,8 @@ export class ClienteInternetService {
     private readonly prisma: PrismaService,
     private readonly idContradoService: IdContratoService,
     private readonly ssh: SshMikrotikConnectionService,
+
+    private readonly verifyCreditService: VerifyCustomerService,
   ) {}
 
   async create(dto: CreateClienteInternetDto) {
@@ -1236,6 +1239,23 @@ export class ClienteInternetService {
                 nombre: true,
               },
             },
+            facturaInternet: {
+              select: {
+                id: true,
+                estadoFacturaInternet: true,
+                creadoEn: true,
+                fechaPagoEsperada: true,
+                fechaPagada: true,
+                pagos: {
+                  where: {},
+                  select: {
+                    id: true,
+                    fechaPago: true,
+                    montoPagado: true,
+                  },
+                },
+              },
+            },
           },
         }),
 
@@ -1268,39 +1288,50 @@ export class ClienteInternetService {
         }),
       ]);
 
-    const formattedCustomers = customers.map((customer) => ({
-      id: customer.id,
-      nombreCompleto: `${customer.nombre} ${customer.apellidos}`,
-      estado: customer.estadoCliente,
-      telefono: customer.telefono,
-      dpi: customer.dpi,
-      direccion: customer.direccion,
-      creadoEn: customer.creadoEn,
-      actualizadoEn: customer.actualizadoEn,
-      departamento: customer.departamento?.nombre || 'No disponible',
-      municipio: customer.municipio?.nombre || 'No disponible',
-      direccionIp: customer.IP?.direccionIp || 'No disponible',
-      municipioId: customer.municipio.id,
-      sector: customer.sector || null,
-      sectorId: customer.sector ? customer.sector.id : null,
-      departamentoId: customer.departamento.id,
-      servicios: customer.servicioInternet
-        ? [
-            {
-              id: customer.servicioInternet.id,
-              nombre: customer.servicioInternet.nombre,
-              velocidad: customer.servicioInternet.velocidad,
-              precio: customer.servicioInternet.precio,
-              estado: customer.servicioInternet.estado,
-              creadoEn: customer.servicioInternet.actualizadoEn,
-              actualizadoEn: customer.servicioInternet.actualizadoEn,
-            },
-          ]
-        : [],
-      facturacionZona: customer.facturacionZona?.nombre || 'Sin zona',
-      facturacionZonaId:
-        customer.facturacionZona?.id || 'Sin zona facturacion id',
-    }));
+    const formattedCustomers = await Promise.all(
+      customers.map(async (customer) => {
+        const historial = await this.verifyCreditService.calculatePenality(
+          customer.facturaInternet,
+        );
+        const result =
+          await this.verifyCreditService.generarResultado(historial);
+
+        return {
+          id: customer.id,
+          nombreCompleto: `${customer.nombre} ${customer.apellidos}`,
+          estado: customer.estadoCliente,
+          telefono: customer.telefono,
+          dpi: customer.dpi,
+          direccion: customer.direccion,
+          creadoEn: customer.creadoEn,
+          actualizadoEn: customer.actualizadoEn,
+          departamento: customer.departamento?.nombre || 'No disponible',
+          municipio: customer.municipio?.nombre || 'No disponible',
+          direccionIp: customer.IP?.direccionIp || 'No disponible',
+          municipioId: customer.municipio.id,
+          sector: customer.sector || null,
+          sectorId: customer.sector ? customer.sector.id : null,
+          departamentoId: customer.departamento.id,
+          clasificacionCredito: result,
+          servicios: customer.servicioInternet
+            ? [
+                {
+                  id: customer.servicioInternet.id,
+                  nombre: customer.servicioInternet.nombre,
+                  velocidad: customer.servicioInternet.velocidad,
+                  precio: customer.servicioInternet.precio,
+                  estado: customer.servicioInternet.estado,
+                  creadoEn: customer.servicioInternet.actualizadoEn,
+                  actualizadoEn: customer.servicioInternet.actualizadoEn,
+                },
+              ]
+            : [],
+          facturacionZona: customer.facturacionZona?.nombre || 'Sin zona',
+          facturacionZonaId:
+            customer.facturacionZona?.id || 'Sin zona facturacion id',
+        };
+      }),
+    );
 
     return {
       data: formattedCustomers,
