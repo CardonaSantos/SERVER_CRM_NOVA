@@ -21,11 +21,15 @@ export class QuerySearchTickets {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  limit?: number = 10;
+  limit?: number = 15;
 
   @IsOptional()
   @IsString()
   search?: string;
+
+  @IsOptional()
+  @IsString()
+  vista?: string;
 
   @IsOptional()
   @IsEnum(EstadoTicketSoporte)

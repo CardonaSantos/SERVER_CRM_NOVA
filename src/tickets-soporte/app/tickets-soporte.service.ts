@@ -296,8 +296,47 @@ export class TicketsSoporteService {
   // Obtener todos los tickets con sus detalles y comentarios
   async getTickets(query: QuerySearchTickets) {
     try {
+      const baseWhere: Prisma.TicketSoporteWhereInput = (() => {
+        switch (query.vista) {
+          case 'lista':
+            return {
+              estado: {
+                in: ['RESUELTA', 'CERRADO'],
+              },
+            };
+
+          case 'enProceso':
+            return {
+              estado: {
+                in: [
+                  'EN_PROCESO',
+                  'PENDIENTE',
+                  'PENDIENTE_CLIENTE',
+                  'PENDIENTE_TECNICO',
+                  'PENDIENTE_REVISION',
+                ],
+              },
+            };
+
+          case 'archivados':
+            return {
+              estado: {
+                in: ['ARCHIVADA', 'CANCELADA'],
+              },
+            };
+
+          case 'inbox':
+          default:
+            return {
+              estado: {
+                notIn: ['RESUELTA', 'CERRADO', 'ARCHIVADA', 'CANCELADA'],
+              },
+            };
+        }
+      })();
+
       const where: Prisma.TicketSoporteWhereInput = {
-        ...(query.estado && { estado: query.estado }),
+        ...baseWhere,
 
         ...(query.creadosPor && { creadoPorId: query.creadosPor }),
 
@@ -339,11 +378,10 @@ export class TicketsSoporteService {
         ticketsResueltos,
       ] = await Promise.all([
         await this.prisma.ticketSoporte.findMany({
-          orderBy: [
-            { fijado: 'desc' },
-            { fechaApertura: 'desc' },
-            { id: 'desc' },
-          ],
+          orderBy:
+            query.vista === 'inbox' || query.vista === 'enProceso'
+              ? [{ fijado: 'desc' }, { fechaApertura: 'desc' }, { id: 'desc' }]
+              : [{ fechaCierre: 'desc' }, { id: 'desc' }],
           where: where,
           skip: (query.page - 1) * query.limit,
           take: query.limit,
@@ -433,10 +471,6 @@ export class TicketsSoporteService {
         this.prisma.ticketSoporte.count({
           where: {
             estado: 'RESUELTA',
-            fechaCierre: {
-              gte: dayjs().tz(TZ).startOf('day').toDate(),
-              lte: dayjs().tz(TZ).startOf('day').toDate(),
-            },
           },
         }),
       ]);
