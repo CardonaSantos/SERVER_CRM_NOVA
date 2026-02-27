@@ -33,6 +33,7 @@ import { TicketResumenService } from 'src/ticket-resumen/app/ticket-resumen.serv
 import { CreateTicketResumenDto } from 'src/ticket-resumen/dto/create-ticket-resuman.dto';
 import { QuerySearchTickets } from '../dto/querySearch';
 import { query } from 'express';
+import { TZ } from 'src/Utils/tzgt';
 // import { dayjs } from '';
 
 @Injectable()
@@ -330,11 +331,19 @@ export class TicketsSoporteService {
 
       this.logger.log(`Where :\n${JSON.stringify(query, null, 2)}`);
 
-      const [tickets, counts] = await Promise.all([
+      const [
+        tickets,
+        counts,
+        ticketsDisponibles,
+        ticketEnProceso,
+        ticketsResueltos,
+      ] = await Promise.all([
         await this.prisma.ticketSoporte.findMany({
-          orderBy: {
-            fechaApertura: 'desc',
-          },
+          orderBy: [
+            { fijado: 'desc' },
+            { fechaApertura: 'desc' },
+            { id: 'desc' },
+          ],
           where: where,
           skip: (query.page - 1) * query.limit,
           take: query.limit,
@@ -404,6 +413,32 @@ export class TicketsSoporteService {
         }),
 
         await this.prisma.ticketSoporte.count({ where }),
+
+        //---------------
+
+        this.prisma.ticketSoporte.count({
+          where: {
+            estado: {
+              notIn: ['CERRADO', 'CANCELADA', 'RESUELTA'],
+            },
+          },
+        }),
+        this.prisma.ticketSoporte.count({
+          where: {
+            estado: {
+              in: ['EN_PROCESO'],
+            },
+          },
+        }),
+        this.prisma.ticketSoporte.count({
+          where: {
+            estado: 'RESUELTA',
+            fechaCierre: {
+              gte: dayjs().tz(TZ).startOf('day').toDate(),
+              lte: dayjs().tz(TZ).startOf('day').toDate(),
+            },
+          },
+        }),
       ]);
 
       const ticketsFormateados = tickets.map((ticket) => {
@@ -507,6 +542,11 @@ export class TicketsSoporteService {
 
       return {
         data: ticketsFormateados,
+        ticketsData: {
+          ticketsDisponibles: ticketsDisponibles,
+          ticketEnProceso: ticketEnProceso,
+          ticketsResueltos: ticketsResueltos,
+        },
         meta: {
           page,
           limit,
