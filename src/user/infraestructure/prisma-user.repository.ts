@@ -97,6 +97,14 @@ export class PrismaUsuarioRepository implements UsuarioRepository {
     try {
       const row = await this.prisma.usuario.findFirst({
         where: { correo: correo.toLowerCase() },
+        include: {
+          perfil: {
+            select: {
+              avatarUrl: true,
+              portadaUrl: true,
+            },
+          },
+        },
       });
       if (!row) return null;
       return this.toDomain(row);

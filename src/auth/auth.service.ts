@@ -75,6 +75,8 @@ export class AuthService {
         activo: usuario.activo,
         empresaId: usuario.empresaId,
         id: usuario.id,
+        avatar: usuario?.perfil?.avatarUrl,
+        portadaUrl: usuario?.perfil?.portadaUrl,
       };
 
       return {
