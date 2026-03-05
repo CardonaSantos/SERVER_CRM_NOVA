@@ -10,6 +10,7 @@ async function bootstrap() {
     'http://localhost:5173',
     'http://localhost:3000',
     'http://localhost:5174',
+    'http://localhost:8081',
     'https://pos-crm-nova.up.railway.app',
   ]);
 
