@@ -21,9 +21,12 @@ export class RealTimeController {
     return await this.realTimeService.getLastLocations();
   }
 
-  @Patch('update-location')
+  // @Patch('update-location')
+  @Post('update-location')
   async updateLocation(@Body() dto: CreateRealTimeDto) {
-    this.logger.log(`DTO recibido:\n${JSON.stringify(dto, null, 2)}`);
+    this.logger.log(
+      `DTO RECIBIENDO UBICACION:\n${JSON.stringify(dto, null, 2)}`,
+    );
     return await this.realTimeService.updateRealtimeLocation(dto);
   }
 }
