@@ -3,6 +3,7 @@ import { CrmGateway } from './websocket.gateway';
 import { BroadCastNewMessage } from './websocket.controller';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { RealTimeLocation } from 'src/real-time-location/entities/real-time.entity';
+import { RealTimeLocationMapDto } from 'src/real-time-location/dto/dto-shape';
 
 @Injectable()
 export class WebSocketServices {
@@ -73,7 +74,7 @@ export class WebSocketServices {
    */
   async emitRealTimeLocation(dto: {
     empresaId: number;
-    payload: RealTimeLocation;
+    payload: RealTimeLocationMapDto; // ← cambiar tipo aquí
   }) {
     try {
       this.gateway.handleEmitRealTimeLocation(dto);

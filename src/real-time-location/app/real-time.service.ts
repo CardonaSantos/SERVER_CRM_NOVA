@@ -5,6 +5,7 @@ import {
   RealTimeLocationRepository,
 } from '../domain/real-time-location.repository';
 import { WebSocketServices } from 'src/web-sockets/websocket.service';
+import { RealTimeLocation } from '../entities/real-time.entity';
 
 @Injectable()
 export class RealTimeService {
@@ -17,17 +18,26 @@ export class RealTimeService {
     private readonly wb: WebSocketServices,
   ) {}
 
+  // RealTimeService
   async updateRealtimeLocation(dto: CreateRealTimeDto) {
-    const locationUpdated = await this.repo.updateLocation(dto);
+    // ← Convertir DTO a entidad de dominio primero
+    const entity = RealTimeLocation.create({
+      usuarioId: dto.usuarioId,
+      latitud: dto.latitud,
+      longitud: dto.longitud,
+      precision: dto.precision,
+      velocidad: dto.velocidad,
+      bateria: dto.bateria,
+    });
 
-    const dtoWb = {
+    const locationDto = await this.repo.updateLocation(entity);
+
+    await this.wb.emitRealTimeLocation({
       empresaId: 1,
-      payload: locationUpdated,
-    };
+      payload: locationDto,
+    });
 
-    await this.wb.emitRealTimeLocation(dtoWb);
-
-    return locationUpdated;
+    return locationDto;
   }
 
   async getLastLocations() {

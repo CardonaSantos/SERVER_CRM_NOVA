@@ -181,6 +181,10 @@ export class ClienteInternetService {
         estadoCliente: dto.estado || 'ACTIVO',
         searchNombre: nombreSearch,
 
+        estadoServicioMikrotik: dto.mkSelected
+          ? EstadoServicioMikrotik.PENDIENTE_APLICAR // tiene mk asignado, pendiente de activar
+          : EstadoServicioMikrotik.SIN_MIKROTIK, // sin mk, default
+
         empresa: { connect: { id: dto.empresaId } },
 
         municipio: dto.municipioId
@@ -1827,179 +1831,219 @@ export class ClienteInternetService {
     }
   }
 
-  /**
-   * Actualizacion de cliente sin tocar IP
-   * @param id
-   * @param updateCustomerService
-   * @returns
-   */
-  async updateClienteInternet(
-    id: number,
-    updateCustomerService: UpdateClienteInternetDto,
-  ) {
-    const {
-      coordenadas,
-      municipioId,
-      departamentoId,
-      empresaId,
-      servicesIds,
-      asesorId,
-      servicioWifiId,
-      zonaFacturacionId,
-      archivoContrato,
-      fechaFirma,
-      idContrato,
-      observacionesContrato,
-      sectorId,
-      mikrotikRouterId,
-      enviarRecordatorio,
-    } = updateCustomerService;
+  // ─── HELPER: calcular nuevo estado MK ────────────────────────────────────────
+  private resolveNuevoEstadoMk(
+    clienteBefore: {
+      mikrotikRouterId: number | null;
+      estadoServicioMikrotik: EstadoServicioMikrotik;
+    },
+    nuevoMkId: number | null | undefined,
+  ): EstadoServicioMikrotik | undefined {
+    const anteriorMkId = clienteBefore.mikrotikRouterId;
+    const estadoActual = clienteBefore.estadoServicioMikrotik;
 
-    const latitud = coordenadas?.[0] ? Number(coordenadas[0]) : null;
-    const longitud = coordenadas?.[1] ? Number(coordenadas[1]) : null;
-    const fullName =
-      `${updateCustomerService.nombre ?? ''} ${updateCustomerService.apellidos ?? ''}`.trim();
+    // No viene campo mikrotikRouterId en el DTO → no tocar
+    if (nuevoMkId === undefined) return undefined;
+
+    // Tenía MK → se le quita
+    if (anteriorMkId !== null && nuevoMkId === null) {
+      return EstadoServicioMikrotik.SIN_MIKROTIK;
+    }
+
+    // No tenía MK → se le asigna uno
+    if (anteriorMkId === null && nuevoMkId !== null) {
+      return EstadoServicioMikrotik.PENDIENTE_APLICAR;
+    }
+
+    // Tenía MK con estado SIN_MIKROTIK (inconsistencia como tu caso 577)
+    // → corregir a PENDIENTE_APLICAR
+    if (
+      anteriorMkId !== null &&
+      estadoActual === EstadoServicioMikrotik.SIN_MIKROTIK
+    ) {
+      return EstadoServicioMikrotik.PENDIENTE_APLICAR;
+    }
+
+    // Cambió de un MK a otro MK distinto → pendiente de re-aplicar
+    if (
+      anteriorMkId !== null &&
+      nuevoMkId !== null &&
+      anteriorMkId !== nuevoMkId
+    ) {
+      return EstadoServicioMikrotik.PENDIENTE_APLICAR;
+    }
+
+    // Mismo MK, estado ya válido → no tocar
+    return undefined;
+  }
+
+  // ─── HELPER: upsert ubicación ─────────────────────────────────────────────────
+  private async upsertUbicacion(
+    clienteId: number,
+    coordenadas: string[] | undefined,
+    empresaId: number,
+    tx: Prisma.TransactionClient,
+  ) {
+    if (!coordenadas?.length) return undefined;
+
+    const latitud = Number(coordenadas[0]);
+    const longitud = Number(coordenadas[1]);
+
+    if (!latitud || !longitud) return undefined;
+
+    return tx.ubicacion.upsert({
+      where: { clienteId },
+      update: { latitud, longitud },
+      create: {
+        latitud,
+        longitud,
+        empresa: { connect: { id: empresaId } },
+      },
+    });
+  }
+
+  // ─── HELPER: upsert contrato ──────────────────────────────────────────────────
+  private async updateContratoIfNeeded(
+    clienteId: number,
+    dto: UpdateClienteInternetDto,
+    tx: Prisma.TransactionClient,
+  ) {
+    if (!dto.idContrato) return;
+
+    await tx.contratoFisico.update({
+      where: { clienteId },
+      data: {
+        archivoContrato: dto.archivoContrato,
+        fechaFirma: new Date(dto.fechaFirma),
+        idContrato: dto.idContrato,
+        observaciones: dto.observacionesContrato,
+      },
+    });
+  }
+
+  // ─── HELPER: resolver relación MikroTik para Prisma ──────────────────────────
+  private resolveMkRelation(mikrotikRouterId: number | null | undefined) {
+    if (mikrotikRouterId === null) return { disconnect: true };
+    if (mikrotikRouterId) return { connect: { id: mikrotikRouterId } };
+    return undefined;
+  }
+
+  // ─── PRINCIPAL ────────────────────────────────────────────────────────────────
+  async updateClienteInternet(id: number, dto: UpdateClienteInternetDto) {
+    const fullName = `${dto.nombre ?? ''} ${dto.apellidos ?? ''}`.trim();
     const nombreSearch = normalizarTexto(fullName);
-    const serviceIds: number[] = servicesIds;
-    await this.prisma.$transaction(async (prisma) => {
-      const clienteBefore = await prisma.clienteInternet.findUnique({
+    const serviceIds: number[] = dto.servicesIds ?? [];
+
+    return this.prisma.$transaction(async (tx) => {
+      // ─── 1. OBTENER ESTADO ANTERIOR ──────────────────────────────────────
+      const clienteBefore = await tx.clienteInternet.findUnique({
         where: { id },
         select: {
           id: true,
           estadoCliente: true,
           mikrotikRouterId: true,
           estadoServicioMikrotik: true,
-          IP: {
-            select: {
-              direccionIp: true,
-            },
-          },
+          IP: { select: { direccionIp: true } },
         },
       });
 
-      let nuevoEstadoServicioMk: EstadoServicioMikrotik | undefined;
+      if (!clienteBefore) throw new NotFoundException('Cliente no encontrado');
 
-      if (clienteBefore.mikrotikRouterId && mikrotikRouterId === null) {
-        nuevoEstadoServicioMk = EstadoServicioMikrotik.SIN_MIKROTIK;
-      }
+      // ─── 2. CALCULAR NUEVO ESTADO MK ─────────────────────────────────────
+      const nuevoEstadoServicioMk = this.resolveNuevoEstadoMk(
+        clienteBefore,
+        dto.mikrotikRouterId,
+      );
 
-      if (
-        clienteBefore.mikrotikRouterId === null &&
-        mikrotikRouterId !== null
-      ) {
-        nuevoEstadoServicioMk = EstadoServicioMikrotik.SUSPENDIDO;
-      }
+      // ─── 3. UPSERT UBICACIÓN ─────────────────────────────────────────────
+      const ubicacion = await this.upsertUbicacion(
+        id,
+        dto.coordenadas,
+        dto.empresaId,
+        tx,
+      );
 
-      if (!clienteBefore) {
-        throw new Error('Cliente no encontrado');
-      }
+      // ─── 4. FECHA DESINSTALACIÓN ─────────────────────────────────────────
+      const desinstaladoEn: Date | null =
+        dto.estado === 'DESINSTALADO' ? dayjs().tz(TZ).toDate() : null;
 
-      let ubicacion;
-      if (latitud !== null && longitud !== null) {
-        ubicacion = await prisma.ubicacion.upsert({
-          where: { clienteId: id },
-          update: { latitud, longitud },
-          create: {
-            latitud,
-            longitud,
-            empresa: { connect: { id: 1 } },
-          },
-        });
-      }
-
-      const desinstalado: Date | null =
-        updateCustomerService.estado === 'DESINSTALADO'
-          ? dayjs().tz(TZ).toDate()
-          : null;
-
-      const updatedCliente = await prisma.clienteInternet.update({
+      // ─── 5. ACTUALIZAR CLIENTE ───────────────────────────────────────────
+      const updatedCliente = await tx.clienteInternet.update({
         where: { id },
         data: {
           searchNombre: nombreSearch,
-          nombre: updateCustomerService.nombre,
-          enviarRecordatorio,
-          estadoServicioMikrotik: nuevoEstadoServicioMk,
-          apellidos: updateCustomerService.apellidos || null,
-          telefono: updateCustomerService.telefono || null,
-          direccion: updateCustomerService.direccion || null,
-          dpi: updateCustomerService.dpi || null,
-          observaciones: updateCustomerService.observaciones || null,
-          contactoReferenciaNombre:
-            updateCustomerService.contactoReferenciaNombre || null,
-          contactoReferenciaTelefono:
-            updateCustomerService.contactoReferenciaTelefono || null,
-          contrasenaWifi: updateCustomerService.contrasenaWifi,
-          ssidRouter: updateCustomerService.ssidRouter,
-          fechaInstalacion: updateCustomerService.fechaInstalacion || null,
-          estadoCliente: updateCustomerService.estado || 'ACTIVO',
-          desinstaladoEn: desinstalado,
+          nombre: dto.nombre,
+          apellidos: dto.apellidos || null,
+          telefono: dto.telefono || null,
+          direccion: dto.direccion || null,
+          dpi: dto.dpi || null,
+          observaciones: dto.observaciones || null,
+          contactoReferenciaNombre: dto.contactoReferenciaNombre || null,
+          contactoReferenciaTelefono: dto.contactoReferenciaTelefono || null,
+          contrasenaWifi: dto.contrasenaWifi,
+          ssidRouter: dto.ssidRouter,
+          fechaInstalacion: dto.fechaInstalacion || null,
+          estadoCliente: dto.estado || 'ACTIVO',
+          enviarRecordatorio: dto.enviarRecordatorio,
+          desinstaladoEn,
 
-          servicioInternet: servicioWifiId
-            ? { connect: { id: servicioWifiId } }
+          // Solo se actualiza si resolveNuevoEstadoMk devuelve algo
+          ...(nuevoEstadoServicioMk !== undefined && {
+            estadoServicioMikrotik: nuevoEstadoServicioMk,
+          }),
+
+          servicioInternet: dto.servicioWifiId
+            ? { connect: { id: dto.servicioWifiId } }
             : undefined,
-          municipio: municipioId ? { connect: { id: municipioId } } : undefined,
-          sector: sectorId ? { connect: { id: sectorId } } : undefined,
-          departamento: departamentoId
-            ? { connect: { id: departamentoId } }
+          municipio: dto.municipioId
+            ? { connect: { id: dto.municipioId } }
             : undefined,
-          empresa: { connect: { id: empresaId } },
-          asesor: asesorId ? { connect: { id: asesorId } } : undefined,
+          sector: dto.sectorId ? { connect: { id: dto.sectorId } } : undefined,
+          departamento: dto.departamentoId
+            ? { connect: { id: dto.departamentoId } }
+            : undefined,
+          empresa: { connect: { id: dto.empresaId } },
+          asesor: dto.asesorId ? { connect: { id: dto.asesorId } } : undefined,
           ubicacion: ubicacion ? { connect: { id: ubicacion.id } } : undefined,
-          facturacionZona: zonaFacturacionId
-            ? { connect: { id: zonaFacturacionId } }
+          facturacionZona: dto.zonaFacturacionId
+            ? { connect: { id: dto.zonaFacturacionId } }
             : undefined,
 
-          MikrotikRouter:
-            mikrotikRouterId === null
-              ? { disconnect: true }
-              : mikrotikRouterId
-                ? { connect: { id: mikrotikRouterId } }
-                : undefined,
+          MikrotikRouter: this.resolveMkRelation(dto.mikrotikRouterId),
 
           clienteServicios: {
             deleteMany: {},
             create: serviceIds.map((serviceId) => ({
               servicio: { connect: { id: serviceId } },
-              fechaInicio: updateCustomerService.fechaInstalacion,
+              fechaInicio: dto.fechaInstalacion,
               estado: 'ACTIVO',
             })),
           },
         },
       });
 
-      const clienteAfter = await prisma.clienteInternet.findUnique({
+      // ─── 6. ACTUALIZAR CONTRATO SI APLICA ────────────────────────────────
+      await this.updateContratoIfNeeded(id, dto, tx);
+
+      // ─── 7. RETORNAR ─────────────────────────────────────────────────────
+      const clienteAfter = await tx.clienteInternet.findUnique({
         where: { id },
         select: {
           id: true,
           estadoCliente: true,
           mikrotikRouterId: true,
           estadoServicioMikrotik: true,
-          IP: {
-            select: {
-              direccionIp: true,
-            },
-          },
+          IP: { select: { direccionIp: true } },
         },
       });
 
-      if (idContrato) {
-        await prisma.contratoFisico.update({
-          where: { clienteId: id },
-          data: {
-            archivoContrato,
-            fechaFirma: new Date(fechaFirma),
-            idContrato,
-            observaciones: observacionesContrato,
-          },
-        });
-      }
+      this.logger.log(
+        `[updateClienteInternet] Cliente ${id} actualizado. ` +
+          `MK: ${clienteBefore.mikrotikRouterId} → ${clienteAfter.mikrotikRouterId}. ` +
+          `EstadoMK: ${clienteBefore.estadoServicioMikrotik} → ${clienteAfter.estadoServicioMikrotik}`,
+      );
 
-      return {
-        clienteBefore,
-        clienteAfter,
-        updatedCliente,
-        ubicacion,
-      };
+      return { clienteBefore, clienteAfter, updatedCliente };
     });
   }
 

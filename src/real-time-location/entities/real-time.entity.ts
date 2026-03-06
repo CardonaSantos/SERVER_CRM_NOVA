@@ -38,6 +38,7 @@ export class RealTimeLocation {
     bateria?: number;
     actualizadoEn?: Date;
     usuario?: Usuario;
+    avatarUrl?: string;
   }): RealTimeLocation {
     return new RealTimeLocation(
       props.usuarioId,

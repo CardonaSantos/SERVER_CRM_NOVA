@@ -27,31 +27,44 @@ export class PrismaRealTimeLocation implements RealTimeLocationRepository {
   private readonly logger = new Logger(PrismaRealTimeLocation.name);
   constructor(private readonly prisma: PrismaService) {}
 
-  async updateLocation(entity: RealTimeLocation): Promise<RealTimeLocation> {
-    try {
-      const result = await this.prisma.ubicacionActual.upsert({
-        where: { usuarioId: entity.usuarioId },
-        update: PrismaRealTimeMapper.toUpdate(entity),
-        create: PrismaRealTimeMapper.toPersistence(entity),
-      });
+  // En PrismaRealTimeLocation
+  async updateLocation(
+    entity: RealTimeLocation,
+  ): Promise<RealTimeLocationMapDto> {
+    await this.prisma.ubicacionActual.upsert({
+      where: { usuarioId: entity.usuarioId },
+      update: PrismaRealTimeMapper.toUpdate(entity),
+      create: PrismaRealTimeMapper.toPersistence(entity),
+    });
 
-      const newLocation = await this.prisma.ubicacionActual.findUnique({
-        where: {
-          usuarioId: result.usuarioId,
+    const newLocation = await this.prisma.ubicacionActual.findUnique({
+      where: { usuarioId: entity.usuarioId },
+      select: {
+        usuarioId: true,
+        latitud: true,
+        longitud: true,
+        precision: true,
+        velocidad: true,
+        bateria: true,
+        actualizadoEn: true,
+        usuario: {
+          select: {
+            nombre: true,
+            rol: true,
+            telefono: true,
+            perfil: {
+              select: { avatarUrl: true },
+            },
+            ticketsAsignados: {
+              select: { id: true, titulo: true },
+              where: { estado: 'EN_PROCESO' },
+            },
+          },
         },
-        include: {
-          usuario: true,
-        },
-      });
+      },
+    });
 
-      return PrismaRealTimeMapper.toDomain(newLocation);
-    } catch (error) {
-      throwFatalError(
-        error,
-        this.logger,
-        'PrismaRealTimeLocation.updateLocation',
-      );
-    }
+    return this.toMapDto(newLocation); // ← retorna el DTO limpio directamente
   }
 
   async getLastLocations(): Promise<RealTimeLocationMapDto[]> {
