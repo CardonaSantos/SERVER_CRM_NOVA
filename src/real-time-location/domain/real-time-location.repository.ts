@@ -6,7 +6,7 @@ import { RealTimeLocation } from '../entities/real-time.entity';
 export const REAL_TIME_LOCATION = Symbol('REAL_TIME_LOCATION');
 
 export interface RealTimeLocationRepository {
-  updateLocation(dto: CreateRealTimeDto): Promise<RealTimeLocation>;
+  updateLocation(entity: RealTimeLocation): Promise<RealTimeLocationMapDto>;
 
   // getLastLocations(): Promise<RealTimeLocation[]>;
   getLastLocations(): Promise<RealTimeLocationMapDto[]>;

@@ -333,6 +333,9 @@ export class PrismaGenerateReports implements GenerateReportsRepository {
 
       const facturasRaw = await this.prisma.facturaInternet.findMany({
         where,
+        orderBy: {
+          fechaPagada: 'desc',
+        },
         select: {
           id: true,
           fechaPagada: true,
@@ -346,11 +349,26 @@ export class PrismaGenerateReports implements GenerateReportsRepository {
               fechaPago: true,
               montoPagado: true,
               numeroBoleta: true,
+              metodoPago: true,
               cobrador: {
                 select: {
                   id: true,
                   nombre: true,
                   rol: true,
+                },
+              },
+            },
+          },
+          cliente: {
+            select: {
+              id: true,
+              nombre: true,
+              apellidos: true,
+              direccion: true,
+              sector: {
+                select: {
+                  id: true,
+                  nombre: true,
                 },
               },
             },
@@ -369,10 +387,19 @@ export class PrismaGenerateReports implements GenerateReportsRepository {
 
       worksheet.columns = [
         { header: 'ID', width: 10 },
+
+        { header: 'Cliente', width: 40 },
+        { header: 'Dirección', width: 55 },
+        { header: 'Sector', width: 18 },
+
         { header: 'Fecha Vencimiento', width: 18 },
         { header: 'Fecha Pagada', width: 18 },
         { header: 'Estado', width: 15 },
         { header: 'Monto', width: 15 },
+
+        { header: 'Metodo Pago', width: 15 },
+        { header: 'No. Boleta', width: 15 },
+
         { header: 'Cobrador', width: 25 },
 
         { header: 'Total Facturas', width: 25 },
@@ -389,6 +416,15 @@ export class PrismaGenerateReports implements GenerateReportsRepository {
           cobradores.length > 0 ? cobradores.join(', ') : 'N/A';
 
         const id = fact.id;
+
+        const clienteNombre = `${fact.cliente?.nombre ?? ''} ${fact.cliente?.apellidos ?? ''}`;
+        const direccion = fact.cliente?.direccion;
+        const sector = fact.cliente?.sector?.nombre ?? 'N/A';
+
+        const metodoPago = fact?.pagos[0]?.metodoPago ?? 'N/A';
+
+        const noBoleta = fact?.pagos[0]?.numeroBoleta ?? 'N/A';
+
         const fVenc = fact.fechaPagoEsperada
           ? formattShortFecha(fact.fechaPagoEsperada)
           : 'N/A';
@@ -400,19 +436,24 @@ export class PrismaGenerateReports implements GenerateReportsRepository {
 
         worksheet.addRow([
           id,
+          clienteNombre,
+          direccion,
+          sector,
           fVenc,
           fPagada,
           estado,
           formattMonedaGT(monto),
+          metodoPago,
+          noBoleta,
           cobradorNombres,
         ]);
       }
 
-      worksheet.getCell('G2').value = totalFacturas;
-      worksheet.getCell('H2').value = formattMonedaGT(montoTotalSum);
+      worksheet.getCell('L2').value = totalFacturas;
+      worksheet.getCell('M2').value = formattMonedaGT(montoTotalSum);
 
-      worksheet.getCell('G2').font = { bold: true };
-      worksheet.getCell('H2').font = { bold: true };
+      worksheet.getCell('L2').font = { bold: true };
+      worksheet.getCell('M2').font = { bold: true };
 
       const buff = await workbook.xlsx.writeBuffer();
       return Buffer.from(buff);

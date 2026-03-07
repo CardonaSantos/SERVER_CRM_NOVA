@@ -78,16 +78,17 @@ export class SshMikrotikConnectionService {
 
   // SUSPENDER
   async suspendCustomer(dto: SuspendCustomerDto) {
+    // ─── 1. OBTENER DATOS ────────────────────────────────────────────────────
     const usuarioAdmin = await this.prisma.usuario.findUnique({
-      where: {
-        id: dto.userId,
-      },
+      where: { id: dto.userId },
     });
 
+    if (!usuarioAdmin) {
+      throw new NotFoundException('Usuario administrador no encontrado');
+    }
+
     const cliente = await this.prisma.clienteInternet.findUnique({
-      where: {
-        id: dto.clienteId,
-      },
+      where: { id: dto.clienteId },
       select: {
         id: true,
         nombre: true,
@@ -112,48 +113,55 @@ export class SshMikrotikConnectionService {
       },
     });
 
+    if (!cliente) {
+      throw new NotFoundException('Cliente no encontrado');
+    }
+
+    // ─── 2. VALIDACIONES ─────────────────────────────────────────────────────
     if (!cliente.MikrotikRouter) {
       throw new BadRequestException(
         'El cliente no tiene Mikrotik asociado (MikrotikRouter nulo)',
       );
     }
 
-    if (!cliente) {
-      throw new NotFoundException('Cliente no encontrado');
+    if (!cliente.IP?.direccionIp) {
+      throw new BadRequestException('El cliente no tiene IP asignada');
     }
 
-    if (!usuarioAdmin) {
-      throw new NotFoundException('Usuario administrador no encontrado');
-    }
-
+    // ─── 3. VERIFICAR CREDENCIALES ───────────────────────────────────────────
     const isValidPassword = await bycrypt.compare(
       dto.password,
       usuarioAdmin.contrasena,
     );
 
-    if (!isValidPassword)
+    if (!isValidPassword) {
       throw new BadRequestException('CREDENCIALES NO VÁLIDAS');
-
-    const ip = cliente.IP.direccionIp;
-
-    if (!ip) {
-      throw new BadRequestException('El cliente no tiene IP asignada');
     }
-    const password = this.mkCrypto.decrypt(cliente.MikrotikRouter.passwordEnc);
 
+    // ─── 4. CONSTRUIR CONFIG SSH ──────────────────────────────────────────────
+    const password = this.mkCrypto.decrypt(cliente.MikrotikRouter.passwordEnc);
     const config: MkConfig = {
       host: cliente.MikrotikRouter.host,
       port: cliente.MikrotikRouter.sshPort,
       username: cliente.MikrotikRouter.usuario,
-      password: password,
+      password,
     };
 
-    this.logger.log('El config creado es: ', config);
+    const ip = cliente.IP.direccionIp;
 
+    // ─── 5. LIMPIAR LISTAS EN MIKROTIK (internet_ok + suspendidos) ───────────
+    this.logger.log(`[suspendCustomer] Limpiando IP ${ip} de todas las listas`);
+    await this.clearIpFromAllLists(cliente.MikrotikRouter.id, ip);
+
+    // ─── 6. AGREGAR A LISTA DE SUSPENDIDOS EN MIKROTIK ───────────────────────
     const addressList =
       this.config.get<string>('SUSPENDED_LIST') ?? 'clientes_suspendidos';
     const comment = `crm-suspendido-${cliente.id}-${cliente.nombre ?? ''} ${cliente.apellidos ?? ''}`;
     const cmd = `/ip firewall address-list add list=${addressList} address=${ip} comment="${comment}"`;
+
+    this.logger.log(
+      `[suspendCustomer] Agregando IP ${ip} a lista ${addressList}`,
+    );
     const { stdout, stderr } = await this.runCommand(cmd, config);
 
     if (stderr) {
@@ -161,32 +169,33 @@ export class SshMikrotikConnectionService {
         `Error suspendiendo cliente en Mikrotik: ${stderr}`,
       );
     }
+
+    // ─── 7. ACTUALIZAR ESTADO EN BASE DE DATOS ────────────────────────────────
     await this.prisma.clienteInternet.update({
-      where: {
-        id: cliente.id,
-      },
-      data: {
-        estadoServicioMikrotik: 'SUSPENDIDO',
-      },
+      where: { id: cliente.id },
+      data: { estadoServicioMikrotik: 'SUSPENDIDO' },
     });
+
+    this.logger.log(
+      `[suspendCustomer] Cliente ${cliente.id} suspendido correctamente`,
+    );
     return { ok: true, stdout };
   }
 
   // ACTIVAR
 
   async activateCustomer(dto: ActivateCustomerDto) {
-    let isValidPassword: boolean = false;
-
+    // ─── 1. OBTENER DATOS ────────────────────────────────────────────────────
     const usuarioAdmin = await this.prisma.usuario.findUnique({
-      where: {
-        id: dto.userId,
-      },
+      where: { id: dto.userId },
     });
 
+    if (!usuarioAdmin) {
+      throw new NotFoundException('Usuario administrador no encontrado');
+    }
+
     const cliente = await this.prisma.clienteInternet.findUnique({
-      where: {
-        id: dto.clienteId,
-      },
+      where: { id: dto.clienteId },
       select: {
         id: true,
         nombre: true,
@@ -211,75 +220,70 @@ export class SshMikrotikConnectionService {
       },
     });
 
+    if (!cliente) {
+      throw new NotFoundException('Cliente no encontrado');
+    }
+
+    // ─── 2. VALIDACIONES ─────────────────────────────────────────────────────
     if (!cliente.MikrotikRouter) {
       throw new BadRequestException(
         'El cliente no tiene Mikrotik asociado (MikrotikRouter nulo)',
       );
     }
 
-    if (!cliente) {
-      throw new NotFoundException('Cliente no encontrado');
+    if (!cliente.IP?.direccionIp) {
+      throw new BadRequestException('El cliente no tiene IP asignada');
     }
 
-    if (!usuarioAdmin) {
-      throw new NotFoundException('Usuario administrador no encontrado');
-    }
-
+    // ─── 3. VERIFICAR CREDENCIALES (condicional) ──────────────────────────────
     if (dto.isPasswordRequired === true) {
-      isValidPassword = await bycrypt.compare(
+      const isValidPassword = await bycrypt.compare(
         dto.password,
         usuarioAdmin.contrasena,
       );
-    } else {
-      isValidPassword = true;
+
+      if (!isValidPassword) {
+        throw new BadRequestException('CREDENCIALES NO VÁLIDAS');
+      }
     }
 
-    if (!isValidPassword)
-      throw new BadRequestException('CREDENCIALES NO VÁLIDAS');
-
-    const ip = cliente.IP.direccionIp;
-
-    if (!ip) {
-      throw new BadRequestException('El cliente no tiene IP asignada');
-    }
+    // ─── 4. CONSTRUIR CONFIG SSH ──────────────────────────────────────────────
     const password = this.mkCrypto.decrypt(cliente.MikrotikRouter.passwordEnc);
     const config: MkConfig = {
       host: cliente.MikrotikRouter.host,
       port: cliente.MikrotikRouter.sshPort,
       username: cliente.MikrotikRouter.usuario,
-      password: password,
+      password,
     };
 
-    this.logger.log('El config creado es: ', config);
+    const ip = cliente.IP.direccionIp;
 
-    const addressList =
-      this.config.get<string>('SUSPENDED_LIST') ?? 'clientes_suspendidos';
-    const cmd = `/ip firewall address-list remove [find list=${addressList} address=${ip}]`;
-    const { stdout, stderr } = await this.runCommand(cmd, config);
+    // ─── 5. LIMPIAR LISTAS EN MIKROTIK (internet_ok + suspendidos) ───────────
+    this.logger.log(
+      `[activateCustomer] Limpiando IP ${ip} de todas las listas`,
+    );
+    await this.clearIpFromAllLists(cliente.MikrotikRouter.id, ip);
 
-    if (stderr) {
-      throw new InternalServerErrorException(
-        `Error activando cliente en Mikrotik: ${stderr}`,
-      );
-    }
-    // MEJORAR LUEGO
-
+    // ─── 6. AGREGAR A LISTA DE INTERNET OK EN MIKROTIK ───────────────────────
+    this.logger.log(
+      `[activateCustomer] Agregando IP ${ip} a lista internet_ok`,
+    );
     await this.addIpToInternetListByRouterId(
       cliente.MikrotikRouter.id,
-      cliente.IP.direccionIp,
-      'Re-Activación ',
+      ip,
+      `crm-activo-${cliente.id}-${cliente.nombre ?? ''} ${cliente.apellidos ?? ''}`,
     );
 
+    // ─── 7. ACTUALIZAR ESTADO EN BASE DE DATOS ────────────────────────────────
     await this.prisma.clienteInternet.update({
-      where: {
-        id: cliente.id,
-      },
-      data: {
-        estadoServicioMikrotik: 'ACTIVO',
-      },
+      where: { id: cliente.id },
+      data: { estadoServicioMikrotik: 'ACTIVO' },
     });
 
-    return { ok: true, stdout };
+    this.logger.log(
+      `[activateCustomer] Cliente ${cliente.id} activado correctamente`,
+    );
+    return { ok: true };
   }
 
   /**
