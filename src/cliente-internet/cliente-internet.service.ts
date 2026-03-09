@@ -1641,6 +1641,8 @@ export class ClienteInternetService {
     return userDeleted;
   }
 
+  //COMENTARIO PARA PUSHEAR
+
   async deleteClientsWithRelations() {
     try {
       return await this.prisma.$transaction(async (tx) => {
