@@ -1,23 +1,9 @@
 import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { verifyCustomerRepository } from '../domain/verify-customer.repo';
-import { verifyClientDto } from '../dto/verify-customer.dto';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { EstadoFactura, StateFacturaInternet } from '@prisma/client';
-// DAYJS
-import * as dayjs from 'dayjs';
-import 'dayjs/locale/es';
-import * as utc from 'dayjs/plugin/utc';
-import * as timezone from 'dayjs/plugin/timezone';
-import * as isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
-import * as isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
-import * as customParseFormat from 'dayjs/plugin/customParseFormat';
-dayjs.extend(customParseFormat);
-dayjs.extend(utc);
-dayjs.extend(timezone);
-dayjs.extend(isSameOrBefore);
-dayjs.extend(isSameOrAfter);
-dayjs.locale('es');
+import { StateFacturaInternet } from '@prisma/client';
+import { dayjs } from 'src/Utils/dayjs.config';
 
 export interface HistorialPago {
   facturaId: number;

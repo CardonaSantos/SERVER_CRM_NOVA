@@ -11,21 +11,9 @@ import { shouldSkipClient, shouldSkipZoneToday } from '../Functions';
 import { FacturaManagerService } from '../factura-manager/factura-manager.service';
 import { formatearTelefonosMeta } from 'src/cloud-api-meta/helpers/cleantelefono';
 import { CloudApiMetaService } from 'src/cloud-api-meta/cloud-api-meta.service';
-import * as dayjs from 'dayjs';
-import 'dayjs/locale/es';
-import * as utc from 'dayjs/plugin/utc';
-import * as timezone from 'dayjs/plugin/timezone';
-import * as isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
-import * as isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
-import * as customParseFormat from 'dayjs/plugin/customParseFormat';
+import { dayjs } from 'src/Utils/dayjs.config';
+
 import { NotificacionesService } from 'src/notificaciones/app/notificaciones.service';
-import { Notificacion } from 'src/notificaciones/entities/notificacione.entity';
-dayjs.extend(customParseFormat);
-dayjs.extend(utc);
-dayjs.extend(timezone);
-dayjs.extend(isSameOrBefore);
-dayjs.extend(isSameOrAfter);
-dayjs.locale('es');
 
 @Injectable()
 export class GeneracionFacturaCronService {

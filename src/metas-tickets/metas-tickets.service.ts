@@ -10,11 +10,7 @@ import { CreateMetasTicketDto } from './dto/create-metas-ticket.dto';
 import { UpdateMetasTicketDto } from './dto/update-metas-ticket.dto';
 import { MetaTecnicoTicket, Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
-import * as dayjs from 'dayjs';
-import * as timezone from 'dayjs/plugin/timezone';
-import * as utc from 'dayjs/plugin/utc';
-dayjs.extend(utc);
-dayjs.extend(timezone);
+import { dayjs } from 'src/Utils/dayjs.config';
 
 @Injectable()
 export class MetasTicketsService {

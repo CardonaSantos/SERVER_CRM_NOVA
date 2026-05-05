@@ -1,6 +1,5 @@
-// scripts/fillPeriodo.ts
 import { PrismaClient } from '@prisma/client';
-import * as dayjs from 'dayjs';
+import { dayjs } from 'src/Utils/dayjs.config';
 const prisma = new PrismaClient();
 
 async function main() {

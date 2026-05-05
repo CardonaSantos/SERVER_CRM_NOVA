@@ -363,6 +363,14 @@ export class TicketsSoporteService {
         ...(query.search && {
           OR: [
             { titulo: { contains: query.search, mode: 'insensitive' } },
+            {
+              cliente: {
+                nombre: {
+                  contains: query.search,
+                  mode: 'insensitive',
+                },
+              },
+            },
             { descripcion: { contains: query.search, mode: 'insensitive' } },
           ],
         }),

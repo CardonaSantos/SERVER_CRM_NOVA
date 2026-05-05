@@ -1,10 +1,5 @@
-import * as dayjs from 'dayjs';
-import * as utc from 'dayjs/plugin/utc';
-import * as timezone from 'dayjs/plugin/timezone';
 import { EstadoCliente, StateFacturaInternet } from '@prisma/client';
-// Extiende dayjs con los plugins
-dayjs.extend(utc);
-dayjs.extend(timezone);
+import { dayjs } from 'src/Utils/dayjs.config';
 
 export function formatearNumeroWhatsApp(numero: string): string {
   // Limpiar caracteres no numéricos

@@ -8,19 +8,13 @@ import {
 } from '@nestjs/common';
 
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateRutaDto } from './dto/create-ruta-cobro.dto';
 import { UpdateRutaDto } from './dto/update-ruta-cobro.dto';
 import { CreateNewRutaDto } from './dto/create-new-ruta.dto';
-import { Ruta } from '@prisma/client';
-import * as dayjs from 'dayjs';
-import * as utc from 'dayjs/plugin/utc';
-import * as timezone from 'dayjs/plugin/timezone';
+import { dayjs } from 'src/Utils/dayjs.config';
 import * as ExcelJS from 'exceljs';
 import { WebSocketServices } from 'src/web-sockets/websocket.service';
 import { queryRutasDto } from './dto/query';
 // Extiende dayjs con los plugins
-dayjs.extend(utc);
-dayjs.extend(timezone);
 dayjs.locale('es'); // Establece español como idioma predeterminado
 // Helper reutilizable
 function makeSheetName(name: string, fallback = 'Ruta'): string {

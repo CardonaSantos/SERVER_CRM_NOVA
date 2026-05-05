@@ -12,23 +12,10 @@ import { Credito } from 'src/credito/entities/credito.entity';
 import { CuotaCredito } from 'src/credito/credito-cuotas/entities/credito-cuota.entity';
 import Decimal from 'decimal.js';
 import { EstadoCredito } from '@prisma/client';
-// DAYJS
-import * as dayjs from 'dayjs';
-import 'dayjs/locale/es';
-import * as utc from 'dayjs/plugin/utc';
-import * as timezone from 'dayjs/plugin/timezone';
-import * as isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
-import * as isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
-import * as customParseFormat from 'dayjs/plugin/customParseFormat';
+import { dayjs } from 'src/Utils/dayjs.config';
 import { TZ } from 'src/Utils/tzgt';
 import { CreditoMapper } from 'src/credito/infraestructure/toPersistence';
 import { PayMoraCuotaDto } from '../dto/pay-mora-cuota.dto';
-dayjs.extend(customParseFormat);
-dayjs.extend(utc);
-dayjs.extend(timezone);
-dayjs.extend(isSameOrBefore);
-dayjs.extend(isSameOrAfter);
-dayjs.locale('es');
 
 @Injectable()
 export class PrismaCuotasPago implements CuotaPagoRepository {

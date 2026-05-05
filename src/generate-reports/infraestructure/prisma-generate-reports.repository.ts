@@ -2,26 +2,13 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { GenerateReportsRepository } from '../domain/generate-reports.repository';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { dayjs } from 'src/Utils/dayjs.config';
 import * as ExcelJS from 'exceljs';
-
-import * as dayjs from 'dayjs';
-import 'dayjs/locale/es';
-import * as utc from 'dayjs/plugin/utc';
-import * as timezone from 'dayjs/plugin/timezone';
-import * as isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
-import * as isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
-import * as customParseFormat from 'dayjs/plugin/customParseFormat';
 import { QueryCobranzaReport } from '../dto/cobranza-query-report';
 import { Prisma } from '@prisma/client';
 import { formattShortFecha } from 'src/Utils/formattFecha.utils';
 import { formattMonedaGT } from 'src/Utils/formatt-moneda';
 import { formattDateForFilter } from 'src/Utils/formattDateForFilter';
-dayjs.extend(customParseFormat);
-dayjs.extend(utc);
-dayjs.extend(timezone);
-dayjs.extend(isSameOrBefore);
-dayjs.extend(isSameOrAfter);
-dayjs.locale('es');
 
 @Injectable()
 export class PrismaGenerateReports implements GenerateReportsRepository {

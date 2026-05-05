@@ -18,9 +18,7 @@ import {
   Prisma,
   StateFacturaInternet,
 } from '@prisma/client';
-import * as dayjs from 'dayjs';
-import * as utc from 'dayjs/plugin/utc';
-import * as timezone from 'dayjs/plugin/timezone';
+
 import { IdContratoService } from 'src/id-contrato/id-contrato.service';
 import { periodoFrom } from 'src/facturacion/Utils';
 import { GetClientesRutaQueryDto } from './pagination/cliente-internet.dto';
@@ -31,17 +29,14 @@ import { GetCustomersQueryDto } from './dto/query-table';
 import { SshMikrotikConnectionService } from 'src/ssh-mikrotik-connection/application/ssh-mikrotik-connection.service';
 import { ActivateCustomerDto } from 'src/ssh-mikrotik-connection/dto/activate-ssh-mikrotik.dto';
 import { VerifyCustomerService } from 'src/credito/verify-customer/app/verify-customer.service';
-dayjs.extend(utc);
-dayjs.extend(timezone);
-dayjs.locale('es'); // Establece español como idioma predeterminado
+import { dayjs } from 'src/Utils/dayjs.config';
+
 const strip = (s: string) =>
   s
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase();
-const formatearFecha = (fecha: string) => {
-  return dayjs(fecha).format('DD/MM/YYYY');
-};
+
 const ACCENT_FROM = 'ÁÀÂÄÃáàâäãÉÈÊËéèêëÍÌÎÏíìîïÓÒÔÖÕóòôöõÚÙÛÜúùûüÇçÑñÝŸýÿ';
 const ACCENT_TO = 'AAAAAaaaaaEEEEeeeeIIIIiiiiOOOOOoooooUUUUuuuuCcNnYYyy';
 
@@ -1548,8 +1543,8 @@ export class ClienteInternetService {
       },
     });
 
-    let direccionIP = cliente.IP.direccionIp;
-    let mikrotikId = cliente.mikrotikRouterId;
+    let direccionIP = cliente?.IP?.direccionIp;
+    let mikrotikId = cliente?.mikrotikRouterId;
 
     const userDeleted = await this.prisma.$transaction(async (tx) => {
       // Verificamos si existe el cliente
@@ -1633,7 +1628,7 @@ export class ClienteInternetService {
         await this.ssh.clearIpFromAllLists(mikrotikId, direccionIP);
       } catch (error) {
         this.logger.error(
-          `No se pudo limpiar IP ${direccionIP} del MK ${mikrotikId} | ERROR: ${error?.stack}`,
+          `No se pudo limpiar IP ${direccionIP} del MK ${mikrotikId} | ERROR: ${error}`,
         );
       }
     }
@@ -1827,7 +1822,7 @@ export class ClienteInternetService {
       });
       return client;
     } catch (error) {
-      this.logger.error('Error generado en módulo cliente: ', error?.stack);
+      this.logger.error('Error generado en módulo cliente: ', error);
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Fatal Error: Error inesperado');
     }
@@ -1937,7 +1932,7 @@ export class ClienteInternetService {
     const serviceIds: number[] = dto.servicesIds ?? [];
 
     return this.prisma.$transaction(async (tx) => {
-      // ─── 1. OBTENER ESTADO ANTERIOR ──────────────────────────────────────
+      //OBTENER ESTADO ANTERIOR ──────────────────────────────────────
       const clienteBefore = await tx.clienteInternet.findUnique({
         where: { id },
         select: {
@@ -1951,13 +1946,13 @@ export class ClienteInternetService {
 
       if (!clienteBefore) throw new NotFoundException('Cliente no encontrado');
 
-      // ─── 2. CALCULAR NUEVO ESTADO MK ─────────────────────────────────────
+      //  CALCULAR NUEVO ESTADO MK ─────────────────────────────────────
       const nuevoEstadoServicioMk = this.resolveNuevoEstadoMk(
         clienteBefore,
         dto.mikrotikRouterId,
       );
 
-      // ─── 3. UPSERT UBICACIÓN ─────────────────────────────────────────────
+      // UPSERT UBICACIÓN ─────────────────────────────────────────────
       const ubicacion = await this.upsertUbicacion(
         id,
         dto.coordenadas,
@@ -1965,11 +1960,11 @@ export class ClienteInternetService {
         tx,
       );
 
-      // ─── 4. FECHA DESINSTALACIÓN ─────────────────────────────────────────
+      // FECHA DESINSTALACIÓN ─────────────────────────────────────────
       const desinstaladoEn: Date | null =
         dto.estado === 'DESINSTALADO' ? dayjs().tz(TZ).toDate() : null;
 
-      // ─── 5. ACTUALIZAR CLIENTE ───────────────────────────────────────────
+      // ACTUALIZAR CLIENTE ───────────────────────────────────────────
       const updatedCliente = await tx.clienteInternet.update({
         where: { id },
         data: {
@@ -2024,10 +2019,10 @@ export class ClienteInternetService {
         },
       });
 
-      // ─── 6. ACTUALIZAR CONTRATO SI APLICA ────────────────────────────────
+      // ACTUALIZAR CONTRATO SI APLICA ────────────────────────────────
       await this.updateContratoIfNeeded(id, dto, tx);
 
-      // ─── 7. RETORNAR ─────────────────────────────────────────────────────
+      // RETORNAR ─────────────────────────────────────────────────────
       const clienteAfter = await tx.clienteInternet.findUnique({
         where: { id },
         select: {

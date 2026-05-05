@@ -1,10 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { CreateCustomerPayloadDto } from './dto/create-customer-payload.dto';
+import { dayjs } from 'src/Utils/dayjs.config';
 import * as ExcelJS from 'exceljs';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ClienteInternetService } from 'src/cliente-internet/cliente-internet.service';
-import * as csv from 'csvtojson';
-import * as dayjs from 'dayjs';
+import csv from 'csvtojson';
 import { periodoFrom } from 'src/facturacion/Utils';
 
 @Injectable()
@@ -146,11 +145,7 @@ export class CustomerPayloadService {
         const created = await this.clienteInternetService.create(cliente);
         // console.log('✅ Cliente creado:', created.cliente.nombre);
       } catch (error) {
-        console.error(
-          '❌ Error al crear cliente:',
-          cliente.nombre,
-          error.message,
-        );
+        console.error('❌ Error al crear cliente:', cliente.nombre, error);
       }
     }
 
@@ -475,7 +470,7 @@ export class CustomerPayloadService {
             },
           });
         } catch (err) {
-          console.error('❌ Error procesando fila:', err.message);
+          console.error('❌ Error procesando fila:', err);
         }
       }
 
@@ -483,7 +478,7 @@ export class CustomerPayloadService {
         `✔ Clientes del CSV procesados: ${creados}/${total} instalados correctamente.`,
       );
     } catch (error) {
-      console.error('❌ Error leyendo el CSV:', error.message);
+      console.error('❌ Error leyendo el CSV:', error);
     }
   }
 

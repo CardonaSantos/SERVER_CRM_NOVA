@@ -1,24 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RealTimeLocationRepository } from '../domain/real-time-location.repository';
-import { UpdateRealTimeDto } from '../dto/update-real-time.dto';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { RealTimeLocation } from '../entities/real-time.entity';
 import { PrismaRealTimeMapper } from '../common/realtime-location.mappers';
-import * as dayjs from 'dayjs';
-import 'dayjs/locale/es';
-import * as utc from 'dayjs/plugin/utc';
-import * as timezone from 'dayjs/plugin/timezone';
-import * as isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
-import * as isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
-import * as customParseFormat from 'dayjs/plugin/customParseFormat';
-dayjs.extend(customParseFormat);
-dayjs.extend(utc);
-dayjs.extend(timezone);
-dayjs.extend(isSameOrBefore);
-dayjs.extend(isSameOrAfter);
-dayjs.locale('es');
-
+import { dayjs } from 'src/Utils/dayjs.config';
 import { TZ } from 'src/Utils/tzgt';
 import { RealTimeLocationMapDto } from '../dto/dto-shape';
 

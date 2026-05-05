@@ -1,28 +1,19 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateFacturacionDto } from './dto/create-facturacion.dto';
-import { UpdateFacturacionDto } from './dto/update-facturacion.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateFacturacionPaymentDto } from './dto/createFacturacionPayment.dto';
 import {
   EstadoCliente,
-  EstadoFactura,
-  EstadoFacturaInternet,
   PagoFacturaInternet,
   Prisma,
   StateFacturaInternet,
 } from '@prisma/client';
-import * as dayjs from 'dayjs';
+import { dayjs } from 'src/Utils/dayjs.config';
 import { CreatePaymentOnRuta } from './dto/createPaymentOnRuta.dto';
 import { GenerateFactura } from './dto/generateFactura.dto';
-import 'dayjs/locale/es'; // Carga el idioma español
 import { GenerateFacturaMultipleDto } from './dto/generateMultipleFactura.dto';
 import { DeleteFacturaDto } from './dto/delete-one-factura.dto';
-import {
-  ConflictException,
-  InternalServerErrorException,
-} from '@nestjs/common';
-import * as utc from 'dayjs/plugin/utc';
-import * as timezone from 'dayjs/plugin/timezone';
+import { ConflictException } from '@nestjs/common';
 import { log } from 'console';
 import { UpdateFacturaDto } from './dto/update-factura.dto';
 import { periodoFrom } from './Utils';
@@ -31,26 +22,6 @@ import { RegistrarPagoFromBanruralDto } from './dto/pago-from-banrural.dto';
 import { calculateEstadoCliente } from './functions/functions';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { WebSocketServices } from 'src/web-sockets/websocket.service';
-
-// Extiende dayjs con los plugins
-dayjs.extend(utc);
-dayjs.extend(timezone);
-
-dayjs.locale('es'); // Establece español como idioma predeterminado
-const formatearFecha = (fecha: string) => {
-  // Formateo en UTC sin conversión a local
-  return dayjs(fecha).format('DD/MM/YYYY');
-};
-
-type Factura = {
-  id: number;
-  metodo: string;
-  cliente: string;
-  cantidad: number;
-  fechaCreado: string;
-  por: string;
-  telefono: number;
-};
 
 interface DatosFacturaGenerate {
   fechaPagoEsperada: string;
