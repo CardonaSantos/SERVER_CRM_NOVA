@@ -8,7 +8,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL_CRM")
+  // url      = env("DATABASE_URL_CRM")
 }
 // comentario nuevo
 
@@ -66,6 +66,14 @@ model Empresa {
   //nuevos
   Olt            Olt[]
   MikrotikRouter MikrotikRouter[]
+
+  gastoOperativos GastoOperativo[]
+
+  categoriaProductos CategoriaProducto[]
+
+  productos Producto[]
+
+  movimientoInventarios MovimientoInventario[]
 }
 
 model Usuario {
@@ -112,6 +120,22 @@ model Usuario {
   ubicacionesHistoricas  UbicacionTecnico[]
   ubicacionActual        UbicacionActual?
 
+  // TICKET NUEVOS MODULOS E INVENTARIO
+  ticketReasignacionsDe TicketReasignacion[] @relation("ReasignacionDe")
+
+  ticketReasignacionsA TicketReasignacion[] @relation("ReasignacionA")
+
+  gastoOperativosRegistrados GastoOperativo[] @relation("GastosRegistrados")
+
+  gastoOperativosAprovados GastoOperativo[] @relation("GastosAprobados")
+
+  ticketGastosAsignados TicketGasto[] @relation("GastosAsignadosTecnico")
+
+  ticketGastosAprobados TicketGasto[] @relation("GastosAsignadosPor")
+
+  movimientoInventarios MovimientoInventario[] @relation("MovimientosRealizados")
+
+  ticketReasignacions TicketReasignacion[] @relation("QuienReasigno")
 }
 
 model UbicacionTecnico {
@@ -228,6 +252,8 @@ model Proveedor {
   direccion String?
   empresaId Int
   empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  movimientoInventarios MovimientoInventario[]
 }
 
 /// [02] Geografía
@@ -567,6 +593,7 @@ model Media {
   @@unique([bucket, key])
   @@index([clienteId, albumId, creadoEn(sort: Desc)])
   @@index([empresaId, categoria, tipo])
+  gastoOperativos GastoOperativo[] @relation("EvidenciaGastoOperativo")
 }
 
 model AlbumCliente {
@@ -827,6 +854,10 @@ model TicketSoporte {
   tecnico           Usuario?               @relation("TicketTecnico", fields: [tecnicoId], references: [id])
   asignaciones      TicketSoporteTecnico[]
   logsTiempo             TicketTimeLog[]
+
+  ticketReasignacions TicketReasignacion[]
+
+  ticketGastos TicketGasto[]
 }
 
 model TicketTimeLog {
@@ -842,7 +873,6 @@ model TicketTimeLog {
   fin             DateTime?
   duracionMinutos Int?
 }
-
 
 model BoletaSoporte {
   id            Int            @id @default(autoincrement())
@@ -943,7 +973,7 @@ model MetaTickets {
   usuario          Usuario?          @relation(fields: [usuarioId], references: [id])
 }
 
-// NUEVA TELEMETRÍA ---->
+// NUEVA TELEMETRÍA 
 model TicketResumen {
   id         Int  @id @default(autoincrement())
   ticketId   Int  @unique
@@ -1364,6 +1394,410 @@ model ClienteReferencia {
   creadoEn      DateTime @default(now())
   actualizadoEn  DateTime @updatedAt
 }
+
+
+// NUEVOS MODULOS - INVENTARIO Y GASTO TICKETS
+
+// ============================================================
+// EXTENSIÓN DE MÓDULO DE TICKETS + INVENTARIO LIGERO
+// Agregar / modificar en schema.prisma existente
+// ============================================================
+// ÍNDICE:
+//   [A] Campos nuevos en modelos existentes (diff)
+//   [B] TicketReasignacion
+//   [C] GastoOperativo
+//   [D] TicketGasto
+//   [E] CategoriaProducto
+//   [F] Producto
+//   [G] MovimientoInventario
+//   [H] Relaciones inversas a agregar en modelos existentes
+//   [I] Enums nuevos
+// ============================================================
+
+
+// ============================================================
+// [A] DIFF — Campos a agregar en modelos existentes
+//     (NO son modelos nuevos, solo pegar los campos dentro
+//      del bloque correspondiente en schema.prisma)
+// ============================================================
+
+// ── model TicketSoporte ──────────────────────────────────────
+// Agregar estos campos dentro del bloque existente:
+//
+//   // Canal de ingreso
+//   canalOrigen              CanalOrigen?          @default(ADMIN)
+//
+//   // Métricas operativas
+//   ultimaActividadEn        DateTime?             // se actualiza en cada seguimiento / cambio de estado
+//   complejidad              NivelComplejidad?
+//   minutosNoImputables      Int?                  @default(0)   // tiempo en espera que no se castiga al técnico
+//   contadorReasignaciones   Int                   @default(0)   // denormalizado, se incrementa en TicketReasignacion
+//
+//   // Costo total denormalizado (recalcular al crear/editar/borrar TicketGasto)
+//   costoTotal               Decimal?              @db.Decimal(12,2) @default(0)
+//
+//   // Evidencia de cierre — usa el sistema Media existente
+//   evidenciaCierreId        Int?
+//   evidenciaCierre          Media?                @relation("EvidenciaCierreTicket", fields: [evidenciaCierreId], references: [id])
+//
+//   // Relaciones nuevas
+//   reasignaciones           TicketReasignacion[]
+//   gastos                   TicketGasto[]
+
+// ── model TicketResumen ──────────────────────────────────────
+// Agregar este campo dentro del bloque existente:
+//
+//   // Se calcula y guarda al momento de cerrar el ticket (nunca cambia después)
+//   slaBucket                SlaBucket?
+//
+// NOTA: age_hours NO se persiste → calcular en query:
+//   EXTRACT(EPOCH FROM (NOW() - fecha_apertura)) / 3600
+
+// ── model Media ─────────────────────────────────────────────
+// Agregar estas relaciones dentro del bloque existente:
+//
+//   evidenciasCierreTicket   TicketSoporte[]       @relation("EvidenciaCierreTicket")
+//   evidenciasGasto          GastoOperativo[]      @relation("EvidenciaGastoOperativo")
+
+
+// ============================================================
+// [B] HISTORIAL DE REASIGNACIONES
+// ============================================================
+
+model TicketReasignacion {
+  id                   Int            @id @default(autoincrement())
+
+  ticketId             Int
+  ticket               TicketSoporte  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  // null = no había asignado antes
+  tecnicoAnteriorId    Int?
+  tecnicoAnterior      Usuario?       @relation("ReasignacionDe",  fields: [tecnicoAnteriorId], references: [id], onDelete: SetNull)
+
+  tecnicoNuevoId       Int
+  tecnicoNuevo         Usuario        @relation("ReasignacionA",   fields: [tecnicoNuevoId],    references: [id], onDelete: Cascade)
+
+  // Admin / supervisor que hizo el cambio
+  reasignadoPorId      Int?
+  reasignadoPor        Usuario?       @relation("QuienReasigno",   fields: [reasignadoPorId],   references: [id], onDelete: SetNull)
+
+  motivo               String?
+  reasignadoEn         DateTime       @default(now())
+
+  creadoEn             DateTime       @default(now())
+  actualizadoEn        DateTime       @updatedAt
+
+  @@index([ticketId])
+  @@index([tecnicoNuevoId])
+}
+
+
+// ============================================================
+// [C] GASTO OPERATIVO — pool central de gastos
+//     Un gasto puede repartirse entre N tickets.
+//     Si viene de inventario → productoId + movimientoId apuntarán al origen.
+//     Si es libre (gasolina, viático) → productoId = null.
+// ============================================================
+
+model GastoOperativo {
+  id                    Int             @id @default(autoincrement())
+
+  empresaId             Int
+  empresa               Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  registradoPorId       Int?
+  registradoPor         Usuario?        @relation("GastosRegistrados", fields: [registradoPorId], references: [id], onDelete: SetNull)
+
+  // ── Clasificación ──────────────────────────────────────────
+  tipoGasto             TipoGasto
+  subtipo               String?         // "Super 97", "Taladro Bosch 18V", texto libre
+  descripcion           String?
+
+  // ── Dinero ─────────────────────────────────────────────────
+  montoTotal            Decimal         @db.Decimal(12,2) @default(0)
+  // montoTotal = 0 es válido (herramienta de uso sin costo en esta salida)
+
+  // ── Recuperabilidad ────────────────────────────────────────
+  esRecuperable         Boolean         @default(false)  // ¿se cobra al cliente?
+
+  // ── Control de herramientas / activos ──────────────────────
+  esHerramienta         Boolean         @default(false)
+  devolucionRequerida   Boolean         @default(false)
+  devuelta              Boolean         @default(false)
+  fechaDevolucion       DateTime?
+
+  // ── Evidencia (recibo, foto del activo) — usa modelo Media ─
+  evidenciaMediaId      Int?
+  evidenciaMedia        Media?          @relation("EvidenciaGastoOperativo", fields: [evidenciaMediaId], references: [id])
+
+  // ── Vínculo con inventario (solo si tipoGasto = MATERIAL) ──
+  // Si el material viene del inventario, estos dos campos apuntan al origen
+  productoId            Int?
+  producto              Producto?       @relation(fields: [productoId], references: [id], onDelete: SetNull)
+
+  movimientoInventarioId Int?           @unique  // 1-a-1: esta salida de inventario originó este gasto
+  movimientoInventario   MovimientoInventario? @relation(fields: [movimientoInventarioId], references: [id], onDelete: SetNull)
+
+  // ── Aprobación (solo admins aprueban) ──────────────────────
+  estado                EstadoGasto     @default(BORRADOR)
+  aprobadoPorId         Int?
+  aprobadoPor           Usuario?        @relation("GastosAprobados", fields: [aprobadoPorId], references: [id], onDelete: SetNull)
+  aprobadoEn            DateTime?
+
+  // Fecha real del gasto (puede diferir de creadoEn: gasto de ayer registrado hoy)
+  fechaGasto            DateTime        @default(now())
+
+  creadoEn              DateTime        @default(now())
+  actualizadoEn         DateTime        @updatedAt
+
+  ticketAsignaciones    TicketGasto[]
+
+  @@index([empresaId, tipoGasto, fechaGasto])
+  @@index([registradoPorId])
+  @@index([productoId])
+}
+
+
+// ============================================================
+// [D] TICKET GASTO — pivote asignación (gasto → ticket)
+//     Resuelve: 1 GastoOperativo repartido entre N tickets.
+//     montoAsignado es lo que suma al costoTotal del ticket.
+// ============================================================
+
+model TicketGasto {
+  id                   Int             @id @default(autoincrement())
+
+  ticketId             Int
+  ticket               TicketSoporte   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  gastoId              Int
+  gasto                GastoOperativo  @relation(fields: [gastoId], references: [id], onDelete: Cascade)
+
+  // Porción del gasto que se carga a ESTE ticket
+  // Ej: gasolina $200 repartida en 4 tickets → montoAsignado: $50 c/u
+  montoAsignado        Decimal         @db.Decimal(12,2) @default(0)
+
+  // Opcional — para auditoría de reparto
+  porcentajeAsignado   Decimal?        @db.Decimal(6,2)  // ej: 25.00 = 25%
+
+  // Técnico que incurrió en el gasto en este ticket
+  // (puede diferir del registradoPor del GastoOperativo)
+  tecnicoId            Int?
+  tecnico              Usuario?        @relation("GastosAsignadosTecnico", fields: [tecnicoId], references: [id], onDelete: SetNull)
+
+  asignadoPorId        Int?
+  asignadoPor          Usuario?        @relation("GastosAsignadosPor", fields: [asignadoPorId], references: [id], onDelete: SetNull)
+
+  nota                 String?
+
+  creadoEn             DateTime        @default(now())
+  actualizadoEn        DateTime        @updatedAt
+
+  @@unique([ticketId, gastoId])  // un gasto se asigna solo una vez por ticket
+  @@index([ticketId])
+  @@index([gastoId])
+}
+
+
+// ============================================================
+// [E] CATEGORÍA DE PRODUCTO (inventario)
+// ============================================================
+
+model CategoriaProducto {
+  id            Int        @id @default(autoincrement())
+  empresaId     Int
+  empresa       Empresa    @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  nombre        String     // "Equipos Ópticos", "Cable y Conectores", "Herramientas"
+  descripcion   String?
+  activo        Boolean    @default(true)
+
+  productos     Producto[]
+
+  creadoEn      DateTime   @default(now())
+  actualizadoEn DateTime   @updatedAt
+
+  @@unique([empresaId, nombre])
+}
+
+
+// ============================================================
+// [F] PRODUCTO — catálogo de materiales y herramientas
+// ============================================================
+
+model Producto {
+  id                 Int                    @id @default(autoincrement())
+  empresaId          Int
+  empresa            Empresa                @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  categoriaId        Int?
+  categoria          CategoriaProducto?     @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+
+  nombre             String                 // "ONT Huawei HG8310M", "Cable coaxial RG-6"
+  descripcion        String?
+  sku                String?                // código interno / referencia del proveedor
+
+  unidadMedida       String?                @default("unidad")  // "unidad", "metro", "rollo", "caja"
+
+  // Costos — se actualizan automáticamente en cada MovimientoInventario de ENTRADA
+  costoPromedio      Decimal                @db.Decimal(12,2) @default(0)  // costo promedio ponderado
+  costoUltimo        Decimal?               @db.Decimal(12,2)              // precio de la última compra
+
+  // Stock — denormalizado para lectura rápida
+  stockActual        Int                    @default(0)
+  stockMinimo        Int                    @default(0)   // umbral de alerta
+
+  // Es un activo (taladro, escalera) vs. consumible (cable, ONT)
+  esActivo           Boolean                @default(false)
+
+  activo             Boolean                @default(true)
+  isEliminado        Boolean                @default(false)
+
+  movimientos        MovimientoInventario[]
+  gastosOperativos   GastoOperativo[]       // gastos libres que referencian este producto
+
+  creadoEn           DateTime               @default(now())
+  actualizadoEn      DateTime               @updatedAt
+
+  @@unique([empresaId, sku])
+  @@index([empresaId, categoriaId])
+}
+
+
+// ============================================================
+// [G] MOVIMIENTO DE INVENTARIO — audit trail de stock
+//     Cada entrada, salida o ajuste queda registrado aquí.
+//     Una SALIDA ligada a un ticket auto-genera un GastoOperativo.
+// ============================================================
+
+model MovimientoInventario {
+  id                 Int               @id @default(autoincrement())
+  empresaId          Int
+  empresa            Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  productoId         Int
+  producto           Producto          @relation(fields: [productoId], references: [id], onDelete: Cascade)
+
+  tipoMovimiento     TipoMovimiento
+
+  cantidad           Decimal           @db.Decimal(10,2)   // puede ser fracción (metros de cable)
+  costoUnitario      Decimal           @db.Decimal(12,2)   // precio unitario al momento del movimiento
+  costoTotal         Decimal           @db.Decimal(14,2)   // cantidad × costoUnitario
+
+  // Contexto del movimiento
+  ticketId           Int?              // si es SALIDA por ticket
+  // ticket no tiene FK directa aquí para no crear dependencia circular;
+  // la FK real está en GastoOperativo → MovimientoInventario (1-a-1)
+
+  proveedorId        Int?              // si es ENTRADA de un proveedor
+  proveedor          Proveedor?        @relation(fields: [proveedorId], references: [id], onDelete: SetNull)
+
+  referencia         String?           // nro. factura de compra, orden, nota
+  notas              String?
+
+  realizadoPorId     Int?
+  realizadoPor       Usuario?          @relation("MovimientosRealizados", fields: [realizadoPorId], references: [id], onDelete: SetNull)
+
+  // Stock resultante (denormalizado para auditoría — snapshot al momento)
+  stockResultante    Int?
+
+  creadoEn           DateTime          @default(now())
+  actualizadoEn      DateTime          @updatedAt
+
+  // Relación inversa al GastoOperativo que originó (si es SALIDA)
+  gastoOperativo     GastoOperativo?   // 1-a-1 inversa (FK está en GastoOperativo)
+
+  @@index([productoId, tipoMovimiento, creadoEn])
+  @@index([ticketId])
+  @@index([empresaId, creadoEn])
+}
+
+
+// ============================================================
+// [H] RELACIONES INVERSAS — pegar dentro de los modelos existentes
+// ============================================================
+
+// ── model Usuario ────────────────────────────────────────────
+//   // Reasignaciones
+//   reasignacionesRecibidas    TicketReasignacion[]  @relation("ReasignacionA")
+//   reasignacionesEntregadas   TicketReasignacion[]  @relation("ReasignacionDe")
+//   reasignacionesHechas       TicketReasignacion[]  @relation("QuienReasigno")
+//   // Gastos
+//   gastosRegistrados          GastoOperativo[]      @relation("GastosRegistrados")
+//   gastosAprobados            GastoOperativo[]      @relation("GastosAprobados")
+//   gastosAsignadosTecnico     TicketGasto[]         @relation("GastosAsignadosTecnico")
+//   gastosAsignadosPor         TicketGasto[]         @relation("GastosAsignadosPor")
+//   // Inventario
+//   movimientosRealizados      MovimientoInventario[] @relation("MovimientosRealizados")
+
+// ── model Empresa ────────────────────────────────────────────
+//   gastosOperativos           GastoOperativo[]
+//   categoriaProductos         CategoriaProducto[]
+//   productos                  Producto[]
+//   movimientosInventario      MovimientoInventario[]
+
+// ── model Proveedor ──────────────────────────────────────────
+//   movimientosInventario      MovimientoInventario[]
+
+
+// ============================================================
+// [I] ENUMS NUEVOS
+// ============================================================
+
+enum CanalOrigen {
+  ADMIN       // creado desde el panel administrativo
+  PORTAL      // portal web del cliente
+  WHATSAPP    // mensaje de WhatsApp (bot o agente)
+  BOT         // chatbot automatizado
+  LLAMADA     // call center / teléfono
+  APP         // app móvil del técnico
+  OTRO
+}
+
+enum NivelComplejidad {
+  BASICO        // reset, reinicio, configuración simple
+  INTERMEDIO    // cambio de equipo, redropeo, reconfiguración
+  AVANZADO      // fibra cortada, falla de OLT, config compleja
+  CRITICO       // afecta múltiples clientes o infraestructura
+}
+
+enum TipoGasto {
+  GASOLINA      // combustible — típicamente compartido entre tickets
+  HERRAMIENTA   // activo físico que puede regresar al almacén
+  MATERIAL      // consumible: cable, ONT, splitter, conector…
+  VIATICO       // comida, hospedaje en campo
+  TRANSPORTE    // taxi, bus, uber
+  SERVICIO      // tercero contratado (instalador externo, electricista)
+  OTRO
+}
+
+enum EstadoGasto {
+  BORRADOR      // registrado, aún no confirmado
+  CONFIRMADO    // listo para asignar a tickets
+  APROBADO      // revisado y aprobado por admin
+  RECHAZADO     // no aprobado (con motivo en descripcion)
+  ANULADO       // cancelado
+}
+
+enum SlaBucket {
+  MENOR_24H     // < 24 h   ✅ ideal
+  H_24_48       // 24–48 h
+  H_48_72       // 48–72 h
+  H_72_96       // 72–96 h
+  MAYOR_96H     // > 96 h   🔴 crítico
+}
+
+enum TipoMovimiento {
+  ENTRADA            // compra o devolución de campo al almacén
+  SALIDA             // consumido en un ticket o trabajo
+  AJUSTE_POSITIVO    // corrección de conteo (más stock del registrado)
+  AJUSTE_NEGATIVO    // corrección de conteo (menos stock del registrado)
+  TRANSFERENCIA      // entre bodegas (reservado para futuro)
+}
+
+
+
+
 
 enum TipoPlantillaLegal {
   CONTRATO
