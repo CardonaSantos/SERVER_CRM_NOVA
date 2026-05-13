@@ -74,6 +74,8 @@ model Empresa {
   productos Producto[]
 
   movimientoInventarios MovimientoInventario[]
+
+  bodegas Bodega[]
 }
 
 model Usuario {
@@ -136,6 +138,8 @@ model Usuario {
   movimientoInventarios MovimientoInventario[] @relation("MovimientosRealizados")
 
   ticketReasignacions TicketReasignacion[] @relation("QuienReasigno")
+
+  bodegas Bodega[] @relation("BodegaResponsable")
 }
 
 model UbicacionTecnico {
@@ -464,6 +468,8 @@ model ClienteInternet {
   creditos  Credito[] 
   expediente ClienteExpediente? //DE CREDITO
   documentosCredito DocumentoCredito[] 
+
+  serialProductos SerialProducto[]
 }
 
 model IP {
@@ -864,7 +870,7 @@ model TicketTimeLog {
   id        Int      @id @default(autoincrement())
   // Relación con el Ticket
   ticketId  Int
-  ticket    TicketSoporte @relation(fields: [ticketId], references: [id])
+  ticket    TicketSoporte @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   // Relación con el Usuario (Técnico)
   tecnicoId Int
   tecnico   Usuario @relation("LogTecnico", fields: [tecnicoId], references: [id])
@@ -1397,67 +1403,62 @@ model ClienteReferencia {
 
 
 // NUEVOS MODULOS - INVENTARIO Y GASTO TICKETS
-
 // ============================================================
-// EXTENSIÓN DE MÓDULO DE TICKETS + INVENTARIO LIGERO
-// Agregar / modificar en schema.prisma existente
+// EXTENSIÓN: TICKETS + INVENTARIO ESCALABLE
+// Agregar al schema.prisma existente
 // ============================================================
 // ÍNDICE:
-//   [A] Campos nuevos en modelos existentes (diff)
+//   [A] Diff en modelos existentes (campos nuevos)
 //   [B] TicketReasignacion
 //   [C] GastoOperativo
 //   [D] TicketGasto
-//   [E] CategoriaProducto
-//   [F] Producto
-//   [G] MovimientoInventario
-//   [H] Relaciones inversas a agregar en modelos existentes
-//   [I] Enums nuevos
+//   [E] Bodega
+//   [F] CategoriaProducto
+//   [G] Producto
+//   [H] StockProducto  ← fuente de verdad del inventario
+//   [I] SerialProducto ← ONTs, routers (items serializables)
+//   [J] MovimientoInventario
+//   [K] Relaciones inversas a agregar en modelos existentes
+//   [L] Enums nuevos
 // ============================================================
 
 
 // ============================================================
 // [A] DIFF — Campos a agregar en modelos existentes
-//     (NO son modelos nuevos, solo pegar los campos dentro
-//      del bloque correspondiente en schema.prisma)
 // ============================================================
 
 // ── model TicketSoporte ──────────────────────────────────────
-// Agregar estos campos dentro del bloque existente:
-//
-//   // Canal de ingreso
-//   canalOrigen              CanalOrigen?          @default(ADMIN)
-//
-//   // Métricas operativas
-//   ultimaActividadEn        DateTime?             // se actualiza en cada seguimiento / cambio de estado
-//   complejidad              NivelComplejidad?
-//   minutosNoImputables      Int?                  @default(0)   // tiempo en espera que no se castiga al técnico
-//   contadorReasignaciones   Int                   @default(0)   // denormalizado, se incrementa en TicketReasignacion
-//
-//   // Costo total denormalizado (recalcular al crear/editar/borrar TicketGasto)
-//   costoTotal               Decimal?              @db.Decimal(12,2) @default(0)
-//
-//   // Evidencia de cierre — usa el sistema Media existente
-//   evidenciaCierreId        Int?
-//   evidenciaCierre          Media?                @relation("EvidenciaCierreTicket", fields: [evidenciaCierreId], references: [id])
-//
+//   canalOrigen             CanalOrigen?          @default(ADMIN)
+//   ultimaActividadEn       DateTime?
+//   complejidad             NivelComplejidad?
+//   minutosNoImputables     Int?                  @default(0)
+//   contadorReasignaciones  Int                   @default(0)
+//   costoTotal              Decimal?              @db.Decimal(12,2) @default(0)
+//   // Evidencia de cierre — referencia al modelo Media existente
+//   evidenciaCierreId       Int?
+//   evidenciaCierre         Media?                @relation("EvidenciaCierreTicket", fields: [evidenciaCierreId], references: [id])
 //   // Relaciones nuevas
-//   reasignaciones           TicketReasignacion[]
-//   gastos                   TicketGasto[]
+//   reasignaciones          TicketReasignacion[]
+//   gastos                  TicketGasto[]
 
 // ── model TicketResumen ──────────────────────────────────────
-// Agregar este campo dentro del bloque existente:
-//
-//   // Se calcula y guarda al momento de cerrar el ticket (nunca cambia después)
-//   slaBucket                SlaBucket?
-//
-// NOTA: age_hours NO se persiste → calcular en query:
-//   EXTRACT(EPOCH FROM (NOW() - fecha_apertura)) / 3600
+//   slaBucket               SlaBucket?
+//   // NOTA: age_hours no se persiste → calcular en query:
+//   // EXTRACT(EPOCH FROM (NOW() - fecha_apertura)) / 3600
 
 // ── model Media ─────────────────────────────────────────────
-// Agregar estas relaciones dentro del bloque existente:
-//
-//   evidenciasCierreTicket   TicketSoporte[]       @relation("EvidenciaCierreTicket")
-//   evidenciasGasto          GastoOperativo[]      @relation("EvidenciaGastoOperativo")
+//   evidenciasCierreTicket  TicketSoporte[]       @relation("EvidenciaCierreTicket")
+//   evidenciasGasto         GastoOperativo[]      @relation("EvidenciaGastoOperativo")
+
+// ── model Empresa ────────────────────────────────────────────
+//   gastosOperativos        GastoOperativo[]
+//   bodegas                 Bodega[]
+//   categoriaProductos      CategoriaProducto[]
+//   productos               Producto[]
+//   movimientosInventario   MovimientoInventario[]
+
+// ── model Proveedor ──────────────────────────────────────────
+//   movimientosInventario   MovimientoInventario[]
 
 
 // ============================================================
@@ -1466,24 +1467,18 @@ model ClienteReferencia {
 
 model TicketReasignacion {
   id                   Int            @id @default(autoincrement())
-
   ticketId             Int
   ticket               TicketSoporte  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
-  // null = no había asignado antes
   tecnicoAnteriorId    Int?
   tecnicoAnterior      Usuario?       @relation("ReasignacionDe",  fields: [tecnicoAnteriorId], references: [id], onDelete: SetNull)
-
   tecnicoNuevoId       Int
   tecnicoNuevo         Usuario        @relation("ReasignacionA",   fields: [tecnicoNuevoId],    references: [id], onDelete: Cascade)
-
-  // Admin / supervisor que hizo el cambio
   reasignadoPorId      Int?
   reasignadoPor        Usuario?       @relation("QuienReasigno",   fields: [reasignadoPorId],   references: [id], onDelete: SetNull)
 
   motivo               String?
   reasignadoEn         DateTime       @default(now())
-
   creadoEn             DateTime       @default(now())
   actualizadoEn        DateTime       @updatedAt
 
@@ -1494,63 +1489,53 @@ model TicketReasignacion {
 
 // ============================================================
 // [C] GASTO OPERATIVO — pool central de gastos
-//     Un gasto puede repartirse entre N tickets.
-//     Si viene de inventario → productoId + movimientoId apuntarán al origen.
-//     Si es libre (gasolina, viático) → productoId = null.
+//     Gastos libres (gasolina, viáticos) O generados automáticamente
+//     desde inventario (MATERIAL). Siempre se distribuye via TicketGasto.
 // ============================================================
 
 model GastoOperativo {
-  id                    Int             @id @default(autoincrement())
+  id                     Int             @id @default(autoincrement())
+  empresaId              Int
+  empresa                Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
-  empresaId             Int
-  empresa               Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  registradoPorId        Int?
+  registradoPor          Usuario?        @relation("GastosRegistrados", fields: [registradoPorId], references: [id], onDelete: SetNull)
 
-  registradoPorId       Int?
-  registradoPor         Usuario?        @relation("GastosRegistrados", fields: [registradoPorId], references: [id], onDelete: SetNull)
+  tipoGasto              TipoGasto
+  subtipo                String?         // "Super 97", "Taladro Bosch 18V", texto libre
+  descripcion            String?
 
-  // ── Clasificación ──────────────────────────────────────────
-  tipoGasto             TipoGasto
-  subtipo               String?         // "Super 97", "Taladro Bosch 18V", texto libre
-  descripcion           String?
+  montoTotal             Decimal         @db.Decimal(12,2) @default(0)
+  esRecuperable          Boolean         @default(false)   // ¿se cobra al cliente?
 
-  // ── Dinero ─────────────────────────────────────────────────
-  montoTotal            Decimal         @db.Decimal(12,2) @default(0)
-  // montoTotal = 0 es válido (herramienta de uso sin costo en esta salida)
+  // Control para herramientas / activos físicos
+  esHerramienta          Boolean         @default(false)
+  devolucionRequerida    Boolean         @default(false)
+  devuelta               Boolean         @default(false)
+  fechaDevolucion        DateTime?
 
-  // ── Recuperabilidad ────────────────────────────────────────
-  esRecuperable         Boolean         @default(false)  // ¿se cobra al cliente?
+  // Evidencia — usa el sistema Media existente (mismo bucket/servicio)
+  evidenciaMediaId       Int?
+  evidenciaMedia         Media?          @relation("EvidenciaGastoOperativo", fields: [evidenciaMediaId], references: [id])
 
-  // ── Control de herramientas / activos ──────────────────────
-  esHerramienta         Boolean         @default(false)
-  devolucionRequerida   Boolean         @default(false)
-  devuelta              Boolean         @default(false)
-  fechaDevolucion       DateTime?
-
-  // ── Evidencia (recibo, foto del activo) — usa modelo Media ─
-  evidenciaMediaId      Int?
-  evidenciaMedia        Media?          @relation("EvidenciaGastoOperativo", fields: [evidenciaMediaId], references: [id])
-
-  // ── Vínculo con inventario (solo si tipoGasto = MATERIAL) ──
-  // Si el material viene del inventario, estos dos campos apuntan al origen
-  productoId            Int?
-  producto              Producto?       @relation(fields: [productoId], references: [id], onDelete: SetNull)
-
-  movimientoInventarioId Int?           @unique  // 1-a-1: esta salida de inventario originó este gasto
+  // Vínculo con inventario (auto-poblado cuando viene de un MovimientoInventario)
+  // Si tipoGasto = MATERIAL y viene del inventario → estos dos campos se llenan solos
+  productoId             Int?
+  producto               Producto?       @relation(fields: [productoId], references: [id], onDelete: SetNull)
+  movimientoInventarioId Int?            @unique   // 1-a-1: el movimiento que originó este gasto
   movimientoInventario   MovimientoInventario? @relation(fields: [movimientoInventarioId], references: [id], onDelete: SetNull)
 
-  // ── Aprobación (solo admins aprueban) ──────────────────────
-  estado                EstadoGasto     @default(BORRADOR)
-  aprobadoPorId         Int?
-  aprobadoPor           Usuario?        @relation("GastosAprobados", fields: [aprobadoPorId], references: [id], onDelete: SetNull)
-  aprobadoEn            DateTime?
+  // Aprobación (solo admins)
+  estado                 EstadoGasto     @default(BORRADOR)
+  aprobadoPorId          Int?
+  aprobadoPor            Usuario?        @relation("GastosAprobados", fields: [aprobadoPorId], references: [id], onDelete: SetNull)
+  aprobadoEn             DateTime?
 
-  // Fecha real del gasto (puede diferir de creadoEn: gasto de ayer registrado hoy)
-  fechaGasto            DateTime        @default(now())
+  fechaGasto             DateTime        @default(now())
+  creadoEn               DateTime        @default(now())
+  actualizadoEn          DateTime        @updatedAt
 
-  creadoEn              DateTime        @default(now())
-  actualizadoEn         DateTime        @updatedAt
-
-  ticketAsignaciones    TicketGasto[]
+  ticketAsignaciones     TicketGasto[]
 
   @@index([empresaId, tipoGasto, fechaGasto])
   @@index([registradoPorId])
@@ -1559,48 +1544,69 @@ model GastoOperativo {
 
 
 // ============================================================
-// [D] TICKET GASTO — pivote asignación (gasto → ticket)
-//     Resuelve: 1 GastoOperativo repartido entre N tickets.
-//     montoAsignado es lo que suma al costoTotal del ticket.
+// [D] TICKET GASTO — pivote de asignación (gasto → ticket)
+//     Un GastoOperativo puede repartirse entre N tickets.
+//     montoAsignado es lo que realmente suma al costoTotal del ticket.
 // ============================================================
 
 model TicketGasto {
   id                   Int             @id @default(autoincrement())
-
   ticketId             Int
   ticket               TicketSoporte   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-
   gastoId              Int
   gasto                GastoOperativo  @relation(fields: [gastoId], references: [id], onDelete: Cascade)
 
-  // Porción del gasto que se carga a ESTE ticket
-  // Ej: gasolina $200 repartida en 4 tickets → montoAsignado: $50 c/u
   montoAsignado        Decimal         @db.Decimal(12,2) @default(0)
+  porcentajeAsignado   Decimal?        @db.Decimal(6,2)  // 25.00 = 25%
 
-  // Opcional — para auditoría de reparto
-  porcentajeAsignado   Decimal?        @db.Decimal(6,2)  // ej: 25.00 = 25%
-
-  // Técnico que incurrió en el gasto en este ticket
-  // (puede diferir del registradoPor del GastoOperativo)
   tecnicoId            Int?
   tecnico              Usuario?        @relation("GastosAsignadosTecnico", fields: [tecnicoId], references: [id], onDelete: SetNull)
-
   asignadoPorId        Int?
   asignadoPor          Usuario?        @relation("GastosAsignadosPor", fields: [asignadoPorId], references: [id], onDelete: SetNull)
 
   nota                 String?
-
   creadoEn             DateTime        @default(now())
   actualizadoEn        DateTime        @updatedAt
 
-  @@unique([ticketId, gastoId])  // un gasto se asigna solo una vez por ticket
+  @@unique([ticketId, gastoId])
   @@index([ticketId])
   @@index([gastoId])
 }
 
 
 // ============================================================
-// [E] CATEGORÍA DE PRODUCTO (inventario)
+// [E] BODEGA — ubicaciones de stock
+//     Hoy: "Almacén Central". Mañana: vehículos, sucursales.
+//     Agregar una bodega nueva nunca rompe nada.
+// ============================================================
+
+model Bodega {
+  id                   Int                    @id @default(autoincrement())
+  empresaId            Int
+  empresa              Empresa                @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  nombre               String                 // "Almacén Central", "Vehículo Técnico #1"
+  tipo                 TipoBodega             @default(ALMACEN)
+  descripcion          String?
+  responsableId        Int?                   // usuario encargado de esta bodega
+  responsable          Usuario?               @relation("BodegaResponsable", fields: [responsableId], references: [id], onDelete: SetNull)
+  activo               Boolean                @default(true)
+
+  stockProductos       StockProducto[]
+  movimientosOrigen    MovimientoInventario[] @relation("MovimientoOrigen")
+  movimientosDestino   MovimientoInventario[] @relation("MovimientoDestino")
+  seriales             SerialProducto[]       // items serializables guardados aquí
+
+  creadoEn             DateTime               @default(now())
+  actualizadoEn        DateTime               @updatedAt
+
+  @@unique([empresaId, nombre])
+  @@index([empresaId])
+}
+
+
+// ============================================================
+// [F] CATEGORÍA DE PRODUCTO
 // ============================================================
 
 model CategoriaProducto {
@@ -1611,7 +1617,6 @@ model CategoriaProducto {
   nombre        String     // "Equipos Ópticos", "Cable y Conectores", "Herramientas"
   descripcion   String?
   activo        Boolean    @default(true)
-
   productos     Producto[]
 
   creadoEn      DateTime   @default(now())
@@ -1622,42 +1627,50 @@ model CategoriaProducto {
 
 
 // ============================================================
-// [F] PRODUCTO — catálogo de materiales y herramientas
+// [G] PRODUCTO — catálogo maestro
+//     stockTotal es denormalizado (suma de StockProducto).
+//     La fuente de verdad siempre es StockProducto.
 // ============================================================
 
 model Producto {
-  id                 Int                    @id @default(autoincrement())
-  empresaId          Int
-  empresa            Empresa                @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  id                   Int                    @id @default(autoincrement())
+  empresaId            Int
+  empresa              Empresa                @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  categoriaId          Int?
+  categoria            CategoriaProducto?     @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
 
-  categoriaId        Int?
-  categoria          CategoriaProducto?     @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  nombre               String                 // "ONT Huawei HG8310M", "Cable UTP Cat6 x metro"
+  descripcion          String?
+  sku                  String?                // código interno o del proveedor
 
-  nombre             String                 // "ONT Huawei HG8310M", "Cable coaxial RG-6"
-  descripcion        String?
-  sku                String?                // código interno / referencia del proveedor
+  unidadMedida         String?                @default("unidad") // "unidad", "metro", "rollo", "caja"
 
-  unidadMedida       String?                @default("unidad")  // "unidad", "metro", "rollo", "caja"
+  // Costos — se recalculan en cada ENTRADA por costo promedio ponderado
+  costoPromedio        Decimal                @db.Decimal(12,2) @default(0)
+  costoUltimo          Decimal?               @db.Decimal(12,2)  // precio de la última compra
 
-  // Costos — se actualizan automáticamente en cada MovimientoInventario de ENTRADA
-  costoPromedio      Decimal                @db.Decimal(12,2) @default(0)  // costo promedio ponderado
-  costoUltimo        Decimal?               @db.Decimal(12,2)              // precio de la última compra
+  // Stock denormalizado — se actualiza en cada MovimientoInventario
+  // La fuente real es la suma de StockProducto, pero esto evita JOINs en listados
+  stockTotal           Int                    @default(0)
+  stockMinimo          Int                    @default(0)        // umbral de alerta baja
 
-  // Stock — denormalizado para lectura rápida
-  stockActual        Int                    @default(0)
-  stockMinimo        Int                    @default(0)   // umbral de alerta
+  // Tipo de item
+  // esSeriable = true  → ONTs, routers, equipos con número de serie o MAC
+  // esSeriable = false → cable, conectores, splitters (se cuentan por cantidad)
+  esSeriable           Boolean                @default(false)
+  // esActivo = true    → herramienta que no se consume (taladro, escalera, fusionadora)
+  esActivo             Boolean                @default(false)
 
-  // Es un activo (taladro, escalera) vs. consumible (cable, ONT)
-  esActivo           Boolean                @default(false)
+  activo               Boolean                @default(true)
+  isEliminado          Boolean                @default(false)
 
-  activo             Boolean                @default(true)
-  isEliminado        Boolean                @default(false)
+  stockPorBodega       StockProducto[]
+  seriales             SerialProducto[]
+  movimientos          MovimientoInventario[]
+  gastosOperativos     GastoOperativo[]
 
-  movimientos        MovimientoInventario[]
-  gastosOperativos   GastoOperativo[]       // gastos libres que referencian este producto
-
-  creadoEn           DateTime               @default(now())
-  actualizadoEn      DateTime               @updatedAt
+  creadoEn             DateTime               @default(now())
+  actualizadoEn        DateTime               @updatedAt
 
   @@unique([empresaId, sku])
   @@index([empresaId, categoriaId])
@@ -1665,139 +1678,225 @@ model Producto {
 
 
 // ============================================================
-// [G] MOVIMIENTO DE INVENTARIO — audit trail de stock
-//     Cada entrada, salida o ajuste queda registrado aquí.
-//     Una SALIDA ligada a un ticket auto-genera un GastoOperativo.
+// [H] STOCK POR BODEGA — la fuente de verdad del inventario
+//     Una fila por cada combinación (producto, bodega).
+//     Para saber cuánto hay de X en Y → buscar aquí.
+//     Para saber cuánto hay de X en total → SUM o Producto.stockTotal
 // ============================================================
 
-model MovimientoInventario {
-  id                 Int               @id @default(autoincrement())
-  empresaId          Int
-  empresa            Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+model StockProducto {
+  id                   Int       @id @default(autoincrement())
+  productoId           Int
+  producto             Producto  @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  bodegaId             Int
+  bodega               Bodega    @relation(fields: [bodegaId], references: [id], onDelete: Cascade)
 
-  productoId         Int
-  producto           Producto          @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  cantidad             Decimal   @db.Decimal(10,2) @default(0)
+  // Cantidad reservada para movimientos pendientes (futuro)
+  cantidadReservada    Decimal   @db.Decimal(10,2) @default(0)
+  // cantidadDisponible = cantidad - cantidadReservada (calculado en query)
 
-  tipoMovimiento     TipoMovimiento
+  actualizadoEn        DateTime  @updatedAt
 
-  cantidad           Decimal           @db.Decimal(10,2)   // puede ser fracción (metros de cable)
-  costoUnitario      Decimal           @db.Decimal(12,2)   // precio unitario al momento del movimiento
-  costoTotal         Decimal           @db.Decimal(14,2)   // cantidad × costoUnitario
-
-  // Contexto del movimiento
-  ticketId           Int?              // si es SALIDA por ticket
-  // ticket no tiene FK directa aquí para no crear dependencia circular;
-  // la FK real está en GastoOperativo → MovimientoInventario (1-a-1)
-
-  proveedorId        Int?              // si es ENTRADA de un proveedor
-  proveedor          Proveedor?        @relation(fields: [proveedorId], references: [id], onDelete: SetNull)
-
-  referencia         String?           // nro. factura de compra, orden, nota
-  notas              String?
-
-  realizadoPorId     Int?
-  realizadoPor       Usuario?          @relation("MovimientosRealizados", fields: [realizadoPorId], references: [id], onDelete: SetNull)
-
-  // Stock resultante (denormalizado para auditoría — snapshot al momento)
-  stockResultante    Int?
-
-  creadoEn           DateTime          @default(now())
-  actualizadoEn      DateTime          @updatedAt
-
-  // Relación inversa al GastoOperativo que originó (si es SALIDA)
-  gastoOperativo     GastoOperativo?   // 1-a-1 inversa (FK está en GastoOperativo)
-
-  @@index([productoId, tipoMovimiento, creadoEn])
-  @@index([ticketId])
-  @@index([empresaId, creadoEn])
+  @@unique([productoId, bodegaId])
+  @@index([bodegaId])
+  @@index([productoId])
 }
 
 
 // ============================================================
-// [H] RELACIONES INVERSAS — pegar dentro de los modelos existentes
+// [I] SERIAL DE PRODUCTO — tracking individual (ONTs, routers)
+//     Solo aplica cuando Producto.esSeriable = true.
+//     Permite saber exactamente qué ONT está en qué cliente.
+// ============================================================
+
+model SerialProducto {
+  id                   Int              @id @default(autoincrement())
+  productoId           Int
+  producto             Producto         @relation(fields: [productoId], references: [id], onDelete: Cascade)
+
+  serial               String           // MAC address o número de serie del fabricante
+  estado               EstadoSerial     @default(EN_STOCK)
+
+  // Ubicación actual del equipo
+  bodegaId             Int?             // null si ya está instalado en campo
+  bodega               Bodega?          @relation(fields: [bodegaId], references: [id], onDelete: SetNull)
+
+  // Si está instalado
+  clienteId            Int?
+  cliente              ClienteInternet? @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  ticketInstalacionId  Int?             // ticket donde se realizó la instalación
+  instaladoEn          DateTime?
+
+  // Si está defectuoso / en reparación
+  motivoBaja           String?
+  fechaBaja            DateTime?
+
+  creadoEn             DateTime         @default(now())
+  actualizadoEn        DateTime         @updatedAt
+
+  movimientos          MovimientoInventario[]
+
+  @@unique([serial])
+  @@index([productoId, estado])
+  @@index([clienteId])
+}
+
+
+// ============================================================
+// [J] MOVIMIENTO DE INVENTARIO — audit trail inmutable
+//     Cada cambio de stock queda registrado aquí para siempre.
+//
+//   ENTRADA:        bodegaOrigen=null,  bodegaDestino=almacén que recibe
+//   SALIDA ticket:  bodegaOrigen=bodega, bodegaDestino=null, ticketId filled
+//   SALIDA manual:  bodegaOrigen=bodega, bodegaDestino=null
+//   TRANSFERENCIA:  bodegaOrigen=A,     bodegaDestino=B
+//   AJUSTE:         bodegaOrigen=bodega, bodegaDestino=null (o ambos null)
+// ============================================================
+
+model MovimientoInventario {
+  id                   Int                @id @default(autoincrement())
+  empresaId            Int
+  empresa              Empresa            @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  productoId           Int
+  producto             Producto           @relation(fields: [productoId], references: [id], onDelete: Cascade)
+
+  tipoMovimiento       TipoMovimiento
+
+  cantidad             Decimal            @db.Decimal(10,2)
+  costoUnitario        Decimal            @db.Decimal(12,2)
+  costoTotal           Decimal            @db.Decimal(14,2)  // cantidad × costoUnitario
+
+  // Dónde entra/sale el stock
+  bodegaOrigenId       Int?
+  bodegaOrigen         Bodega?            @relation("MovimientoOrigen",  fields: [bodegaOrigenId],  references: [id], onDelete: SetNull)
+  bodegaDestinoId      Int?
+  bodegaDestino        Bodega?            @relation("MovimientoDestino", fields: [bodegaDestinoId], references: [id], onDelete: SetNull)
+
+  // Contexto del movimiento
+  ticketId             Int?               // SALIDA ligada a un ticket de soporte
+  proveedorId          Int?               // ENTRADA de compra
+  proveedor            Proveedor?         @relation(fields: [proveedorId], references: [id], onDelete: SetNull)
+
+  referencia           String?            // nro. factura de compra, orden de trabajo
+  notas                String?
+
+  realizadoPorId       Int?
+  realizadoPor         Usuario?           @relation("MovimientosRealizados", fields: [realizadoPorId], references: [id], onDelete: SetNull)
+
+  // Snapshot del stock total del producto al momento del movimiento (para auditoría)
+  stockResultante      Int?
+
+  // Si el item es seriable, qué serial específico se movió
+  serialId             Int?
+  serialProducto       SerialProducto?    @relation(fields: [serialId], references: [id], onDelete: SetNull)
+
+  creadoEn             DateTime           @default(now())
+  actualizadoEn        DateTime           @updatedAt
+
+  // Relación inversa: el GastoOperativo auto-generado por este movimiento (si aplica)
+  // FK está en GastoOperativo.movimientoInventarioId
+  gastoOperativo       GastoOperativo?
+
+  @@index([productoId, tipoMovimiento, creadoEn])
+  @@index([empresaId, creadoEn])
+  @@index([ticketId])
+  @@index([bodegaOrigenId])
+  @@index([bodegaDestinoId])
+}
+
+
+// ============================================================
+// [K] RELACIONES INVERSAS — pegar en modelos existentes
 // ============================================================
 
 // ── model Usuario ────────────────────────────────────────────
-//   // Reasignaciones
 //   reasignacionesRecibidas    TicketReasignacion[]  @relation("ReasignacionA")
 //   reasignacionesEntregadas   TicketReasignacion[]  @relation("ReasignacionDe")
 //   reasignacionesHechas       TicketReasignacion[]  @relation("QuienReasigno")
-//   // Gastos
 //   gastosRegistrados          GastoOperativo[]      @relation("GastosRegistrados")
 //   gastosAprobados            GastoOperativo[]      @relation("GastosAprobados")
 //   gastosAsignadosTecnico     TicketGasto[]         @relation("GastosAsignadosTecnico")
 //   gastosAsignadosPor         TicketGasto[]         @relation("GastosAsignadosPor")
-//   // Inventario
 //   movimientosRealizados      MovimientoInventario[] @relation("MovimientosRealizados")
+//   bodegasResponsable         Bodega[]              @relation("BodegaResponsable")
 
-// ── model Empresa ────────────────────────────────────────────
-//   gastosOperativos           GastoOperativo[]
-//   categoriaProductos         CategoriaProducto[]
-//   productos                  Producto[]
-//   movimientosInventario      MovimientoInventario[]
-
-// ── model Proveedor ──────────────────────────────────────────
-//   movimientosInventario      MovimientoInventario[]
+// ── model ClienteInternet ───────────────────────────────────
+//   seriales                   SerialProducto[]
 
 
 // ============================================================
-// [I] ENUMS NUEVOS
+// [L] ENUMS NUEVOS
 // ============================================================
 
 enum CanalOrigen {
-  ADMIN       // creado desde el panel administrativo
-  PORTAL      // portal web del cliente
-  WHATSAPP    // mensaje de WhatsApp (bot o agente)
-  BOT         // chatbot automatizado
+  ADMIN       // desde el panel
+  PORTAL      // portal del cliente
+  WHATSAPP    // bot o agente WA
+  BOT         // chatbot automático
   LLAMADA     // call center / teléfono
   APP         // app móvil del técnico
   OTRO
 }
 
 enum NivelComplejidad {
-  BASICO        // reset, reinicio, configuración simple
-  INTERMEDIO    // cambio de equipo, redropeo, reconfiguración
-  AVANZADO      // fibra cortada, falla de OLT, config compleja
+  BASICO        // reset, reinicio, config simple
+  INTERMEDIO    // cambio de equipo, redropeo
+  AVANZADO      // fibra cortada, falla de OLT
   CRITICO       // afecta múltiples clientes o infraestructura
 }
 
 enum TipoGasto {
-  GASOLINA      // combustible — típicamente compartido entre tickets
-  HERRAMIENTA   // activo físico que puede regresar al almacén
-  MATERIAL      // consumible: cable, ONT, splitter, conector…
+  COMBUSTIBLE      // combustible — normalmente compartido entre tickets
+  HERRAMIENTA   // activo que regresa al almacén
+  MATERIAL      // consumible del inventario (ONT, cable, etc.)
   VIATICO       // comida, hospedaje en campo
   TRANSPORTE    // taxi, bus, uber
-  SERVICIO      // tercero contratado (instalador externo, electricista)
+  SERVICIO      // tercero contratado
   OTRO
 }
 
 enum EstadoGasto {
-  BORRADOR      // registrado, aún no confirmado
+  BORRADOR      // registrado, sin confirmar
   CONFIRMADO    // listo para asignar a tickets
-  APROBADO      // revisado y aprobado por admin
-  RECHAZADO     // no aprobado (con motivo en descripcion)
-  ANULADO       // cancelado
+  APROBADO      // revisado por admin
+  RECHAZADO
+  ANULADO
 }
 
 enum SlaBucket {
-  MENOR_24H     // < 24 h   ✅ ideal
-  H_24_48       // 24–48 h
-  H_48_72       // 48–72 h
-  H_72_96       // 72–96 h
-  MAYOR_96H     // > 96 h   🔴 crítico
+  MENOR_24H     // < 24 h  ✅
+  H_24_48
+  H_48_72
+  H_72_96
+  MAYOR_96H     // > 96 h  🔴
+}
+
+enum TipoBodega {
+  ALMACEN       // bodega/almacén físico
+  VEHICULO      // vehículo de técnico
+  OFICINA       // oficina / mostrador
+  EXTERNO       // bodega de tercero o proveedor
 }
 
 enum TipoMovimiento {
-  ENTRADA            // compra o devolución de campo al almacén
-  SALIDA             // consumido en un ticket o trabajo
-  AJUSTE_POSITIVO    // corrección de conteo (más stock del registrado)
-  AJUSTE_NEGATIVO    // corrección de conteo (menos stock del registrado)
-  TRANSFERENCIA      // entre bodegas (reservado para futuro)
+  ENTRADA            // compra o devolución de campo
+  SALIDA             // consumido en ticket o trabajo
+  AJUSTE_POSITIVO    // corrección de conteo hacia arriba
+  AJUSTE_NEGATIVO    // corrección de conteo hacia abajo
+  TRANSFERENCIA      // entre bodegas
 }
 
+enum EstadoSerial {
+  EN_STOCK           // disponible en alguna bodega
+  INSTALADO          // en casa del cliente
+  DEFECTUOSO         // fuera de servicio
+  EN_REPARACION      // en taller
+  DADO_DE_BAJA       // retirado permanentemente
+}
 
-
-
+// CREDITOS
 
 enum TipoPlantillaLegal {
   CONTRATO
