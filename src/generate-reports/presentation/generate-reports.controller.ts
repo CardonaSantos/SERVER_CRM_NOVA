@@ -17,6 +17,7 @@ import {
 } from '../dto/generate-historial-pagos.dto';
 import { Response } from 'express';
 import { QueryCobranzaReport } from '../dto/cobranza-query-report';
+import { QueryTicketsDailyReportDto } from '../dto/ticket-metricas.dto';
 
 @Controller('generate-reports')
 export class GenerateReportsController {
@@ -67,6 +68,26 @@ export class GenerateReportsController {
       'Content-Disposition': `attachment; filename="cobranza_report${Date.now()}.xlsx"`,
       'Content-Length': buffer.length,
     });
+    res.end(buffer);
+  }
+
+  @Post('tickets/diario')
+  async exportTicketsDailyReport(
+    @Body() dto: QueryTicketsDailyReportDto,
+    @Res() res: Response,
+  ) {
+    const buffer = await this.generateReportsService.ticketsDailyReport(dto);
+
+    const dateLabel =
+      dto.fecha ?? dto.fechaInicio ?? new Date().toISOString().slice(0, 10);
+
+    res.set({
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="tickets_report_${dateLabel}_${Date.now()}.xlsx"`,
+      'Content-Length': buffer.length,
+    });
+
     res.end(buffer);
   }
 }

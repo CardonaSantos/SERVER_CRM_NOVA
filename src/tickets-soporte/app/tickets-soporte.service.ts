@@ -386,10 +386,12 @@ export class TicketsSoporteService {
         ticketsResueltos,
       ] = await Promise.all([
         await this.prisma.ticketSoporte.findMany({
-          orderBy:
-            query.vista === 'inbox' || query.vista === 'enProceso'
-              ? [{ fijado: 'desc' }, { fechaApertura: 'desc' }, { id: 'desc' }]
-              : [{ fechaCierre: 'desc' }, { id: 'desc' }],
+          orderBy: [
+            { fijado: 'desc' },
+            { prioridad: 'desc' },
+            { fechaApertura: 'desc' },
+            { id: 'desc' },
+          ],
           where: where,
           skip: (query.page - 1) * query.limit,
           take: query.limit,
