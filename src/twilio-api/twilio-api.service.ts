@@ -1,22 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { CreateTwilioApiDto } from './dto/create-twilio-api.dto';
-import { UpdateTwilioApiDto } from './dto/update-twilio-api.dto';
 import { ConfigService } from '@nestjs/config';
-import * as Twilio from 'twilio';
+import Twilio from 'twilio';
 import { FiltersDto } from './dto/FilterDto';
 import { Response } from 'express';
 import type { MessageInstance } from 'twilio/lib/rest/api/v2010/account/message';
-import * as dayjs from 'dayjs';
-import 'dayjs/locale/es';
-import * as utc from 'dayjs/plugin/utc';
-import * as timezone from 'dayjs/plugin/timezone';
-import * as isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
-import * as isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
-dayjs.extend(utc);
-dayjs.extend(timezone);
-dayjs.extend(isSameOrBefore);
-dayjs.extend(isSameOrAfter);
-dayjs.locale('es');
+import { dayjs } from 'src/Utils/dayjs.config';
 
 export interface TwilioHistory {
   messages: MessageInstance[];

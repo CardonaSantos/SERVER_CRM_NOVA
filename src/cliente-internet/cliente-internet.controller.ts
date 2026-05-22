@@ -27,6 +27,11 @@ export class ClienteInternetController {
     private readonly networkService: NetworkServiceService,
   ) {}
 
+  /**
+   * CREAR CLIENTE
+   * @param createClienteInternetDto
+   * @returns
+   */
   @Post('/create-new-customer')
   create(@Body() createClienteInternetDto: CreateClienteInternetDto) {
     return this.clienteInternetService.create(createClienteInternetDto);
@@ -84,6 +89,11 @@ export class ClienteInternetController {
     return this.clienteInternetService.deleteClientsWithRelations();
   }
 
+  /**
+   * ELIMINACION COMPLETA DEL CLIENTE
+   * @param id
+   * @returns
+   */
   @Delete('/delete-one-customer/:id')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.clienteInternetService.removeOneCustomer(id);
@@ -97,7 +107,7 @@ export class ClienteInternetController {
   }
 
   /**
-   * Actualizar cliente normal inlcluyendo IP
+   * ACTUALIZAR CLIENTE (SIN ALTERAR MK)
    * @param updateCustomerService DTO de nuevoc cambios
    * @param id
    * @returns

@@ -1,12 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { TwilioService } from 'src/twilio/twilio.service';
-import * as dayjs from 'dayjs';
-import * as utc from 'dayjs/plugin/utc';
-import * as timezone from 'dayjs/plugin/timezone';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
-dayjs.extend(utc);
-dayjs.extend(timezone);
 
 @Injectable()
 export class GenerarFacturaService {

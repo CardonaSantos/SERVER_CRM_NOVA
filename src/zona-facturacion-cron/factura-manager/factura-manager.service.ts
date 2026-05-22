@@ -1,11 +1,10 @@
-// factura-manager.service.ts
 import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import * as dayjs from 'dayjs';
+import { dayjs } from 'src/Utils/dayjs.config';
 import {
   ClienteInternet,
   FacturacionZona,

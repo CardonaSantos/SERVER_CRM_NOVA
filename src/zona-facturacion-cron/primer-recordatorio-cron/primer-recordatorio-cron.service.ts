@@ -17,22 +17,10 @@ import {
   shouldSkipZoneToday,
 } from '../Functions';
 // Extiende dayjs con los plugins
-import * as dayjs from 'dayjs';
-import 'dayjs/locale/es';
-import * as utc from 'dayjs/plugin/utc';
-import * as timezone from 'dayjs/plugin/timezone';
-import * as isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
-import * as isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
-import * as customParseFormat from 'dayjs/plugin/customParseFormat';
+import { dayjs } from 'src/Utils/dayjs.config';
 import { formatearTelefonosMeta } from 'src/cloud-api-meta/helpers/cleantelefono';
 import { CloudApiMetaService } from 'src/cloud-api-meta/cloud-api-meta.service';
 import { NotificacionesService } from 'src/notificaciones/app/notificaciones.service';
-dayjs.extend(customParseFormat);
-dayjs.extend(utc);
-dayjs.extend(timezone);
-dayjs.extend(isSameOrBefore);
-dayjs.extend(isSameOrAfter);
-dayjs.locale('es');
 
 @Injectable()
 export class PrimerRecordatorioCronService {

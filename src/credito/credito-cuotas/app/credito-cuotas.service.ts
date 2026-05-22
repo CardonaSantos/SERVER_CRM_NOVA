@@ -1,30 +1,11 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { CreateCreditoCuotaDto } from '../dto/create-credito-cuota.dto';
-import { UpdateCreditoCuotaDto } from '../dto/update-credito-cuota.dto';
-import { CreateCuotaCustomDto } from 'src/credito/credito-cuotas/dto/create-cuota-custom.dto';
 import { CREDITO_CUOTA, CuotaCredito } from '../entities/credito-cuota.entity';
-import { PrismaCuotaCreditoRepository } from '../infraestructure/prisma-cuota-credito.repository';
 import { CuotaCreditoRepository } from '../domain/credito-cuota.repository';
 import { Credito } from 'src/credito/entities/credito.entity';
-
-// SETUP DAYJS
-import * as dayjs from 'dayjs';
-import * as utc from 'dayjs/plugin/utc';
-import * as timezone from 'dayjs/plugin/timezone';
-import * as isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
-import * as isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
-import * as customParseFormat from 'dayjs/plugin/customParseFormat';
+import { dayjs } from 'src/Utils/dayjs.config';
 import { Decimal } from '@prisma/client/runtime/library';
-import { CREDITO } from 'src/credito/domain/credito.repository';
-import { CuotaCreditoMapper } from 'src/credito/credito-cuotas/infraestructure/cuota-credito.mapper.ts';
 import { CuotaCustomDto } from 'src/credito/dto/create-credito.dto';
 import { FrecuenciaPago } from '@prisma/client';
-dayjs.extend(utc);
-dayjs.extend(timezone);
-dayjs.extend(isSameOrAfter);
-dayjs.extend(isSameOrBefore);
-dayjs.extend(customParseFormat);
-dayjs.tz.setDefault('America/Guatemala');
 
 @Injectable()
 export class CreditoCuotasService {

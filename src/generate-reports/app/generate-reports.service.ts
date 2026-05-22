@@ -7,6 +7,7 @@ import {
   GenerateReportsRepository,
 } from '../domain/generate-reports.repository';
 import { QueryCobranzaReport } from '../dto/cobranza-query-report';
+import { QueryTicketsDailyReportDto } from '../dto/ticket-metricas.dto';
 
 @Injectable()
 export class GenerateReportsService {
@@ -29,5 +30,9 @@ export class GenerateReportsService {
 
   async cobranzaReport(dto: QueryCobranzaReport) {
     return await this.repo.cobranzaReport(dto);
+  }
+
+  async ticketsDailyReport(dto: QueryTicketsDailyReportDto) {
+    return await this.repo.ticketsDailyReport(dto);
   }
 }

@@ -4,9 +4,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import * as dayjs from 'dayjs';
-import * as utc from 'dayjs/plugin/utc';
-import * as timezone from 'dayjs/plugin/timezone';
+
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
@@ -15,8 +13,7 @@ import { shouldSkipClient, shouldSkipZoneToday } from '../Functions';
 import { CloudApiMetaService } from 'src/cloud-api-meta/cloud-api-meta.service';
 import { formatearTelefonosMeta } from 'src/cloud-api-meta/helpers/cleantelefono';
 import { NotificacionesService } from 'src/notificaciones/app/notificaciones.service';
-dayjs.extend(utc);
-dayjs.extend(timezone);
+import { dayjs } from 'src/Utils/dayjs.config';
 
 @Injectable()
 export class SegundoRecordatorioCronService {

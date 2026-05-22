@@ -1,4 +1,5 @@
 import { QueryCobranzaReport } from '../dto/cobranza-query-report';
+import { QueryTicketsDailyReportDto } from '../dto/ticket-metricas.dto';
 
 export const GENERATE_REPORTS = Symbol('GENERATE_REPORTS');
 
@@ -8,4 +9,6 @@ export interface GenerateReportsRepository {
   exportInfo(ids: Array<number>): Promise<Buffer>;
 
   cobranzaReport(dto: QueryCobranzaReport): Promise<Buffer>;
+
+  ticketsDailyReport(dto: QueryTicketsDailyReportDto): Promise<Buffer>;
 }

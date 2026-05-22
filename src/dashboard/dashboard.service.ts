@@ -4,14 +4,10 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import * as dayjs from 'dayjs';
-import * as utc from 'dayjs/plugin/utc';
-import * as timezone from 'dayjs/plugin/timezone';
+import { dayjs } from 'src/Utils/dayjs.config';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { TZ } from 'src/Utils/tzgt';
-dayjs.extend(utc);
-dayjs.extend(timezone);
 @Injectable()
 export class DashboardService {
   private logger = new Logger(DashboardService.name);

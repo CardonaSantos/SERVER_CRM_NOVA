@@ -3,12 +3,8 @@ import {
   FacturacionZona,
   ServicioInternet,
 } from '@prisma/client';
-import * as dayjs from 'dayjs';
-import * as utc from 'dayjs/plugin/utc';
-import * as timezone from 'dayjs/plugin/timezone';
+import { dayjs } from 'src/Utils/dayjs.config';
 
-dayjs.extend(utc);
-dayjs.extend(timezone);
 const estadosAExcluir: EstadoCliente[] = [
   EstadoCliente.SUSPENDIDO,
   EstadoCliente.DESINSTALADO,

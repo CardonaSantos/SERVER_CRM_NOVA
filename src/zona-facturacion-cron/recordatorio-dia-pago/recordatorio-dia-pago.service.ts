@@ -5,17 +5,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import * as dayjs from 'dayjs';
-import * as utc from 'dayjs/plugin/utc';
-import * as timezone from 'dayjs/plugin/timezone';
+import { dayjs } from 'src/Utils/dayjs.config';
+
+import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { FacturaManagerService } from '../factura-manager/factura-manager.service';
 import { shouldSkipClient, shouldSkipZoneToday } from '../Functions';
 import { formatearTelefonosMeta } from 'src/cloud-api-meta/helpers/cleantelefono';
 import { CloudApiMetaService } from 'src/cloud-api-meta/cloud-api-meta.service';
-dayjs.extend(utc);
-dayjs.extend(timezone);
 @Injectable()
 export class RecordatorioDiaPagoService {
   private readonly logger = new Logger(RecordatorioDiaPagoService.name);

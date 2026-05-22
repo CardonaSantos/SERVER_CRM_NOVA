@@ -4,23 +4,9 @@ import { CreateCuotaCustomDto } from 'src/credito/credito-cuotas/dto/create-cuot
 import { CuotaCredito } from 'src/credito/credito-cuotas/entities/credito-cuota.entity';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
-
-// SETUP DAYJS
-import * as dayjs from 'dayjs';
-import * as utc from 'dayjs/plugin/utc';
-import * as timezone from 'dayjs/plugin/timezone';
-import * as isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
-import * as isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
-import * as customParseFormat from 'dayjs/plugin/customParseFormat';
+import { dayjs } from 'src/Utils/dayjs.config';
 import { Decimal } from '@prisma/client/runtime/library';
-import { CREDITO } from 'src/credito/domain/credito.repository';
 import { CuotaCreditoMapper } from 'src/credito/credito-cuotas/infraestructure/cuota-credito.mapper.ts';
-dayjs.extend(utc);
-dayjs.extend(timezone);
-dayjs.extend(isSameOrAfter);
-dayjs.extend(isSameOrBefore);
-dayjs.extend(customParseFormat);
-dayjs.tz.setDefault('America/Guatemala');
 
 interface CuotaCreate {
   creditoId: number;
