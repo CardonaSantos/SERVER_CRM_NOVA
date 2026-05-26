@@ -8,7 +8,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL_CRM")
+  // url      = env("DATABASE_URL_CRM")
 }
 
 // comentario nuevo
@@ -32,103 +32,103 @@ datasource db {
 
 /// [01] Empresa, Usuarios, Caja y Proveedores
 model Empresa {
-  id                      Int                      @id @default(autoincrement())
-  nombre                  String                   @unique
-  direccion               String?
-  telefono                String?
-  pbx                     String?
-  correo                  String?
-  sitioWeb                String?
-  nit                     String?
-  logo1                   String?
-  logo2                   String?
-  logo3                   String?
-  creadoEn                DateTime                 @default(now())
-  actualizadoEn           DateTime                 @updatedAt
-  albumClientes           AlbumCliente[]
-  clientesInternet        ClienteInternet[]
-  ConfiguracionGlobal     ConfiguracionGlobal[]
-  Factura                 Factura[]
-  facturas                FacturaInternet[]
-  FacturacionZona         FacturacionZona[]
-  medias                  Media[]
-  plantillas              PlantillaMensaje[]
-  Proveedor               Proveedor[]
-  rutas                   Ruta[]
-  saldoCaja               SaldoCaja?
-  saldoEmpresa            SaldoEmpresa?
-  Servicio                Servicio[]
-  ServicioInternet        ServicioInternet[]
-  TicketSoporte           TicketSoporte[]
-  Ubicacion               Ubicacion[]
-  empleados               Usuario[]
-  notificaciones          Notificacion[]
-  Olt                     Olt[]
-  MikrotikRouter          MikrotikRouter[]
-  gastoOperativos         GastoOperativo[]
-  categoriaProductos      CategoriaProducto[]
-  productos               Producto[]
-  movimientoInventarios   MovimientoInventario[]
-  bodegas                 Bodega[]
-  prestamosHerramienta    PrestamoHerramienta[]
+  id                  Int                   @id @default(autoincrement())
+  nombre              String                @unique
+  direccion           String?
+  telefono            String?
+  pbx                 String?
+  correo              String?
+  sitioWeb            String?
+  nit                 String?
+  logo1               String?
+  logo2               String?
+  logo3               String?
+  creadoEn            DateTime              @default(now())
+  actualizadoEn       DateTime              @updatedAt
+  albumClientes       AlbumCliente[]
+  clientesInternet    ClienteInternet[]
+  ConfiguracionGlobal ConfiguracionGlobal[]
+  Factura             Factura[]
+  facturas            FacturaInternet[]
+  FacturacionZona     FacturacionZona[]
+  medias              Media[]
+  plantillas          PlantillaMensaje[]
+  Proveedor           Proveedor[]
+  rutas               Ruta[]
+  saldoCaja           SaldoCaja?
+  saldoEmpresa        SaldoEmpresa?
+  Servicio            Servicio[]
+  ServicioInternet    ServicioInternet[]
+  TicketSoporte       TicketSoporte[]
+  Ubicacion           Ubicacion[]
+  empleados           Usuario[]
+  notificaciones      Notificacion[]
+  Olt            Olt[]
+  MikrotikRouter MikrotikRouter[]
+  gastoOperativos GastoOperativo[]
+  categoriaProductos CategoriaProducto[]
+  productos Producto[]
+  movimientoInventarios MovimientoInventario[]
+  bodegas Bodega[]
+  prestamosHerramienta PrestamoHerramienta[]
   instalacionesCliente    ClienteInstalacion[]
   desinstalacionesCliente ClienteDesinstalacion[]
   historialEstadosCliente ClienteEstadoHistorial[]
 }
 
 model Usuario {
-  id                                       Int                    @id @default(autoincrement())
-  empresaId                                Int
-  nombre                                   String
-  correo                                   String                 @unique
-  telefono                                 String?
-  rol                                      RolUsuario
-  activo                                   Boolean                @default(true)
-  creadoEn                                 DateTime               @default(now())
-  actualizadoEn                            DateTime               @updatedAt
-  contrasena                               String
-  perfil                                   PerfilUsuario?
-  asistencias                              Asistencia[]           @relation("UsuarioAsistencias")
-  BoletaSoporte                            BoletaSoporte[]
-  clientesAsesorados                       ClienteInternet[]
-  facturasEliminadas                       FacturaEliminada[]
-  facturasCreadas                          FacturaInternet[]      @relation("FacturaInternetCreador")
-  facturasAsignadas                        FacturaRuta[]          @relation("AsignadorFacturaRuta")
-  facturasCobradas                         FacturaRuta[]          @relation("CobradorFacturaRuta")
-  archivosCargados                         Media[]
-  metasTecnico                             MetaTecnicoTicket[]    @relation("MetaTecnicoRelation")
-  MetaTickets                              MetaTickets[]
-  PagoFacturaInternet                      PagoFacturaInternet[]
-  RegistroCaja                             RegistroCaja[]
-  Ruta                                     Ruta[]
-  rutaTurnosComoCobrador                   RutaTurno[]
-  SeguimientoTicket                        SeguimientoTicket[]
-  ticketsCreados                           TicketSoporte[]        @relation("TicketCreador")
-  ticketsAsignados                         TicketSoporte[]        @relation("TicketTecnico")
-  ticketsSoporteTecnico                    TicketSoporteTecnico[]
-  empresa                                  Empresa                @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  clientesEliminados                       ClienteInternet[]      @relation("ClienteEliminadoPor")
-  notificacionesRecibidas                  NotificacionUsuario[]
-  notificacionesEnviadas                   Notificacion[]         @relation("NotificacionRemitente")
-  logsTiempo                               TicketTimeLog[]        @relation("LogTecnico")
-  creditosRegistrados                      Credito[]
-  pagosCredito                             PagoCredito[]
-  morasPagadas                             MoraCredito[]
-  ubicacionesHistoricas                    UbicacionTecnico[]
-  ubicacionActual                          UbicacionActual?
-  ticketReasignacionsDe                    TicketReasignacion[]   @relation("ReasignacionDe")
-  ticketReasignacionsA                     TicketReasignacion[]   @relation("ReasignacionA")
-  gastoOperativosRegistrados               GastoOperativo[]       @relation("GastosRegistrados")
-  gastoOperativosAprovados                 GastoOperativo[]       @relation("GastosAprobados")
-  ticketGastosAsignados                    TicketGasto[]          @relation("GastosAsignadosTecnico")
-  ticketGastosAprobados                    TicketGasto[]          @relation("GastosAsignadosPor")
-  movimientoInventarios                    MovimientoInventario[] @relation("MovimientosRealizados")
-  ticketReasignacions                      TicketReasignacion[]   @relation("QuienReasigno")
-  bodegas                                  Bodega[]               @relation("BodegaResponsable")
-  prestamosHerramientaTecnico              TicketHerramientaUso[] @relation("TicketHerramientaUsoTecnico")
-  prestamosHerramientaRecibidosComoTecnico PrestamoHerramienta[]  @relation("PrestamosHerramientaTecnico")
-  prestamosHerramientaEntregados           PrestamoHerramienta[]  @relation("PrestamosHerramientaEntregados")
-  prestamosHerramientaRecibidos            PrestamoHerramienta[]  @relation("PrestamosHerramientaRecibidos")
+  id                     Int                    @id @default(autoincrement())
+  empresaId              Int
+  nombre                 String
+  correo                 String                 @unique
+  telefono               String?
+  rol                    RolUsuario
+  activo                 Boolean                @default(true)
+  creadoEn               DateTime               @default(now())
+  actualizadoEn          DateTime               @updatedAt
+  contrasena             String
+  perfil                 PerfilUsuario?
+  asistencias            Asistencia[]           @relation("UsuarioAsistencias")
+  BoletaSoporte          BoletaSoporte[]
+  clientesAsesorados     ClienteInternet[]
+  facturasEliminadas     FacturaEliminada[]
+  facturasCreadas        FacturaInternet[]      @relation("FacturaInternetCreador")
+  facturasAsignadas      FacturaRuta[]          @relation("AsignadorFacturaRuta")
+  facturasCobradas       FacturaRuta[]          @relation("CobradorFacturaRuta")
+  archivosCargados       Media[]
+  metasTecnico           MetaTecnicoTicket[]    @relation("MetaTecnicoRelation")
+  MetaTickets            MetaTickets[]
+  PagoFacturaInternet    PagoFacturaInternet[]
+  RegistroCaja           RegistroCaja[]
+  Ruta                   Ruta[]
+  rutaTurnosComoCobrador RutaTurno[]
+  SeguimientoTicket      SeguimientoTicket[]
+  ticketsCreados         TicketSoporte[]        @relation("TicketCreador")
+  ticketsAsignados       TicketSoporte[]        @relation("TicketTecnico")
+  ticketsSoporteTecnico  TicketSoporteTecnico[]
+  empresa                Empresa                @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  clientesEliminados     ClienteInternet[]      @relation("ClienteEliminadoPor")
+  notificacionesRecibidas NotificacionUsuario[]
+  notificacionesEnviadas  Notificacion[]        @relation("NotificacionRemitente")
+  logsTiempo              TicketTimeLog[]       @relation("LogTecnico")
+  creditosRegistrados Credito[]
+  pagosCredito        PagoCredito[]
+  morasPagadas        MoraCredito[]
+  ubicacionesHistoricas UbicacionTecnico[]
+  ubicacionActual       UbicacionActual?
+  ticketReasignacionsDe TicketReasignacion[] @relation("ReasignacionDe")
+  ticketReasignacionsA TicketReasignacion[] @relation("ReasignacionA")
+  gastoOperativosRegistrados GastoOperativo[] @relation("GastosRegistrados")
+  gastoOperativosAprovados GastoOperativo[] @relation("GastosAprobados")
+  ticketGastosAsignados TicketGasto[] @relation("GastosAsignadosTecnico")
+  ticketGastosAprobados TicketGasto[] @relation("GastosAsignadosPor")
+  movimientoInventarios MovimientoInventario[] @relation("MovimientosRealizados")
+  ticketReasignacions TicketReasignacion[] @relation("QuienReasigno")
+  bodegas Bodega[] @relation("BodegaResponsable")
+  prestamosHerramientaTecnico TicketHerramientaUso[] @relation("TicketHerramientaUsoTecnico")
+  prestamosHerramientaRecibidosComoTecnico PrestamoHerramienta[] @relation("PrestamosHerramientaTecnico")
+  prestamosHerramientaEntregados           PrestamoHerramienta[] @relation("PrestamosHerramientaEntregados")
+  prestamosHerramientaRecibidos            PrestamoHerramienta[] @relation("PrestamosHerramientaRecibidos")
 
   instalacionesAsesoradas  ClienteInstalacion[] @relation("InstalacionAsesor")
   instalacionesCreadas     ClienteInstalacion[] @relation("InstalacionCreadoPor")
@@ -138,11 +138,11 @@ model Usuario {
   desinstalacionesEjecutadas  ClienteDesinstalacion[] @relation("DesinstalacionEjecutadoPor")
   desinstalacionesCreadas     ClienteDesinstalacion[] @relation("DesinstalacionCreadoPor")
 
-  historialEstadosClienteCambiados ClienteEstadoHistorial[]       @relation("ClienteEstadoCambiadoPor")
-  clientesRestaurados              ClienteInternet[]              @relation("ClienteRestauradoPor")
-  clientesWhatsappDesactivados     ClienteInternet[]              @relation("ClienteWhatsappDesactivadoPor")
-  desinstalacionesComoTecnico      ClienteDesinstalacionTecnico[] @relation("DesinstalacionTecnicoUsuario")
-  instalacionesComoTecnico         ClienteInstalacionTecnico[]    @relation("InstalacionTecnicoUsuario")
+  historialEstadosClienteCambiados ClienteEstadoHistorial[] @relation("ClienteEstadoCambiadoPor")
+  clientesRestaurados          ClienteInternet[] @relation("ClienteRestauradoPor")
+  clientesWhatsappDesactivados ClienteInternet[] @relation("ClienteWhatsappDesactivadoPor")
+  desinstalacionesComoTecnico ClienteDesinstalacionTecnico[] @relation("DesinstalacionTecnicoUsuario")
+  instalacionesComoTecnico ClienteInstalacionTecnico[] @relation("InstalacionTecnicoUsuario")
 }
 
 model UbicacionTecnico {
@@ -862,7 +862,6 @@ model CobroRuta {
 /// [09] Soporte y Tickets
 model TicketSoporte {
   id                     Int                    @id @default(autoincrement())
-  // clienteId              Int
   clienteId              Int? // <--- Agrega el signo de interrogación
   empresaId              Int?
   tecnicoId              Int?
@@ -881,7 +880,7 @@ model TicketSoporte {
   actualizadoEn          DateTime               @default(now()) @updatedAt
 
   fijado  Boolean        @default(false)
-  // --- NUEVO: resumen / responsable cierre ---
+
   resumen TicketResumen? @relation("TicketResumenTicket")
 
   boleta            BoletaSoporte?
@@ -1936,6 +1935,7 @@ model MovimientoInventario {
   @@index([bodegaDestinoId])
 }
 
+
 model ClienteInstalacionMedia {
   id            Int @id @default(autoincrement())
   instalacionId Int
@@ -2160,57 +2160,57 @@ model ClienteDesinstalacion {
 }
 
 model ClienteDesinstalacionTecnico {
-  id                    Int                        @id @default(autoincrement())
-  desinstalacionId      Int
-  tecnicoId             Int?
-  rol                   RolTecnicoOperacionCliente @default(APOYO)
-  esResponsable         Boolean                    @default(false)
-  tiempoMinutos         Int?
-  observaciones         String?
+  id               Int  @id @default(autoincrement())
+  desinstalacionId Int
+  tecnicoId        Int?
+  rol RolTecnicoOperacionCliente @default(APOYO)
+  esResponsable Boolean @default(false)
+  tiempoMinutos Int?
+  observaciones String?
   tecnicoNombreSnapshot String?
-  creadoEn              DateTime                   @default(now())
-  actualizadoEn         DateTime                   @updatedAt
-  desinstalacion        ClienteDesinstalacion      @relation(fields: [desinstalacionId], references: [id], onDelete: Cascade)
-  tecnico               Usuario?                   @relation("DesinstalacionTecnicoUsuario", fields: [tecnicoId], references: [id], onDelete: SetNull)
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+  desinstalacion ClienteDesinstalacion @relation(fields: [desinstalacionId], references: [id], onDelete: Cascade)
+  tecnico        Usuario?              @relation("DesinstalacionTecnicoUsuario", fields: [tecnicoId], references: [id], onDelete: SetNull)
 
   @@index([desinstalacionId])
   @@index([tecnicoId])
 }
 
 model ClienteDesinstalacionMedia {
-  id               Int                           @id @default(autoincrement())
+  id               Int @id @default(autoincrement())
   desinstalacionId Int
   mediaId          Int
-  tipo             TipoEvidenciaClienteOperacion @default(OTRO)
-  descripcion      String?
-  orden            Int                           @default(0)
-  creadoEn         DateTime                      @default(now())
-  desinstalacion   ClienteDesinstalacion         @relation(fields: [desinstalacionId], references: [id], onDelete: Cascade)
-  media            Media                         @relation(fields: [mediaId], references: [id], onDelete: Restrict)
+  tipo        TipoEvidenciaClienteOperacion @default(OTRO)
+  descripcion String?
+  orden       Int                           @default(0)
+  creadoEn DateTime @default(now())
+  desinstalacion ClienteDesinstalacion @relation(fields: [desinstalacionId], references: [id], onDelete: Cascade)
+  media          Media                 @relation(fields: [mediaId], references: [id], onDelete: Restrict)
 
   @@unique([desinstalacionId, mediaId])
   @@index([mediaId])
 }
 
 model ClienteDesinstalacionEquipo {
-  id                     Int                  @id @default(autoincrement())
-  desinstalacionId       Int
+  id               Int @id @default(autoincrement())
+  desinstalacionId Int
   productoId             Int?
   serialProductoId       Int?
   movimientoInventarioId Int?
   bodegaDestinoId        Int?
-  descripcion            String?
-  cantidad               Decimal              @default(1) @db.Decimal(10, 2)
-  estadoRetiro           EstadoEquipoRetirado @default(RECUPERADO_BUENO)
-  costoRecuperacion      Decimal              @default(0) @db.Decimal(12, 2)
-  serialSnapshot         String?
-  notas                  String?
-  creadoEn               DateTime             @default(now())
-  actualizadoEn          DateTime             @updatedAt
+  descripcion String?
+  cantidad    Decimal @default(1) @db.Decimal(10, 2)
+  estadoRetiro EstadoEquipoRetirado @default(RECUPERADO_BUENO)
+  costoRecuperacion Decimal @default(0) @db.Decimal(12, 2)
+  serialSnapshot String?
+  notas          String?
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
-  desinstalacion       ClienteDesinstalacion @relation(fields: [desinstalacionId], references: [id], onDelete: Cascade)
-  producto             Producto?             @relation(fields: [productoId], references: [id], onDelete: SetNull)
-  serialProducto       SerialProducto?       @relation(fields: [serialProductoId], references: [id], onDelete: SetNull)
+  desinstalacion ClienteDesinstalacion @relation(fields: [desinstalacionId], references: [id], onDelete: Cascade)
+  producto       Producto?       @relation(fields: [productoId], references: [id], onDelete: SetNull)
+  serialProducto SerialProducto? @relation(fields: [serialProductoId], references: [id], onDelete: SetNull)
   movimientoInventario MovimientoInventario? @relation(fields: [movimientoInventarioId], references: [id], onDelete: SetNull)
   bodegaDestino        Bodega?               @relation(fields: [bodegaDestinoId], references: [id], onDelete: SetNull)
 
@@ -2227,21 +2227,21 @@ model ClienteEstadoHistorial {
   empresaId Int
   clienteId Int
 
-  tipoCambio             TipoCambioEstadoCliente
-  estadoAnterior         EstadoCliente?
-  estadoNuevo            EstadoCliente?
-  isEliminadoAnterior    Boolean?
-  isEliminadoNuevo       Boolean?
+  tipoCambio TipoCambioEstadoCliente
+  estadoAnterior EstadoCliente?
+  estadoNuevo    EstadoCliente?
+  isEliminadoAnterior Boolean?
+  isEliminadoNuevo    Boolean?
   whatsappActivoAnterior Boolean?
   whatsappActivoNuevo    Boolean?
-  motivo                 String?
-  descripcion            String?
-  cambiadoPorId          Int?
-  creadoEn               DateTime                @default(now())
+  motivo      String?
+  descripcion String?
+  cambiadoPorId Int?
+  creadoEn DateTime @default(now())
 
-  empresa     Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  cliente     ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Restrict)
-  cambiadoPor Usuario?        @relation("ClienteEstadoCambiadoPor", fields: [cambiadoPorId], references: [id], onDelete: SetNull)
+  empresa Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  cliente ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  cambiadoPor Usuario? @relation("ClienteEstadoCambiadoPor", fields: [cambiadoPorId], references: [id], onDelete: SetNull)
 
   @@index([clienteId, creadoEn])
   @@index([empresaId, tipoCambio])
@@ -2385,7 +2385,7 @@ enum SlaBucket {
   H_24_48
   H_48_72
   H_72_96
-  MAYOR_96H
+  MAYOR_96H 
 }
 
 enum TipoBodega {

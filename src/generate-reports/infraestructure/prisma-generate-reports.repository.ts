@@ -58,12 +58,6 @@ export class PrismaGenerateReports implements GenerateReportsRepository {
 
       const baseAnd: Prisma.TicketSoporteWhereInput[] = [];
 
-      if (dto.empresaId) {
-        baseAnd.push({
-          empresaId: Number(dto.empresaId),
-        });
-      }
-
       if (dto.tecnicoId) {
         const tecnicoId = Number(dto.tecnicoId);
 
@@ -1047,6 +1041,7 @@ export class PrismaGenerateReports implements GenerateReportsRepository {
       {
         tecnicoId: number;
         tecnico: string;
+        acompanantes: Map<number, string>;
         totalAsignados: number;
         cerrados: number;
         enProceso: number;
@@ -1065,6 +1060,7 @@ export class PrismaGenerateReports implements GenerateReportsRepository {
         map.set(tecnicoId, {
           tecnicoId,
           tecnico,
+          acompanantes: new Map<number, string>(),
           totalAsignados: 0,
           cerrados: 0,
           enProceso: 0,
@@ -1081,105 +1077,93 @@ export class PrismaGenerateReports implements GenerateReportsRepository {
       return map.get(tecnicoId)!;
     };
 
+    const resolveMainAsignacion = (ticket: any) => {
+      const asignaciones = ticket.asignaciones ?? [];
+
+      if (!asignaciones.length) return null;
+
+      const responsable = asignaciones.find((a) => a.esResponsable);
+      if (responsable) return responsable;
+
+      if (ticket.tecnicoId) {
+        const byTicketMain = asignaciones.find(
+          (a) => a.tecnicoId === ticket.tecnicoId,
+        );
+
+        if (byTicketMain) return byTicketMain;
+      }
+
+      if (asignaciones.length === 1) {
+        return asignaciones[0];
+      }
+
+      return asignaciones[0];
+    };
+
     for (const ticket of tickets) {
       const asignaciones = ticket.asignaciones ?? [];
 
-      if (asignaciones.length > 0) {
-        for (const asignacion of asignaciones) {
-          const tecnicoId = asignacion.tecnicoId;
-          const tecnicoNombre =
-            asignacion.tecnico?.nombre ?? `Técnico ${tecnicoId}`;
+      const mainAsignacion = resolveMainAsignacion(ticket);
 
-          const row = ensureTecnico(tecnicoId, tecnicoNombre);
+      const mainTecnicoId =
+        mainAsignacion?.tecnicoId ?? ticket.tecnico?.id ?? ticket.tecnicoId;
 
-          if (!row.ticketIds.has(ticket.id)) {
-            row.ticketIds.add(ticket.id);
-            row.totalAsignados += 1;
-
-            if (ticket.estado === EstadoTicketSoporte.EN_PROCESO) {
-              row.enProceso += 1;
-            }
-
-            if (this.pendingTicketStates.includes(ticket.estado)) {
-              row.pendientes += 1;
-            }
-
-            row.reaperturas += ticket.resumen?.numeroReaperturas ?? 0;
-
-            if (ticket.boleta) {
-              row.boletas += 1;
-
-              if (ticket.boleta.conforme) {
-                row.conformes += 1;
-              }
-            }
-          }
-
-          const responsable =
-            asignacion.esResponsable ||
-            ticket.tecnicoId === tecnicoId ||
-            asignaciones.length === 1;
-
-          if (
-            isClosed(ticket.estado) &&
-            responsable &&
-            !row.cerradosIds.has(ticket.id)
-          ) {
-            row.cerradosIds.add(ticket.id);
-            row.cerrados += 1;
-          }
-
-          const minutosAsignacion =
-            asignacion.tiempoTecnicoMinutos ??
-            this.sumTicketLogMinutesByTecnico(ticket, tecnicoId);
-
-          if (minutosAsignacion !== null && minutosAsignacion !== undefined) {
-            row.minutosTecnicos.push(minutosAsignacion);
-          }
-        }
-
+      if (!mainTecnicoId) {
         continue;
       }
 
-      if (ticket.tecnico) {
-        const tecnicoId = ticket.tecnico.id;
-        const row = ensureTecnico(tecnicoId, ticket.tecnico.nombre);
+      const mainTecnicoNombre =
+        mainAsignacion?.tecnico?.nombre ??
+        ticket.tecnico?.nombre ??
+        `Técnico ${mainTecnicoId}`;
 
-        if (!row.ticketIds.has(ticket.id)) {
-          row.ticketIds.add(ticket.id);
-          row.totalAsignados += 1;
+      const row = ensureTecnico(mainTecnicoId, mainTecnicoNombre);
 
-          if (ticket.estado === EstadoTicketSoporte.EN_PROCESO) {
-            row.enProceso += 1;
-          }
+      for (const asignacion of asignaciones) {
+        if (!asignacion?.tecnicoId) continue;
+        if (asignacion.tecnicoId === mainTecnicoId) continue;
 
-          if (this.pendingTicketStates.includes(ticket.estado)) {
-            row.pendientes += 1;
-          }
+        row.acompanantes.set(
+          asignacion.tecnicoId,
+          asignacion.tecnico?.nombre ?? `Técnico ${asignacion.tecnicoId}`,
+        );
+      }
 
-          row.reaperturas += ticket.resumen?.numeroReaperturas ?? 0;
+      if (!row.ticketIds.has(ticket.id)) {
+        row.ticketIds.add(ticket.id);
+        row.totalAsignados += 1;
 
-          if (ticket.boleta) {
-            row.boletas += 1;
-
-            if (ticket.boleta.conforme) {
-              row.conformes += 1;
-            }
-          }
+        if (ticket.estado === EstadoTicketSoporte.EN_PROCESO) {
+          row.enProceso += 1;
         }
 
-        if (isClosed(ticket.estado) && !row.cerradosIds.has(ticket.id)) {
-          row.cerradosIds.add(ticket.id);
-          row.cerrados += 1;
+        if (this.pendingTicketStates.includes(ticket.estado)) {
+          row.pendientes += 1;
         }
 
-        const minutos =
-          this.sumTicketLogMinutesByTecnico(ticket, tecnicoId) ??
-          this.getTicketTechnicalMinutes(ticket);
+        row.reaperturas += ticket.resumen?.numeroReaperturas ?? 0;
 
-        if (minutos !== null && minutos !== undefined) {
-          row.minutosTecnicos.push(minutos);
+        if (ticket.boleta) {
+          row.boletas += 1;
+
+          if (ticket.boleta.conforme) {
+            row.conformes += 1;
+          }
         }
+      }
+
+      if (isClosed(ticket.estado) && !row.cerradosIds.has(ticket.id)) {
+        row.cerradosIds.add(ticket.id);
+        row.cerrados += 1;
+      }
+
+      const minutosMain =
+        mainAsignacion?.tiempoTecnicoMinutos ??
+        this.sumTicketLogMinutesByTecnico(ticket, mainTecnicoId) ??
+        this.getTicketTechnicalMinutes(ticket);
+
+      if (minutosMain !== null && minutosMain !== undefined) {
+        row.minutosTecnicos.push(minutosMain);
       }
     }
 
@@ -1187,9 +1171,17 @@ export class PrismaGenerateReports implements GenerateReportsRepository {
       .map((row) => {
         const promedioMin = this.average(row.minutosTecnicos);
 
+        const acompanantes = Array.from(row.acompanantes.values());
+
+        const tecnicoConAcompanantes = acompanantes.length
+          ? `${row.tecnico} + ${acompanantes.join(', ')}`
+          : row.tecnico;
+
         return {
           tecnicoId: row.tecnicoId,
-          tecnico: row.tecnico,
+          tecnico: tecnicoConAcompanantes,
+          tecnicoMain: row.tecnico,
+          acompanantes,
           totalAsignados: row.totalAsignados,
           cerrados: row.cerrados,
           enProceso: row.enProceso,
