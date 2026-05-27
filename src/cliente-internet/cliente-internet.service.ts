@@ -50,7 +50,6 @@ export class ClienteInternetService {
     private readonly prisma: PrismaService,
     private readonly idContradoService: IdContratoService,
     private readonly ssh: SshMikrotikConnectionService,
-
     private readonly verifyCreditService: VerifyCustomerService,
   ) {}
 

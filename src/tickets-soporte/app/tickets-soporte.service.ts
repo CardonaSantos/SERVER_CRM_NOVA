@@ -388,8 +388,8 @@ export class TicketsSoporteService {
         await this.prisma.ticketSoporte.findMany({
           orderBy: [
             { fijado: 'desc' },
-            { prioridad: 'desc' },
-            { fechaApertura: 'desc' },
+            // { prioridad: 'desc' },
+            { creadoEn: 'desc' },
             { id: 'desc' },
           ],
           where: where,
@@ -417,11 +417,9 @@ export class TicketsSoporteService {
               select: { id: true, nombre: true, apellidos: true },
             },
 
-            // --- 2. FECHAS CLAVE ---
             fechaApertura: true,
             fechaCierre: true,
 
-            // --- 3. METADATA ---
             etiquetas: {
               select: {
                 etiqueta: { select: { nombre: true, id: true } },
@@ -462,8 +460,6 @@ export class TicketsSoporteService {
 
         await this.prisma.ticketSoporte.count({ where }),
 
-        //---------------
-
         this.prisma.ticketSoporte.count({
           where: {
             estado: {
@@ -492,12 +488,11 @@ export class TicketsSoporteService {
           rol: tecnico.rol,
         }));
 
-        // --- CÁLCULO DE TIEMPO REAL (LIVE) ---
+        // --- CÁLCULO DE TIEMPO REAL
         const tiempoTrabajadoLive = ticket.logsTiempo.reduce((acc, log) => {
           return acc + (log.duracionMinutos || 0);
         }, 0);
 
-        // Decisión de qué tiempo mostrar:
         const tiempoTotalDisplay =
           ticket.resumen?.tiempoTotalMinutos ?? tiempoTrabajadoLive;
 
@@ -683,14 +678,16 @@ export class TicketsSoporteService {
         where: { id },
       });
 
+      this.logger.log(`DTO CIERRE DE TICKET:\n${JSON.stringify(dto, null, 2)}`);
+
       if (!ticketToClose) {
         throw new NotFoundException('Ticket no encontrado');
       }
 
-      // 1. PASO CRÍTICO: CERRAR EL RELOJ (Stop Timer)
+      // CERRAR EL RELOJ
       await this.updateStatusEnRevision(id);
 
-      // 2. CALCULAR TOTALES
+      // CALCULAR TOTALES
       const tiempoTotal =
         await this.ticketsRepo.obtenerTiempoTotalTrabajado(id);
 
@@ -702,7 +699,7 @@ export class TicketsSoporteService {
         tiempoTotalMinutos: tiempoTotal,
       };
 
-      // 3. ACTUALIZAR METADATA DEL TICKET (Etiquetas)
+      // ACTUALIZAR METADATA DEL TICKET (Etiquetas)
       await this.prisma.ticketEtiqueta.deleteMany({
         where: { ticketId: id },
       });
@@ -720,7 +717,6 @@ export class TicketsSoporteService {
         });
       }
 
-      // 4. CERRAR TICKET OFICIALMENTE (Estado: RESUELTA)
       const ticketClosed = await this.prisma.ticketSoporte.update({
         where: { id },
         data: {
@@ -730,13 +726,14 @@ export class TicketsSoporteService {
           prioridad: dto.priority,
           fechaCierre: dayjs().toDate(),
           fechaResolucionTecnico: dayjs().toDate(),
+          fijado: false,
           tecnico: dto.assignee?.id
             ? { connect: { id: dto.assignee.id } }
             : undefined,
         },
       });
 
-      // 5. METAS Y MÉTRICAS
+      //  METAS Y MÉTRICAS
       const companios = await this.prisma.ticketSoporte.findUnique({
         where: { id: ticketClosed.id },
         select: {
@@ -755,7 +752,7 @@ export class TicketsSoporteService {
         }
       }
 
-      // 6. CREAR RESUMEN (Histórico)
+      //  CREAR RESUMEN (Histórico)
       await this.ticketResumen.create(dtoSolucion);
 
       return {
