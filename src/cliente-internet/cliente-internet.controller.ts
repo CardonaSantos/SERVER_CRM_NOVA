@@ -18,6 +18,7 @@ import { updateCustomerService } from './dto/update-customer-service';
 import { GetClientesRutaQueryDto } from './pagination/cliente-internet.dto';
 import { NetworkServiceService } from 'src/network-service/network-service.service';
 import { GetCustomersQueryDto } from './dto/query-table';
+import { CustomersCampaingQuery } from './query/customers-campaing-query.dto';
 
 @Controller('internet-customer')
 export class ClienteInternetController {
@@ -63,6 +64,16 @@ export class ClienteInternetController {
   @Get('/get-customers-to-ticket')
   findCustomersToTicket() {
     return this.clienteInternetService.findCustomersToTicket();
+  }
+
+  @Get('/whatsapp-campaing')
+  getCustomersToWhatsappCampaing(
+    @Query(new ValidationPipe({ transform: true }))
+    queryParams: CustomersCampaingQuery,
+  ) {
+    return this.clienteInternetService.getCustomersWhatsappCampaing(
+      queryParams,
+    );
   }
 
   @Get('/get-customers-ruta')

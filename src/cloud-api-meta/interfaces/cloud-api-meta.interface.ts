@@ -1,5 +1,3 @@
-// Interfaces para la API de Meta Cloud (WhatsApp)
-
 export interface WhatsAppTemplatePayload {
   messaging_product: 'whatsapp';
   to: string;
@@ -10,7 +8,7 @@ export interface WhatsAppTemplatePayload {
 interface TemplateData {
   name: string;
   language: {
-    code: string; // Ej: "es"
+    code: string; // "es"
   };
   components: TemplateComponent[];
 }
@@ -21,6 +19,6 @@ interface TemplateComponent {
 }
 
 interface TemplateParameter {
-  type: 'text'; // Podría ser "image", "document", etc. en otros casos
+  type: 'text';
   text: string;
 }

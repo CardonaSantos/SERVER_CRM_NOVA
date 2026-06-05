@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { WhatsAppTemplatePayload } from './interfaces/cloud-api-meta.interface';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { lastValueFrom } from 'rxjs';
-
+import { AxiosError } from 'axios';
+import { WhatsAppTemplatePayload } from './dto/dto-message-payload';
 @Injectable()
 export class CloudApiMetaService {
   private readonly logger = new Logger(CloudApiMetaService.name);
@@ -63,10 +63,50 @@ export class CloudApiMetaService {
       this.logger.log(`Mensaje enviado a ${payload.to}: ${response.status}`);
       return response.data;
     } catch (error) {
-      this.logger.error(
-        `Error enviando a Meta: ${error.message}`,
-        error.response?.data,
+      if (error instanceof AxiosError) {
+        this.logger.error(
+          `Error enviando a Meta: ${error.message}`,
+          error.response?.data,
+        );
+        throw error;
+      }
+    }
+  }
+
+  async send_message_with_template(payload: WhatsAppTemplatePayload) {
+    try {
+      this.logger.debug(
+        `Payload enviado a Meta:\n${JSON.stringify(payload, null, 2)}`,
       );
+
+      const response = await lastValueFrom(
+        this.httpService.post(this.apiUrl, payload, {
+          headers: {
+            Authorization: `Bearer ${this.apiToken}`,
+            'Content-Type': 'application/json',
+          },
+        }),
+      );
+
+      this.logger.log(`Mensaje enviado a ${payload.to}: ${response.status}`);
+
+      return response.data;
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        const metaError = error.response?.data;
+
+        this.logger.error(
+          `Error enviando a Meta para ${payload.to}. Status: ${error.response?.status}`,
+        );
+
+        this.logger.error(
+          `Respuesta real de Meta:\n${JSON.stringify(metaError, null, 2)}`,
+        );
+
+        throw error;
+      }
+
+      this.logger.error(`Error desconocido enviando a Meta`, error);
       throw error;
     }
   }
