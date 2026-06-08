@@ -30,6 +30,9 @@ import { SshMikrotikConnectionService } from 'src/ssh-mikrotik-connection/applic
 import { ActivateCustomerDto } from 'src/ssh-mikrotik-connection/dto/activate-ssh-mikrotik.dto';
 import { VerifyCustomerService } from 'src/credito/verify-customer/app/verify-customer.service';
 import { dayjs } from 'src/Utils/dayjs.config';
+import { selectCustomerCampaignWhatsapp } from './select/select-customer';
+import { mapCustomersCampaingWhatsapp } from './common/mappers';
+import { CustomersCampaingQuery } from './query/customers-campaing-query.dto';
 
 const strip = (s: string) =>
   s
@@ -924,6 +927,97 @@ export class ClienteInternetService {
       return customersSet;
     } catch (error) {
       console.log(error);
+    }
+  }
+
+  async getCustomersWhatsappCampaing(dto: CustomersCampaingQuery) {
+    try {
+      const {
+        departamento,
+        estado,
+        estadoCobranza,
+        municipio,
+        nombre,
+        numeroFact,
+        sector,
+        zonaF,
+      } = dto;
+
+      const where: Prisma.ClienteInternetWhereInput = {
+        isEliminado: false,
+      };
+
+      if (departamento) {
+        where.departamentoId = departamento;
+      }
+
+      if (sector) {
+        where.sectorId = sector;
+      }
+
+      if (estado) {
+        where.estadoCliente = estado;
+      }
+
+      if (estadoCobranza) {
+        where.estadoCobranza = estadoCobranza;
+      }
+
+      if (municipio) {
+        where.municipioId = municipio;
+      }
+
+      if (zonaF) {
+        where.facturacionZonaId = zonaF;
+      }
+
+      if (nombre?.trim()) {
+        where.searchNombre = {
+          contains: nombre.trim(),
+          mode: 'insensitive',
+        };
+      }
+
+      if (numeroFact !== undefined && numeroFact !== null) {
+        const clientesConFacturasPendientes =
+          await this.prisma.facturaInternet.groupBy({
+            by: ['clienteId'],
+            where: {
+              estadoFacturaInternet: 'PENDIENTE',
+            },
+            _count: {
+              id: true,
+            },
+            having: {
+              id: {
+                _count: {
+                  equals: numeroFact,
+                },
+              },
+            },
+          });
+
+        const clienteIds = clientesConFacturasPendientes.map(
+          (item) => item.clienteId,
+        );
+
+        where.id = {
+          in: clienteIds,
+        };
+      }
+
+      this.logger.log(
+        `El where construido:\n${JSON.stringify(where, null, 2)}`,
+      );
+
+      const records = await this.prisma.clienteInternet.findMany({
+        where,
+        select: selectCustomerCampaignWhatsapp,
+      });
+
+      return mapCustomersCampaingWhatsapp(records);
+    } catch (error) {
+      throw error;
     }
   }
 

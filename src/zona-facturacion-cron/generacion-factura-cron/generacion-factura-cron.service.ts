@@ -12,7 +12,6 @@ import { FacturaManagerService } from '../factura-manager/factura-manager.servic
 import { formatearTelefonosMeta } from 'src/cloud-api-meta/helpers/cleantelefono';
 import { CloudApiMetaService } from 'src/cloud-api-meta/cloud-api-meta.service';
 import { dayjs } from 'src/Utils/dayjs.config';
-
 import { NotificacionesService } from 'src/notificaciones/app/notificaciones.service';
 
 @Injectable()
@@ -23,7 +22,6 @@ export class GeneracionFacturaCronService {
     private readonly configService: ConfigService,
     private readonly facturaManager: FacturaManagerService,
     private readonly cloudApi: CloudApiMetaService,
-
     private readonly notificationSystemService: NotificacionesService,
   ) {}
 
@@ -82,8 +80,6 @@ export class GeneracionFacturaCronService {
                 TEMPLATE_NAME,
               );
 
-              // mini market el crucero
-              //
               contador.clientesRecordados++;
             } catch (notifyError: any) {
               this.logger.error(

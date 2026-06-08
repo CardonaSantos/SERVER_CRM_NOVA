@@ -55,6 +55,8 @@ import { NetworkServiceModule } from './network-service/network-service.module';
 import { CuotasPagoModule } from './credito/cuotas-pago/cuotas-pago.module';
 import { GenerateReportsModule } from './generate-reports/generate-reports.module';
 import { PerfilModule } from './perfil/perfil.module';
+import { WhatsappCampaignsModule } from './whatsapp-campaigns/whatsapp-campaigns.module';
+import { WhatsappTemplateModule } from './whatsapp-template/whatsapp-template.module';
 
 @Module({
   imports: [
@@ -116,6 +118,9 @@ import { PerfilModule } from './perfil/perfil.module';
     CuotasPagoModule,
     GenerateReportsModule,
     PerfilModule,
+
+    WhatsappCampaignsModule,
+    WhatsappTemplateModule,
   ],
   controllers: [AppController],
   providers: [AppService],
