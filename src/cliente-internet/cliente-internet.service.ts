@@ -984,9 +984,6 @@ export class ClienteInternetService {
             by: ['clienteId'],
             where: {
               estadoFacturaInternet: 'PENDIENTE',
-              clienteId: {
-                not: null,
-              },
             },
             _count: {
               id: true,
@@ -1000,14 +997,18 @@ export class ClienteInternetService {
             },
           });
 
-        const clienteIds = clientesConFacturasPendientes
-          .map((item) => item.clienteId)
-          .filter((id): id is number => id !== null);
+        const clienteIds = clientesConFacturasPendientes.map(
+          (item) => item.clienteId,
+        );
 
         where.id = {
           in: clienteIds,
         };
       }
+
+      this.logger.log(
+        `El where construido:\n${JSON.stringify(where, null, 2)}`,
+      );
 
       const records = await this.prisma.clienteInternet.findMany({
         where,

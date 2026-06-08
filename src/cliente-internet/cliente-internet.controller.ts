@@ -10,6 +10,7 @@ import {
   Query,
   Res,
   ValidationPipe,
+  Logger,
 } from '@nestjs/common';
 import { ClienteInternetService } from './cliente-internet.service';
 import { CreateClienteInternetDto } from './dto/create-cliente-internet.dto';
@@ -22,6 +23,8 @@ import { CustomersCampaingQuery } from './query/customers-campaing-query.dto';
 
 @Controller('internet-customer')
 export class ClienteInternetController {
+  private readonly logger = new Logger(ClienteInternetService.name);
+
   constructor(
     private readonly clienteInternetService: ClienteInternetService,
 
@@ -71,6 +74,9 @@ export class ClienteInternetController {
     @Query(new ValidationPipe({ transform: true }))
     queryParams: CustomersCampaingQuery,
   ) {
+    this.logger.log(
+      `queryParams recibido:\n${JSON.stringify(queryParams, null, 2)}`,
+    );
     return this.clienteInternetService.getCustomersWhatsappCampaing(
       queryParams,
     );
