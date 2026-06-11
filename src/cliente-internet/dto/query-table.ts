@@ -42,4 +42,8 @@ export class GetCustomersQueryDto {
   @IsOptional()
   @IsString()
   estadoSelected?: string;
+
+  @IsOptional()
+  @IsString()
+  estadoCobranzaSelected?: string;
 }

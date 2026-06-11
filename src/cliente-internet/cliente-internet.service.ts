@@ -13,6 +13,7 @@ import {
   CategoriaMedia,
   ClienteInternet,
   EstadoCliente,
+  EstadoCobranzaCliente,
   EstadoMedia,
   EstadoServicioMikrotik,
   Prisma,
@@ -1218,7 +1219,11 @@ export class ClienteInternetService {
       paramSearch,
       sectorSelected,
       zonasFacturacionSelected,
+      estadoCobranzaSelected,
     } = dto;
+
+    this.logger.log(`DTO en tabla:\n${JSON.stringify(dto, null, 2)}`);
+
     const skip = (page - 1) * limite;
 
     // Preparar términos de búsqueda
@@ -1268,6 +1273,10 @@ export class ClienteInternetService {
     if (estadoSelected) {
       andConditions.push({ estadoCliente: estadoSelected as EstadoCliente });
     }
+    if (estadoCobranzaSelected)
+      andConditions.push({
+        estadoCobranza: estadoCobranzaSelected as EstadoCobranzaCliente,
+      });
 
     const whereCondition: Prisma.ClienteInternetWhereInput =
       andConditions.length > 0 ? { AND: andConditions } : {};
