@@ -59,4 +59,9 @@ export class QuerySearchTickets {
   @Type(() => Number)
   @IsInt()
   creadosPor?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  sector?: number;
 }

@@ -340,6 +340,14 @@ export class TicketsSoporteService {
 
         ...(query.creadosPor && { creadoPorId: query.creadosPor }),
 
+        ...(query.sector && {
+          cliente: {
+            sectorId: {
+              equals: query.sector,
+            },
+          },
+        }),
+
         ...(query.tecs?.length && {
           tecnicoId: { in: query.tecs },
         }),
