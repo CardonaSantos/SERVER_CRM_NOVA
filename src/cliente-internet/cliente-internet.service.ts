@@ -1034,6 +1034,7 @@ export class ClienteInternetService {
         search,
         zonaIds,
         sectorIds,
+        estadoCobranza,
       } = q;
 
       // Normaliza arrays y limpia 0/NaN
@@ -1050,6 +1051,8 @@ export class ClienteInternetService {
       const where: Prisma.ClienteInternetWhereInput = {
         ...(empresaId ? { empresaId } : {}),
         ...(estado ? { estadoCliente: estado } : {}),
+        ...(estadoCobranza ? { estadoCobranza: estadoCobranza } : {}),
+
         ...(zonas.length ? { facturacionZonaId: { in: zonas } } : {}),
         ...(sectores.length ? { sectorId: { in: sectores } } : {}),
         //  nada para que no filtre doble.
