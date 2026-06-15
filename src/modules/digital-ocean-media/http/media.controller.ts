@@ -1,4 +1,3 @@
-// src/modules/media/interface/http/media.controller.ts
 import {
   Controller,
   Post,

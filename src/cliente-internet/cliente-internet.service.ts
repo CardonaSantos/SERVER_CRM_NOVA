@@ -697,6 +697,8 @@ export class ClienteInternetService {
         contactoReferenciaTelefono:
           clienteInternetWithRelations.contactoReferenciaTelefono,
         estadoCliente: clienteInternetWithRelations.estadoCliente,
+        estadoCobranza: clienteInternetWithRelations.estadoCobranza,
+
         //El estado
         estadoServicioMikrotik:
           clienteInternetWithRelations.estadoServicioMikrotik,

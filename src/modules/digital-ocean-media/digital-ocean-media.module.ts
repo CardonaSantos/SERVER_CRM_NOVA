@@ -1,10 +1,5 @@
-// src/modules/digital-ocean-media/digital-ocean-media.module.ts
 import { Module } from '@nestjs/common';
-import {
-  S3Client,
-  HeadBucketCommand, // pre-flight
-} from '@aws-sdk/client-s3';
-
+import { S3Client, HeadBucketCommand } from '@aws-sdk/client-s3';
 import { MediaController } from './http/media.controller';
 import { SubirMediaUseCase } from './application/use-cases/subir-media.usecase';
 import { SpacesAdapter } from './infraestructure/storage/spaces.adapter';
@@ -74,11 +69,47 @@ import { UPLOAD_FILE_USECASE } from './tokens/tokens';
     },
 
     // 3) Pre-flight: valida bucket/región/credenciales al boot
+    // {
+    //   provide: 'SPACES_BOOT_CHECK',
+    //   useFactory: async (s3: S3Client, cfg: any) => {
+    //     await s3.send(new HeadBucketCommand({ Bucket: cfg.defaultBucket }));
+    //     return true;
+    //   },
+    //   inject: [SPACES_S3, SPACES_CFG],
+    // },
     {
       provide: 'SPACES_BOOT_CHECK',
       useFactory: async (s3: S3Client, cfg: any) => {
-        await s3.send(new HeadBucketCommand({ Bucket: cfg.defaultBucket }));
-        return true;
+        try {
+          await s3.send(
+            new HeadBucketCommand({
+              Bucket: cfg.defaultBucket,
+            }),
+          );
+
+          console.log('[Spaces] Bucket validado correctamente');
+
+          return {
+            ok: true,
+          };
+        } catch (error) {
+          const err = error as any;
+
+          console.error('[Spaces] No se pudo validar el bucket al iniciar', {
+            name: err?.name,
+            message: err?.message,
+            statusCode: err?.$metadata?.httpStatusCode,
+            requestId: err?.$metadata?.requestId,
+            bucket: cfg.defaultBucket,
+            endpoint: cfg.endpoint,
+          });
+
+          return {
+            ok: false,
+            error: err?.name ?? 'UNKNOWN_SPACES_ERROR',
+            statusCode: err?.$metadata?.httpStatusCode,
+          };
+        }
       },
       inject: [SPACES_S3, SPACES_CFG],
     },

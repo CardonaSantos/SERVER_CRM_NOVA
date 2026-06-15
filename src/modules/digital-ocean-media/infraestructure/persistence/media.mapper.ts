@@ -1,4 +1,3 @@
-// src/modules/media/infra/persistence/media.mapper.ts
 import { Media, Prisma } from '@prisma/client';
 import { MediaAsset } from '../../domain/file-aset';
 

@@ -1,4 +1,3 @@
-// src/modules/media/infra/persistence/prisma-media.repository.ts
 import { PrismaService } from 'src/prisma/prisma.service';
 import { MediaAsset } from '../../domain/file-aset';
 import {
