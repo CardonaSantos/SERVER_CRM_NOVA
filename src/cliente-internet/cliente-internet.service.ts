@@ -1305,6 +1305,7 @@ export class ClienteInternetService {
             creadoEn: true,
             actualizadoEn: true,
             estadoCliente: true,
+            estadoCobranza: true,
             sector: {
               select: {
                 id: true,
@@ -1406,6 +1407,7 @@ export class ClienteInternetService {
           id: customer.id,
           nombreCompleto: `${customer.nombre} ${customer.apellidos}`,
           estado: customer.estadoCliente,
+          estadoCobranza: customer.estadoCobranza,
           telefono: customer.telefono,
           dpi: customer.dpi,
           direccion: customer.direccion,
