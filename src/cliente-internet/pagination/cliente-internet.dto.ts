@@ -49,7 +49,7 @@ export class GetClientesRutaQueryDto {
   estado?: EstadoCliente;
 
   @IsOptional()
-  @IsEnum(EstadoCliente)
+  @IsEnum(EstadoCobranzaCliente)
   estadoCobranza?: EstadoCobranzaCliente;
 
   // ZONAS (multi)
