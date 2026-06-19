@@ -545,6 +545,17 @@ export class ClienteInternetService {
                 fechaApertura: true,
                 fechaCierre: true,
                 creadoPor: true,
+                etiquetas: {
+                  select: {
+                    id: true,
+                    etiqueta: true,
+                  },
+                },
+                fechaInicioAtencion: true,
+                fechaResolucionTecnico: true,
+                fechaAsignacion: true,
+                resumen: true,
+
                 tecnico: {
                   select: {
                     id: true,
@@ -611,7 +622,6 @@ export class ClienteInternetService {
                 },
               },
             },
-            // Relación 1:1 con ServicioInternet
             servicioInternet: {
               select: {
                 id: true,
@@ -668,11 +678,14 @@ export class ClienteInternetService {
         );
 
       const totalPendiente = totalfacturasPendientes.reduce((acc, f) => {
-        const pagosRealizados = f.pagos.reduce(
-          (acc, p) => acc + p.montoPagado,
+        const montoFactura = Number(f.montoPago ?? 0);
+
+        const pagosRealizados = (f.pagos ?? []).reduce(
+          (acc, p) => acc + Number(p.montoPagado ?? 0),
           0,
         );
-        return acc + (f.montoPago - pagosRealizados);
+
+        return acc + Math.max(montoFactura - pagosRealizados, 0);
       }, 0);
 
       const totalPagadas = clienteInternetWithRelations.facturaInternet.reduce(
@@ -848,16 +861,39 @@ export class ClienteInternetService {
             prioridad: ticket.prioridad,
             fechaApertura: ticket.fechaApertura,
             fechaCierre: ticket.fechaCierre,
+
+            fechaInicioAtencion: ticket.fechaInicioAtencion,
+
+            fechaResolucionTecnico: ticket.fechaResolucionTecnico,
+            resumen: ticket.resumen
+              ? {
+                  id: ticket.resumen.id,
+                  tiempoTecnicoMinutos: ticket.resumen.tiempoTecnicoMinutos,
+                  tiempoTotalMinutos: ticket.resumen.tiempoTotalMinutos,
+                  resueltoComo: ticket.resumen.resueltoComo,
+                  reabierto: ticket.resumen.reabierto,
+                  numeroReaperturas: ticket.resumen.numeroReaperturas,
+                  notasInternas: ticket.resumen.notasInternas,
+                  creadoEn: ticket.resumen.creadoEn,
+                }
+              : null,
+            etiquetas: ticket.etiquetas.map((t) => ({
+              id: t.id,
+              nombre: t.etiqueta.nombre,
+            })),
+
             creadoPro: ticket.creadoPor
               ? { id: ticket.creadoPor.id, nombre: ticket.creadoPor.nombre }
               : null,
             tecnico: ticket.tecnico
               ? { id: ticket.tecnico.id, nombre: ticket.tecnico.nombre }
               : null,
-            acompanantes: (ticket.asignaciones ?? []).map((aco) => ({
-              id: aco.tecnico.id,
-              nombre: aco.tecnico.nombre,
-            })),
+            acompanantes: (ticket.asignaciones ?? [])
+              .filter((aco) => aco.tecnico)
+              .map((aco) => ({
+                id: aco.tecnico.id,
+                nombre: aco.tecnico.nombre,
+              })),
           }),
         ),
         // FECHA DE VENCIMINEOTO AQUI
@@ -892,18 +928,18 @@ export class ClienteInternetService {
             })),
           }),
         ),
-        clienteServicio: clienteInternetWithRelations.clienteServicios.map(
-          (cs) => ({
+        clienteServicio: (clienteInternetWithRelations.clienteServicios ?? [])
+          .filter((cs) => cs.servicio)
+          .map((cs) => ({
             id: cs.id,
             servicio: {
               id: cs.servicio.id,
               nombre: cs.servicio.nombre,
-              tipo: cs.servicio.descripcion, // Asumí que 'descripcion' es el tipo
+              tipo: cs.servicio.descripcion,
               precio: cs.servicio.precio,
             },
             fechaContratacion: cs.fechaInicio,
-          }),
-        ),
+          })),
       };
 
       return clienteEjemplo;
