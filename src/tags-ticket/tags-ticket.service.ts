@@ -68,8 +68,17 @@ export class TagsTicketService {
     return `This action returns a #${id} tagsTicket`;
   }
 
-  update(id: number, updateTagsTicketDto: UpdateTagsTicketDto) {
-    return `This action updates a #${id} tagsTicket`;
+  async update(id: number, updateTagsTicketDto: UpdateTagsTicketDto) {
+    const { nombre } = updateTagsTicketDto;
+
+    await this.prisma.etiquetaTicket.update({
+      where: {
+        id,
+      },
+      data: {
+        nombre,
+      },
+    });
   }
 
   async remove(id: number) {
