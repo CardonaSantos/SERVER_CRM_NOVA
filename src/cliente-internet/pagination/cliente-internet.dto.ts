@@ -1,4 +1,3 @@
-// cliente-internet.dto.ts
 import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
@@ -11,6 +10,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
+import { EstadoCobranzaCliente } from '@prisma/client';
 
 export enum EstadoCliente {
   ACTIVO = 'ACTIVO',
@@ -47,6 +47,10 @@ export class GetClientesRutaQueryDto {
   @IsOptional()
   @IsEnum(EstadoCliente)
   estado?: EstadoCliente;
+
+  @IsOptional()
+  @IsEnum(EstadoCobranzaCliente)
+  estadoCobranza?: EstadoCobranzaCliente;
 
   // ZONAS (multi)
   @IsOptional()

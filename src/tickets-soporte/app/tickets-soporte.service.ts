@@ -380,6 +380,9 @@ export class TicketsSoporteService {
               },
             },
             { descripcion: { contains: query.search, mode: 'insensitive' } },
+            {
+              id: { equals: parseInt(query.search) },
+            },
           ],
         }),
       };
