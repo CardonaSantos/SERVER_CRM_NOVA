@@ -555,6 +555,20 @@ export class ClienteInternetService {
                 fechaResolucionTecnico: true,
                 fechaAsignacion: true,
                 resumen: true,
+                SeguimientoTicket: {
+                  select: {
+                    id: true,
+                    descripcion: true,
+                    creadoEn: true,
+                    usuario: {
+                      select: {
+                        id: true,
+                        rol: true,
+                        nombre: true,
+                      },
+                    },
+                  },
+                },
 
                 tecnico: {
                   select: {
@@ -881,6 +895,21 @@ export class ClienteInternetService {
               id: t.id,
               nombre: t.etiqueta.nombre,
             })),
+
+            seguimientos:
+              ticket.SeguimientoTicket.length &&
+              ticket.SeguimientoTicket.map((s) => {
+                return {
+                  id: s.id,
+                  descripcion: s.descripcion,
+                  creadoEn: s.creadoEn,
+                  usuario: {
+                    id: s.usuario.id,
+                    nombre: s.usuario.nombre,
+                    rol: s.usuario.rol,
+                  },
+                };
+              }),
 
             creadoPro: ticket.creadoPor
               ? { id: ticket.creadoPor.id, nombre: ticket.creadoPor.nombre }

@@ -907,10 +907,14 @@ export class DashboardService {
         take: 10,
       });
 
+      const clienteIds = topMorososRaw
+        .map((factura) => factura.clienteId)
+        .filter((id): id is number => typeof id === 'number');
+
       const clientes = await this.prisma.clienteInternet.findMany({
         where: {
           id: {
-            in: topMorososRaw.map((f) => f.clienteId),
+            in: clienteIds,
           },
         },
         select: {
@@ -920,12 +924,29 @@ export class DashboardService {
         },
       });
 
-      const formatted = topMorososRaw.map((c) => {
-        const cliente = clientes.find((cliente) => c.clienteId == cliente.id);
+      const clientesById = new Map(
+        clientes.map((cliente) => [cliente.id, cliente]),
+      );
+
+      const formatted = topMorososRaw.map((item) => {
+        const cliente = clientesById.get(item.clienteId);
+
+        if (!cliente) {
+          return {
+            id: item.clienteId,
+            nombre: `Cliente #${item.clienteId}`,
+            cantidad: item._count.id,
+          };
+        }
+
+        const nombreCompleto = `${cliente.nombre ?? ''} ${
+          cliente.apellidos ?? ''
+        }`.trim();
+
         return {
           id: cliente.id,
-          nombre: `${cliente.nombre ?? ''} ${cliente.apellidos ?? ''}`,
-          cantidad: c._count.id,
+          nombre: nombreCompleto || `Cliente #${cliente.id}`,
+          cantidad: item._count.id,
         };
       });
 
@@ -956,11 +977,11 @@ export class DashboardService {
         },
       });
 
-      const rutasFormatted = rutasActualesAbiertas.map((r) => {
+      const rutasFormatted = rutasActualesAbiertas.map((ruta) => {
         return {
-          nombreRuta: r.nombreRuta,
-          cobrador: r.cobrador.nombre,
-          totalClientes: r.clientes.length,
+          nombreRuta: ruta.nombreRuta || `Ruta #${ruta.id}`,
+          cobrador: ruta.cobrador?.nombre ?? 'Sin cobrador',
+          totalClientes: ruta.clientes?.length ?? 0,
         };
       });
 
@@ -972,7 +993,7 @@ export class DashboardService {
       throwFatalError(
         error,
         this.logger,
-        'Dashboard service -getDashboardTicketProceso',
+        'Dashboard service -getTopMorososDashboard',
       );
     }
   }
