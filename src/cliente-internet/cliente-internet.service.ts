@@ -903,25 +903,32 @@ export class ClienteInternetService {
               nombre: t.etiqueta.nombre,
             })),
 
-            seguimientos:
-              ticket.SeguimientoTicket.length &&
-              ticket.SeguimientoTicket.map((s) => {
-                return {
-                  id: s.id,
-                  descripcion: s.descripcion,
-                  creadoEn: s.creadoEn,
-                  usuario: {
+            seguimientos: (ticket.SeguimientoTicket ?? []).map((s) => ({
+              id: s.id,
+              descripcion: s.descripcion,
+              creadoEn: s.creadoEn,
+              usuario: s.usuario
+                ? {
                     id: s.usuario.id,
                     nombre: s.usuario.nombre,
                     rol: s.usuario.rol,
                     perfil: {
-                      avatar: s.usuario.perfil.avatarUrl,
-                      portadaUrl: s.usuario.perfil.portadaUrl,
-                      bio: s.usuario.perfil.bio,
+                      avatar: s.usuario.perfil?.avatarUrl ?? null,
+                      portadaUrl: s.usuario.perfil?.portadaUrl ?? null,
+                      bio: s.usuario.perfil?.bio ?? null,
+                    },
+                  }
+                : {
+                    id: -1,
+                    nombre: 'Usuario eliminado',
+                    rol: null,
+                    perfil: {
+                      avatar: null,
+                      portadaUrl: null,
+                      bio: null,
                     },
                   },
-                };
-              }),
+            })),
 
             creadoPro: ticket.creadoPor
               ? { id: ticket.creadoPor.id, nombre: ticket.creadoPor.nombre }
