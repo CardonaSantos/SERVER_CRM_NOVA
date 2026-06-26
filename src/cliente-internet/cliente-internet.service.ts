@@ -565,6 +565,13 @@ export class ClienteInternetService {
                         id: true,
                         rol: true,
                         nombre: true,
+                        perfil: {
+                          select: {
+                            avatarUrl: true,
+                            bio: true,
+                            portadaUrl: true,
+                          },
+                        },
                       },
                     },
                   },
@@ -907,6 +914,11 @@ export class ClienteInternetService {
                     id: s.usuario.id,
                     nombre: s.usuario.nombre,
                     rol: s.usuario.rol,
+                    perfil: {
+                      avatar: s.usuario.perfil.avatarUrl,
+                      portadaUrl: s.usuario.perfil.portadaUrl,
+                      bio: s.usuario.perfil.bio,
+                    },
                   },
                 };
               }),
