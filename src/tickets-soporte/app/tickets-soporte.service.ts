@@ -574,17 +574,28 @@ export class TicketsSoporteService {
               ? {
                   id: comment.usuario.id,
                   name: comment.usuario.nombre,
-                  initials: comment.usuario.nombre.slice(0, 2).toUpperCase(),
+                  initials: comment.usuario.nombre
+                    ? comment.usuario.nombre.slice(0, 2).toUpperCase()
+                    : '?',
+                  perfil: {
+                    avatar: comment.usuario.perfil?.avatarUrl ?? null,
+                    portadaUrl: comment.usuario.perfil?.portadaUrl ?? null,
+                    bio: comment.usuario.perfil?.bio ?? null,
+                  },
                 }
-              : { id: -1, name: 'Usuario Eliminado', initials: 'NA' },
+              : {
+                  id: -1,
+                  name: 'Usuario eliminado',
+                  initials: 'NA',
+                  perfil: {
+                    avatar: null,
+                    portadaUrl: null,
+                    bio: null,
+                  },
+                },
+
             text: comment.descripcion,
             date: comment.fechaRegistro.toISOString(),
-
-            perfil: {
-              avatar: comment.usuario.perfil.avatarUrl,
-              portadaUrl: comment.usuario.perfil.portadaUrl,
-              bio: comment.usuario.perfil.bio,
-            },
           })),
 
           metrics: {
