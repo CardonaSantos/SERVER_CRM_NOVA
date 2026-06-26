@@ -440,7 +440,19 @@ export class TicketsSoporteService {
               select: {
                 descripcion: true,
                 fechaRegistro: true,
-                usuario: { select: { id: true, nombre: true } },
+                usuario: {
+                  select: {
+                    id: true,
+                    nombre: true,
+                    perfil: {
+                      select: {
+                        avatarUrl: true,
+                        bio: true,
+                        portadaUrl: true,
+                      },
+                    },
+                  },
+                },
               },
             },
 
@@ -567,6 +579,12 @@ export class TicketsSoporteService {
               : { id: -1, name: 'Usuario Eliminado', initials: 'NA' },
             text: comment.descripcion,
             date: comment.fechaRegistro.toISOString(),
+
+            perfil: {
+              avatar: comment.usuario.perfil.avatarUrl,
+              portadaUrl: comment.usuario.perfil.portadaUrl,
+              bio: comment.usuario.perfil.bio,
+            },
           })),
 
           metrics: {
