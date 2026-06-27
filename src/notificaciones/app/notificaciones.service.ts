@@ -10,8 +10,6 @@ import { CategoriaNotificacion } from '@prisma/client';
 
 @Injectable()
 export class NotificacionesService {
-  private readonly logger = new Logger(NotificacionesService.name);
-
   constructor(
     @Inject(NOTIFICATION_REPOSITORY)
     private readonly notificationRepo: NotificationRepository,

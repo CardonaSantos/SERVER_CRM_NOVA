@@ -9,7 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { TwilioService } from 'src/twilio/twilio.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
-import { formatearTelefonos } from 'src/zona-facturacion-cron/Functions';
+import { formatearTelefonosMeta } from 'src/cloud-api-meta/helpers/cleantelefono';
 // CONSTANTES PARA EL TEST
 const SALDO_DISPONIBLE_REAL = 30.0;
 const COSTO_ESTIMADO_MSG = 0.08;
@@ -137,7 +137,7 @@ export class TwilioMensajesService {
 
         // --- 🛠️ USO DE TU FUNCIÓN UTILITARIA ---
         // Esto limpia espacios, agrega +502 y el prefijo whatsapp:
-        const destinosValidos = formatearTelefonos([cliente.telefono]);
+        const destinosValidos = formatearTelefonosMeta([cliente.telefono]);
 
         if (destinosValidos.length === 0) {
           this.logger.warn(
@@ -173,7 +173,7 @@ export class TwilioMensajesService {
           await new Promise((r) => setTimeout(r, 100));
         } catch (error) {
           stats.enviadosFallidos++;
-          this.logger.error(`❌ Error con ${cliente.nombre}: ${error.message}`);
+          this.logger.error(`❌ Error con ${cliente.nombre}: ${error}`);
         }
       }
 

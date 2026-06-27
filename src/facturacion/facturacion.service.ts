@@ -1,9 +1,15 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateFacturacionDto } from './dto/create-facturacion.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateFacturacionPaymentDto } from './dto/createFacturacionPayment.dto';
 import {
   EstadoCliente,
+  EstadoCobranzaCliente,
   PagoFacturaInternet,
   Prisma,
   StateFacturaInternet,
@@ -22,6 +28,12 @@ import { RegistrarPagoFromBanruralDto } from './dto/pago-from-banrural.dto';
 import { calculateEstadoCliente } from './functions/functions';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { WebSocketServices } from 'src/web-sockets/websocket.service';
+import {
+  ESTADOS_FACTURA_PENDIENTE,
+  getEstadoCobranza,
+  TZ_FACTURACION,
+} from 'src/zona-facturacion-cron/helpers/Functions';
+import { FacturacionUtilitiesService } from 'src/zona-facturacion-cron/utilities/factura-manager.service';
 
 interface DatosFacturaGenerate {
   fechaPagoEsperada: string;
@@ -44,7 +56,6 @@ export class FacturacionService {
     private readonly facturaEliminiacion: FacturaEliminacionService,
     private readonly ws: WebSocketServices,
   ) {}
-  async create(createFacturacionDto: CreateFacturacionDto) {}
 
   async findAll() {
     try {
@@ -902,15 +913,20 @@ export class FacturacionService {
         id: createGenerateFactura.clienteId,
       },
       select: {
+        id: true,
+        nombre: true,
+        apellidos: true,
+        estadoCliente: true,
+        isEliminado: true,
+        desinstaladoEn: true,
+
         facturacionZona: {
           select: {
             id: true,
             diaPago: true,
           },
         },
-        id: true,
-        nombre: true,
-        apellidos: true,
+
         servicioInternet: {
           select: {
             id: true,
@@ -919,6 +935,7 @@ export class FacturacionService {
             precio: true,
           },
         },
+
         empresa: {
           select: {
             id: true,
@@ -928,55 +945,100 @@ export class FacturacionService {
       },
     });
 
-    // Asegurarte de que la fecha esté ajustada correctamente a la zona horaria de Guatemala
-    const fechaPagoEsperada = dayjs()
-      .month(createGenerateFactura.mes - 1)
+    if (!cliente) {
+      throw new NotFoundException('Cliente no encontrado.');
+    }
+
+    if (cliente.isEliminado) {
+      throw new BadRequestException(
+        'Cliente eliminado; no se puede generar factura.',
+      );
+    }
+
+    if (cliente.desinstaladoEn) {
+      throw new BadRequestException(
+        'Cliente desinstalado; no se puede generar factura.',
+      );
+    }
+
+    if (cliente.estadoCliente !== EstadoCliente.ACTIVO) {
+      throw new BadRequestException(
+        `Cliente no facturable. Estado operativo: ${cliente.estadoCliente}.`,
+      );
+    }
+
+    if (!cliente.facturacionZona) {
+      throw new BadRequestException(
+        'El cliente no tiene zona de facturación asignada.',
+      );
+    }
+
+    if (!cliente.servicioInternet) {
+      throw new BadRequestException(
+        'El cliente no tiene servicio de internet asignado.',
+      );
+    }
+
+    if (!cliente.empresa) {
+      throw new BadRequestException('El cliente no tiene empresa asociada.');
+    }
+
+    if (createGenerateFactura.mes < 1 || createGenerateFactura.mes > 12) {
+      throw new BadRequestException('El mes debe estar entre 1 y 12.');
+    }
+
+    if (createGenerateFactura.anio < 2000) {
+      throw new BadRequestException('El año no es válido.');
+    }
+
+    const baseFechaPago = dayjs()
+      .tz(TZ_FACTURACION)
       .year(createGenerateFactura.anio)
-      .date(cliente.facturacionZona.diaPago)
-      .tz('America/Guatemala', true) // Esto asegura que la fecha esté en la zona horaria correcta
+      .month(createGenerateFactura.mes - 1);
+
+    const ultimoDiaMes = baseFechaPago.daysInMonth();
+    const diaPago = Math.min(cliente.facturacionZona.diaPago, ultimoDiaMes);
+
+    const fechaPagoEsperada = baseFechaPago
+      .date(diaPago)
       .startOf('day')
-      .format(); // Esto generará la fecha en formato ISO 8601 (sin zona horaria explícita)
+      .toDate();
 
-    console.log('Fecha de pago esperada:', fechaPagoEsperada);
+    const periodo = dayjs(fechaPagoEsperada)
+      .tz(TZ_FACTURACION)
+      .format('YYYYMM');
 
-    const fechaPago = dayjs()
-      .month(createGenerateFactura.mes - 1)
-      .year(createGenerateFactura.anio)
-      .date(cliente.facturacionZona.diaPago);
+    const mesNombre = dayjs(fechaPagoEsperada)
+      .tz(TZ_FACTURACION)
+      .locale('es')
+      .format('MMMM YYYY')
+      .toUpperCase();
 
-    // Establecer la zona horaria de Guatemala al generar la factura
-    const dataFactura: DatosFacturaGenerate = {
-      datalleFactura: `Pago por suscripción mensual al servicio de internet, plan ${cliente.servicioInternet.nombre} (${cliente.servicioInternet.velocidad}), precio: ${cliente.servicioInternet.precio} Fecha: ${cliente.facturacionZona.diaPago}`,
-      fechaPagoEsperada: fechaPagoEsperada,
-
-      montoPago: cliente.servicioInternet.precio,
-      saldoPendiente: cliente.servicioInternet.precio,
-      estadoFacturaInternet: 'PENDIENTE',
-      cliente: cliente.id,
-      facturacionZona: cliente.facturacionZona.id,
-      nombreClienteFactura: `${cliente.nombre} ${cliente.apellidos}`,
-    };
-    const mesNombre = fechaPago.format('MMMM YYYY').toUpperCase();
     const monto = cliente.servicioInternet.precio.toFixed(2);
-    const detalleSimple = `Factura correspondiente a ${mesNombre} por Q${monto} | ${cliente.servicioInternet.nombre}`;
 
-    const periodo = periodoFrom(dataFactura.fechaPagoEsperada);
+    const detalleFactura = `Factura correspondiente a ${mesNombre} por Q${monto} | ${cliente.servicioInternet.nombre}`;
+
+    const nombreClienteFactura = `${cliente.nombre ?? ''} ${
+      cliente.apellidos ?? ''
+    }`.trim();
 
     try {
-      const result = await this.prisma.$transaction(async (prisma) => {
-        const newFacturaInternet = await prisma.facturaInternet.create({
+      const result = await this.prisma.$transaction(async (tx) => {
+        const newFacturaInternet = await tx.facturaInternet.create({
           data: {
-            periodo: periodo,
-            creadoEn: dayjs().format(),
-            fechaPagoEsperada: dayjs(dataFactura.fechaPagoEsperada)
-              .month(createGenerateFactura.mes - 1)
-              .toDate(),
-            montoPago: dataFactura.montoPago,
-            saldoPendiente: dataFactura.saldoPendiente,
-            estadoFacturaInternet: 'PENDIENTE',
+            periodo,
+            creadoEn: new Date(),
+            fechaPagoEsperada,
+            montoPago: cliente.servicioInternet.precio,
+            saldoPendiente: cliente.servicioInternet.precio,
+            estadoFacturaInternet: StateFacturaInternet.PENDIENTE,
+
             cliente: {
-              connect: { id: dataFactura.cliente },
+              connect: {
+                id: cliente.id,
+              },
             },
+
             creador: createGenerateFactura.creadorId
               ? {
                   connect: {
@@ -986,78 +1048,32 @@ export class FacturacionService {
               : undefined,
 
             facturacionZona: {
-              connect: { id: dataFactura.facturacionZona },
+              connect: {
+                id: cliente.facturacionZona.id,
+              },
             },
-            nombreClienteFactura: dataFactura.nombreClienteFactura,
-            detalleFactura: detalleSimple,
+
+            nombreClienteFactura,
+            detalleFactura,
+
             empresa: {
               connect: {
-                id: 1,
+                id: cliente.empresa.id,
               },
             },
           },
         });
 
-        // Actualizamos el estado del cliente
-
-        const facturas = await prisma.facturaInternet.findMany({
-          where: {
-            clienteId: cliente.id,
-            estadoFacturaInternet: {
-              in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'],
-            },
-          },
-        });
-
-        const facturasPendientes = facturas.length;
-
-        let estadoCliente: EstadoCliente;
-
-        switch (facturasPendientes) {
-          case 0:
-            estadoCliente = 'ACTIVO';
-            break;
-
-          case 1:
-            estadoCliente = 'PENDIENTE_ACTIVO';
-            break;
-
-          case 2:
-            estadoCliente = 'ATRASADO';
-            break;
-
-          case 3:
-            estadoCliente = 'MOROSO';
-            break;
-
-          default:
-            break;
-        }
-
-        await prisma.clienteInternet.update({
-          where: {
-            id: cliente.id,
-          },
-          data: {
-            estadoCliente: estadoCliente,
-            saldoCliente: {
-              update: {
-                data: {
-                  saldoPendiente: {
-                    increment: newFacturaInternet.montoPago,
-                  },
-                },
-              },
-            },
-          },
-        });
+        await this.recalcularClienteDespuesDeCambioFactura(cliente.id, tx);
 
         return newFacturaInternet;
       });
 
-      // Si la transacción es exitosa, mostramos el resultado
       this.logger.debug('La factura creada es: ', result);
-      this.ws.sendFacturacionEvent(result.empresaId);
+
+      await this.ws.sendFacturacionEvent(result.empresaId);
+
+      return result;
     } catch (err) {
       if (
         err instanceof Prisma.PrismaClientKnownRequestError &&
@@ -1065,166 +1081,277 @@ export class FacturacionService {
       ) {
         throw new ConflictException({
           message:
-            'Ya existe una factura para ese mes. No se permiten duplicados',
+            'Ya existe una factura para ese mes. No se permiten duplicados.',
         });
       }
-      //  Cualquier otro error se propaga
+
       throw err;
     }
   }
 
-  //**
-  // Generar facturas multiples manualmente
-  // */
+  /**
+   *
+   * @param createFacturaMultipleDto
+   * @returns Facturas generadas manualmente
+   */
   async generateFacturaMultiple(
     createFacturaMultipleDto: GenerateFacturaMultipleDto,
   ) {
-    try {
-      const { mesInicio, mesFin, anio, clienteId } = createFacturaMultipleDto;
-      const cliente = await this.prisma.clienteInternet.findUnique({
-        where: {
-          id: clienteId,
-        },
-        select: {
-          id: true,
-          empresaId: true,
-          facturacionZona: {
-            select: {
-              id: true,
-              diaPago: true,
-            },
+    const { mesInicio, mesFin, anio, clienteId, creadorId } =
+      createFacturaMultipleDto;
+
+    this.logger.log(
+      `La data recibida:\n${JSON.stringify(createFacturaMultipleDto, null, 2)}`,
+    );
+
+    if (mesInicio < 1 || mesInicio > 12 || mesFin < 1 || mesFin > 12) {
+      throw new BadRequestException('Los meses deben estar entre 1 y 12.');
+    }
+
+    if (mesInicio > mesFin) {
+      throw new BadRequestException(
+        'El mes de inicio no puede ser mayor que el mes final.',
+      );
+    }
+
+    if (anio < 2000) {
+      throw new BadRequestException('El año no es válido.');
+    }
+
+    const cliente = await this.prisma.clienteInternet.findUnique({
+      where: {
+        id: clienteId,
+      },
+      select: {
+        id: true,
+        nombre: true,
+        apellidos: true,
+        estadoCliente: true,
+        isEliminado: true,
+        desinstaladoEn: true,
+
+        empresa: {
+          select: {
+            id: true,
+            nombre: true,
           },
-          servicioInternet: {
-            select: {
-              id: true,
-              nombre: true,
-              velocidad: true,
-              precio: true,
-            },
+        },
+
+        facturacionZona: {
+          select: {
+            id: true,
+            diaPago: true,
           },
         },
+
+        servicioInternet: {
+          select: {
+            id: true,
+            nombre: true,
+            velocidad: true,
+            precio: true,
+          },
+        },
+      },
+    });
+
+    this.logger.log(
+      `[generateFacturaMultiple] Cliente cargado:\n${JSON.stringify(
+        {
+          clienteId,
+          existe: Boolean(cliente),
+          estadoCliente: cliente?.estadoCliente ?? null,
+          isEliminado: cliente?.isEliminado ?? null,
+          desinstaladoEn: cliente?.desinstaladoEn ?? null,
+          empresaId: cliente?.empresa?.id ?? null,
+          facturacionZonaId: cliente?.facturacionZona?.id ?? null,
+          diaPago: cliente?.facturacionZona?.diaPago ?? null,
+          servicioInternetId: cliente?.servicioInternet?.id ?? null,
+          servicioInternetNombre: cliente?.servicioInternet?.nombre ?? null,
+        },
+        null,
+        2,
+      )}`,
+    );
+
+    if (!cliente) {
+      throw new NotFoundException('Cliente no encontrado.');
+    }
+
+    if (cliente.isEliminado) {
+      throw new BadRequestException(
+        'Cliente eliminado; no se pueden generar facturas.',
+      );
+    }
+
+    if (cliente.desinstaladoEn) {
+      throw new BadRequestException(
+        'Cliente desinstalado; no se pueden generar facturas.',
+      );
+    }
+
+    if (cliente.estadoCliente !== EstadoCliente.ACTIVO) {
+      throw new BadRequestException(
+        `Cliente no facturable. Estado operativo: ${cliente.estadoCliente}.`,
+      );
+    }
+
+    if (!cliente.facturacionZona) {
+      throw new BadRequestException(
+        'El cliente no tiene zona de facturación asignada.',
+      );
+    }
+
+    if (!cliente.servicioInternet) {
+      throw new BadRequestException(
+        'El cliente no tiene servicio de internet asignado.',
+      );
+    }
+
+    if (!cliente.empresa) {
+      throw new BadRequestException('El cliente no tiene empresa asociada.');
+    }
+
+    const facturasPreparadas: {
+      mes: number;
+      periodo: string;
+      fechaPagoEsperada: Date;
+      detalleFactura: string;
+      nombreClienteFactura: string;
+    }[] = [];
+
+    for (let mes = mesInicio; mes <= mesFin; mes++) {
+      const baseFechaPago = dayjs()
+        .tz(TZ_FACTURACION)
+        .year(anio)
+        .month(mes - 1);
+
+      const ultimoDiaMes = baseFechaPago.daysInMonth();
+      const diaPago = Math.min(cliente.facturacionZona.diaPago, ultimoDiaMes);
+
+      const fechaPagoEsperada = baseFechaPago
+        .date(diaPago)
+        .startOf('day')
+        .toDate();
+
+      const periodo = dayjs(fechaPagoEsperada)
+        .tz(TZ_FACTURACION)
+        .format('YYYYMM');
+
+      const mesNombre = dayjs(fechaPagoEsperada)
+        .tz(TZ_FACTURACION)
+        .locale('es')
+        .format('MMMM YYYY')
+        .toUpperCase();
+
+      const monto = cliente.servicioInternet.precio.toFixed(2);
+
+      const detalleFactura = `Factura correspondiente a ${mesNombre} por Q${monto} | ${cliente.servicioInternet.nombre}`;
+
+      const nombreClienteFactura = `${cliente.nombre ?? ''} ${
+        cliente.apellidos ?? ''
+      }`.trim();
+
+      facturasPreparadas.push({
+        mes,
+        periodo,
+        fechaPagoEsperada,
+        detalleFactura,
+        nombreClienteFactura,
       });
+    }
 
-      const facturas = [];
+    try {
+      const facturas = await this.prisma.$transaction(async (tx) => {
+        const periodos = facturasPreparadas.map((factura) => factura.periodo);
 
-      for (let mes = mesInicio; mes <= mesFin; mes++) {
-        const fechaPagoEsperada = dayjs()
-          .year(anio)
-          .month(mes - 1)
-          .date(cliente.facturacionZona.diaPago)
-          .tz('America/Guatemala', true)
-          .format();
-
-        const mesNombre = dayjs()
-          .month(mes - 1)
-          .year(anio)
-          .format('MMMM YYYY')
-          .toUpperCase();
-
-        const periodo = periodoFrom(fechaPagoEsperada);
-        const monto = cliente.servicioInternet.precio.toFixed(2);
-        const detalleSimple = `Factura correspondiente a ${mesNombre} por Q${monto} | ${cliente.servicioInternet.nombre}`;
-
-        const nuevaFactura = await this.prisma.facturaInternet.create({
-          data: {
-            periodo: periodo,
-            fechaPagoEsperada: fechaPagoEsperada,
-            montoPago: cliente.servicioInternet.precio,
-            saldoPendiente: cliente.servicioInternet.precio,
-            estadoFacturaInternet: 'PENDIENTE',
-            detalleFactura: detalleSimple,
-            cliente: {
-              connect: { id: clienteId },
+        const duplicadas = await tx.facturaInternet.findMany({
+          where: {
+            clienteId: cliente.id,
+            facturacionZonaId: cliente.facturacionZona.id,
+            periodo: {
+              in: periodos,
             },
-            facturacionZona: {
-              connect: { id: cliente.facturacionZona.id },
-            },
-            empresa: {
-              connect: { id: cliente.empresaId },
-            },
-            creador: createFacturaMultipleDto.creadorId
-              ? {
-                  connect: {
-                    id: createFacturaMultipleDto.creadorId,
-                  },
-                }
-              : undefined,
+          },
+          select: {
+            id: true,
+            periodo: true,
           },
         });
 
-        this.logger.debug('La factura generada es: ', nuevaFactura);
+        if (duplicadas.length > 0) {
+          throw new ConflictException({
+            message: `Ya existen facturas para los periodos: ${duplicadas
+              .map((factura) => factura.periodo)
+              .join(', ')}.`,
+          });
+        }
 
-        facturas.push(nuevaFactura);
-      }
+        const facturasCreadas = [];
 
-      const facturasPendientes = await this.prisma.facturaInternet.findMany({
-        where: {
-          clienteId,
-          estadoFacturaInternet: {
-            in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'],
-          },
-        },
-      });
+        for (const factura of facturasPreparadas) {
+          const nuevaFactura = await tx.facturaInternet.create({
+            data: {
+              periodo: factura.periodo,
+              creadoEn: new Date(),
+              fechaPagoEsperada: factura.fechaPagoEsperada,
+              montoPago: cliente.servicioInternet.precio,
+              saldoPendiente: cliente.servicioInternet.precio,
+              estadoFacturaInternet: StateFacturaInternet.PENDIENTE,
+              detalleFactura: factura.detalleFactura,
+              nombreClienteFactura: factura.nombreClienteFactura,
 
-      const estadoPendiente = facturasPendientes.length;
-      let estadoCliente: EstadoCliente;
-
-      switch (estadoPendiente) {
-        case 0:
-          estadoCliente = 'ACTIVO';
-          break;
-
-        case 1:
-          estadoCliente = 'PENDIENTE_ACTIVO';
-          break;
-
-        case 2:
-          estadoCliente = 'ATRASADO';
-          break;
-
-        case 3:
-          estadoCliente = 'MOROSO';
-          break;
-
-        default:
-          break;
-      }
-
-      const newSaldo = await this.prisma.clienteInternet.update({
-        where: {
-          id: cliente.id,
-        },
-        data: {
-          estadoCliente: estadoCliente,
-          saldoCliente: {
-            update: {
-              saldoPendiente: {
-                increment: facturas.reduce(
-                  (acc, factura) => acc + factura.montoPago,
-                  0,
-                ),
+              cliente: {
+                connect: {
+                  id: cliente.id,
+                },
               },
+
+              facturacionZona: {
+                connect: {
+                  id: cliente.facturacionZona.id,
+                },
+              },
+
+              empresa: {
+                connect: {
+                  id: cliente.empresa.id,
+                },
+              },
+
+              creador: creadorId
+                ? {
+                    connect: {
+                      id: creadorId,
+                    },
+                  }
+                : undefined,
             },
-          },
-        },
+          });
+
+          facturasCreadas.push(nuevaFactura);
+        }
+
+        await this.recalcularClienteDespuesDeCambioFactura(cliente.id, tx);
+
+        return facturasCreadas;
       });
 
-      console.log('el nuevo saldo es: ', newSaldo);
+      this.logger.debug('Facturas generadas: ', facturas);
 
-      await this.ws.sendFacturacionEvent(cliente.empresaId);
+      await this.ws.sendFacturacionEvent(cliente.empresa.id);
+
       return facturas;
     } catch (err) {
       if (
         err instanceof Prisma.PrismaClientKnownRequestError &&
         err.code === 'P2002'
       ) {
-        // Opcional: consultar la factura existente y devolverla
-
         throw new ConflictException({
-          message: 'Se detectó una factura duplicada',
+          message: 'Se detectó una factura duplicada.',
         });
       }
-      //  Cualquier otro error se propaga
+
       throw err;
     }
   }
@@ -1582,109 +1709,123 @@ export class FacturacionService {
   }
 
   async removeOneFactura(dto: DeleteFacturaDto) {
-    console.log('Entrando a eliminacion');
-
     const { facturaId, userId, motivo } = dto;
 
-    const facturaToDelete = await this.prisma.facturaInternet.findUnique({
-      where: { id: facturaId },
-      include: { pagos: true },
-    });
-
-    if (!facturaToDelete) {
-      throw new NotFoundException('Factura no encontrada');
-    }
-
-    await this.facturaEliminiacion.createEliminacionFacturaRegist(
-      facturaToDelete,
-      userId,
-      motivo,
-      facturaId,
-    );
-
-    const pagosAsociados = facturaToDelete.pagos;
-    let montoTotalPagos = 0;
-    for (const pago of pagosAsociados) {
-      montoTotalPagos += pago.montoPagado;
-    }
-
-    await this.prisma.facturaInternet.delete({
-      where: { id: facturaToDelete.id },
-    });
-
-    const saldoCliente = await this.prisma.saldoCliente.findUnique({
-      where: { clienteId: facturaToDelete.clienteId },
-    });
-
-    if (saldoCliente) {
-      const facturasRestantes = await this.prisma.facturaInternet.findMany({
+    const result = await this.prisma.$transaction(async (tx) => {
+      const facturaToDelete = await tx.facturaInternet.findUnique({
         where: {
-          clienteId: facturaToDelete.clienteId,
-          estadoFacturaInternet: { in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'] },
+          id: facturaId,
+        },
+        include: {
+          pagos: true,
         },
       });
 
-      let nuevoSaldoPendiente = 0;
-      for (const factura of facturasRestantes) {
-        nuevoSaldoPendiente += factura.montoPago;
+      if (!facturaToDelete) {
+        throw new NotFoundException('Factura no encontrada.');
       }
 
-      const saldoPendienteAjustado = Math.max(nuevoSaldoPendiente, 0);
+      const clienteId = facturaToDelete.clienteId;
+      const empresaId = facturaToDelete.empresaId;
 
-      const saldoFavor = Math.max(
-        saldoCliente.saldoFavor + (montoTotalPagos - facturaToDelete.montoPago),
+      /**
+       * Total pagado en esta factura.
+       * Se usa Number() porque Prisma Decimal no debe sumarse directamente.
+       */
+      const montoTotalPagos = facturaToDelete.pagos.reduce(
+        (acc, pago) => acc + Number(pago.montoPagado),
         0,
       );
 
-      await this.prisma.saldoCliente.update({
-        where: { clienteId: facturaToDelete.clienteId },
-        data: {
-          saldoPendiente: saldoPendienteAjustado,
-          saldoFavor: saldoFavor, // Actualizar saldo a favor
-          totalPagos: saldoCliente.totalPagos - montoTotalPagos, // Restamos los pagos asociados
+      const montoFactura = Number(facturaToDelete.montoPago);
+
+      /**
+       * Idealmente este método debe aceptar tx para que también quede dentro
+       * de la transacción.
+       */
+      await this.facturaEliminiacion.createEliminacionFacturaRegist(
+        facturaToDelete,
+        userId,
+        motivo,
+        facturaId,
+        tx,
+      );
+
+      await tx.facturaInternet.delete({
+        where: {
+          id: facturaToDelete.id,
         },
       });
-    }
 
-    const facturasPendientes = await this.prisma.facturaInternet.findMany({
-      where: {
-        clienteId: facturaToDelete.clienteId,
-        estadoFacturaInternet: { in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'] },
-      },
+      /**
+       * Ajuste de pagos y saldo a favor.
+       *
+       * Si la factura tenía pagos asociados, esos pagos ya no deben contar
+       * dentro del totalPagos del cliente.
+       *
+       * Si el cliente pagó más que el monto de la factura, el excedente se
+       * conserva como saldoFavor.
+       */
+      const saldoCliente = await tx.saldoCliente.findUnique({
+        where: {
+          clienteId,
+        },
+        select: {
+          clienteId: true,
+          saldoFavor: true,
+          totalPagos: true,
+        },
+      });
+
+      if (saldoCliente) {
+        const saldoFavorActual = Number(saldoCliente.saldoFavor);
+        const totalPagosActual = Number(saldoCliente.totalPagos);
+
+        const excedentePago = Math.max(montoTotalPagos - montoFactura, 0);
+
+        await tx.saldoCliente.update({
+          where: {
+            clienteId,
+          },
+          data: {
+            saldoFavor: Math.max(saldoFavorActual + excedentePago, 0),
+            totalPagos: Math.max(totalPagosActual - montoTotalPagos, 0),
+          },
+        });
+      }
+
+      /**
+       * Recalcula:
+       * - saldoCliente.saldoPendiente
+       * - clienteInternet.estadoCobranza
+       *
+       * NO toca estadoCliente.
+       */
+      const recalculo = await this.recalcularClienteDespuesDeCambioFactura(
+        clienteId,
+        tx,
+      );
+
+      return {
+        facturaId,
+        clienteId,
+        empresaId,
+        montoFactura,
+        montoTotalPagos,
+        ...recalculo,
+      };
     });
 
-    const estadoPendiente = facturasPendientes.length;
-    let estadoCliente: EstadoCliente;
+    await this.ws.sendFacturacionEvent(result.empresaId);
 
-    switch (estadoPendiente) {
-      case 0:
-        estadoCliente = 'ACTIVO';
-        break;
-
-      case 1:
-        estadoCliente = 'PENDIENTE_ACTIVO';
-        break;
-
-      case 2:
-        estadoCliente = 'ATRASADO';
-        break;
-
-      case 3:
-        estadoCliente = 'MOROSO';
-        break;
-
-      default:
-        break;
-    }
-
-    await this.prisma.clienteInternet.update({
-      where: { id: facturaToDelete.clienteId },
-      data: { estadoCliente: estadoCliente },
-    });
-
-    await this.ws.sendFacturacionEvent(facturaToDelete.empresaId);
-
-    return `Factura ${facturaId} eliminada y estado de cliente actualizado.`;
+    return {
+      message: `Factura ${facturaId} eliminada correctamente.`,
+      facturaId: result.facturaId,
+      clienteId: result.clienteId,
+      estadoCobranza: result.estadoCobranza,
+      pendientes: result.pendientes,
+      saldoPendiente: result.saldoPendiente,
+    };
   }
 
   async removeManyFacturasMarch() {
@@ -2001,5 +2142,96 @@ export class FacturacionService {
     } catch (error) {
       throwFatalError(error, this.logger, 'facturacion - deleteOnePayment');
     }
+  }
+
+  // utilitarios
+  async recalcularEstadoCobranzaCliente(
+    clienteId: number,
+    tx?: Prisma.TransactionClient,
+  ): Promise<{
+    pendientes: number;
+    estadoCobranza: EstadoCobranzaCliente;
+  }> {
+    const db = tx ?? this.prisma;
+
+    const pendientes = await db.facturaInternet.count({
+      where: {
+        clienteId,
+        estadoFacturaInternet: {
+          in: ESTADOS_FACTURA_PENDIENTE,
+        },
+      },
+    });
+
+    const estadoCobranza = getEstadoCobranza(pendientes);
+
+    await db.clienteInternet.update({
+      where: {
+        id: clienteId,
+      },
+      data: {
+        estadoCobranza,
+      },
+    });
+
+    return {
+      pendientes,
+      estadoCobranza,
+    };
+  }
+
+  async recalcularSaldoPendienteCliente(
+    clienteId: number,
+    tx?: Prisma.TransactionClient,
+  ): Promise<number> {
+    const db = tx ?? this.prisma;
+
+    const facturasPendientes = await db.facturaInternet.findMany({
+      where: {
+        clienteId,
+        estadoFacturaInternet: {
+          in: ESTADOS_FACTURA_PENDIENTE,
+        },
+      },
+      select: {
+        saldoPendiente: true,
+      },
+    });
+
+    const saldoPendiente = facturasPendientes.reduce(
+      (acc, factura) => acc + Number(factura.saldoPendiente),
+      0,
+    );
+
+    await db.saldoCliente.updateMany({
+      where: {
+        clienteId,
+      },
+      data: {
+        saldoPendiente,
+      },
+    });
+
+    return saldoPendiente;
+  }
+
+  async recalcularClienteDespuesDeCambioFactura(
+    clienteId: number,
+    tx?: Prisma.TransactionClient,
+  ): Promise<{
+    pendientes: number;
+    estadoCobranza: EstadoCobranzaCliente;
+    saldoPendiente: number;
+  }> {
+    const cobranza = await this.recalcularEstadoCobranzaCliente(clienteId, tx);
+    const saldoPendiente = await this.recalcularSaldoPendienteCliente(
+      clienteId,
+      tx,
+    );
+
+    return {
+      ...cobranza,
+      saldoPendiente,
+    };
   }
 }

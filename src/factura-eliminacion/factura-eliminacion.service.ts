@@ -8,9 +8,9 @@ import {
 } from '@nestjs/common';
 import { CreateFacturaEliminacionDto } from './dto/create-factura-eliminacion.dto';
 import { UpdateFacturaEliminacionDto } from './dto/update-factura-eliminacion.dto';
-import { FacturaInternet } from '@prisma/client';
+import { FacturaInternet, Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { PrimerRecordatorioCronService } from 'src/zona-facturacion-cron/primer-recordatorio-cron/primer-recordatorio-cron.service';
+import { PrimerRecordatorioCronService } from 'src/zona-facturacion-cron/2_primer-recordatorio-cron/primer-recordatorio-cron.service';
 
 @Injectable()
 export class FacturaEliminacionService {
@@ -107,8 +107,11 @@ export class FacturaEliminacionService {
     userId: number,
     motivo: string,
     facturaId: number,
+    tx?: Prisma.TransactionClient,
   ) {
     try {
+      const db = tx ?? this.prisma;
+
       if (!factura) {
         throw new BadRequestException({
           message: 'Factura no proporcionada o encontrada.',
@@ -116,7 +119,7 @@ export class FacturaEliminacionService {
         });
       }
 
-      const newFacturaEliminada = await this.prisma.facturaEliminada.create({
+      const newFacturaEliminada = await db.facturaEliminada.create({
         data: {
           clienteId: factura.clienteId,
           montoPago: factura.montoPago,
