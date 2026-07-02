@@ -489,7 +489,7 @@ export class FacturacionService {
         const saldoPendienteFacturaAjustado = Math.max(
           factura.saldoPendiente - montoPagado,
           0,
-        ); // Evita que el saldo pendiente de la factura sea negativo
+        );
 
         await tx.facturaInternet.update({
           where: { id: facturaInternetId },
@@ -507,47 +507,7 @@ export class FacturacionService {
         });
       }
 
-      // 4. Calcular el estado del cliente
-      const facturasPendientes = await tx.facturaInternet.findMany({
-        where: {
-          clienteId,
-          estadoFacturaInternet: {
-            in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'],
-          },
-        },
-      });
-
-      const estadoPendiente = facturasPendientes.length;
-      let estadoCliente: EstadoCliente;
-
-      switch (estadoPendiente) {
-        case 0:
-          estadoCliente = 'ACTIVO';
-          break;
-
-        case 1:
-          estadoCliente = 'PENDIENTE_ACTIVO';
-          break;
-
-        case 2:
-          estadoCliente = 'ATRASADO';
-          break;
-
-        case 3:
-          estadoCliente = 'MOROSO';
-          break;
-
-        default:
-          break;
-      }
-
-      // 5. Actualizar el estado del cliente
-      await tx.clienteInternet.update({
-        where: { id: clienteId },
-        data: {
-          estadoCliente: estadoCliente,
-        },
-      });
+      await this.recalcularClienteDespuesDeCambioFactura(clienteId, tx);
 
       await Promise.all(
         (serviciosAdicionales ?? []).map(async (servicioId) => {
@@ -621,7 +581,7 @@ export class FacturacionService {
 
     const fechaPago = dayjs().tz('America/Guatemala').toDate();
     try {
-      const newPago = await this.createNewPaymentFacturacion({
+      await this.createNewPaymentFacturacion({
         facturaInternetId,
         clienteId,
         montoPagado,

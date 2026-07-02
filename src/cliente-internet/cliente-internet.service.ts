@@ -1895,7 +1895,6 @@ export class ClienteInternetService {
               fechaFirma: true,
               archivoContrato: true,
               observaciones: true,
-              // 🔥 No pedimos media ni mediaId
             },
           },
           MikrotikRouter: {
@@ -1921,6 +1920,8 @@ export class ClienteInternetService {
         contactoReferenciaNombre: customer.contactoReferenciaNombre,
         contactoReferenciaTelefono: customer.contactoReferenciaTelefono,
         estado: customer.estadoCliente,
+        estadoCobranza: customer.estadoCobranza,
+
         coordenadas: customer.ubicacion
           ? [`${customer.ubicacion.latitud}`, `${customer.ubicacion.longitud}`]
           : [],
@@ -2176,6 +2177,7 @@ export class ClienteInternetService {
           ssidRouter: dto.ssidRouter,
           fechaInstalacion: dto.fechaInstalacion || null,
           estadoCliente: dto.estado || 'ACTIVO',
+          estadoCobranza: dto.estadoCobranza || 'AL_DIA',
           enviarRecordatorio: dto.enviarRecordatorio,
           desinstaladoEn,
 

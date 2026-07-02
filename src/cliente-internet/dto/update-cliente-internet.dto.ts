@@ -1,4 +1,4 @@
-import { EstadoCliente } from '@prisma/client';
+import { EstadoCliente, EstadoCobranzaCliente } from '@prisma/client';
 import {
   IsString,
   IsOptional,
@@ -21,8 +21,11 @@ export class UpdateClienteInternetDto {
 
   @IsEnum(EstadoCliente)
   @IsNotEmpty()
-  // @IsOptional()
   estado: EstadoCliente;
+
+  @IsEnum(EstadoCliente)
+  @IsOptional()
+  estadoCobranza: EstadoCobranzaCliente;
 
   @IsOptional()
   sectorId?: number;
