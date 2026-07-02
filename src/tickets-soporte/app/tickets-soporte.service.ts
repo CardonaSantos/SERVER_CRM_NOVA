@@ -335,6 +335,8 @@ export class TicketsSoporteService {
         }
       })();
 
+      const searchID = Number(query.search);
+
       const where: Prisma.TicketSoporteWhereInput = {
         ...baseWhere,
 
@@ -380,9 +382,8 @@ export class TicketsSoporteService {
               },
             },
             { descripcion: { contains: query.search, mode: 'insensitive' } },
-            {
-              id: { equals: parseInt(query.search) },
-            },
+
+            ...(!isNaN(searchID) ? [{ id: { equals: searchID } }] : []),
           ],
         }),
       };
