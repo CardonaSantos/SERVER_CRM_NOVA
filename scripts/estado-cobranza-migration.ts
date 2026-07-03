@@ -7,76 +7,131 @@ import {
 const prisma = new PrismaClient();
 
 async function main() {
-  await prisma.$transaction([
-    prisma.clienteInternet.updateMany({
+  console.log('Iniciando migración de estados...');
+
+  const resumenAntes = await prisma.clienteInternet.groupBy({
+    by: ['estadoCliente'],
+    _count: {
+      _all: true,
+    },
+  });
+
+  console.log('Resumen antes:', resumenAntes);
+
+  const resultado = await prisma.$transaction(async (tx) => {
+    /**
+     * IMPORTANTE:
+     * ACTIVO debe ir primero.
+     * Si lo pones después, podrías sobreescribir los clientes migrados desde
+     * PENDIENTE_ACTIVO / ATRASADO / MOROSO y dejarlos como AL_DIA.
+     */
+    const activos = await tx.clienteInternet.updateMany({
       where: {
         estadoCliente: EstadoCliente.ACTIVO,
       },
       data: {
-        estadoCobranza: EstadoCobranzaCliente.AL_DIA,
         estadoCliente: EstadoCliente.ACTIVO,
+        estadoCobranza: EstadoCobranzaCliente.AL_DIA,
       },
-    }),
+    });
 
-    prisma.clienteInternet.updateMany({
+    const pendienteActivo = await tx.clienteInternet.updateMany({
       where: {
         estadoCliente: EstadoCliente.PENDIENTE_ACTIVO,
       },
       data: {
-        estadoCobranza: EstadoCobranzaCliente.PAGO_PENDIENTE,
         estadoCliente: EstadoCliente.ACTIVO,
+        estadoCobranza: EstadoCobranzaCliente.PAGO_PENDIENTE,
       },
-    }),
+    });
 
-    prisma.clienteInternet.updateMany({
+    /**
+     * Defensivo.
+     * Aunque dices que PAGO_PENDIENTE no se usa en producción,
+     * si existe algún registro flotando, queda normalizado.
+     */
+    const pagoPendienteLegacy = await tx.clienteInternet.updateMany({
+      where: {
+        estadoCliente: EstadoCliente.PAGO_PENDIENTE,
+      },
+      data: {
+        estadoCliente: EstadoCliente.ACTIVO,
+        estadoCobranza: EstadoCobranzaCliente.PAGO_PENDIENTE,
+      },
+    });
+
+    const atrasados = await tx.clienteInternet.updateMany({
       where: {
         estadoCliente: EstadoCliente.ATRASADO,
       },
       data: {
-        estadoCobranza: EstadoCobranzaCliente.ATRASADO,
         estadoCliente: EstadoCliente.ACTIVO,
+        estadoCobranza: EstadoCobranzaCliente.ATRASADO,
       },
-    }),
+    });
 
-    prisma.clienteInternet.updateMany({
+    const morosos = await tx.clienteInternet.updateMany({
       where: {
         estadoCliente: EstadoCliente.MOROSO,
       },
       data: {
-        estadoCobranza: EstadoCobranzaCliente.MOROSO,
         estadoCliente: EstadoCliente.ACTIVO,
+        estadoCobranza: EstadoCobranzaCliente.MOROSO,
       },
-    }),
+    });
 
-    prisma.clienteInternet.updateMany({
+    /**
+     * Validación dentro de la misma transacción.
+     * Si todavía quedan estados legacy de deuda, algo salió mal.
+     */
+    const legacyRestantes = await tx.clienteInternet.count({
       where: {
-        estadoCliente: EstadoCliente.SUSPENDIDO,
+        estadoCliente: {
+          in: [
+            EstadoCliente.PENDIENTE_ACTIVO,
+            EstadoCliente.PAGO_PENDIENTE,
+            EstadoCliente.ATRASADO,
+            EstadoCliente.MOROSO,
+          ],
+        },
       },
-      data: {
-        estadoCliente: EstadoCliente.SUSPENDIDO,
-      },
-    }),
+    });
 
-    prisma.clienteInternet.updateMany({
-      where: {
-        estadoCliente: EstadoCliente.DESINSTALADO,
-      },
-      data: {
-        estadoCliente: EstadoCliente.DESINSTALADO,
-      },
-    }),
+    if (legacyRestantes > 0) {
+      throw new Error(
+        `Migración inválida: quedaron ${legacyRestantes} clientes con estados legacy.`,
+      );
+    }
 
-    prisma.clienteInternet.updateMany({
-      where: {
-        estadoCliente: EstadoCliente.EN_INSTALACION,
-      },
-      data: {
-        estadoCliente: EstadoCliente.EN_INSTALACION,
-      },
-    }),
-  ]);
+    return {
+      activos: activos.count,
+      pendienteActivo: pendienteActivo.count,
+      pagoPendienteLegacy: pagoPendienteLegacy.count,
+      atrasados: atrasados.count,
+      morosos: morosos.count,
+    };
+  });
 
-  console.log('Migración completada');
+  console.log('Resultado migración:', resultado);
+
+  const resumenDespuesEstadoCliente = await prisma.clienteInternet.groupBy({
+    by: ['estadoCliente'],
+    _count: {
+      _all: true,
+    },
+  });
+
+  const resumenDespuesEstadoCobranza = await prisma.clienteInternet.groupBy({
+    by: ['estadoCobranza'],
+    _count: {
+      _all: true,
+    },
+  });
+
+  console.log('Resumen después estadoCliente:', resumenDespuesEstadoCliente);
+  console.log('Resumen después estadoCobranza:', resumenDespuesEstadoCobranza);
+
+  console.log('Migración completada correctamente.');
 }
 
 main()

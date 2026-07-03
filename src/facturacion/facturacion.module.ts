@@ -4,6 +4,7 @@ import { FacturacionController } from './facturacion.controller';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { FacturaEliminacionService } from 'src/factura-eliminacion/factura-eliminacion.service';
 import { GatewayModule } from 'src/web-sockets/websocket.module';
+import { ZonaFacturacionCronModule } from 'src/zona-facturacion-cron/zona-facturacion-cron.module';
 
 @Module({
   imports: [GatewayModule],

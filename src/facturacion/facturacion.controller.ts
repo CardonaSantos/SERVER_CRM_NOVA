@@ -28,11 +28,6 @@ import {
 export class FacturacionController {
   constructor(private readonly facturacionService: FacturacionService) {}
 
-  @Post()
-  create(@Body() createFacturacionDto: CreateFacturacionDto) {
-    return this.facturacionService.create(createFacturacionDto);
-  }
-
   @Post('/create-new-payment')
   createNewPaymentFacturacion(
     @Body() createFacturacionPaymentDto: CreateFacturacionPaymentDto,
