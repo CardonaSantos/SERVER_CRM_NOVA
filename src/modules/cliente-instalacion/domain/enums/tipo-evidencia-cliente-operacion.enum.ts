@@ -1,0 +1,15 @@
+export enum TipoEvidenciaClienteOperacion {
+  ANTES = 'ANTES',
+  DESPUES = 'DESPUES',
+  EQUIPO = 'EQUIPO',
+  ROUTER = 'ROUTER',
+  ONU = 'ONU',
+  ANTENA = 'ANTENA',
+  CABLEADO = 'CABLEADO',
+  UBICACION = 'UBICACION',
+  FIRMA = 'FIRMA',
+  BOLETA = 'BOLETA',
+  RECIBO = 'RECIBO',
+  DOCUMENTO = 'DOCUMENTO',
+  OTRO = 'OTRO',
+}

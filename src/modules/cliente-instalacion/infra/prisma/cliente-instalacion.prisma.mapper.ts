@@ -1,0 +1,169 @@
+import { Prisma, ClienteInstalacion } from '@prisma/client';
+import { Money } from 'src/shared/domain/value-objects/money.vo';
+import { ClienteInstalacionEntity } from '../../domain/entities/cliente-instalacion.entity';
+import { EstadoInstalacionCliente } from '../../domain/enums/estado-instalacion-cliente.enum';
+import { TipoInstalacionCliente } from '../../domain/enums/tipo-instalacion-cliente.enum';
+
+export class ClienteInstalacionPrismaMapper {
+  static toDomain(record: ClienteInstalacion): ClienteInstalacionEntity {
+    return ClienteInstalacionEntity.hydrate({
+      id: record.id,
+
+      empresaId: record.empresaId,
+      clienteId: record.clienteId,
+
+      servicioInternetId: record.servicioInternetId,
+      ticketId: record.ticketId,
+
+      asesorId: record.asesorId,
+      creadoPorId: record.creadoPorId,
+      completadoPorId: record.completadoPorId,
+
+      tipo: record.tipo as TipoInstalacionCliente,
+      estado: record.estado as EstadoInstalacionCliente,
+
+      fechaProgramada: record.fechaProgramada,
+      fechaInicio: record.fechaInicio,
+      fechaFinalizacion: record.fechaFinalizacion,
+      fechaCancelacion: record.fechaCancelacion,
+      fechaActivacionServicio: record.fechaActivacionServicio,
+
+      motivo: record.motivo,
+      observaciones: record.observaciones,
+      resultado: record.resultado,
+
+      direccionInstalacion: record.direccionInstalacion,
+      referenciaUbicacion: record.referenciaUbicacion,
+      latitud: record.latitud,
+      longitud: record.longitud,
+
+      ssidRouter: record.ssidRouter,
+      contrasenaWifi: record.contrasenaWifi,
+
+      costoInstalacion: Money.fromString(record.costoInstalacion.toString()),
+      costoMateriales: Money.fromString(record.costoMateriales.toString()),
+      costoManoObra: Money.fromString(record.costoManoObra.toString()),
+      costoOtros: Money.fromString(record.costoOtros.toString()),
+      montoCobradoCliente: Money.fromString(
+        record.montoCobradoCliente.toString(),
+      ),
+      saldoPendiente: Money.fromString(record.saldoPendiente.toString()),
+
+      notasCostos: record.notasCostos,
+
+      esMigrada: record.esMigrada,
+      metadata: record.metadata ?? undefined,
+
+      creadoEn: record.creadoEn,
+      actualizadoEn: record.actualizadoEn,
+    });
+  }
+
+  static toCreatePersistence(
+    entity: ClienteInstalacionEntity,
+  ): Prisma.ClienteInstalacionUncheckedCreateInput {
+    const props = entity.toPrimitives();
+
+    return {
+      empresaId: props.empresaId,
+      clienteId: props.clienteId,
+
+      servicioInternetId: props.servicioInternetId ?? null,
+      ticketId: props.ticketId ?? null,
+
+      asesorId: props.asesorId ?? null,
+      creadoPorId: props.creadoPorId ?? null,
+      completadoPorId: props.completadoPorId ?? null,
+
+      tipo: props.tipo,
+      estado: props.estado,
+
+      fechaProgramada: props.fechaProgramada ?? null,
+      fechaInicio: props.fechaInicio ?? null,
+      fechaFinalizacion: props.fechaFinalizacion ?? null,
+      fechaCancelacion: props.fechaCancelacion ?? null,
+      fechaActivacionServicio: props.fechaActivacionServicio ?? null,
+
+      motivo: props.motivo ?? null,
+      observaciones: props.observaciones ?? null,
+      resultado: props.resultado ?? null,
+
+      direccionInstalacion: props.direccionInstalacion ?? null,
+      referenciaUbicacion: props.referenciaUbicacion ?? null,
+      latitud: props.latitud ?? null,
+      longitud: props.longitud ?? null,
+
+      ssidRouter: props.ssidRouter ?? null,
+      contrasenaWifi: props.contrasenaWifi ?? null,
+
+      costoInstalacion: props.costoInstalacion.toString(),
+      costoMateriales: props.costoMateriales.toString(),
+      costoManoObra: props.costoManoObra.toString(),
+      costoOtros: props.costoOtros.toString(),
+      montoCobradoCliente: props.montoCobradoCliente.toString(),
+      saldoPendiente: props.saldoPendiente.toString(),
+
+      notasCostos: props.notasCostos ?? null,
+
+      esMigrada: props.esMigrada,
+      metadata:
+        props.metadata === undefined
+          ? undefined
+          : (props.metadata as Prisma.InputJsonValue),
+    };
+  }
+
+  static toUpdatePersistence(
+    entity: ClienteInstalacionEntity,
+  ): Prisma.ClienteInstalacionUncheckedUpdateInput {
+    const props = entity.toPrimitives();
+
+    return {
+      empresaId: props.empresaId,
+      clienteId: props.clienteId,
+
+      servicioInternetId: props.servicioInternetId ?? null,
+      ticketId: props.ticketId ?? null,
+
+      asesorId: props.asesorId ?? null,
+      creadoPorId: props.creadoPorId ?? null,
+      completadoPorId: props.completadoPorId ?? null,
+
+      tipo: props.tipo,
+      estado: props.estado,
+
+      fechaProgramada: props.fechaProgramada ?? null,
+      fechaInicio: props.fechaInicio ?? null,
+      fechaFinalizacion: props.fechaFinalizacion ?? null,
+      fechaCancelacion: props.fechaCancelacion ?? null,
+      fechaActivacionServicio: props.fechaActivacionServicio ?? null,
+
+      motivo: props.motivo ?? null,
+      observaciones: props.observaciones ?? null,
+      resultado: props.resultado ?? null,
+
+      direccionInstalacion: props.direccionInstalacion ?? null,
+      referenciaUbicacion: props.referenciaUbicacion ?? null,
+      latitud: props.latitud ?? null,
+      longitud: props.longitud ?? null,
+
+      ssidRouter: props.ssidRouter ?? null,
+      contrasenaWifi: props.contrasenaWifi ?? null,
+
+      costoInstalacion: props.costoInstalacion.toString(),
+      costoMateriales: props.costoMateriales.toString(),
+      costoManoObra: props.costoManoObra.toString(),
+      costoOtros: props.costoOtros.toString(),
+      montoCobradoCliente: props.montoCobradoCliente.toString(),
+      saldoPendiente: props.saldoPendiente.toString(),
+
+      notasCostos: props.notasCostos ?? null,
+
+      esMigrada: props.esMigrada,
+      metadata:
+        props.metadata === undefined
+          ? undefined
+          : (props.metadata as Prisma.InputJsonValue),
+    };
+  }
+}
