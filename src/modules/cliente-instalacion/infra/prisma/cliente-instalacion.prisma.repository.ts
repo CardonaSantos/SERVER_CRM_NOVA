@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ClienteInstalacionEntity } from '../../domain/entities/cliente-instalacion.entity';
 import {
+  ClienteInstalacionDetalle,
   ClienteInstalacionFindManyFilters,
   ClienteInstalacionPaginatedResult,
   ClienteInstalacionRepositoryPort,
@@ -184,5 +185,58 @@ export class ClienteInstalacionPrismaRepository
     });
 
     return ClienteInstalacionPrismaMapper.toDomain(record);
+  }
+
+  // DETALLES
+  async findDetailById(params: {
+    id: number;
+    empresaId: number;
+  }): Promise<ClienteInstalacionDetalle | null> {
+    const record = await this.prisma.clienteInstalacion.findFirst({
+      where: {
+        id: params.id,
+        empresaId: params.empresaId,
+      },
+      include: {
+        evidencias: {
+          include: {
+            media: {
+              select: {
+                id: true,
+                cdnUrl: true,
+                key: true,
+                mimeType: true,
+                extension: true,
+                tamanioBytes: true,
+              },
+            },
+          },
+          orderBy: [{ orden: 'asc' }, { creadoEn: 'asc' }],
+        },
+      },
+    });
+
+    if (!record) return null;
+
+    return {
+      instalacion: ClienteInstalacionPrismaMapper.toDomain(record),
+      evidencias: record.evidencias.map((evidencia) => ({
+        id: evidencia.id,
+        instalacionId: evidencia.instalacionId,
+        mediaId: evidencia.mediaId,
+        tipo: evidencia.tipo as any,
+        descripcion: evidencia.descripcion,
+        orden: evidencia.orden,
+        creadoEn: evidencia.creadoEn,
+        media: {
+          id: evidencia.media.id,
+          cdnUrl: evidencia.media.cdnUrl,
+          key: evidencia.media.key,
+          mimeType: evidencia.media.mimeType,
+          extension: evidencia.media.extension,
+          tamanioBytes: evidencia.media.tamanioBytes,
+        },
+      })),
+    };
   }
 }

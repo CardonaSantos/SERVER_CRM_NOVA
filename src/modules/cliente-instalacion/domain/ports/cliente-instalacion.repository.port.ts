@@ -1,7 +1,33 @@
 import { ClienteInstalacionEntity } from '../entities/cliente-instalacion.entity';
 import { EstadoInstalacionCliente } from '../enums/estado-instalacion-cliente.enum';
+import { TipoEvidenciaClienteOperacion } from '../enums/tipo-evidencia-cliente-operacion.enum';
 import { TipoInstalacionCliente } from '../enums/tipo-instalacion-cliente.enum';
 
+// ADICIONALES
+export type ClienteInstalacionEvidenciaDetalle = {
+  id: number;
+  instalacionId: number;
+  mediaId: number;
+  tipo: TipoEvidenciaClienteOperacion;
+  descripcion?: string | null;
+  orden: number;
+  creadoEn: Date;
+
+  media: {
+    id: number;
+    cdnUrl?: string | null;
+    key: string;
+    mimeType?: string | null;
+    extension?: string | null;
+    tamanioBytes?: bigint | number | string | null;
+  };
+};
+
+export type ClienteInstalacionDetalle = {
+  instalacion: ClienteInstalacionEntity;
+  evidencias: ClienteInstalacionEvidenciaDetalle[];
+};
+//
 export type ClienteInstalacionFindManyFilters = {
   empresaId: number;
 
@@ -39,10 +65,13 @@ export interface ClienteInstalacionRepositoryPort {
 
   findById(params: { id: number }): Promise<ClienteInstalacionEntity | null>;
 
+  findDetailById(params: {
+    id: number;
+  }): Promise<ClienteInstalacionDetalle | null>;
+
   findMany(
     filters: ClienteInstalacionFindManyFilters,
   ): Promise<ClienteInstalacionPaginatedResult>;
 
   save(entity: ClienteInstalacionEntity): Promise<ClienteInstalacionEntity>;
-  //   delete(id: number): Promise<null>;
 }

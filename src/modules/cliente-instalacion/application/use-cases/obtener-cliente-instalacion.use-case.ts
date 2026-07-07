@@ -1,6 +1,8 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { ClienteInstalacionEntity } from '../../domain/entities/cliente-instalacion.entity';
-import { ClienteInstalacionRepositoryPort } from '../../domain/ports/cliente-instalacion.repository.port';
+import {
+  ClienteInstalacionDetalle,
+  ClienteInstalacionRepositoryPort,
+} from '../../domain/ports/cliente-instalacion.repository.port';
 import { CLIENTE_INSTALACION_REPOSITORY } from '../../infra/tokens/cliente-instalacion.tokens';
 
 export type ObtenerClienteInstalacionCommand = {
@@ -17,15 +19,15 @@ export class ObtenerClienteInstalacionUseCase {
 
   async execute(
     command: ObtenerClienteInstalacionCommand,
-  ): Promise<ClienteInstalacionEntity> {
-    const instalacion = await this.instalacionRepository.findById({
+  ): Promise<ClienteInstalacionDetalle> {
+    const detalle = await this.instalacionRepository.findDetailById({
       id: command.id,
     });
 
-    if (!instalacion) {
+    if (!detalle) {
       throw new NotFoundException('Instalación no encontrada.');
     }
 
-    return instalacion;
+    return detalle;
   }
 }

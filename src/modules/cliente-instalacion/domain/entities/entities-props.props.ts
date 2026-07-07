@@ -1,6 +1,7 @@
 import { Money } from 'src/shared/domain/value-objects/money.vo';
 import { EstadoInstalacionCliente } from '../enums/estado-instalacion-cliente.enum';
 import { TipoInstalacionCliente } from '../enums/tipo-instalacion-cliente.enum';
+import { TipoEvidenciaClienteOperacion } from '../enums/tipo-evidencia-cliente-operacion.enum';
 
 // CREACION E INSTANCIA
 export type ClienteInstalacionProps = {
@@ -73,6 +74,18 @@ export type CrearClienteInstalacionProps = {
   longitud?: number | null;
 
   observaciones?: string | null;
+};
+
+export type ClienteInstalacionMedia = {
+  id?: number;
+
+  instalacionId?: number | null;
+  mediaId: number;
+  tipo: TipoEvidenciaClienteOperacion;
+  descripcion?: string;
+  orden: number;
+  creadoEn?: Date;
+  actualizadoEn?: Date;
 };
 
 // RETORNOS Y VALIDACIONES

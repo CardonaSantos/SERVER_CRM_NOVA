@@ -1,5 +1,8 @@
+import {
+  ClienteInstalacionDetalle,
+  ClienteInstalacionPaginatedResult,
+} from '../domain/ports/cliente-instalacion.repository.port';
 import { ClienteInstalacionEntity } from '../domain/entities/cliente-instalacion.entity';
-import { ClienteInstalacionPaginatedResult } from '../domain/ports/cliente-instalacion.repository.port';
 
 export class ClienteInstalacionPresenter {
   static toHttp(entity: ClienteInstalacionEntity) {
@@ -64,6 +67,33 @@ export class ClienteInstalacionPresenter {
         limit: result.limit,
         totalPages: Math.ceil(result.total / result.limit),
       },
+    };
+  }
+
+  static detalleToHttp(detalle: ClienteInstalacionDetalle) {
+    return {
+      ...this.toHttp(detalle.instalacion),
+
+      evidencias: detalle.evidencias.map((evidencia) => ({
+        id: evidencia.id,
+        instalacionId: evidencia.instalacionId,
+        mediaId: evidencia.mediaId,
+        tipo: evidencia.tipo,
+        descripcion: evidencia.descripcion,
+        orden: evidencia.orden,
+        creadoEn: evidencia.creadoEn,
+        media: {
+          id: evidencia.media.id,
+          cdnUrl: evidencia.media.cdnUrl,
+          key: evidencia.media.key,
+          mimeType: evidencia.media.mimeType,
+          extension: evidencia.media.extension,
+          tamanioBytes:
+            evidencia.media.tamanioBytes != null
+              ? evidencia.media.tamanioBytes.toString()
+              : null,
+        },
+      })),
     };
   }
 }

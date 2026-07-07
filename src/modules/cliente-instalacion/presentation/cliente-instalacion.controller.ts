@@ -8,6 +8,8 @@ import {
   Post,
   Query,
   Req,
+  UploadedFile,
+  UseInterceptors,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
@@ -20,6 +22,8 @@ import { ReprogramarClienteInstalacionDto } from '../application/dto/reprogramar
 import { IniciarInstalacionClienteDto } from '../application/dto/iniciar-instalacion.dto';
 import { CompletarClienteInstalacionDto } from '../application/dto/completar-cliente-instalacion.dto';
 import { CancelarClienteInstalacionDto } from '../application/dto/cancelar-cliente-instalacion.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { SubirEvidenciaInstalacionDto } from '../application/dto/subir-evidencia-instalacion.dto';
 
 @UsePipes(
   new ValidationPipe({
@@ -58,12 +62,9 @@ export class ClienteInstalacionController {
     @Param('id', ParseIntPipe) id: number,
     @Query('empresaId', ParseIntPipe) empresaId: number,
   ) {
-    const instalacion = await this.clienteInstalacionService.obtener(
-      id,
-      empresaId,
-    );
+    const detalle = await this.clienteInstalacionService.obtener(id, empresaId);
 
-    return ClienteInstalacionPresenter.toHttp(instalacion);
+    return ClienteInstalacionPresenter.detalleToHttp(detalle);
   }
 
   @Patch(':id')
@@ -121,5 +122,25 @@ export class ClienteInstalacionController {
     return ClienteInstalacionPresenter.toHttp(
       await this.clienteInstalacionService.cancelar(dto, id),
     );
+  }
+
+  @Post(':id/evidencias/upload')
+  @UseInterceptors(FileInterceptor('file'))
+  async subirEvidencia(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('empresaId', ParseIntPipe) empresaId: number,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() dto: SubirEvidenciaInstalacionDto,
+    @Req() req: any,
+  ) {
+    return this.clienteInstalacionService.cargarEvidencias({
+      instalacionId: id,
+      empresaId,
+      subidoPorId: req.user?.id ?? 1,
+      file,
+      tipo: dto.tipo,
+      descripcion: dto.descripcion ?? null,
+      orden: dto.orden ?? 0,
+    });
   }
 }

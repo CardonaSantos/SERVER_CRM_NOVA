@@ -1,0 +1,7 @@
+export enum EstadoDesinstalacionCliente {
+  PROGRAMADA = 'PROGRAMADA',
+  EN_PROCESO = 'EN_PROCESO',
+  COMPLETADA = 'COMPLETADA',
+  CANCELADA = 'CANCELADA',
+  FALLIDA = 'FALLIDA',
+}

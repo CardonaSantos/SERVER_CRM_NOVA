@@ -15,6 +15,10 @@ import { CompletarClienteInstalacionDto } from '../dto/completar-cliente-instala
 import { CompletarClienteInstalacionUseCase } from '../use-cases/completar-cliente-instalacion.use-case';
 import { CancelarClienteInstalacionDto } from '../dto/cancelar-cliente-instalacion.dto';
 import { CancelarClienteInstalacionUseCase } from '../use-cases/cancelar-cliente-instalacion.use-case';
+import {
+  SubirEvidenciaInstalacionCommand,
+  SubirEvidenciaInstalacionUseCase,
+} from '../use-cases/subir-evidencia-instalacion.use-case';
 
 @Injectable()
 export class ClienteInstalacionApplicationService {
@@ -30,6 +34,8 @@ export class ClienteInstalacionApplicationService {
 
     private readonly completarClienteInstalacionUseCase: CompletarClienteInstalacionUseCase,
     private readonly cancelarClienteInstalacionUseCase: CancelarClienteInstalacionUseCase,
+
+    private readonly subirEvidenciaInstalacionUseCase: SubirEvidenciaInstalacionUseCase,
   ) {}
 
   crear(dto: CrearClienteInstalacionDto, creadoPorId: number) {
@@ -89,5 +95,9 @@ export class ClienteInstalacionApplicationService {
       ...dto,
       id,
     });
+  }
+
+  cargarEvidencias(dto: SubirEvidenciaInstalacionCommand) {
+    return this.subirEvidenciaInstalacionUseCase.execute(dto);
   }
 }
