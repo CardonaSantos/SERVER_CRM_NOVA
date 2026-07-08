@@ -1,7 +1,13 @@
 import { Money } from 'src/shared/domain/value-objects/money.vo';
 import {
+  ActualizarCostosDesinstalacionParams,
+  ActualizarDatosGeneralesDesinstalacionParams,
+  CancelarClienteDesinstalacionParams,
   ClienteDesinstalacionProps,
+  CompletarClienteDesinstalacionParams,
   CrearClienteDesinstalacionProps,
+  IniciarClienteDesinstalacionParams,
+  ReprogramarClienteDesinstalacionParams,
 } from './props-entities.props';
 import { EstadoDesinstalacionCliente } from '../enums/estado-desinstalacion-cliente.enum';
 import { TipoDesinstalacionCliente } from '../enums/tipo-desinstalacion-cliente.enum';
@@ -226,5 +232,229 @@ export class ClienteDesinstalacionEntity {
     }
 
     return normalized;
+  }
+
+  iniciar(params: IniciarClienteDesinstalacionParams = {}): void {
+    this.ensurePersisted('iniciar');
+
+    if (this.props.estado !== EstadoDesinstalacionCliente.PROGRAMADA) {
+      throw new Error('Solo una desinstalación programada puede iniciarse.');
+    }
+
+    if (params.ejecutadoPorId != null) {
+      this.ensurePositiveId(params.ejecutadoPorId, 'ejecutadoPorId');
+      this.props.ejecutadoPorId = params.ejecutadoPorId;
+    }
+
+    this.props.estado = EstadoDesinstalacionCliente.EN_PROCESO;
+    this.props.fechaInicio = params.fechaInicio ?? new Date();
+
+    this.ensureValidBaseProps();
+  }
+
+  cancelar(params: CancelarClienteDesinstalacionParams) {
+    if (params.fechaCancelacion) {
+      this.props.fechaCancelacion = params.fechaCancelacion;
+    }
+
+    if (params.motivo) {
+      this.props.motivo = params.motivo;
+    }
+
+    if (params.observaciones) {
+      this.props.observaciones = params.observaciones;
+    }
+
+    this.ensureValidBaseProps();
+  }
+
+  reprogramar(params: ReprogramarClienteDesinstalacionParams): void {
+    this.ensurePersisted('reprogramar');
+
+    if (
+      this.props.estado !== EstadoDesinstalacionCliente.PROGRAMADA &&
+      this.props.estado !== EstadoDesinstalacionCliente.COMPLETADA
+    ) {
+      throw new Error(
+        'Solo una desinstalación programada o pendiente puede reprogramarse.',
+      );
+    }
+
+    this.props.fechaProgramada = params.fechaProgramada;
+    this.props.motivo = params.motivo ?? this.props.motivo;
+    this.props.observaciones =
+      this.normalizeOptionalText(params.observaciones) ??
+      this.props.observaciones;
+
+    this.ensureValidBaseProps();
+  }
+
+  completar(params: CompletarClienteDesinstalacionParams): void {
+    this.ensurePersisted('completar');
+
+    if (this.props.estado !== EstadoDesinstalacionCliente.EN_PROCESO) {
+      throw new Error('Solo una desinstalación en proceso puede completarse.');
+    }
+
+    this.ensurePositiveId(params.ejecutadoPorId, 'ejecutadoPorId');
+
+    this.props.estado = EstadoDesinstalacionCliente.COMPLETADA;
+    this.props.ejecutadoPorId = params.ejecutadoPorId;
+    this.props.fechaFinalizacion = params.fechaFinalizacion ?? new Date();
+    this.props.resultado = this.normalizeOptionalText(params.resultado);
+    this.props.observaciones =
+      this.normalizeOptionalText(params.observaciones) ??
+      this.props.observaciones;
+    this.props.equipoRecuperado = params.equipoRecuperado ?? false;
+    this.props.conforme = params.conforme ?? null;
+
+    this.ensureValidBaseProps();
+  }
+
+  actualizarCostos(params: ActualizarCostosDesinstalacionParams): void {
+    this.ensurePersisted('actualizar costos');
+
+    if (params.saldoClienteAlMomento !== undefined) {
+      this.props.saldoClienteAlMomento = params.saldoClienteAlMomento;
+    }
+
+    if (params.costoDesinstalacion !== undefined) {
+      this.props.costoDesinstalacion = params.costoDesinstalacion;
+    }
+
+    if (params.costoTransporte !== undefined) {
+      this.props.costoTransporte = params.costoTransporte;
+    }
+
+    if (params.costoManoObra !== undefined) {
+      this.props.costoManoObra = params.costoManoObra;
+    }
+
+    if (params.costoOtros !== undefined) {
+      this.props.costoOtros = params.costoOtros;
+    }
+
+    this.ensureValidBaseProps();
+  }
+
+  // AUTH
+  autorizar(): void {
+    this.ensurePersisted('autorizar');
+
+    if (this.props.estado !== EstadoDesinstalacionCliente.PROGRAMADA) {
+      throw new Error('La desinstalación no está pendiente de autorización.');
+    }
+
+    this.props.estado = EstadoDesinstalacionCliente.PROGRAMADA;
+
+    this.ensureValidBaseProps();
+  }
+
+  rechazarAutorizacion(): void {
+    this.ensurePersisted('rechazar autorización');
+
+    if (this.props.estado !== EstadoDesinstalacionCliente.PROGRAMADA) {
+      throw new Error(
+        'La desinstalación no está en estado válido para rechazar.',
+      );
+    }
+
+    this.props.estado = EstadoDesinstalacionCliente.CANCELADA;
+
+    this.ensureValidBaseProps();
+  }
+
+  private ensurePersisted(action: string): void {
+    if (!this.isPersisted) {
+      throw new Error(
+        `No se puede ${action} una instalación que aún no ha sido guardada.`,
+      );
+    }
+  }
+
+  private ensureEditable(): void {
+    if (this.isFinalizada) {
+      throw new Error(
+        'No se puede editar una instalación completada, cancelada o fallida.',
+      );
+    }
+  }
+  actualizarDatosGenerales(
+    params: ActualizarDatosGeneralesDesinstalacionParams,
+  ): void {
+    this.ensurePersisted('actualizar datos generales');
+    this.ensureEditable();
+
+    const {
+      direccionServicio,
+      ejecutadoPorId,
+      fechaProgramada,
+      latitud,
+      longitud,
+      // metadata,
+      motivo,
+      observaciones,
+      referenciaUbicacion,
+      requiereRetiroEquipo,
+      servicioInternetId,
+      solicitadoPorId,
+      ticketId,
+      tipo,
+    } = params;
+
+    if (servicioInternetId !== undefined) {
+      this.props.servicioInternetId = servicioInternetId;
+    }
+
+    if (ticketId !== undefined) {
+      this.props.ticketId = ticketId;
+    }
+
+    if (direccionServicio !== undefined) {
+      this.props.direccionServicio = direccionServicio;
+    }
+
+    if (ejecutadoPorId !== undefined) {
+      this.props.ejecutadoPorId = ejecutadoPorId;
+    }
+
+    if (motivo !== undefined) {
+      this.props.motivo = motivo;
+    }
+
+    if (requiereRetiroEquipo !== undefined) {
+      this.props.requiereRetiroEquipo = requiereRetiroEquipo;
+    }
+
+    if (solicitadoPorId !== undefined) {
+      this.props.solicitadoPorId = solicitadoPorId;
+    }
+
+    if (tipo !== undefined) {
+      this.props.tipo = tipo;
+    }
+
+    if (fechaProgramada !== undefined) {
+      this.props.fechaProgramada = fechaProgramada;
+    }
+
+    if (referenciaUbicacion !== undefined) {
+      this.props.referenciaUbicacion =
+        this.normalizeOptionalText(referenciaUbicacion);
+    }
+
+    if (latitud !== undefined) {
+      this.props.latitud = latitud;
+    }
+
+    if (longitud !== undefined) {
+      this.props.longitud = longitud;
+    }
+
+    if (observaciones !== undefined) {
+      this.props.observaciones = this.normalizeOptionalText(observaciones);
+    }
+
+    this.ensureValidBaseProps();
   }
 }
