@@ -1,4 +1,6 @@
+import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsBoolean,
   IsDateString,
   IsEnum,
@@ -7,9 +9,11 @@ import {
   IsOptional,
   IsString,
   Min,
+  ValidateNested,
 } from 'class-validator';
 import { MotivoDesinstalacionCliente } from '../../domain/enums/motivo-desinstalacion-cliente.enum';
 import { TipoDesinstalacionCliente } from '../../domain/enums/tipo-desinstalacion-cliente.enum';
+import { AsignarTecnicoDesinstalacionDto } from './tecnico-desinstalacion.dto';
 
 export class CrearClienteDesinstalacionDto {
   @IsInt()
@@ -84,11 +88,13 @@ export class CrearClienteDesinstalacionDto {
   @IsString()
   observaciones?: string;
 
-  /**
-   * Este campo sirve si al crear la desinstalación también quieres
-   * crear una autorización pendiente.
-   */
   @IsOptional()
   @IsString()
   motivoSolicitudAutorizacion?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => AsignarTecnicoDesinstalacionDto)
+  tecnicos?: AsignarTecnicoDesinstalacionDto[];
 }

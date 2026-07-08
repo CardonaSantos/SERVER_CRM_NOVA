@@ -1,4 +1,9 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entitie';
 import { ClienteDesinstalacionAutorizacionEntity } from '../../domain/entities/cliente-desintalacion-autorizacion.entitie';
 import { ClienteDesinstalacionAutorizacionRepositoryPort } from '../../domain/ports/cliente-desinstalacion-autorizacion.repository.port';
@@ -35,11 +40,6 @@ export class RechazarAutorizacionDesinstalacionUseCase {
       throw new NotFoundException('Autorización no encontrada.');
     }
 
-    autorizacion.rechazar({
-      autorizadoPorId: command.autorizadoPorId,
-      comentarioAutorizador: command.comentarioAutorizador ?? null,
-    });
-
     const desinstalacion = await this.desinstalacionRepository.findById(
       autorizacion.desinstalacionId,
     );
@@ -48,7 +48,26 @@ export class RechazarAutorizacionDesinstalacionUseCase {
       throw new NotFoundException('Desinstalación no encontrada.');
     }
 
-    desinstalacion.rechazarAutorizacion();
+    if (desinstalacion.isFinalizada) {
+      throw new ConflictException(
+        'No se puede rechazar una autorización de una desinstalación finalizada.',
+      );
+    }
+
+    try {
+      autorizacion.rechazar({
+        autorizadoPorId: command.autorizadoPorId,
+        comentarioAutorizador: command.comentarioAutorizador ?? null,
+      });
+
+      desinstalacion.rechazarAutorizacion();
+    } catch (error) {
+      throw new ConflictException(
+        error instanceof Error
+          ? error.message
+          : 'No se pudo rechazar la autorización.',
+      );
+    }
 
     const savedAutorizacion =
       await this.autorizacionRepository.save(autorizacion);

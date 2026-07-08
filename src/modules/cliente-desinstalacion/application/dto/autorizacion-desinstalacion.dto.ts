@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class AprobarDesinstalacionAutorizacionDto {
   @IsOptional()
@@ -16,4 +16,9 @@ export class SolicitarDesinstalacionAutorizacionDto {
   @IsOptional()
   @IsString()
   motivoSolicitud?: string | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  solicitadoPorId?: number;
 }

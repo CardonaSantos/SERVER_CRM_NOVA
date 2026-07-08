@@ -1,4 +1,10 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { ClienteDesinstalacionAutorizacionEntity } from '../../domain/entities/cliente-desintalacion-autorizacion.entitie';
 import { ClienteDesinstalacionAutorizacionRepositoryPort } from '../../domain/ports/cliente-desinstalacion-autorizacion.repository.port';
 import { ClienteDesInstalacionRepositoryPort } from '../../domain/ports/cliente-desinstalacion.repository.port';
 import {
@@ -6,7 +12,6 @@ import {
   CLIENTE_DESINSTALACION_REPOSITORY,
 } from '../../infra/tokens/cliente-desinstalacion.token';
 import { SolicitarDesinstalacionAutorizacionDto } from '../dto/autorizacion-desinstalacion.dto';
-import { ClienteDesinstalacionAutorizacionEntity } from '../../domain/entities/cliente-desintalacion-autorizacion.entitie';
 
 export type CrearAutorizacionDesinstalacionCommand =
   SolicitarDesinstalacionAutorizacionDto & {
@@ -31,6 +36,23 @@ export class CrearAutorizacionDesinstalacionUseCase {
 
     if (!desinstalacion) {
       throw new NotFoundException('Desinstalación no encontrada.');
+    }
+
+    if (desinstalacion.isFinalizada) {
+      throw new ConflictException(
+        'No se puede crear autorización para una desinstalación finalizada.',
+      );
+    }
+
+    const pendiente =
+      await this.autorizacionRepository.findPendienteByDesinstalacionId(
+        command.desinstalacionId,
+      );
+
+    if (pendiente) {
+      throw new ConflictException(
+        'Ya existe una autorización pendiente para esta desinstalación.',
+      );
     }
 
     const autorizacion = ClienteDesinstalacionAutorizacionEntity.create({

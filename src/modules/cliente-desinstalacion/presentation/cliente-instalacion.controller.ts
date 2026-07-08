@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -29,6 +30,8 @@ import {
 import { ClienteDesinstalacionPresenter } from './cliente-desinstalacion.presenter';
 import { ClienteDesInstalacionApplicationService } from '../application/services/cliente-desinstalacion.service';
 import { ClienteDesinstalacionAutorizacionPresenter } from './autorizacion-cliente-desinstalacion.presenter';
+import { ClienteDesinstalacionTecnicoPresenter } from './cliente-desinstalacion-tecnico.presenter';
+import { AsignarTecnicoDesinstalacionDto } from '../application/dto/tecnico-desinstalacion.dto';
 
 @UsePipes(
   new ValidationPipe({
@@ -160,9 +163,8 @@ export class ClienteDesinstalacionController {
   async crearAutorizacion(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: SolicitarDesinstalacionAutorizacionDto,
-    @Req() req: any,
   ) {
-    const solicitadoPorId = req.user?.id ?? 1;
+    const solicitadoPorId = dto.solicitadoPorId;
 
     const autorizacion =
       await this.clienteDesinstalacionService.crearAutorizacion(
@@ -214,5 +216,41 @@ export class ClienteDesinstalacionController {
     );
 
     return ClienteDesinstalacionAutorizacionPresenter.respuestaToHttp(result);
+  }
+
+  // TECNICOS
+  @Post(':id/tecnicos')
+  async asignarTecnico(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AsignarTecnicoDesinstalacionDto,
+  ) {
+    const tecnico = await this.clienteDesinstalacionService.asignarTecnico(
+      id,
+      dto,
+    );
+
+    return ClienteDesinstalacionTecnicoPresenter.toHttp(tecnico);
+  }
+
+  @Get(':id/tecnicos')
+  async listarTecnicos(@Param('id', ParseIntPipe) id: number) {
+    const tecnicos = await this.clienteDesinstalacionService.listarTecnicos(id);
+
+    return ClienteDesinstalacionTecnicoPresenter.listToHttp(tecnicos);
+  }
+
+  @Delete(':id/tecnicos/:tecnicoOperacionId')
+  async eliminarTecnico(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('tecnicoOperacionId', ParseIntPipe) tecnicoOperacionId: number,
+  ) {
+    await this.clienteDesinstalacionService.eliminarTecnico(
+      id,
+      tecnicoOperacionId,
+    );
+
+    return {
+      ok: true,
+    };
   }
 }

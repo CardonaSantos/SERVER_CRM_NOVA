@@ -21,6 +21,10 @@ export interface ClienteDesinstalacionAutorizacionRepositoryPort {
 
   findById(id: number): Promise<ClienteDesinstalacionAutorizacionEntity | null>;
 
+  findPendienteByDesinstalacionId(
+    desinstalacionId: number,
+  ): Promise<ClienteDesinstalacionAutorizacionEntity | null>;
+
   findPendientes(): Promise<AutorizacionDesinstalacionPendiente[]>;
 
   save(

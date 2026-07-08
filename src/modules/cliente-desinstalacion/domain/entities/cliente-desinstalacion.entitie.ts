@@ -125,11 +125,16 @@ export class ClienteDesinstalacionEntity {
     return this.props.estado === EstadoDesinstalacionCliente.CANCELADA;
   }
 
+  get isFallida(): boolean {
+    return this.props.estado === EstadoDesinstalacionCliente.FALLIDA;
+  }
+
   get isFinalizada(): boolean {
     return (
-      this.props.estado === EstadoDesinstalacionCliente.COMPLETADA ||
       this.props.estado === EstadoDesinstalacionCliente.CANCELADA ||
+      this.props.estado === EstadoDesinstalacionCliente.COMPLETADA ||
       this.props.estado === EstadoDesinstalacionCliente.FALLIDA
+      // this.props.estado === EstadoDesinstalacionCliente.RECHAZADA
     );
   }
 
@@ -360,7 +365,7 @@ export class ClienteDesinstalacionEntity {
     }
 
     this.props.estado = EstadoDesinstalacionCliente.CANCELADA;
-
+    this.props.fechaCancelacion = new Date();
     this.ensureValidBaseProps();
   }
 

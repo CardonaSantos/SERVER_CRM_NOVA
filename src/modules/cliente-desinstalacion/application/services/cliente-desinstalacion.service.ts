@@ -26,6 +26,10 @@ import { CrearAutorizacionDesinstalacionUseCase } from '../use-cases/crear-autor
 import { ListarAutorizacionesPendientesUseCase } from '../use-cases/listar-autorizacion-cliente-desintalacion.use-case';
 import { AprobarAutorizacionDesinstalacionUseCase } from '../use-cases/aprobar-autorizacion-cliente-desinstalacion.use-case';
 import { RechazarAutorizacionDesinstalacionUseCase } from '../use-cases/rechazar-autorizacion-cliente-desinstalacion.use-case';
+import { AsignarTecnicoDesinstalacionUseCase } from '../use-cases/asignar-tecnico-desinstalacion.use-case';
+import { ListarTecnicosDesinstalacionUseCase } from '../use-cases/listar-tecnicos-desintalacion.use-case';
+import { EliminarTecnicoDesinstalacionUseCase } from '../use-cases/eliminar-tecnico-desinstalacion.use-case';
+import { AsignarTecnicoDesinstalacionDto } from '../dto/tecnico-desinstalacion.dto';
 
 @Injectable()
 export class ClienteDesInstalacionApplicationService {
@@ -45,6 +49,10 @@ export class ClienteDesInstalacionApplicationService {
     private readonly listarAutorizacionesPendientesUseCase: ListarAutorizacionesPendientesUseCase,
     private readonly aprobarAutorizacionDesinstalacionUseCase: AprobarAutorizacionDesinstalacionUseCase,
     private readonly rechazarAutorizacionDesinstalacionUseCase: RechazarAutorizacionDesinstalacionUseCase,
+
+    private readonly asignarTecnicoDesinstalacionUseCase: AsignarTecnicoDesinstalacionUseCase,
+    private readonly listarTecnicosDesinstalacionUseCase: ListarTecnicosDesinstalacionUseCase,
+    private readonly eliminarTecnicoDesinstalacionUseCase: EliminarTecnicoDesinstalacionUseCase,
   ) {}
 
   crear(dto: CrearClienteDesinstalacionDto, creadoPorId: number) {
@@ -150,6 +158,25 @@ export class ClienteDesInstalacionApplicationService {
       id,
       autorizadoPorId,
       ...dto,
+    });
+  }
+
+  // TECNICOS
+  asignarTecnico(id: number, dto: AsignarTecnicoDesinstalacionDto) {
+    return this.asignarTecnicoDesinstalacionUseCase.execute({
+      desinstalacionId: id,
+      ...dto,
+    });
+  }
+
+  listarTecnicos(id: number) {
+    return this.listarTecnicosDesinstalacionUseCase.execute(id);
+  }
+
+  eliminarTecnico(id: number, tecnicoOperacionId: number) {
+    return this.eliminarTecnicoDesinstalacionUseCase.execute({
+      desinstalacionId: id,
+      tecnicoOperacionId,
     });
   }
 }

@@ -39,6 +39,25 @@ export class ClienteDesinstalacionAutorizacionPrismaRepository
     return ClienteDesinstalacionAutorizacionPrismaMapper.toDomain(record);
   }
 
+  async findPendienteByDesinstalacionId(
+    desinstalacionId: number,
+  ): Promise<ClienteDesinstalacionAutorizacionEntity | null> {
+    const record =
+      await this.prisma.clienteDesinstalacionAutorizacion.findFirst({
+        where: {
+          desinstalacionId,
+          estado: PrismaEstadoAutorizacion.PENDIENTE,
+        },
+        orderBy: {
+          fechaSolicitud: 'desc',
+        },
+      });
+
+    if (!record) return null;
+
+    return ClienteDesinstalacionAutorizacionPrismaMapper.toDomain(record);
+  }
+
   async findPendientes(): Promise<AutorizacionDesinstalacionPendiente[]> {
     const records =
       await this.prisma.clienteDesinstalacionAutorizacion.findMany({
