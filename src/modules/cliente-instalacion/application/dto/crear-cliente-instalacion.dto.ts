@@ -1,4 +1,7 @@
 import {
+  ArrayMaxSize,
+  ArrayUnique,
+  IsArray,
   IsDateString,
   IsEnum,
   IsInt,
@@ -6,8 +9,11 @@ import {
   IsOptional,
   IsString,
   Min,
+  ValidateNested,
 } from 'class-validator';
 import { TipoInstalacionCliente } from '../../domain/enums/tipo-instalacion-cliente.enum';
+import { AsignarTecnicoInstalacionDto } from './asignar-tecnico-instalacion.dto';
+import { Type } from 'class-transformer';
 
 export class CrearClienteInstalacionDto {
   @IsInt()
@@ -60,4 +66,12 @@ export class CrearClienteInstalacionDto {
   @IsOptional()
   @IsString()
   observaciones?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @ArrayUnique((tecnico: AsignarTecnicoInstalacionDto) => tecnico.tecnicoId)
+  @ValidateNested({ each: true })
+  @Type(() => AsignarTecnicoInstalacionDto)
+  tecnicos?: AsignarTecnicoInstalacionDto[];
 }

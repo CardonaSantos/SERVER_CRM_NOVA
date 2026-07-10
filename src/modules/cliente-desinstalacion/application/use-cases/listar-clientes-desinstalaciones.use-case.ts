@@ -1,9 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
+
 import {
   ClienteDesInstalacionPaginatedResult,
   ClienteDesInstalacionRepositoryPort,
 } from '../../domain/ports/cliente-desinstalacion.repository.port';
+
 import { CLIENTE_DESINSTALACION_REPOSITORY } from '../../infra/tokens/cliente-desinstalacion.token';
+
 import { FiltrarClienteDesinstalacionesDto } from '../dto/filtrar-cliente-desinstalaciones.dto';
 
 @Injectable()
@@ -22,16 +25,17 @@ export class ListarClienteDesinstalacionesUseCase {
 
       empresaId: filters.empresaId ?? null,
       clienteId: filters.clienteId ?? null,
+
       servicioInternetId: filters.servicioInternetId ?? null,
       ticketId: filters.ticketId ?? null,
-      asesorId: filters.creadoPorId ?? null,
-      //   solicitadoPorId: filters.solicitadoPorId ?? null,
-      //   ejecutadoPorId: filters.ejecutadoPorId ?? null,
+
+      solicitadoPorId: filters.solicitadoPorId ?? null,
+      ejecutadoPorId: filters.ejecutadoPorId ?? null,
       creadoPorId: filters.creadoPorId ?? null,
 
       estado: filters.estado ?? null,
       tipo: filters.tipo ?? null,
-      //   motivo: filters.motivo ?? null,
+      motivo: filters.motivo ?? null,
 
       fechaProgramadaDesde: filters.fechaProgramadaDesde
         ? new Date(filters.fechaProgramadaDesde)

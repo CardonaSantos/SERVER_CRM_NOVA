@@ -1,6 +1,10 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entitie';
-import { ClienteDesInstalacionRepositoryPort } from '../../domain/ports/cliente-desinstalacion.repository.port';
+
+import {
+  ClienteDesinstalacionDetalle,
+  ClienteDesInstalacionRepositoryPort,
+} from '../../domain/ports/cliente-desinstalacion.repository.port';
+
 import { CLIENTE_DESINSTALACION_REPOSITORY } from '../../infra/tokens/cliente-desinstalacion.token';
 
 export type ObtenerClienteDesinstalacionCommand = {
@@ -16,15 +20,15 @@ export class ObtenerClienteDesinstalacionUseCase {
 
   async execute(
     command: ObtenerClienteDesinstalacionCommand,
-  ): Promise<ClienteDesinstalacionEntity> {
-    const desinstalacion = await this.clienteDesinstalacionRepository.findById(
+  ): Promise<ClienteDesinstalacionDetalle> {
+    const detalle = await this.clienteDesinstalacionRepository.findDetalleById(
       command.id,
     );
 
-    if (!desinstalacion) {
+    if (!detalle) {
       throw new NotFoundException('Desinstalación no encontrada.');
     }
 
-    return desinstalacion;
+    return detalle;
   }
 }

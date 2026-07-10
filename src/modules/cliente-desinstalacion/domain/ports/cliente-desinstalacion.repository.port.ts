@@ -1,5 +1,7 @@
+import { ClienteDesinstalacionTecnicoEntity } from '../entities/cliente-desinstalacion-tecnico.entity';
 import { ClienteDesinstalacionEntity } from '../entities/cliente-desinstalacion.entitie';
 import { EstadoDesinstalacionCliente } from '../enums/estado-desinstalacion-cliente.enum';
+import { MotivoDesinstalacionCliente } from '../enums/motivo-desinstalacion-cliente.enum';
 import { TipoDesinstalacionCliente } from '../enums/tipo-desinstalacion-cliente.enum';
 
 export type ClienteDesInstalacionFindManyFilters = {
@@ -17,6 +19,11 @@ export type ClienteDesInstalacionFindManyFilters = {
   creadoPorId?: number | null;
   completadoPorId?: number | null;
 
+  solicitadoPorId?: number | null;
+
+  ejecutadoPorId?: number | null;
+  motivo?: MotivoDesinstalacionCliente;
+
   estado?: EstadoDesinstalacionCliente | null;
   tipo?: TipoDesinstalacionCliente | null;
 
@@ -28,7 +35,19 @@ export type ClienteDesInstalacionFindManyFilters = {
 };
 
 export type ClienteDesInstalacionPaginatedResult = {
-  items: ClienteDesinstalacionEntity[];
+  items: ClienteDesinstalacionDetalle[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+export type ClienteDesinstalacionDetalle = {
+  desinstalacion: ClienteDesinstalacionEntity;
+  tecnicos: ClienteDesinstalacionTecnicoEntity[];
+};
+
+export type ClienteDesInstalacionPaginatedDetalleResult = {
+  items: ClienteDesinstalacionDetalle[];
   total: number;
   page: number;
   limit: number;
@@ -40,6 +59,8 @@ export interface ClienteDesInstalacionRepositoryPort {
   ): Promise<ClienteDesinstalacionEntity>;
 
   findById(id: number): Promise<ClienteDesinstalacionEntity | null>;
+
+  findDetalleById(id: number): Promise<ClienteDesinstalacionDetalle | null>;
 
   findMany(
     filters: ClienteDesInstalacionFindManyFilters,

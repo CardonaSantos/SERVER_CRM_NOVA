@@ -16,7 +16,7 @@ import {
 } from './infra/tokens/cliente-desinstalacion.token';
 import { ClienteDesInstalacionPrismaRepository } from './infra/prisma/cliente-desinstalacion.prisma.repository';
 import { ClienteDesInstalacionApplicationService } from './application/services/cliente-desinstalacion.service';
-import { ClienteDesinstalacionController } from './presentation/cliente-instalacion.controller';
+import { ClienteDesinstalacionController } from './presentation/cliente-desinstalacion.controller';
 import { CrearAutorizacionDesinstalacionUseCase } from './application/use-cases/crear-autorizacion-cliente-desinstalacion.use-case';
 import { ListarAutorizacionesPendientesUseCase } from './application/use-cases/listar-autorizacion-cliente-desintalacion.use-case';
 import { AprobarAutorizacionDesinstalacionUseCase } from './application/use-cases/aprobar-autorizacion-cliente-desinstalacion.use-case';

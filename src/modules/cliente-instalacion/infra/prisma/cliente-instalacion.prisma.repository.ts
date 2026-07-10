@@ -7,8 +7,11 @@ import {
   ClienteInstalacionFindManyFilters,
   ClienteInstalacionPaginatedResult,
   ClienteInstalacionRepositoryPort,
+  CrearTecnicoInstalacionInput,
 } from '../../domain/ports/cliente-instalacion.repository.port';
 import { ClienteInstalacionPrismaMapper } from './cliente-instalacion.prisma.mapper';
+import { TipoEvidenciaClienteOperacion } from '../../domain/enums/tipo-evidencia-cliente-operacion.enum';
+import { RolTecnicoOperacionCliente } from '../../domain/enums/rol-tecnico-operacion-cliente.enum';
 
 @Injectable()
 export class ClienteInstalacionPrismaRepository
@@ -18,11 +21,64 @@ export class ClienteInstalacionPrismaRepository
 
   async create(
     entity: ClienteInstalacionEntity,
+    tecnicos: CrearTecnicoInstalacionInput[] = [],
   ): Promise<ClienteInstalacionEntity> {
     const data = ClienteInstalacionPrismaMapper.toCreatePersistence(entity);
 
+    const tecnicoIds = tecnicos.map((tecnico) => tecnico.tecnicoId);
+
+    const usuarios =
+      tecnicoIds.length > 0
+        ? await this.prisma.usuario.findMany({
+            where: {
+              id: {
+                in: tecnicoIds,
+              },
+
+              empresaId: entity.empresaId,
+
+              activo: true,
+            },
+
+            select: {
+              id: true,
+              nombre: true,
+            },
+          })
+        : [];
+
+    if (usuarios.length !== tecnicoIds.length) {
+      throw new Error(
+        'Uno o más técnicos no existen, están inactivos o pertenecen a otra empresa.',
+      );
+    }
+
+    const usuariosMap = new Map(
+      usuarios.map((usuario) => [usuario.id, usuario]),
+    );
+
     const record = await this.prisma.clienteInstalacion.create({
-      data,
+      data: {
+        ...data,
+
+        tecnicos:
+          tecnicos.length > 0
+            ? {
+                create: tecnicos.map((tecnico) => ({
+                  tecnicoId: tecnico.tecnicoId,
+
+                  rol: tecnico.rol,
+
+                  esResponsable: tecnico.esResponsable,
+
+                  observaciones: tecnico.observaciones ?? null,
+
+                  tecnicoNombreSnapshot:
+                    usuariosMap.get(tecnico.tecnicoId)?.nombre ?? null,
+                })),
+              }
+            : undefined,
+      },
     });
 
     return ClienteInstalacionPrismaMapper.toDomain(record);
@@ -46,7 +102,9 @@ export class ClienteInstalacionPrismaRepository
     filters: ClienteInstalacionFindManyFilters,
   ): Promise<ClienteInstalacionPaginatedResult> {
     const page = Math.max(filters.page || 1, 1);
+
     const limit = Math.min(Math.max(filters.limit || 10, 1), 100);
+
     const skip = (page - 1) * limit;
 
     const where: Prisma.ClienteInstalacionWhereInput = {
@@ -77,6 +135,14 @@ export class ClienteInstalacionPrismaRepository
       where.completadoPorId = filters.completadoPorId;
     }
 
+    if (filters.tecnicoId) {
+      where.tecnicos = {
+        some: {
+          tecnicoId: filters.tecnicoId,
+        },
+      };
+    }
+
     if (filters.estado) {
       where.estado = filters.estado;
     }
@@ -88,10 +154,15 @@ export class ClienteInstalacionPrismaRepository
     if (filters.fechaProgramadaDesde || filters.fechaProgramadaHasta) {
       where.fechaProgramada = {
         ...(filters.fechaProgramadaDesde
-          ? { gte: filters.fechaProgramadaDesde }
+          ? {
+              gte: filters.fechaProgramadaDesde,
+            }
           : {}),
+
         ...(filters.fechaProgramadaHasta
-          ? { lte: filters.fechaProgramadaHasta }
+          ? {
+              lte: filters.fechaProgramadaHasta,
+            }
           : {}),
       };
     }
@@ -99,10 +170,15 @@ export class ClienteInstalacionPrismaRepository
     if (filters.fechaFinalizacionDesde || filters.fechaFinalizacionHasta) {
       where.fechaFinalizacion = {
         ...(filters.fechaFinalizacionDesde
-          ? { gte: filters.fechaFinalizacionDesde }
+          ? {
+              gte: filters.fechaFinalizacionDesde,
+            }
           : {}),
+
         ...(filters.fechaFinalizacionHasta
-          ? { lte: filters.fechaFinalizacionHasta }
+          ? {
+              lte: filters.fechaFinalizacionHasta,
+            }
           : {}),
       };
     }
@@ -117,28 +193,69 @@ export class ClienteInstalacionPrismaRepository
             mode: 'insensitive',
           },
         },
+
         {
           referenciaUbicacion: {
             contains: search,
             mode: 'insensitive',
           },
         },
+
         {
           observaciones: {
             contains: search,
             mode: 'insensitive',
           },
         },
+
         {
           motivo: {
             contains: search,
             mode: 'insensitive',
           },
         },
+
         {
           resultado: {
             contains: search,
             mode: 'insensitive',
+          },
+        },
+
+        // Buscar también por datos del cliente
+        {
+          cliente: {
+            nombre: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+        },
+
+        {
+          cliente: {
+            apellidos: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+        },
+
+        {
+          cliente: {
+            telefono: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+        },
+
+        {
+          cliente: {
+            dpi: {
+              contains: search,
+              mode: 'insensitive',
+            },
           },
         },
       ];
@@ -147,22 +264,142 @@ export class ClienteInstalacionPrismaRepository
     const [records, total] = await this.prisma.$transaction([
       this.prisma.clienteInstalacion.findMany({
         where,
+
         skip,
         take: limit,
+
         orderBy: {
           creadoEn: 'desc',
         },
+
+        include: {
+          cliente: {
+            select: {
+              id: true,
+              nombre: true,
+              apellidos: true,
+              telefono: true,
+              dpi: true,
+              direccion: true,
+            },
+          },
+
+          servicioInternet: {
+            select: {
+              id: true,
+              nombre: true,
+              velocidad: true,
+              precio: true,
+            },
+          },
+
+          tecnicos: {
+            where: {
+              esResponsable: true,
+            },
+
+            take: 1,
+
+            orderBy: {
+              creadoEn: 'asc',
+            },
+
+            include: {
+              tecnico: {
+                select: {
+                  id: true,
+                  nombre: true,
+
+                  perfil: {
+                    select: {
+                      avatarUrl: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+
+          _count: {
+            select: {
+              tecnicos: true,
+              evidencias: true,
+              equipos: true,
+            },
+          },
+        },
       }),
+
       this.prisma.clienteInstalacion.count({
         where,
       }),
     ]);
 
     return {
-      items: records.map(ClienteInstalacionPrismaMapper.toDomain),
+      items: records.map((record) => {
+        const responsable = record.tecnicos[0] ?? null;
+
+        return {
+          instalacion: ClienteInstalacionPrismaMapper.toDomain(record),
+
+          cliente: {
+            id: record.cliente.id,
+
+            nombre: record.cliente.nombre,
+
+            apellidos: record.cliente.apellidos,
+
+            telefono: record.cliente.telefono,
+
+            dpi: record.cliente.dpi,
+
+            direccion: record.cliente.direccion,
+          },
+
+          servicioInternet: record.servicioInternet
+            ? {
+                id: record.servicioInternet.id,
+
+                nombre: record.servicioInternet.nombre,
+
+                velocidad: record.servicioInternet.velocidad,
+
+                precio: record.servicioInternet.precio,
+              }
+            : null,
+
+          tecnicoResponsable: responsable
+            ? {
+                asignacionId: responsable.id,
+
+                tecnicoId: responsable.tecnicoId,
+
+                nombre:
+                  responsable.tecnico?.nombre ??
+                  responsable.tecnicoNombreSnapshot ??
+                  'Técnico no disponible',
+
+                avatarUrl: responsable.tecnico?.perfil?.avatarUrl ?? null,
+              }
+            : null,
+
+          conteos: {
+            tecnicos: record._count.tecnicos,
+
+            evidencias: record._count.evidencias,
+
+            equipos: record._count.equipos,
+          },
+        };
+      }),
+
       total,
+
       page,
+
       limit,
+
+      totalPages: Math.ceil(total / limit),
     };
   }
 
@@ -197,7 +434,105 @@ export class ClienteInstalacionPrismaRepository
         id: params.id,
         empresaId: params.empresaId,
       },
+
       include: {
+        cliente: {
+          select: {
+            id: true,
+            nombre: true,
+            apellidos: true,
+            telefono: true,
+            dpi: true,
+            direccion: true,
+          },
+        },
+
+        servicioInternet: {
+          select: {
+            id: true,
+            nombre: true,
+            velocidad: true,
+            precio: true,
+          },
+        },
+
+        asesor: {
+          select: {
+            id: true,
+            nombre: true,
+            correo: true,
+            telefono: true,
+            activo: true,
+
+            perfil: {
+              select: {
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+
+        creadoPor: {
+          select: {
+            id: true,
+            nombre: true,
+            correo: true,
+            telefono: true,
+            activo: true,
+
+            perfil: {
+              select: {
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+
+        completadoPor: {
+          select: {
+            id: true,
+            nombre: true,
+            correo: true,
+            telefono: true,
+            activo: true,
+
+            perfil: {
+              select: {
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+
+        tecnicos: {
+          include: {
+            tecnico: {
+              select: {
+                id: true,
+                nombre: true,
+                correo: true,
+                telefono: true,
+                activo: true,
+
+                perfil: {
+                  select: {
+                    avatarUrl: true,
+                  },
+                },
+              },
+            },
+          },
+
+          orderBy: [
+            {
+              esResponsable: 'desc',
+            },
+            {
+              creadoEn: 'asc',
+            },
+          ],
+        },
+
         evidencias: {
           include: {
             media: {
@@ -208,26 +543,133 @@ export class ClienteInstalacionPrismaRepository
                 mimeType: true,
                 extension: true,
                 tamanioBytes: true,
+
+                subidoPor: {
+                  select: {
+                    id: true,
+                    nombre: true,
+                    correo: true,
+                    telefono: true,
+                    activo: true,
+
+                    perfil: {
+                      select: {
+                        avatarUrl: true,
+                      },
+                    },
+                  },
+                },
               },
             },
           },
-          orderBy: [{ orden: 'asc' }, { creadoEn: 'asc' }],
+
+          orderBy: [
+            {
+              orden: 'asc',
+            },
+            {
+              creadoEn: 'asc',
+            },
+          ],
+        },
+
+        _count: {
+          select: {
+            tecnicos: true,
+            evidencias: true,
+            equipos: true,
+          },
         },
       },
     });
 
     if (!record) return null;
 
+    const mapUsuario = (
+      usuario: {
+        id: number;
+        nombre: string;
+        correo: string;
+        telefono: string | null;
+        activo: boolean;
+        perfil: {
+          avatarUrl: string | null;
+        } | null;
+      } | null,
+    ) => {
+      if (!usuario) return null;
+
+      return {
+        id: usuario.id,
+        nombre: usuario.nombre,
+        correo: usuario.correo,
+        telefono: usuario.telefono,
+        activo: usuario.activo,
+        avatarUrl: usuario.perfil?.avatarUrl ?? null,
+      };
+    };
+
     return {
       instalacion: ClienteInstalacionPrismaMapper.toDomain(record),
+
+      cliente: {
+        id: record.cliente.id,
+        nombre: record.cliente.nombre,
+        apellidos: record.cliente.apellidos,
+        telefono: record.cliente.telefono,
+        dpi: record.cliente.dpi,
+        direccion: record.cliente.direccion,
+      },
+
+      servicioInternet: record.servicioInternet
+        ? {
+            id: record.servicioInternet.id,
+            nombre: record.servicioInternet.nombre,
+            velocidad: record.servicioInternet.velocidad,
+            precio: record.servicioInternet.precio,
+          }
+        : null,
+
+      participantes: {
+        asesor: mapUsuario(record.asesor),
+        creadoPor: mapUsuario(record.creadoPor),
+        completadoPor: mapUsuario(record.completadoPor),
+      },
+
+      tecnicos: record.tecnicos.map((asignacion) => ({
+        id: asignacion.id,
+        instalacionId: asignacion.instalacionId,
+
+        tecnicoId: asignacion.tecnicoId,
+
+        rol: asignacion.rol as RolTecnicoOperacionCliente,
+
+        esResponsable: asignacion.esResponsable,
+
+        tiempoMinutos: asignacion.tiempoMinutos,
+        observaciones: asignacion.observaciones,
+
+        tecnicoNombreSnapshot: asignacion.tecnicoNombreSnapshot,
+
+        creadoEn: asignacion.creadoEn,
+        actualizadoEn: asignacion.actualizadoEn,
+
+        tecnico: mapUsuario(asignacion.tecnico),
+      })),
+
       evidencias: record.evidencias.map((evidencia) => ({
         id: evidencia.id,
         instalacionId: evidencia.instalacionId,
+
         mediaId: evidencia.mediaId,
-        tipo: evidencia.tipo as any,
+
+        tipo: evidencia.tipo as TipoEvidenciaClienteOperacion,
+
         descripcion: evidencia.descripcion,
         orden: evidencia.orden,
+
         creadoEn: evidencia.creadoEn,
+
         media: {
           id: evidencia.media.id,
           cdnUrl: evidencia.media.cdnUrl,
@@ -235,8 +677,16 @@ export class ClienteInstalacionPrismaRepository
           mimeType: evidencia.media.mimeType,
           extension: evidencia.media.extension,
           tamanioBytes: evidencia.media.tamanioBytes,
+
+          subidoPor: mapUsuario(evidencia.media.subidoPor),
         },
       })),
+
+      conteos: {
+        tecnicos: record._count.tecnicos,
+        evidencias: record._count.evidencias,
+        equipos: record._count.equipos,
+      },
     };
   }
 }

@@ -17,6 +17,11 @@ export type CrearClienteDesInstalacionCommand =
     creadoPorId: number;
   };
 
+export type CrearClienteDesinstalacionResult = {
+  desinstalacion: ClienteDesinstalacionEntity;
+  tecnicos: ClienteDesinstalacionTecnicoEntity[];
+};
+
 @Injectable()
 export class CrearDesinstalacionUseCase {
   constructor(
@@ -27,7 +32,9 @@ export class CrearDesinstalacionUseCase {
     private readonly tecnicoRepository: ClienteDesinstalacionTecnicoRepositoryPort,
   ) {}
 
-  async execute(command: CrearClienteDesInstalacionCommand) {
+  async execute(
+    command: CrearClienteDesInstalacionCommand,
+  ): Promise<CrearClienteDesinstalacionResult> {
     const desinstalacion = ClienteDesinstalacionEntity.create({
       clienteId: command.clienteId,
       empresaId: command.empresaId,
@@ -72,6 +79,8 @@ export class CrearDesinstalacionUseCase {
 
     const savedProps = savedDesinstalacion.toPrimitives();
 
+    let savedTecnicos: ClienteDesinstalacionTecnicoEntity[] = [];
+
     if (command.tecnicos?.length) {
       const responsableCount = command.tecnicos.filter(
         (tecnico) => tecnico.esResponsable,
@@ -95,9 +104,12 @@ export class CrearDesinstalacionUseCase {
         }),
       );
 
-      await this.tecnicoRepository.createMany(tecnicos);
+      savedTecnicos = await this.tecnicoRepository.createMany(tecnicos);
     }
 
-    return savedDesinstalacion;
+    return {
+      desinstalacion: savedDesinstalacion,
+      tecnicos: savedTecnicos,
+    };
   }
 }

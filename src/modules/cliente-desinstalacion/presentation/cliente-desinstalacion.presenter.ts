@@ -1,5 +1,10 @@
+import { CrearClienteDesinstalacionResult } from '../application/use-cases/crear-desinstalacion.use-case';
 import { ClienteDesinstalacionEntity } from '../domain/entities/cliente-desinstalacion.entitie';
-import { ClienteDesInstalacionPaginatedResult } from '../domain/ports/cliente-desinstalacion.repository.port';
+import {
+  ClienteDesinstalacionDetalle,
+  ClienteDesInstalacionPaginatedResult,
+} from '../domain/ports/cliente-desinstalacion.repository.port';
+import { ClienteDesinstalacionTecnicoPresenter } from './cliente-desinstalacion-tecnico.presenter';
 
 export class ClienteDesinstalacionPresenter {
   static toHttp(entity: ClienteDesinstalacionEntity) {
@@ -57,15 +62,36 @@ export class ClienteDesinstalacionPresenter {
     };
   }
 
+  static detalleToHttp(detalle: ClienteDesinstalacionDetalle) {
+    return {
+      ...this.toHttp(detalle.desinstalacion),
+
+      tecnicos: detalle.tecnicos.map((tecnico) =>
+        ClienteDesinstalacionTecnicoPresenter.toHttp(tecnico),
+      ),
+    };
+  }
+
   static paginatedToHttp(result: ClienteDesInstalacionPaginatedResult) {
     return {
-      data: result.items.map((item) => this.toHttp(item)),
+      data: result.items.map((item) => this.detalleToHttp(item)),
+
       meta: {
         total: result.total,
         page: result.page,
         limit: result.limit,
         totalPages: Math.ceil(result.total / result.limit),
       },
+    };
+  }
+
+  static crearToHttp(result: CrearClienteDesinstalacionResult) {
+    return {
+      ...this.toHttp(result.desinstalacion),
+
+      tecnicos: result.tecnicos.map((tecnico) =>
+        ClienteDesinstalacionTecnicoPresenter.toHttp(tecnico),
+      ),
     };
   }
 }

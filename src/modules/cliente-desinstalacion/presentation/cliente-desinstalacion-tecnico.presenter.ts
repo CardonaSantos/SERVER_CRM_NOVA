@@ -24,6 +24,7 @@ export class ClienteDesinstalacionTecnicoPresenter {
   static listToHttp(items: ClienteDesinstalacionTecnicoEntity[]) {
     return {
       data: items.map((item) => this.toHttp(item)),
+
       meta: {
         total: items.length,
       },

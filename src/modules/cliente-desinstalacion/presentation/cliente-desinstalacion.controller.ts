@@ -13,25 +13,26 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 
-import { CrearClienteDesinstalacionDto } from '../application/dto/create-desinstalacion-cliente.dto';
 import { ActualizarClienteDesinstalacionDto } from '../application/dto/actualizar-desinstalacion-cliente.dto';
-import { FiltrarClienteDesinstalacionesDto } from '../application/dto/filtrar-cliente-desinstalaciones.dto';
-import { ReprogramarClienteDesinstalacionDto } from '../application/dto/reprogramar-cliente-desinstalacion.dto';
-import { IniciarClienteDesinstalacionDto } from '../application/dto/iniciar-cliente-desinstalacion.dto';
-import { CompletarClienteDesinstalacionDto } from '../application/dto/completar-cliente-desinstalacion.dto';
-import { CancelarClienteDesinstalacionDto } from '../application/dto/cancelar-cliente-desinstalacion.dto';
 import { ActualizarCostosDesinstalacionDto } from '../application/dto/actualizar-costos-desinstalacion.dto';
 import {
   AprobarDesinstalacionAutorizacionDto,
   RechazarDesinstalacionAutorizacionDto,
   SolicitarDesinstalacionAutorizacionDto,
 } from '../application/dto/autorizacion-desinstalacion.dto';
-
-import { ClienteDesinstalacionPresenter } from './cliente-desinstalacion.presenter';
-import { ClienteDesInstalacionApplicationService } from '../application/services/cliente-desinstalacion.service';
-import { ClienteDesinstalacionAutorizacionPresenter } from './autorizacion-cliente-desinstalacion.presenter';
-import { ClienteDesinstalacionTecnicoPresenter } from './cliente-desinstalacion-tecnico.presenter';
+import { CancelarClienteDesinstalacionDto } from '../application/dto/cancelar-cliente-desinstalacion.dto';
+import { CompletarClienteDesinstalacionDto } from '../application/dto/completar-cliente-desinstalacion.dto';
+import { CrearClienteDesinstalacionDto } from '../application/dto/create-desinstalacion-cliente.dto';
+import { FiltrarClienteDesinstalacionesDto } from '../application/dto/filtrar-cliente-desinstalaciones.dto';
+import { IniciarClienteDesinstalacionDto } from '../application/dto/iniciar-cliente-desinstalacion.dto';
+import { ReprogramarClienteDesinstalacionDto } from '../application/dto/reprogramar-cliente-desinstalacion.dto';
 import { AsignarTecnicoDesinstalacionDto } from '../application/dto/tecnico-desinstalacion.dto';
+
+import { ClienteDesInstalacionApplicationService } from '../application/services/cliente-desinstalacion.service';
+
+import { ClienteDesinstalacionAutorizacionPresenter } from './autorizacion-cliente-desinstalacion.presenter';
+import { ClienteDesinstalacionPresenter } from './cliente-desinstalacion.presenter';
+import { ClienteDesinstalacionTecnicoPresenter } from './cliente-desinstalacion-tecnico.presenter';
 
 @UsePipes(
   new ValidationPipe({
@@ -46,135 +47,7 @@ export class ClienteDesinstalacionController {
     private readonly clienteDesinstalacionService: ClienteDesInstalacionApplicationService,
   ) {}
 
-  @Post()
-  async crear(@Body() dto: CrearClienteDesinstalacionDto, @Req() req: any) {
-    const creadoPorId = req.user?.id ?? dto.solicitadoPorId ?? 1;
-
-    const desinstalacion = await this.clienteDesinstalacionService.crear(
-      dto,
-      creadoPorId,
-    );
-
-    return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
-  }
-
-  @Get()
-  async listar(@Query() query: FiltrarClienteDesinstalacionesDto) {
-    const result = await this.clienteDesinstalacionService.listar(query);
-
-    return ClienteDesinstalacionPresenter.paginatedToHttp(result);
-  }
-
-  @Get(':id')
-  async obtener(@Param('id', ParseIntPipe) id: number) {
-    const desinstalacion = await this.clienteDesinstalacionService.obtener(id);
-
-    return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
-  }
-
-  @Patch(':id')
-  async actualizar(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: ActualizarClienteDesinstalacionDto,
-  ) {
-    const desinstalacion = await this.clienteDesinstalacionService.actualizar(
-      id,
-      dto,
-    );
-
-    return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
-  }
-
-  @Patch(':id/reprogramar')
-  async reprogramar(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: ReprogramarClienteDesinstalacionDto,
-  ) {
-    const desinstalacion = await this.clienteDesinstalacionService.reprogramar(
-      id,
-      dto,
-    );
-
-    return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
-  }
-
-  @Patch(':id/iniciar')
-  async iniciar(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: IniciarClienteDesinstalacionDto,
-  ) {
-    const desinstalacion = await this.clienteDesinstalacionService.iniciar(
-      id,
-      dto,
-    );
-
-    return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
-  }
-
-  @Patch(':id/completar')
-  async completar(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: CompletarClienteDesinstalacionDto,
-  ) {
-    const desinstalacion = await this.clienteDesinstalacionService.completar(
-      id,
-      dto,
-    );
-
-    return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
-  }
-
-  @Patch(':id/cancelar')
-  async cancelar(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: CancelarClienteDesinstalacionDto,
-  ) {
-    const desinstalacion = await this.clienteDesinstalacionService.cancelar(
-      id,
-      dto,
-    );
-
-    return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
-  }
-
-  @Patch(':id/costos')
-  async actualizarCostos(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: ActualizarCostosDesinstalacionDto,
-  ) {
-    const desinstalacion =
-      await this.clienteDesinstalacionService.actualizarCostos(id, dto);
-
-    return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
-  }
-
-  // @Patch(':id/firma')
-  // async registrarFirma(
-  //   @Param('id', ParseIntPipe) id: number,
-  //   @Body() dto: RegistrarFirmaDesinstalacionDto,
-  // ) {
-  //   const desinstalacion =
-  //     await this.clienteDesinstalacionService.registrarFirma(id, dto);
-
-  //   return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
-  // }
-
-  @Post(':id/autorizaciones')
-  async crearAutorizacion(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: SolicitarDesinstalacionAutorizacionDto,
-  ) {
-    const solicitadoPorId = dto.solicitadoPorId;
-
-    const autorizacion =
-      await this.clienteDesinstalacionService.crearAutorizacion(
-        id,
-        dto,
-        solicitadoPorId,
-      );
-
-    return ClienteDesinstalacionAutorizacionPresenter.toHttp(autorizacion);
-  }
+  // AUTORIZACIONES
 
   @Get('autorizaciones/pendientes')
   async listarAutorizacionesPendientes() {
@@ -218,7 +91,137 @@ export class ClienteDesinstalacionController {
     return ClienteDesinstalacionAutorizacionPresenter.respuestaToHttp(result);
   }
 
-  // TECNICOS
+  // LISTADO Y CREACIÓN
+
+  @Post()
+  async crear(@Body() dto: CrearClienteDesinstalacionDto, @Req() req: any) {
+    const creadoPorId = req.user?.id ?? dto.solicitadoPorId ?? 1;
+
+    const result = await this.clienteDesinstalacionService.crear(
+      dto,
+      creadoPorId,
+    );
+
+    return ClienteDesinstalacionPresenter.crearToHttp(result);
+  }
+
+  @Get()
+  async listar(@Query() query: FiltrarClienteDesinstalacionesDto) {
+    const result = await this.clienteDesinstalacionService.listar(query);
+
+    return ClienteDesinstalacionPresenter.paginatedToHttp(result);
+  }
+
+  // DETALLE
+
+  @Get(':id')
+  async obtener(@Param('id', ParseIntPipe) id: number) {
+    const detalle = await this.clienteDesinstalacionService.obtener(id);
+
+    return ClienteDesinstalacionPresenter.detalleToHttp(detalle);
+  }
+
+  // DATOS GENERALES
+
+  @Patch(':id')
+  async actualizar(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ActualizarClienteDesinstalacionDto,
+  ) {
+    const desinstalacion = await this.clienteDesinstalacionService.actualizar(
+      id,
+      dto,
+    );
+
+    return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
+  }
+
+  @Patch(':id/reprogramar')
+  async reprogramar(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ReprogramarClienteDesinstalacionDto,
+  ) {
+    const desinstalacion = await this.clienteDesinstalacionService.reprogramar(
+      id,
+      dto,
+    );
+
+    return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
+  }
+
+  @Patch(':id/costos')
+  async actualizarCostos(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ActualizarCostosDesinstalacionDto,
+  ) {
+    const desinstalacion =
+      await this.clienteDesinstalacionService.actualizarCostos(id, dto);
+
+    return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
+  }
+
+  // FLUJO OPERATIVO
+
+  @Patch(':id/iniciar')
+  async iniciar(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: IniciarClienteDesinstalacionDto,
+  ) {
+    const desinstalacion = await this.clienteDesinstalacionService.iniciar(
+      id,
+      dto,
+    );
+
+    return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
+  }
+
+  @Patch(':id/completar')
+  async completar(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CompletarClienteDesinstalacionDto,
+  ) {
+    const desinstalacion = await this.clienteDesinstalacionService.completar(
+      id,
+      dto,
+    );
+
+    return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
+  }
+
+  @Patch(':id/cancelar')
+  async cancelar(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CancelarClienteDesinstalacionDto,
+  ) {
+    const desinstalacion = await this.clienteDesinstalacionService.cancelar(
+      id,
+      dto,
+    );
+
+    return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
+  }
+
+  // AUTORIZACIÓN POR DESINSTALACIÓN
+
+  @Post(':id/autorizaciones')
+  async crearAutorizacion(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: SolicitarDesinstalacionAutorizacionDto,
+  ) {
+    const solicitadoPorId = dto.solicitadoPorId;
+
+    const autorizacion =
+      await this.clienteDesinstalacionService.crearAutorizacion(
+        id,
+        dto,
+        solicitadoPorId,
+      );
+
+    return ClienteDesinstalacionAutorizacionPresenter.toHttp(autorizacion);
+  }
+
+  // TÉCNICOS
+
   @Post(':id/tecnicos')
   async asignarTecnico(
     @Param('id', ParseIntPipe) id: number,

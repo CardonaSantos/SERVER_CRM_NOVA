@@ -42,12 +42,12 @@ export class ClienteInstalacionController {
   async crear(@Body() dto: CrearClienteInstalacionDto, @Req() req: any) {
     const creadoPorId = req.user?.id ?? dto.asesorId ?? 1;
 
-    const instalacion = await this.clienteInstalacionService.crear(
+    const detalle = await this.clienteInstalacionService.crear(
       dto,
       creadoPorId,
     );
 
-    return ClienteInstalacionPresenter.toHttp(instalacion);
+    return ClienteInstalacionPresenter.detalleToHttp(detalle);
   }
 
   @Get()

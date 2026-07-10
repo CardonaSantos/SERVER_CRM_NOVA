@@ -2,6 +2,7 @@ import { Money } from 'src/shared/domain/value-objects/money.vo';
 import { EstadoInstalacionCliente } from '../enums/estado-instalacion-cliente.enum';
 import { TipoInstalacionCliente } from '../enums/tipo-instalacion-cliente.enum';
 import { TipoEvidenciaClienteOperacion } from '../enums/tipo-evidencia-cliente-operacion.enum';
+import { RolTecnicoOperacionCliente } from '../enums/rol-tecnico-operacion-cliente.enum';
 
 // CREACION E INSTANCIA
 export type ClienteInstalacionProps = {
@@ -143,4 +144,35 @@ export type ActualizarCostosInstalacionParams = {
 export type RegistrarConfiguracionWifiParams = {
   ssidRouter: string;
   contrasenaWifi: string;
+};
+
+// NUEVAS PROSP
+
+export type ClienteInstalacionTecnicoProps = {
+  id?: number;
+
+  instalacionId: number;
+  tecnicoId?: number | null;
+
+  rol: RolTecnicoOperacionCliente;
+
+  esResponsable: boolean;
+  tiempoMinutos?: number | null;
+  observaciones?: string | null;
+
+  tecnicoNombreSnapshot?: string | null;
+
+  creadoEn?: Date;
+  actualizadoEn?: Date;
+};
+
+export type CrearClienteInstalacionTecnicoProps = {
+  instalacionId: number;
+  tecnicoId: number;
+
+  rol?: RolTecnicoOperacionCliente;
+  esResponsable?: boolean;
+
+  observaciones?: string | null;
+  tecnicoNombreSnapshot?: string | null;
 };
