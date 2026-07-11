@@ -208,6 +208,8 @@ export class ClienteInstalacionPresenter {
           }
         : null,
 
+      asesor: this.usuarioToHttp(item.asesor),
+
       conteos: {
         tecnicos: item.conteos.tecnicos,
         evidencias: item.conteos.evidencias,

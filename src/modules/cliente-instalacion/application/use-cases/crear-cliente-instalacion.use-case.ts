@@ -25,6 +25,8 @@ export class CrearClienteInstalacionUseCase {
   ): Promise<ClienteInstalacionDetalle> {
     const tecnicos = this.normalizarTecnicos(command.tecnicos ?? []);
 
+    const coordenadas = this.parseCoordenadas(command.coordenadas);
+
     const instalacion = ClienteInstalacionEntity.create({
       empresaId: command.empresaId,
       clienteId: command.clienteId,
@@ -39,19 +41,45 @@ export class CrearClienteInstalacionUseCase {
 
       tipo: command.tipo,
 
+      estado: command.estado,
+
+      descripcion: command.descripcion ?? null,
+
+      motivo: command.motivo ?? null,
+
+      observaciones: command.observaciones ?? null,
+
       fechaProgramada: command.fechaProgramada
         ? new Date(command.fechaProgramada)
         : null,
+
+      fechaInicio: command.fechaInicio ? new Date(command.fechaInicio) : null,
 
       direccionInstalacion: command.direccionInstalacion ?? null,
 
       referenciaUbicacion: command.referenciaUbicacion ?? null,
 
-      latitud: command.latitud ?? null,
+      latitud: coordenadas?.latitud ?? null,
 
-      longitud: command.longitud ?? null,
+      longitud: coordenadas?.longitud ?? null,
 
-      observaciones: command.observaciones ?? null,
+      costos: command.costos
+        ? {
+            costoInstalacion: command.costos.costoInstalacion,
+
+            costoMateriales: command.costos.costoMateriales,
+
+            costoManoObra: command.costos.costoManoObra,
+
+            costoOtros: command.costos.costoOtros,
+
+            montoCobradoCliente: command.costos.montoCobradoCliente,
+
+            saldoPendiente: command.costos.saldoPendiente,
+
+            notas: command.costos.notas ?? null,
+          }
+        : undefined,
     });
 
     const created = await this.instalacionRepository.create(
@@ -116,5 +144,42 @@ export class CrearClienteInstalacionUseCase {
     }
 
     return normalizados;
+  }
+
+  private parseCoordenadas(value?: string): {
+    latitud: number;
+    longitud: number;
+  } | null {
+    if (!value?.trim()) {
+      return null;
+    }
+
+    const parts = value.split(',').map((part) => part.trim());
+
+    if (parts.length !== 2) {
+      throw new Error(
+        'Las coordenadas deben tener el formato "latitud, longitud".',
+      );
+    }
+
+    const latitud = Number(parts[0]);
+    const longitud = Number(parts[1]);
+
+    if (!Number.isFinite(latitud) || !Number.isFinite(longitud)) {
+      throw new Error('Las coordenadas proporcionadas no son válidas.');
+    }
+
+    if (latitud < -90 || latitud > 90) {
+      throw new Error('La latitud debe estar entre -90 y 90.');
+    }
+
+    if (longitud < -180 || longitud > 180) {
+      throw new Error('La longitud debe estar entre -180 y 180.');
+    }
+
+    return {
+      latitud,
+      longitud,
+    };
   }
 }

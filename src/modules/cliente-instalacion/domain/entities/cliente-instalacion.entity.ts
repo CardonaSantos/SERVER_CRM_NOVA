@@ -17,6 +17,10 @@ import { EstadoInstalacionCliente } from '../enums/estado-instalacion-cliente.en
 export class ClienteInstalacionEntity {
   private constructor(private readonly props: ClienteInstalacionProps) {}
 
+  private static toMoney(value?: number): Money {
+    return value !== undefined ? Money.fromNumber(value) : Money.zero();
+  }
+
   static create(props: CrearClienteInstalacionProps): ClienteInstalacionEntity {
     const entity = new ClienteInstalacionEntity({
       ...props,
@@ -27,36 +31,48 @@ export class ClienteInstalacionEntity {
       creadoPorId: props.creadoPorId ?? null,
 
       tipo: props.tipo ?? TipoInstalacionCliente.NUEVA,
-      estado: EstadoInstalacionCliente.PROGRAMADA,
+
+      estado: props.estado ?? EstadoInstalacionCliente.PROGRAMADA,
 
       completadoPorId: null,
 
       fechaProgramada: props.fechaProgramada ?? null,
-      fechaInicio: null,
+      fechaInicio: props.fechaInicio ?? null,
+
       fechaFinalizacion: null,
       fechaCancelacion: null,
       fechaActivacionServicio: null,
 
-      motivo: null,
+      motivo: props.motivo ?? null,
       observaciones: props.observaciones ?? null,
       resultado: null,
 
       direccionInstalacion: props.direccionInstalacion ?? null,
+
       referenciaUbicacion: props.referenciaUbicacion ?? null,
+
       latitud: props.latitud ?? null,
       longitud: props.longitud ?? null,
+
+      descripcion: props.descripcion ?? null,
 
       ssidRouter: null,
       contrasenaWifi: null,
 
-      costoInstalacion: Money.zero(),
-      costoMateriales: Money.zero(),
-      costoManoObra: Money.zero(),
-      costoOtros: Money.zero(),
-      montoCobradoCliente: Money.zero(),
-      saldoPendiente: Money.zero(),
+      costoInstalacion: this.toMoney(props.costos?.costoInstalacion),
 
-      notasCostos: null,
+      costoMateriales: this.toMoney(props.costos?.costoMateriales),
+
+      costoManoObra: this.toMoney(props.costos?.costoManoObra),
+
+      costoOtros: this.toMoney(props.costos?.costoOtros),
+
+      montoCobradoCliente: this.toMoney(props.costos?.montoCobradoCliente),
+
+      saldoPendiente: this.toMoney(props.costos?.saldoPendiente),
+
+      notasCostos: props.costos?.notas ?? null,
+
       esMigrada: false,
       metadata: undefined,
 

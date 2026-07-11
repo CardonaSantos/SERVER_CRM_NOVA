@@ -17,6 +17,7 @@ export type ClienteInstalacionProps = {
   asesorId?: number | null;
   creadoPorId?: number | null;
   completadoPorId?: number | null;
+  descripcion?: string | null;
 
   tipo: TipoInstalacionCliente;
   estado: EstadoInstalacionCliente;
@@ -55,6 +56,18 @@ export type ClienteInstalacionProps = {
   actualizadoEn?: Date;
 };
 
+export type CrearClienteInstalacionCostosProps = {
+  costoInstalacion?: number;
+  costoMateriales?: number;
+  costoManoObra?: number;
+  costoOtros?: number;
+
+  montoCobradoCliente?: number;
+  saldoPendiente?: number;
+
+  notas?: string | null;
+};
+
 export type CrearClienteInstalacionProps = {
   empresaId: number;
   clienteId: number;
@@ -63,18 +76,25 @@ export type CrearClienteInstalacionProps = {
   ticketId?: number | null;
 
   asesorId?: number | null;
-  creadoPorId?: number | null;
+  creadoPorId: number;
 
   tipo?: TipoInstalacionCliente;
+  estado?: EstadoInstalacionCliente;
+
+  descripcion?: string | null;
+  motivo?: string | null;
+  observaciones?: string | null;
 
   fechaProgramada?: Date | null;
+  fechaInicio?: Date | null;
 
   direccionInstalacion?: string | null;
   referenciaUbicacion?: string | null;
+
   latitud?: number | null;
   longitud?: number | null;
 
-  observaciones?: string | null;
+  costos?: CrearClienteInstalacionCostosProps;
 };
 
 export type ClienteInstalacionMedia = {

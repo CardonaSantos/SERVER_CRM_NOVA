@@ -197,25 +197,34 @@ export type ClienteInstalacionFindManyFilters = {
 export type ClienteInstalacionListItem = {
   instalacion: ClienteInstalacionEntity;
 
-  cliente: ClienteInstalacionClienteResumen;
+  cliente: {
+    id: number;
+    nombre: string;
+    apellidos: string | null;
+    telefono: string | null;
+    dpi: string | null;
+    direccion: string | null;
+  };
 
-  servicioInternet: ClienteInstalacionServicioResumen | null;
+  servicioInternet: {
+    id: number;
+    nombre: string;
+    velocidad: string | null;
+    precio: number | null;
+  } | null;
+
+  asesor: ClienteInstalacionUsuarioResumen | null;
 
   tecnicoResponsable: {
     asignacionId: number;
-
-    tecnicoId?: number | null;
-
+    tecnicoId: number | null;
     nombre: string;
-
-    avatarUrl?: string | null;
+    avatarUrl: string | null;
   } | null;
 
   conteos: {
     tecnicos: number;
-
     evidencias: number;
-
     equipos: number;
   };
 };

@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Logger,
   Param,
   ParseIntPipe,
   Patch,
@@ -34,17 +35,20 @@ import { SubirEvidenciaInstalacionDto } from '../application/dto/subir-evidencia
 )
 @Controller('cliente-instalaciones')
 export class ClienteInstalacionController {
+  private readonly logger = new Logger();
   constructor(
     private readonly clienteInstalacionService: ClienteInstalacionApplicationService,
   ) {}
 
   @Post()
-  async crear(@Body() dto: CrearClienteInstalacionDto, @Req() req: any) {
-    const creadoPorId = req.user?.id ?? dto.asesorId ?? 1;
-
+  async crear(@Body() dto: CrearClienteInstalacionDto) {
     const detalle = await this.clienteInstalacionService.crear(
       dto,
-      creadoPorId,
+      dto.creadoPorId,
+    );
+
+    this.logger.log(
+      `DTO recibido instalacion:\n${JSON.stringify(dto, null, 2)}`,
     );
 
     return ClienteInstalacionPresenter.detalleToHttp(detalle);
@@ -53,7 +57,7 @@ export class ClienteInstalacionController {
   @Get()
   async listar(@Query() query: FiltrarClienteInstalacionesDto) {
     const result = await this.clienteInstalacionService.listar(query);
-
+    this.logger.log(`result recibido:\n${JSON.stringify(result, null, 2)}`);
     return ClienteInstalacionPresenter.paginatedToHttp(result);
   }
 

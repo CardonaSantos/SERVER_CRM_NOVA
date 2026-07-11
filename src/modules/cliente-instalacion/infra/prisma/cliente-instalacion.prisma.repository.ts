@@ -293,6 +293,22 @@ export class ClienteInstalacionPrismaRepository
             },
           },
 
+          asesor: {
+            select: {
+              id: true,
+              nombre: true,
+              correo: true,
+              telefono: true,
+              activo: true,
+
+              perfil: {
+                select: {
+                  avatarUrl: true,
+                },
+              },
+            },
+          },
+
           tecnicos: {
             where: {
               esResponsable: true,
@@ -365,6 +381,17 @@ export class ClienteInstalacionPrismaRepository
                 velocidad: record.servicioInternet.velocidad,
 
                 precio: record.servicioInternet.precio,
+              }
+            : null,
+
+          asesor: record.asesor
+            ? {
+                id: record.asesor.id,
+                nombre: record.asesor.nombre,
+                correo: record.asesor.correo,
+                telefono: record.asesor.telefono,
+                activo: record.asesor.activo,
+                avatarUrl: record.asesor.perfil?.avatarUrl ?? null,
               }
             : null,
 
