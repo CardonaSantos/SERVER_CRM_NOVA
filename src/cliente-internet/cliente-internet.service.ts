@@ -1112,10 +1112,10 @@ export class ClienteInternetService {
     try {
       const {
         empresaId,
-        sortBy,
-        page,
-        perPage,
-        sortDir,
+        sortBy = 'nombre',
+        page = 1,
+        perPage = 10,
+        sortDir = 'asc',
         estado,
         search,
         zonaIds,
@@ -1123,167 +1123,263 @@ export class ClienteInternetService {
         estadoCobranza,
       } = q;
 
-      // Normaliza arrays y limpia 0/NaN
-      const zonas = (zonaIds ?? []).filter((n) => Number.isFinite(n) && n > 0);
-      const sectores = (sectorIds ?? []).filter(
-        (n) => Number.isFinite(n) && n > 0,
+      /*
+       * Los arrays ya deberían venir transformados por el DTO,
+       * pero aquí eliminamos valores inválidos y duplicados.
+       */
+      const zonas = Array.from(
+        new Set((zonaIds ?? []).filter((id) => Number.isInteger(id) && id > 0)),
       );
-      const tokens = strip(search ?? '')
+
+      const sectores = Array.from(
+        new Set(
+          (sectorIds ?? []).filter((id) => Number.isInteger(id) && id > 0),
+        ),
+      );
+
+      /*
+       * Debe utilizar exactamente la misma normalización que se usa
+       * cuando se genera ClienteInternet.searchNombre.
+       *
+       * No tokenizamos. Se busca el texto completo con contains.
+       */
+      const normalizedSearch = strip(search ?? '')
+        .toLowerCase()
         .trim()
-        .split(/\s+/)
-        .filter(Boolean);
+        .replace(/\s+/g, ' ');
 
-      // —— WHERE (AND estricto para Prisma, se usa después solo en relaciones/orden) ——
+      /*
+       * Una sola fuente de verdad para todos los filtros.
+       *
+       * Este where se usa tanto para count como para findMany,
+       * evitando que la paginación se calcule con filtros distintos.
+       */
       const where: Prisma.ClienteInternetWhereInput = {
-        ...(empresaId ? { empresaId } : {}),
-        ...(estado ? { estadoCliente: estado } : {}),
-        ...(estadoCobranza ? { estadoCobranza: estadoCobranza } : {}),
+        isEliminado: false,
 
-        ...(zonas.length ? { facturacionZonaId: { in: zonas } } : {}),
-        ...(sectores.length ? { sectorId: { in: sectores } } : {}),
-        //  nada para que no filtre doble.
+        ...(empresaId
+          ? {
+              empresaId,
+            }
+          : {}),
+
+        ...(estado
+          ? {
+              estadoCliente: estado,
+            }
+          : {}),
+
+        ...(estadoCobranza
+          ? {
+              estadoCobranza,
+            }
+          : {}),
+
+        ...(zonas.length > 0
+          ? {
+              facturacionZonaId: {
+                in: zonas,
+              },
+            }
+          : {}),
+
+        ...(sectores.length > 0
+          ? {
+              sectorId: {
+                in: sectores,
+              },
+            }
+          : {}),
+
+        ...(normalizedSearch
+          ? {
+              searchNombre: {
+                contains: normalizedSearch,
+              },
+            }
+          : {}),
       };
 
-      // —— ORDER / PAGINACIÓN (Prisma) ——
-      const orderBy:
-        | Prisma.ClienteInternetOrderByWithRelationInput
-        | Prisma.ClienteInternetOrderByWithRelationInput[] =
+      /*
+       * Ordenamiento remoto real.
+       *
+       * Prisma aplica orderBy antes de skip/take, por lo que las páginas
+       * representan correctamente el orden global.
+       *
+       * id se utiliza como desempate para evitar cambios de posición
+       * cuando varios clientes tienen el mismo nombre o saldo.
+       */
+      const orderBy: Prisma.ClienteInternetOrderByWithRelationInput[] =
         sortBy === 'saldo'
-          ? { saldoCliente: { saldoPendiente: sortDir } }
-          : [{ nombre: sortDir }, { apellidos: sortDir }];
+          ? [
+              {
+                saldoCliente: {
+                  saldoPendiente: sortDir,
+                },
+              },
+              {
+                id: 'asc',
+              },
+            ]
+          : [
+              {
+                nombre: sortDir,
+              },
+              {
+                apellidos: sortDir,
+              },
+              {
+                id: 'asc',
+              },
+            ];
 
       const skip = (page - 1) * perPage;
-      const take = perPage;
 
-      // ------------------------------------------------------------
-      // 1) ID MATCH con búsqueda acento-insensible (sin JOINs, sin "sc")
-      // ------------------------------------------------------------
+      /*
+       * Count y página usan exactamente los mismos filtros.
+       */
+      const [count, rows] = await this.prisma.$transaction([
+        this.prisma.clienteInternet.count({
+          where,
+        }),
 
-      const andEmpresa = empresaId
-        ? Prisma.sql` AND c."empresaId" = ${empresaId}`
-        : Prisma.sql``;
+        this.prisma.clienteInternet.findMany({
+          where,
+          orderBy,
+          skip,
+          take: perPage,
 
-      const andEstado = estado
-        ? Prisma.sql` AND c."estadoCliente" = CAST(${estado} AS "EstadoCliente")` // ← o ::text = ${estado}
-        : Prisma.sql``;
+          select: {
+            id: true,
+            nombre: true,
+            apellidos: true,
+            telefono: true,
+            direccion: true,
+            estadoCliente: true,
+            estadoCobranza: true,
 
-      const andZonas = zonas.length
-        ? Prisma.sql` AND c."facturacionZonaId" IN (${Prisma.join(
-            zonas.map((n) => Prisma.sql`${n}`),
-            ', ',
-          )})`
-        : Prisma.sql``;
-
-      const andSectores = sectores.length
-        ? Prisma.sql` AND c."sectorId" IN (${Prisma.join(
-            sectores.map((n) => Prisma.sql`${n}`),
-            ', ',
-          )})`
-        : Prisma.sql``;
-
-      // Usa unaccent(); si tu Postgres no la tiene, dímelo y te paso el fallback con translate(...)
-      const andSearch = tokens.length
-        ? Prisma.sql` AND ${Prisma.join(
-            tokens.map(
-              (t) => Prisma.sql`
-            translate(
-              coalesce(c."nombre",'') || ' ' ||
-              coalesce(c."apellidos",'') || ' ' ||
-              coalesce(c."direccion",'') || ' ' ||
-              coalesce(c."telefono"::text,''),
-              ${ACCENT_FROM},
-              ${ACCENT_TO}
-            ) ILIKE translate(${`%${t}%`}, ${ACCENT_FROM}, ${ACCENT_TO})
-          `,
-            ),
-            ' AND ', // (en Prisma v6 el separador debe ser string)
-          )}`
-        : Prisma.sql``;
-
-      // a) Total
-      const [{ count }] = await this.prisma.$queryRaw<
-        { count: number }[]
-      >(Prisma.sql`
-      SELECT COUNT(*)::int AS count
-      FROM "ClienteInternet" c
-      WHERE 1=1
-      ${andEmpresa} ${andEstado} ${andZonas} ${andSectores} ${andSearch}
-    `);
-
-      // b) IDs de la página (sin ordenar por "sc", solo por id para estabilidad)
-      const idRows = await this.prisma.$queryRaw<{ id: number }[]>(Prisma.sql`
-      SELECT c.id
-      FROM "ClienteInternet" c
-      WHERE 1=1
-      ${andEmpresa} ${andEstado} ${andZonas} ${andSectores} ${andSearch}
-      ORDER BY c.id
-      LIMIT ${take} OFFSET ${skip}
-    `);
-
-      const idsPage = idRows.map((r) => r.id);
-      if (idsPage.length === 0) {
-        return { items: [], total: count, page, perPage };
-      }
-
-      // ------------------------------------------------------------
-      // 2) Trae la página final con Prisma (orden/relaciones)
-      // ------------------------------------------------------------
-      const rows = await this.prisma.clienteInternet.findMany({
-        where: { ...where, id: { in: idsPage } },
-        orderBy,
-        // Nota: el orden final lo controla Prisma (nombre/apellidos o saldo);
-        // si quieres preservar exactamente el orden de idsPage, avísame y lo reordenamos en memoria.
-        select: {
-          id: true,
-          nombre: true,
-          apellidos: true,
-          telefono: true,
-          direccion: true,
-          estadoCliente: true,
-          estadoCobranza: true,
-          saldoCliente: { select: { saldoPendiente: true } },
-          municipio: { select: { id: true, nombre: true } },
-          sector: { select: { id: true, nombre: true } },
-          facturacionZona: { select: { id: true, nombre: true } },
-          facturaInternet: {
-            where: {
-              estadoFacturaInternet: {
-                in: ['PARCIAL', 'PENDIENTE', 'VENCIDA'],
+            saldoCliente: {
+              select: {
+                saldoPendiente: true,
               },
             },
-            select: { id: true, fechaPagoEsperada: true, montoPago: true },
-          },
-        },
-      });
 
-      const items = rows.map((c) => ({
-        id: c.id,
-        nombre: c.nombre,
-        apellidos: c.apellidos ?? '',
-        telefono: c.telefono ?? null,
-        direccion: c.direccion ?? null,
-        estadoCliente: c.estadoCliente,
-        estadoCobranza: c.estadoCobranza,
-        saldoPendiente: c.saldoCliente?.saldoPendiente ?? 0,
-        facturacionZona: c.facturacionZona?.id ?? null,
-        zonaFacturacion: c.facturacionZona?.nombre ?? '',
-        facturasPendientes: c.facturaInternet.length,
-        sector: { id: c.sector?.id ?? null, nombre: c.sector?.nombre ?? '' },
-        municipio: {
-          id: c.municipio?.id ?? null,
-          nombre: c.municipio?.nombre ?? '',
+            municipio: {
+              select: {
+                id: true,
+                nombre: true,
+              },
+            },
+
+            sector: {
+              select: {
+                id: true,
+                nombre: true,
+              },
+            },
+
+            facturacionZona: {
+              select: {
+                id: true,
+                nombre: true,
+              },
+            },
+
+            facturaInternet: {
+              where: {
+                estadoFacturaInternet: {
+                  in: ['PARCIAL', 'PENDIENTE', 'VENCIDA'],
+                },
+              },
+
+              select: {
+                id: true,
+                fechaPagoEsperada: true,
+                montoPago: true,
+              },
+            },
+          },
+        }),
+      ]);
+
+      const items = rows.map((cliente) => ({
+        id: cliente.id,
+        nombre: cliente.nombre,
+        apellidos: cliente.apellidos ?? '',
+        telefono: cliente.telefono ?? null,
+        direccion: cliente.direccion ?? null,
+
+        estadoCliente: cliente.estadoCliente,
+        estadoCobranza: cliente.estadoCobranza,
+
+        saldoPendiente: Number(cliente.saldoCliente?.saldoPendiente ?? 0),
+
+        facturacionZona: cliente.facturacionZona?.id ?? null,
+
+        zonaFacturacion: cliente.facturacionZona?.nombre ?? '',
+
+        facturasPendientes: cliente.facturaInternet.length,
+
+        sector: {
+          id: cliente.sector?.id ?? null,
+          nombre: cliente.sector?.nombre ?? '',
         },
-        facturas: c.facturaInternet.map((f) => ({
-          id: f.id,
-          montoFactura: f.montoPago,
-          fechaPagoEsperada: f.fechaPagoEsperada,
+
+        municipio: {
+          id: cliente.municipio?.id ?? null,
+          nombre: cliente.municipio?.nombre ?? '',
+        },
+
+        facturas: cliente.facturaInternet.map((factura) => ({
+          id: factura.id,
+
+          montoFactura: Number(factura.montoPago ?? 0),
+
+          fechaPagoEsperada: factura.fechaPagoEsperada,
         })),
       }));
 
-      return { items, total: count, page, perPage };
+      this.logger.log(
+        `Clientes para ruta: ${JSON.stringify(
+          {
+            filtros: {
+              empresaId,
+              estado,
+              estadoCobranza,
+              search: normalizedSearch || undefined,
+              zonaIds: zonas,
+              sectorIds: sectores,
+              sortBy,
+              sortDir,
+              page,
+              perPage,
+            },
+            resultado: {
+              total: count,
+              itemsPagina: items.length,
+            },
+          },
+          null,
+          2,
+        )}`,
+      );
+
+      return {
+        items,
+        total: count,
+        page,
+        perPage,
+      };
     } catch (error) {
-      this.logger.error('El error generado es: ', error);
-      if (error instanceof HttpException) throw error;
+      this.logger.error(
+        'Error generado al obtener clientes para ruta',
+        error instanceof Error ? error.stack : String(error),
+      );
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
       throw new InternalServerErrorException(
         'Fatal error: Error inesperado en clientes ruta',
       );

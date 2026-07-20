@@ -54,7 +54,7 @@ export class RecordatorioDiaPagoService {
     for (const zona of zonas) {
       if (shouldSkipZoneToday(zona.diaPago)) continue;
 
-      const zonaPermiteRecordatorio = zona.enviarRecordatorio && zona.whatsapp;
+      const zonaPermiteRecordatorio = zona.enviarRecordatorio; //&& zona.whatsapp;
 
       if (!zonaPermiteRecordatorio) {
         this.logger.debug(

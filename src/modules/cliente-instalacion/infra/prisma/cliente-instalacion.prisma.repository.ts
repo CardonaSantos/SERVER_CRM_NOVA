@@ -451,7 +451,7 @@ export class ClienteInstalacionPrismaRepository
     return ClienteInstalacionPrismaMapper.toDomain(record);
   }
 
-  // DETALLES
+  // DETALLES ClienteInstalacionListItem
   async findDetailById(params: {
     id: number;
     empresaId: number;

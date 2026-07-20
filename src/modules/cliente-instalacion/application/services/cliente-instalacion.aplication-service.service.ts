@@ -56,6 +56,7 @@ export class ClienteInstalacionApplicationService {
       ...dto,
     });
   }
+
   listar(filters: FiltrarClienteInstalacionesDto) {
     return this.listarClienteInstalacionesUseCase.execute(filters);
   }

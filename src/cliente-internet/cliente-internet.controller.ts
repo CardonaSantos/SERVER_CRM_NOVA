@@ -94,6 +94,10 @@ export class ClienteInternetController {
     )
     q: GetClientesRutaQueryDto,
   ) {
+    this.logger.log(
+      `El query enviado desde la tabla es:\n${JSON.stringify(q, null, 2)}`,
+    );
+
     return this.clienteInternetService.getCustomersToRuta(q);
   }
 

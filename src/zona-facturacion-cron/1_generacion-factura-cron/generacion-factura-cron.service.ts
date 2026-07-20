@@ -3,7 +3,7 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { NotificacionesService } from 'src/notificaciones/app/notificaciones.service';
@@ -25,6 +25,7 @@ export class GeneracionFacturaCronService {
   ) {}
 
   @Cron('0 10 * * *', { timeZone: 'America/Guatemala' })
+  // @Cron(CronExpression.EVERY_MINUTE)
   async gerarFacturacionAutomaticaCron() {
     const TEMPLATE_NAME =
       this.configService.get<string>('GENERACION_FACTURA_PLANTILLA') ??
@@ -77,17 +78,18 @@ export class GeneracionFacturaCronService {
           contador.facturasGestionadas++;
 
           const zonaPermiteNotificar =
-            zona.enviarRecordatorio &&
-            zona.enviarRecordatorioGeneracion &&
-            zona.whatsapp;
+            zona.enviarRecordatorio && zona.enviarRecordatorioGeneracion; // zona.whatsapp;
 
           if (!zonaPermiteNotificar) {
             contador.clientesNoRecordados++;
+            this.logger.log('La zona no permite notificar en su configuracion');
+
             continue;
           }
 
           if (!notificar) {
             contador.clientesNoRecordados++;
+            this.logger.log('No hay trigger de notificar, no se notifica');
             continue;
           }
 
