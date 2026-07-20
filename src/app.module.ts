@@ -57,6 +57,8 @@ import { GenerateReportsModule } from './generate-reports/generate-reports.modul
 import { PerfilModule } from './perfil/perfil.module';
 import { WhatsappCampaignsModule } from './whatsapp-campaigns/whatsapp-campaigns.module';
 import { WhatsappTemplateModule } from './whatsapp-template/whatsapp-template.module';
+import { ClienteInstalacionModule } from './modules/cliente-instalacion/cliente-instalacion.module';
+import { ClienteDesinstalacionModule } from './modules/cliente-desinstalacion/cliente-desinstalacion.module';
 
 @Module({
   imports: [
@@ -121,6 +123,9 @@ import { WhatsappTemplateModule } from './whatsapp-template/whatsapp-template.mo
 
     WhatsappCampaignsModule,
     WhatsappTemplateModule,
+
+    ClienteInstalacionModule,
+    ClienteDesinstalacionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

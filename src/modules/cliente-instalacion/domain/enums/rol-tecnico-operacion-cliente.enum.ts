@@ -1,0 +1,7 @@
+export enum RolTecnicoOperacionCliente {
+  RESPONSABLE = 'RESPONSABLE',
+  APOYO = 'APOYO',
+  SUPERVISOR = 'SUPERVISOR',
+  COBRADOR = 'COBRADOR',
+  OTRO = 'OTRO',
+}

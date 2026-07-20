@@ -55,7 +55,7 @@ export class SegundoRecordatorioCronService {
       if (shouldSkipZoneToday(zona.diaSegundoRecordatorio)) continue;
 
       const zonaPermiteRecordatorio =
-        zona.enviarRecordatorio && zona.enviarRecordatorio2 && zona.whatsapp;
+        zona.enviarRecordatorio && zona.enviarRecordatorio2; //&& zona.whatsapp;
 
       if (!zonaPermiteRecordatorio) {
         this.logger.debug(

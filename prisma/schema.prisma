@@ -143,6 +143,10 @@ model Usuario {
   clientesWhatsappDesactivados ClienteInternet[] @relation("ClienteWhatsappDesactivadoPor")
   desinstalacionesComoTecnico ClienteDesinstalacionTecnico[] @relation("DesinstalacionTecnicoUsuario")
   instalacionesComoTecnico ClienteInstalacionTecnico[] @relation("InstalacionTecnicoUsuario")
+
+
+  desInstalacionSolicitud ClienteDesinstalacionAutorizacion[] @relation("DesinstalacionAutorizacionSolicitadoPor")
+  desInstalacionAutorizacion ClienteDesinstalacionAutorizacion[] @relation("DesinstalacionAutorizacionAutorizadoPor")
 }
 
 model UbicacionTecnico {
@@ -2157,6 +2161,7 @@ model ClienteDesinstalacion {
   @@index([ejecutadoPorId])
   @@index([creadoPorId])
   @@index([estado, fechaProgramada])
+  clienteDesinstalacionAutorizacions ClienteDesinstalacionAutorizacion[]
 }
 
 model ClienteDesinstalacionTecnico {
@@ -2248,8 +2253,45 @@ model ClienteEstadoHistorial {
   @@index([cambiadoPorId])
 }
 
+
+model ClienteDesinstalacionAutorizacion {
+  id Int @id @default(autoincrement())
+
+  desinstalacionId Int
+
+  solicitadoPorId Int?
+  autorizadoPorId Int?
+
+  estado EstadoAutorizacionDesinstalacion @default(PENDIENTE)
+
+  motivoSolicitud String?
+  comentarioAutorizador String?
+
+  fechaSolicitud DateTime @default(now())
+  fechaRespuesta DateTime?
+
+
+  desinstalacion ClienteDesinstalacion @relation(fields: [desinstalacionId], references: [id], onDelete: Cascade)
+
+  solicitadoPor Usuario? @relation("DesinstalacionAutorizacionSolicitadoPor", fields: [solicitadoPorId], references: [id], onDelete: SetNull)
+  autorizadoPor Usuario? @relation("DesinstalacionAutorizacionAutorizadoPor", fields: [autorizadoPorId], references: [id], onDelete: SetNull)
+
+  @@index([desinstalacionId])
+  @@index([estado])
+  @@index([autorizadoPorId])
+}
+
+
 // ============================================================
 // NUEVOS ENUMS PARA INSTALACIONES Y OTROS
+
+enum EstadoAutorizacionDesinstalacion {
+  PENDIENTE
+  APROBADA
+  RECHAZADA
+  ANULADA
+}
+
 
 enum EstadoInstalacionCliente {
   PROGRAMADA
