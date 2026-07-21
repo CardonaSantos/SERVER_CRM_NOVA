@@ -8,7 +8,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL_CRM")
+  // url      = env("DATABASE_URL_CRM")
 }
 
 // comentario nuevo
@@ -74,6 +74,14 @@ model Empresa {
   instalacionesCliente    ClienteInstalacion[]
   desinstalacionesCliente ClienteDesinstalacion[]
   historialEstadosCliente ClienteEstadoHistorial[]
+
+  accesosInternet ClienteAccesoInternet[]
+  cuentasPppoe    ClientePppoeCuenta[]
+
+  perfilesPppoeHomologados PppoePerfilHomologacion[]
+  operacionesPppoe         PppoeOperacion[]
+  auditoriasPppoe          PppoeAuditoria[]
+
 }
 
 model Usuario {
@@ -147,6 +155,22 @@ model Usuario {
 
   desInstalacionSolicitud ClienteDesinstalacionAutorizacion[] @relation("DesinstalacionAutorizacionSolicitadoPor")
   desInstalacionAutorizacion ClienteDesinstalacionAutorizacion[] @relation("DesinstalacionAutorizacionAutorizadoPor")
+
+
+  cuentasPppoeGeneradas ClientePppoeCuenta[] @relation("PppoeCuentaGeneradaPor")
+
+  accesosConfigurados ClienteAccesoConfiguracionTecnica[] @relation("AccesoConfiguradoPor")
+
+  perfilesPppoeHomologadosCreados PppoePerfilHomologacion[] @relation("PppoePerfilHomologacionCreadoPor")
+
+  perfilesPppoeHomologadosActualizados PppoePerfilHomologacion[] @relation("PppoePerfilHomologacionActualizadoPor")
+
+  operacionesPppoeIniciadas PppoeOperacion[] @relation("PppoeOperacionIniciadaPor")
+
+  operacionesPppoeReautenticadas PppoeOperacion[] @relation("PppoeOperacionReautenticadaPor")
+
+  auditoriasPppoeOperadas PppoeAuditoria[] @relation("PppoeAuditoriaOperador")
+
 }
 
 model UbicacionTecnico {
@@ -396,6 +420,10 @@ model ServicioInternet {
 
   instalacionesCliente    ClienteInstalacion[]
   desinstalacionesCliente ClienteDesinstalacion[]
+
+    accesosInternet ClienteAccesoInternet[]
+    perfilesPppoeHomologados PppoePerfilHomologacion[]
+
 }
 
 /// [05] Clientes Internet y Relacionados
@@ -483,7 +511,8 @@ model ClienteInternet {
   instalaciones    ClienteInstalacion[]
   desinstalaciones ClienteDesinstalacion[]
   historialEstados ClienteEstadoHistorial[]
-
+  // ACCESOS A INTERNET Y CONFIGS
+  accesosInternet ClienteAccesoInternet[]
   // Soft delete / restauración
   motivoEliminacion     String?
   comentarioEliminacion String?
@@ -497,12 +526,479 @@ model ClienteInternet {
   whatsappDesactivadoPorId  Int?
   motivoWhatsappDesactivado String?
   whatsappDesactivadoPor    Usuario?  @relation("ClienteWhatsappDesactivadoPor", fields: [whatsappDesactivadoPorId], references: [id], onDelete: SetNull)
+  
+  auditoriasPppoe PppoeAuditoria[]
 
   @@index([empresaId, isEliminado])
   @@index([empresaId, estadoCliente])
   @@index([restauradoPorId])
   @@index([whatsappDesactivadoPorId])
 }
+
+
+model ClienteAccesoInternet {
+  id Int @id @default(autoincrement())
+
+  empresaId Int
+  clienteId Int
+
+  servicioInternetId Int?
+
+  tecnologia          TecnologiaAccesoInternet
+  metodoAutenticacion MetodoAutenticacionInternet
+  estado              EstadoAccesoInternet @default(PENDIENTE)
+
+  activadoEn   DateTime?
+  suspendidoEn DateTime?
+  dadoDeBajaEn DateTime?
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  empresa Empresa @relation(fields: [empresaId],references: [id],onDelete: Restrict)
+
+  cliente ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+
+  servicioInternet ServicioInternet? @relation(fields: [servicioInternetId],references: [id],onDelete: SetNull)
+
+  instalaciones ClienteInstalacionAcceso[]
+  cuentaPppoe   ClientePppoeCuenta?
+
+
+  equipos              ClienteAccesoEquipo[]
+  configuracionTecnica ClienteAccesoConfiguracionTecnica?
+
+  desinstalaciones ClienteDesinstalacion[]
+  auditoriasPppoe PppoeAuditoria[]
+
+  @@index([empresaId, clienteId])
+  @@index([empresaId, estado])
+  @@index([servicioInternetId])
+}
+
+model ClienteInstalacionAcceso {
+  id Int @id @default(autoincrement())
+
+  instalacionId    Int
+  accesoInternetId Int
+
+  accion AccionInstalacionAcceso
+
+  creadoEn DateTime @default(now())
+
+  instalacion ClienteInstalacion @relation(fields: [instalacionId],references: [id],onDelete: Cascade)
+
+  accesoInternet ClienteAccesoInternet @relation(fields: [accesoInternetId],references: [id],onDelete: Restrict)
+
+  @@unique([instalacionId, accesoInternetId])
+  @@index([accesoInternetId])
+}
+
+model ClientePppoeCuenta {
+  id Int @id @default(autoincrement())
+
+  empresaId        Int
+  accesoInternetId Int @unique
+
+  perfilHomologacionId Int
+
+  usuario String
+
+  secretoCifrado String
+  secretoIv      String
+  secretoAuthTag String
+  versionClave   Int @default(1)
+
+  estado EstadoCuentaPppoe @default(PENDIENTE_ACTIVACION)
+
+  generadoPorId Int?
+
+  generadoEn     DateTime @default(now())
+  secretCreadoEn DateTime?
+  activadoEn     DateTime?
+  suspendidoEn   DateTime?
+  eliminadoEn    DateTime?
+
+  ultimaSincronizacionEn DateTime?
+  ultimoError            String?
+
+  actualizadoEn DateTime @updatedAt
+
+  empresa             Empresa                   @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  accesoInternet      ClienteAccesoInternet     @relation(fields: [accesoInternetId], references: [id], onDelete: Restrict)
+  perfilHomologacion  PppoePerfilHomologacion  @relation(fields: [perfilHomologacionId], references: [id], onDelete: Restrict)
+
+  generadoPor Usuario? @relation("PppoeCuentaGeneradaPor", fields: [generadoPorId], references: [id], onDelete: Restrict)
+
+  operaciones PppoeOperacion[]
+  auditorias  PppoeAuditoria[]
+
+  @@unique([empresaId, usuario])
+
+  @@index([empresaId, estado])
+  @@index([perfilHomologacionId])
+  @@index([generadoPorId])
+}
+
+
+
+
+model PppoeOperacion {
+  id Int @id @default(autoincrement())
+
+  empresaId        Int
+  cuentaPppoeId    Int
+  mikrotikRouterId Int
+
+  instalacionId    Int?
+  desinstalacionId Int?
+
+  tipo   TipoOperacionPppoe
+  origen OrigenOperacionPppoe
+  estado EstadoOperacionPppoe @default(PENDIENTE)
+
+  iniciadoPorId      Int?
+  reautenticadoPorId Int?
+
+  requiereReautenticacion Boolean @default(false)
+  reautenticacionExitosa  Boolean?
+  reautenticadoEn         DateTime?
+
+  motivo String?
+
+  errorCodigo  String?
+  errorMensaje String?
+
+  iniciadoEn   DateTime?
+  finalizadoEn DateTime?
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  empresa        Empresa             @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  cuentaPppoe    ClientePppoeCuenta @relation(fields: [cuentaPppoeId], references: [id], onDelete: Restrict)
+  mikrotikRouter MikrotikRouter     @relation(fields: [mikrotikRouterId], references: [id], onDelete: Restrict)
+
+
+
+
+
+instalacion ClienteInstalacion? @relation(fields: [instalacionId], references: [id], onDelete: Restrict)
+
+desinstalacion ClienteDesinstalacion? @relation(fields: [desinstalacionId], references: [id], onDelete: Restrict)
+
+iniciadoPor Usuario? @relation("PppoeOperacionIniciadaPor", fields: [iniciadoPorId], references: [id], onDelete: Restrict)
+
+reautenticadoPor Usuario? @relation("PppoeOperacionReautenticadaPor", fields: [reautenticadoPorId], references: [id], onDelete: Restrict)
+
+
+
+
+
+  pasos      PppoeOperacionPaso[]
+  auditorias PppoeAuditoria[]
+
+  @@index([empresaId, creadoEn])
+  @@index([cuentaPppoeId, creadoEn])
+  @@index([mikrotikRouterId, creadoEn])
+  @@index([instalacionId])
+  @@index([desinstalacionId])
+  @@index([estado, creadoEn])
+  @@index([iniciadoPorId])
+  @@index([reautenticadoPorId])
+}
+
+
+model PppoeAuditoria {
+  id Int @id @default(autoincrement())
+
+  empresaId Int
+
+  clienteId             Int?
+  accesoInternetId      Int?
+  cuentaPppoeId         Int?
+  perfilHomologacionId  Int?
+
+  instalacionId    Int?
+  desinstalacionId Int?
+  operacionId      Int?
+
+  operadorId Int?
+
+  origen OrigenOperacionPppoe
+  accion AccionAuditoriaPppoe
+
+  descripcion String
+
+  estadoCuentaAnterior EstadoCuentaPppoe?
+  estadoCuentaNuevo    EstadoCuentaPppoe?
+
+  usuarioPppoeSnapshot   String?
+  perfilCodigoSnapshot   String?
+  operadorNombreSnapshot String?
+
+  datos Json?
+
+  ipOrigen  String?
+  userAgent String?
+
+  creadoEn DateTime @default(now())
+
+  empresa            Empresa                    @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  cliente            ClienteInternet?           @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  accesoInternet     ClienteAccesoInternet?     @relation(fields: [accesoInternetId], references: [id], onDelete: Restrict)
+  cuentaPppoe        ClientePppoeCuenta?        @relation(fields: [cuentaPppoeId], references: [id], onDelete: Restrict)
+  perfilHomologacion PppoePerfilHomologacion?  @relation(fields: [perfilHomologacionId], references: [id], onDelete: Restrict)
+  instalacion        ClienteInstalacion?        @relation(fields: [instalacionId], references: [id], onDelete: Restrict)
+  desinstalacion     ClienteDesinstalacion?     @relation(fields: [desinstalacionId], references: [id], onDelete: Restrict)
+  operacion          PppoeOperacion?            @relation(fields: [operacionId], references: [id], onDelete: Restrict)
+  operador           Usuario?                   @relation("PppoeAuditoriaOperador", fields: [operadorId], references: [id], onDelete: Restrict)
+
+  @@index([empresaId, creadoEn])
+  @@index([clienteId, creadoEn])
+  @@index([accesoInternetId, creadoEn])
+  @@index([cuentaPppoeId, creadoEn])
+  @@index([perfilHomologacionId, creadoEn])
+  @@index([instalacionId, creadoEn])
+  @@index([desinstalacionId, creadoEn])
+  @@index([operacionId])
+  @@index([operadorId, creadoEn])
+  @@index([accion, creadoEn])
+}
+
+
+
+model PppoeOperacionPaso {
+  id Int @id @default(autoincrement())
+
+  operacionId Int
+
+  tipo   TipoPasoPppoe
+  orden  Int
+  estado EstadoPasoPppoe @default(PENDIENTE)
+
+  comandoSanitizado   String?
+  respuestaSanitizada String?
+
+  errorCodigo  String?
+  errorMensaje String?
+
+  iniciadoEn   DateTime?
+  finalizadoEn DateTime?
+
+  duracionMs Int?
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  operacion PppoeOperacion @relation(fields: [operacionId], references: [id], onDelete: Restrict)
+
+  @@unique([operacionId, orden])
+  @@index([operacionId, estado])
+}
+
+
+// FLUJOS DE PPOE
+
+enum RolEquipoAcceso {
+  ONU
+  ONT
+  ROUTER
+  REPETIDOR
+  ANTENA_CPE
+  CONVERTIDOR
+  POE
+  SWITCH
+  OTRO
+}
+
+
+model ClienteAccesoEquipo {
+  id Int @id @default(autoincrement())
+
+  accesoInternetId Int
+
+  productoId       Int
+  serialProductoId Int?
+
+  instalacionAsignacionId Int?
+  instalacionRetiroId     Int?
+
+  modoOperacion ModoOperacionEquipo?
+
+  rol RolEquipoAcceso
+
+  ipGestion String?
+
+  asignadoEn DateTime @default(now())
+  retiradoEn DateTime?
+
+  activo Boolean @default(true)
+
+  observaciones String?
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  accesoInternet ClienteAccesoInternet @relation(fields: [accesoInternetId],references: [id],onDelete: Restrict)
+
+  producto Producto @relation(fields: [productoId],references: [id],onDelete: Restrict)
+
+  serialProducto SerialProducto? @relation(fields: [serialProductoId],references: [id],onDelete: Restrict)
+
+  instalacionAsignacion ClienteInstalacion? @relation("AccesoEquipoInstalacionAsignacion",fields: [instalacionAsignacionId],references: [id],onDelete: SetNull)
+
+  instalacionRetiro ClienteInstalacion? @relation("AccesoEquipoInstalacionRetiro",fields: [instalacionRetiroId],references: [id],onDelete: SetNull)
+
+  // configuracionesWifi ClienteAccesoWifi[]
+  retiroDesinstalacion ClienteDesinstalacionEquipo?
+
+  @@index([accesoInternetId, activo])
+  @@index([productoId])
+  @@index([serialProductoId])
+  @@index([instalacionAsignacionId])
+  @@index([instalacionRetiroId])
+}
+
+
+model PppoePerfilHomologacion {
+  id Int @id @default(autoincrement())
+
+  empresaId          Int
+  mikrotikRouterId   Int
+  servicioInternetId Int
+
+  codigoPerfil String
+
+  activo Boolean @default(true)
+
+  creadoPorId      Int?
+  actualizadoPorId Int?
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  empresa          Empresa          @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  mikrotikRouter   MikrotikRouter   @relation(fields: [mikrotikRouterId], references: [id], onDelete: Restrict)
+  servicioInternet ServicioInternet @relation(fields: [servicioInternetId], references: [id], onDelete: Restrict)
+
+
+  cuentas    ClientePppoeCuenta[]
+  auditorias PppoeAuditoria[]
+
+
+
+creadoPor Usuario? @relation("PppoePerfilHomologacionCreadoPor", fields: [creadoPorId], references: [id], onDelete: Restrict)
+
+actualizadoPor Usuario? @relation("PppoePerfilHomologacionActualizadoPor", fields: [actualizadoPorId], references: [id], onDelete: Restrict)
+
+
+
+
+
+
+  @@unique([mikrotikRouterId, servicioInternetId])
+  @@unique([mikrotikRouterId, codigoPerfil])
+
+  @@index([empresaId, activo])
+  @@index([servicioInternetId])
+  @@index([creadoPorId])
+  @@index([actualizadoPorId])
+}
+
+
+
+
+model ClienteAccesoConfiguracionTecnica {
+  id Int @id @default(autoincrement())
+
+  accesoInternetId Int @unique
+  instalacionId    Int?
+
+  potenciaOpticaRxDbm Decimal? @db.Decimal(6, 2)
+  senalInalambricaDbm Decimal? @db.Decimal(6, 2)
+
+  ssid                    String?
+  contrasenaWifiProtegida String?
+  bandaWifi               BandaWifi?
+  canal                   Int?
+  anchoCanalMhz           Int?
+
+  ipv4 String?
+  ipv6 String?
+
+  gateway      String?
+  dnsPrimario  String?
+  dnsSecundario String?
+
+  observaciones String?
+
+  configuradoPorId Int?
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  accesoInternet ClienteAccesoInternet @relation(fields: [accesoInternetId], references: [id], onDelete: Restrict)
+  instalacion    ClienteInstalacion?    @relation(fields: [instalacionId], references: [id], onDelete: SetNull)
+  configuradoPor Usuario?               @relation("AccesoConfiguradoPor", fields: [configuradoPorId], references: [id], onDelete: SetNull)
+
+  @@index([instalacionId])
+  @@index([configuradoPorId])
+}
+
+
+
+
+
+enum BandaWifi {
+  GHZ_2_4
+  GHZ_5
+  DOBLE_BANDA
+}
+
+enum TecnologiaAccesoInternet {
+  FIBRA_GPON
+  INALAMBRICO
+  ETHERNET
+  OTRO
+}
+
+enum MetodoAutenticacionInternet {
+  PPPOE
+  DHCP
+  IP_ESTATICA
+  NINGUNO
+}
+
+enum EstadoAccesoInternet {
+  PENDIENTE
+  CONFIGURANDO
+  ACTIVO
+  SUSPENDIDO
+  BAJA
+}
+
+enum AccionInstalacionAcceso {
+  CREADO
+  MODIFICADO
+  RETIRADO
+}
+
+enum ModoOperacionEquipo {
+  ROUTER
+  BRIDGE
+  ACCESS_POINT
+  REPETIDOR
+  CLIENTE
+  OTRO
+}
+
+
+
+
+
+
+
 
 model IP {
   id          Int              @id @default(autoincrement())
@@ -1196,6 +1692,10 @@ model MikrotikRouter {
 
   clientesInternet ClienteInternet[] // Clientes que cuelgan de este Mikrotik
 
+  perfilesPppoeHomologados PppoePerfilHomologacion[]
+  operacionesPppoe         PppoeOperacion[]
+
+
   creadoEn      DateTime @default(now())
   actualizadoEn DateTime @updatedAt
 
@@ -1801,6 +2301,10 @@ model Producto {
   instalacionesCliente    ClienteInstalacionEquipo[]
   desinstalacionesCliente ClienteDesinstalacionEquipo[]
 
+  
+  equiposAcceso ClienteAccesoEquipo[]
+
+
   creadoEn      DateTime @default(now())
   actualizadoEn DateTime @updatedAt
 
@@ -1872,6 +2376,8 @@ model SerialProducto {
 
   instalacionesCliente    ClienteInstalacionEquipo[]
   desinstalacionesCliente ClienteDesinstalacionEquipo[]
+
+  equiposAcceso ClienteAccesoEquipo[]
 
   @@unique([serial])
   @@index([productoId, estado])
@@ -2046,20 +2552,15 @@ model ClienteInstalacion {
   latitud              Float?
   longitud             Float?
 
-  ssidRouter     String?
-  contrasenaWifi String?
 
   costoInstalacion    Decimal @default(0) @db.Decimal(12, 2)
   costoMateriales     Decimal @default(0) @db.Decimal(12, 2)
   costoManoObra       Decimal @default(0) @db.Decimal(12, 2)
   costoOtros          Decimal @default(0) @db.Decimal(12, 2)
   montoCobradoCliente Decimal @default(0) @db.Decimal(12, 2)
-  saldoPendiente      Decimal @default(0) @db.Decimal(12, 2)
+  // saldoPendiente      Decimal @default(0) @db.Decimal(12, 2)
 
   notasCostos String?
-
-  esMigrada Boolean @default(false)
-  metadata  Json?
 
   creadoEn      DateTime @default(now())
   actualizadoEn DateTime @updatedAt
@@ -2077,6 +2578,17 @@ model ClienteInstalacion {
   evidencias       ClienteInstalacionMedia[]
   equipos          ClienteInstalacionEquipo[]
   gastosOperativos GastoOperativo[]
+
+  clienteInstalacionAccesos ClienteInstalacionAcceso[]
+
+  equiposAccesoAsignados ClienteAccesoEquipo[] @relation("AccesoEquipoInstalacionAsignacion")
+
+  equiposAccesoRetirados ClienteAccesoEquipo[] @relation("AccesoEquipoInstalacionRetiro")
+
+  configuracionesTecnicas ClienteAccesoConfiguracionTecnica[]
+
+  operacionesPppoe PppoeOperacion[]
+  auditoriasPppoe  PppoeAuditoria[]
 
   @@index([empresaId, estado])
   @@index([empresaId, clienteId])
@@ -2098,6 +2610,8 @@ model ClienteDesinstalacion {
 
   servicioInternetId Int?
   ticketId           Int?
+
+  accesoInternetId Int?
 
   solicitadoPorId Int?
   ejecutadoPorId  Int?
@@ -2151,6 +2665,12 @@ model ClienteDesinstalacion {
   evidencias       ClienteDesinstalacionMedia[]
   equipos          ClienteDesinstalacionEquipo[]
   gastosOperativos GastoOperativo[]
+  clienteDesinstalacionAutorizacions ClienteDesinstalacionAutorizacion[]
+
+  accesoInternet ClienteAccesoInternet? @relation( fields: [accesoInternetId],references: [id],onDelete: SetNull)
+
+  operacionesPppoe PppoeOperacion[]
+  auditoriasPppoe  PppoeAuditoria[]
 
   @@index([empresaId, estado])
   @@index([empresaId, clienteId])
@@ -2161,7 +2681,7 @@ model ClienteDesinstalacion {
   @@index([ejecutadoPorId])
   @@index([creadoPorId])
   @@index([estado, fechaProgramada])
-  clienteDesinstalacionAutorizacions ClienteDesinstalacionAutorizacion[]
+  @@index([accesoInternetId])
 }
 
 model ClienteDesinstalacionTecnico {
@@ -2204,6 +2724,12 @@ model ClienteDesinstalacionEquipo {
   serialProductoId       Int?
   movimientoInventarioId Int?
   bodegaDestinoId        Int?
+
+  accesoEquipoId Int? @unique
+
+  accesoEquipo ClienteAccesoEquipo? @relation(fields: [accesoEquipoId], references: [id], onDelete: Restrict)
+
+  
   descripcion String?
   cantidad    Decimal @default(1) @db.Decimal(10, 2)
   estadoRetiro EstadoEquipoRetirado @default(RECUPERADO_BUENO)
@@ -2280,6 +2806,11 @@ model ClienteDesinstalacionAutorizacion {
   @@index([estado])
   @@index([autorizadoPorId])
 }
+
+
+
+
+
 
 
 // ============================================================
@@ -2727,4 +3258,86 @@ enum EstadoServicioMikrotik {
   SUSPENDIDO
   PENDIENTE_APLICAR
   ERROR
+}
+
+
+// ENUMS DE PPOE FLUJOS
+enum EstadoCuentaPppoe {
+  PENDIENTE_ACTIVACION
+  EN_INSTALACION
+  EN_ACTIVACION
+  ACTIVA
+  SUSPENDIDA
+  EN_DESINSTALACION
+  ELIMINADA
+  ERROR
+}
+
+enum TipoOperacionPppoe {
+  CREAR_SECRET
+  ACTIVAR_SECRET
+  SUSPENDER_SERVICIO
+  ELIMINAR_SECRET
+}
+
+
+enum OrigenOperacionPppoe {
+  OPERADOR
+  SISTEMA
+  COBRANZA_AUTOMATICA
+}
+
+enum EstadoOperacionPppoe {
+  PENDIENTE
+  AUTORIZADA
+  EJECUTANDO
+  EXITOSA
+  PARCIAL
+  FALLIDA
+  CANCELADA
+}
+
+enum TipoPasoPppoe {
+  AGREGAR_SECRET
+  HABILITAR_SECRET
+  DESHABILITAR_SECRET
+  REMOVER_SESION_ACTIVA
+  ELIMINAR_SECRET
+}
+
+
+enum EstadoPasoPppoe {
+  PENDIENTE
+  EJECUTANDO
+  EXITOSO
+  FALLIDO
+  OMITIDO
+}
+
+enum AccionAuditoriaPppoe {
+  PERFIL_HOMOLOGADO
+  PERFIL_ACTUALIZADO
+  PERFIL_ACTIVADO
+  PERFIL_DESACTIVADO
+
+  PREALTA_CREADA
+  CONTRASENA_GENERADA
+
+  CREACION_AUTORIZADA
+  SECRET_CREADO
+
+  SERVICIO_ACTIVADO
+
+  SERVICIO_SUSPENDIDO
+  SESION_ACTIVA_REMOVIDA
+
+  DESINSTALACION_AUTORIZADA
+  SECRET_ELIMINADO
+
+  REAUTENTICACION_FALLIDA
+  OPERACION_FALLIDA
+  OPERACION_PARCIAL
+
+  HOJA_VISUALIZADA
+  HOJA_GENERADA
 }
