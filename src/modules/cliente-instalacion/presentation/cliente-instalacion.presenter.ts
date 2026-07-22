@@ -49,10 +49,6 @@ export class ClienteInstalacionPresenter {
         longitud: props.longitud,
       },
 
-      wifi: {
-        ssid: props.ssidRouter,
-      },
-
       costos: {
         costoInstalacion: props.costoInstalacion.toNumber(),
         costoMateriales: props.costoMateriales.toNumber(),
@@ -61,13 +57,8 @@ export class ClienteInstalacionPresenter {
 
         montoCobradoCliente: props.montoCobradoCliente.toNumber(),
 
-        saldoPendiente: props.saldoPendiente.toNumber(),
-
         notas: props.notasCostos,
       },
-
-      esMigrada: props.esMigrada,
-      metadata: props.metadata,
 
       creadoEn: props.creadoEn,
       actualizadoEn: props.actualizadoEn,

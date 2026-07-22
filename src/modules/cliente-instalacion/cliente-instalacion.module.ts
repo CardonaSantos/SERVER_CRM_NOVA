@@ -18,6 +18,7 @@ import { CancelarClienteInstalacionUseCase } from './application/use-cases/cance
 import { SubirEvidenciaInstalacionUseCase } from './application/use-cases/subir-evidencia-instalacion.use-case';
 import { DigitalOceanMediaModule } from '../digital-ocean-media/digital-ocean-media.module';
 import { ClienteInstalacionMediaPrismaRepository } from './infra/prisma/cliente-instalacion-media.prisma.repository';
+import { DeleteAllClienteInstalacionUseCase } from './application/use-cases/delete-all';
 
 @Module({
   imports: [PrismaModule, DigitalOceanMediaModule],
@@ -34,7 +35,7 @@ import { ClienteInstalacionMediaPrismaRepository } from './infra/prisma/cliente-
     CompletarClienteInstalacionUseCase,
     CancelarClienteInstalacionUseCase,
     SubirEvidenciaInstalacionUseCase,
-
+    DeleteAllClienteInstalacionUseCase,
     {
       provide: CLIENTE_INSTALACION_REPOSITORY,
       useClass: ClienteInstalacionPrismaRepository,

@@ -37,20 +37,13 @@ export type ClienteInstalacionProps = {
   latitud?: number | null;
   longitud?: number | null;
 
-  ssidRouter?: string | null;
-  contrasenaWifi?: string | null;
-
   costoInstalacion: Money;
   costoMateriales: Money;
   costoManoObra: Money;
   costoOtros: Money;
   montoCobradoCliente: Money;
-  saldoPendiente: Money;
 
   notasCostos?: string | null;
-
-  esMigrada: boolean;
-  metadata?: unknown;
 
   creadoEn?: Date;
   actualizadoEn?: Date;
@@ -63,7 +56,6 @@ export type CrearClienteInstalacionCostosProps = {
   costoOtros?: number;
 
   montoCobradoCliente?: number;
-  saldoPendiente?: number;
 
   notas?: string | null;
 };
@@ -159,11 +151,6 @@ export type ActualizarCostosInstalacionParams = {
   costoOtros?: Money;
   montoCobradoCliente?: Money;
   notasCostos?: string | null;
-};
-
-export type RegistrarConfiguracionWifiParams = {
-  ssidRouter: string;
-  contrasenaWifi: string;
 };
 
 // NUEVAS PROSP

@@ -3,7 +3,7 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { NotificacionesService } from 'src/notificaciones/app/notificaciones.service';
@@ -25,7 +25,6 @@ export class GeneracionFacturaCronService {
   ) {}
 
   @Cron('0 10 * * *', { timeZone: 'America/Guatemala' })
-  // @Cron(CronExpression.EVERY_MINUTE)
   async gerarFacturacionAutomaticaCron() {
     const TEMPLATE_NAME =
       this.configService.get<string>('GENERACION_FACTURA_PLANTILLA') ??

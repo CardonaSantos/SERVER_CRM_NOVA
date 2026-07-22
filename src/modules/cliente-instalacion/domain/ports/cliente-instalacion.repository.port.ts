@@ -266,4 +266,6 @@ export interface ClienteInstalacionRepositoryPort {
   ): Promise<ClienteInstalacionPaginatedResult>;
 
   save(entity: ClienteInstalacionEntity): Promise<ClienteInstalacionEntity>;
+
+  deleteAll(): Promise<any>;
 }

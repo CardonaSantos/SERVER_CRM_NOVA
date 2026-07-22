@@ -37,9 +37,6 @@ export class ClienteInstalacionPrismaMapper {
       latitud: record.latitud,
       longitud: record.longitud,
 
-      ssidRouter: record.ssidRouter,
-      contrasenaWifi: record.contrasenaWifi,
-
       costoInstalacion: Money.fromString(record.costoInstalacion.toString()),
       costoMateriales: Money.fromString(record.costoMateriales.toString()),
       costoManoObra: Money.fromString(record.costoManoObra.toString()),
@@ -47,12 +44,8 @@ export class ClienteInstalacionPrismaMapper {
       montoCobradoCliente: Money.fromString(
         record.montoCobradoCliente.toString(),
       ),
-      saldoPendiente: Money.fromString(record.saldoPendiente.toString()),
 
       notasCostos: record.notasCostos,
-
-      esMigrada: record.esMigrada,
-      metadata: record.metadata ?? undefined,
 
       creadoEn: record.creadoEn,
       actualizadoEn: record.actualizadoEn,
@@ -93,23 +86,13 @@ export class ClienteInstalacionPrismaMapper {
       latitud: props.latitud ?? null,
       longitud: props.longitud ?? null,
 
-      ssidRouter: props.ssidRouter ?? null,
-      contrasenaWifi: props.contrasenaWifi ?? null,
-
       costoInstalacion: props.costoInstalacion.toString(),
       costoMateriales: props.costoMateriales.toString(),
       costoManoObra: props.costoManoObra.toString(),
       costoOtros: props.costoOtros.toString(),
       montoCobradoCliente: props.montoCobradoCliente.toString(),
-      saldoPendiente: props.saldoPendiente.toString(),
 
       notasCostos: props.notasCostos ?? null,
-
-      esMigrada: props.esMigrada,
-      metadata:
-        props.metadata === undefined
-          ? undefined
-          : (props.metadata as Prisma.InputJsonValue),
     };
   }
 
@@ -147,23 +130,13 @@ export class ClienteInstalacionPrismaMapper {
       latitud: props.latitud ?? null,
       longitud: props.longitud ?? null,
 
-      ssidRouter: props.ssidRouter ?? null,
-      contrasenaWifi: props.contrasenaWifi ?? null,
-
       costoInstalacion: props.costoInstalacion.toString(),
       costoMateriales: props.costoMateriales.toString(),
       costoManoObra: props.costoManoObra.toString(),
       costoOtros: props.costoOtros.toString(),
       montoCobradoCliente: props.montoCobradoCliente.toString(),
-      saldoPendiente: props.saldoPendiente.toString(),
 
       notasCostos: props.notasCostos ?? null,
-
-      esMigrada: props.esMigrada,
-      metadata:
-        props.metadata === undefined
-          ? undefined
-          : (props.metadata as Prisma.InputJsonValue),
     };
   }
 }

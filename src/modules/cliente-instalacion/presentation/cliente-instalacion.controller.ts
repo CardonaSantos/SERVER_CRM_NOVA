@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Logger,
   Param,
@@ -146,5 +147,11 @@ export class ClienteInstalacionController {
       descripcion: dto.descripcion ?? null,
       orden: dto.orden ?? 0,
     });
+  }
+
+  @Delete('delete-all')
+  async deleteAll() {
+    const detalle = await this.clienteInstalacionService.deleteAll();
+    return detalle;
   }
 }

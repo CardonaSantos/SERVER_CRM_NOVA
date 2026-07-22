@@ -59,6 +59,8 @@ import { WhatsappCampaignsModule } from './whatsapp-campaigns/whatsapp-campaigns
 import { WhatsappTemplateModule } from './whatsapp-template/whatsapp-template.module';
 import { ClienteInstalacionModule } from './modules/cliente-instalacion/cliente-instalacion.module';
 import { ClienteDesinstalacionModule } from './modules/cliente-desinstalacion/cliente-desinstalacion.module';
+import { PpoeAccesoInternetModule } from './modules/ppoe-acceso-internet/ppoe-acceso-internet.module';
+import { PpoeInstalacionAccesoModule } from './modules/ppoe-instalacion-acceso/ppoe-instalacion-acceso.module';
 
 @Module({
   imports: [
@@ -126,6 +128,8 @@ import { ClienteDesinstalacionModule } from './modules/cliente-desinstalacion/cl
 
     ClienteInstalacionModule,
     ClienteDesinstalacionModule,
+    PpoeAccesoInternetModule,
+    PpoeInstalacionAccesoModule,
   ],
   controllers: [AppController],
   providers: [AppService],

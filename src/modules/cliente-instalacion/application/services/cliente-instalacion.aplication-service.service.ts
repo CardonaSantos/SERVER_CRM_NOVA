@@ -19,6 +19,7 @@ import {
   SubirEvidenciaInstalacionCommand,
   SubirEvidenciaInstalacionUseCase,
 } from '../use-cases/subir-evidencia-instalacion.use-case';
+import { DeleteAllClienteInstalacionUseCase } from '../use-cases/delete-all';
 
 @Injectable()
 export class ClienteInstalacionApplicationService {
@@ -36,6 +37,9 @@ export class ClienteInstalacionApplicationService {
     private readonly cancelarClienteInstalacionUseCase: CancelarClienteInstalacionUseCase,
 
     private readonly subirEvidenciaInstalacionUseCase: SubirEvidenciaInstalacionUseCase,
+
+    //test
+    private readonly deleteAllInstalacionUseCase: DeleteAllClienteInstalacionUseCase,
   ) {}
 
   crear(dto: CrearClienteInstalacionDto, creadoPorId: number) {
@@ -100,5 +104,9 @@ export class ClienteInstalacionApplicationService {
 
   cargarEvidencias(dto: SubirEvidenciaInstalacionCommand) {
     return this.subirEvidenciaInstalacionUseCase.execute(dto);
+  }
+
+  deleteAll() {
+    return this.deleteAllInstalacionUseCase.execute();
   }
 }

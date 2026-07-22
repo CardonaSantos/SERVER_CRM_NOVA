@@ -9,7 +9,6 @@ import {
   CrearClienteInstalacionProps,
   IniciarClienteInstalacionParams,
   MarcarFallidaClienteInstalacionParams,
-  RegistrarConfiguracionWifiParams,
   ReprogramarClienteInstalacionParams,
 } from './entities-props.props';
 import { EstadoInstalacionCliente } from '../enums/estado-instalacion-cliente.enum';
@@ -56,9 +55,6 @@ export class ClienteInstalacionEntity {
 
       descripcion: props.descripcion ?? null,
 
-      ssidRouter: null,
-      contrasenaWifi: null,
-
       costoInstalacion: this.toMoney(props.costos?.costoInstalacion),
 
       costoMateriales: this.toMoney(props.costos?.costoMateriales),
@@ -69,12 +65,7 @@ export class ClienteInstalacionEntity {
 
       montoCobradoCliente: this.toMoney(props.costos?.montoCobradoCliente),
 
-      saldoPendiente: this.toMoney(props.costos?.saldoPendiente),
-
       notasCostos: props.costos?.notas ?? null,
-
-      esMigrada: false,
-      metadata: undefined,
 
       creadoEn: undefined,
       actualizadoEn: undefined,
@@ -200,8 +191,6 @@ export class ClienteInstalacionEntity {
         'El monto cobrado al cliente no puede ser mayor al costo total de la instalación.',
       );
     }
-
-    this.props.saldoPendiente = total.subtract(this.props.montoCobradoCliente);
   }
 
   //   METHODS
@@ -397,30 +386,8 @@ export class ClienteInstalacionEntity {
     this.ensureValidBaseProps();
   }
 
-  registrarConfiguracionWifi(params: RegistrarConfiguracionWifiParams): void {
-    this.ensurePersisted('registrar configuración WiFi');
-
-    const ssidRouter = this.normalizeRequiredText(
-      params.ssidRouter,
-      'ssidRouter',
-    );
-
-    const contrasenaWifi = this.normalizeRequiredText(
-      params.contrasenaWifi,
-      'contrasenaWifi',
-    );
-
-    this.props.ssidRouter = ssidRouter;
-    this.props.contrasenaWifi = contrasenaWifi;
-
-    this.ensureValidBaseProps();
-  }
-
   limpiarConfiguracionWifi(): void {
     this.ensurePersisted('limpiar configuración WiFi');
-
-    this.props.ssidRouter = null;
-    this.props.contrasenaWifi = null;
 
     this.ensureValidBaseProps();
   }
@@ -498,7 +465,6 @@ export class ClienteInstalacionEntity {
       ['costoManoObra', this.props.costoManoObra],
       ['costoOtros', this.props.costoOtros],
       ['montoCobradoCliente', this.props.montoCobradoCliente],
-      ['saldoPendiente', this.props.saldoPendiente],
     ] as const;
 
     for (const [field, value] of moneyFields) {

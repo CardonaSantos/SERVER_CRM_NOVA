@@ -75,8 +75,6 @@ export class CrearClienteInstalacionUseCase {
 
             montoCobradoCliente: command.costos.montoCobradoCliente,
 
-            saldoPendiente: command.costos.saldoPendiente,
-
             notas: command.costos.notas ?? null,
           }
         : undefined,

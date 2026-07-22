@@ -451,6 +451,15 @@ export class ClienteInstalacionPrismaRepository
     return ClienteInstalacionPrismaMapper.toDomain(record);
   }
 
+  async deleteAll(): Promise<any> {
+    try {
+      const records = await this.prisma.clienteInstalacion.deleteMany({});
+      return records;
+    } catch (error) {
+      throw new Error();
+    }
+  }
+
   // DETALLES ClienteInstalacionListItem
   async findDetailById(params: {
     id: number;
