@@ -52,7 +52,7 @@ export class ClienteInstalacionController {
       `DTO recibido instalacion:\n${JSON.stringify(dto, null, 2)}`,
     );
 
-    return ClienteInstalacionPresenter.detalleToHttp(detalle);
+    // return ClienteInstalacionPresenter.detalleToHttp(detalle);
   }
 
   @Get()

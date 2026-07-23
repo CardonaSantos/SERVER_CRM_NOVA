@@ -43,10 +43,10 @@ export class ClienteInstalacionApplicationService {
   ) {}
 
   crear(dto: CrearClienteInstalacionDto, creadoPorId: number) {
-    return this.crearClienteInstalacionUseCase.execute({
-      ...dto,
-      creadoPorId,
-    });
+    // return this.crearClienteInstalacionUseCase.execute({
+    //   ...dto,
+    //   creadoPorId,
+    // });
   }
 
   actualizar(

@@ -59,8 +59,12 @@ import { WhatsappCampaignsModule } from './whatsapp-campaigns/whatsapp-campaigns
 import { WhatsappTemplateModule } from './whatsapp-template/whatsapp-template.module';
 import { ClienteInstalacionModule } from './modules/cliente-instalacion/cliente-instalacion.module';
 import { ClienteDesinstalacionModule } from './modules/cliente-desinstalacion/cliente-desinstalacion.module';
-import { PpoeAccesoInternetModule } from './modules/ppoe-acceso-internet/ppoe-acceso-internet.module';
-import { PpoeInstalacionAccesoModule } from './modules/ppoe-instalacion-acceso/ppoe-instalacion-acceso.module';
+import { PpoeAccesoInternetModule } from './modules/pppoe-acceso-internet/ppoe-acceso-internet.module';
+import { PppoeInstalacionAccesoModule } from './modules/ppoe-instalacion-acceso/ppoe-instalacion-acceso.module';
+import { PppoePerfilHomologacionModule } from './modules/pppoe-perfil-homologacion/ppoe-perfil-homologacion.module';
+import { PppoeClienteCuentaModule } from './modules/pppoe-cliente-cuenta/ppoe-cliente-cuenta.module';
+import { PppoeCredentialsModule } from './modules/pppoe-credentials/pppoe-credentials.module';
+import { PppoeAuditoriaModule } from './modules/pppoe-auditoria/pppoe-auditoria.module';
 
 @Module({
   imports: [
@@ -129,7 +133,11 @@ import { PpoeInstalacionAccesoModule } from './modules/ppoe-instalacion-acceso/p
     ClienteInstalacionModule,
     ClienteDesinstalacionModule,
     PpoeAccesoInternetModule,
-    PpoeInstalacionAccesoModule,
+    PppoeInstalacionAccesoModule,
+    PppoePerfilHomologacionModule,
+    PppoeClienteCuentaModule,
+    PppoeCredentialsModule,
+    PppoeAuditoriaModule,
   ],
   controllers: [AppController],
   providers: [AppService],
