@@ -10,6 +10,7 @@ import {
   Post,
   Query,
   Req,
+  UnauthorizedException,
   UploadedFile,
   UseInterceptors,
   UsePipes,
@@ -26,6 +27,18 @@ import { CompletarClienteInstalacionDto } from '../application/dto/completar-cli
 import { CancelarClienteInstalacionDto } from '../application/dto/cancelar-cliente-instalacion.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SubirEvidenciaInstalacionDto } from '../application/dto/subir-evidencia-instalacion.dto';
+import { ReintentarPrealtaPppoeDto } from '../application/dto/reintentar-prealta-pppoe.dto';
+
+type AuthenticatedRequest = Request & {
+  user?: {
+    id?: number;
+    sub?: number;
+
+    nombre?: string;
+
+    empresaId?: number;
+  };
+};
 
 @UsePipes(
   new ValidationPipe({
@@ -49,6 +62,34 @@ export class ClienteInstalacionController {
     );
 
     return ClienteInstalacionPresenter.crearToHttp(result);
+  }
+
+  @Post(':instalacionId/accesos/:accesoInternetId/prealta-pppoe/reintentar')
+  async reintentarPrealtaPppoe(
+    @Param('instalacionId', ParseIntPipe)
+    instalacionId: number,
+
+    @Param('accesoInternetId', ParseIntPipe)
+    accesoInternetId: number,
+
+    @Body()
+    dto: ReintentarPrealtaPppoeDto,
+  ) {
+    return this.clienteInstalacionService.reintentarPrealtaPppoe({
+      instalacionId,
+
+      accesoInternetId,
+
+      dto,
+
+      operadorId: dto.operadorId,
+
+      operadorNombre: null,
+
+      ipOrigen: null,
+
+      userAgent: null,
+    });
   }
 
   @Get()

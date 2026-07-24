@@ -1,8 +1,18 @@
 import { PerfilHomologacionEntity } from '../entities/ppoe-perfil-homologacion.entity';
+import {
+  PerfilHomologacionDetalle,
+  PerfilHomologacionFindManyFilters,
+  PerfilHomologacionPaginatedResult,
+} from '../models/pppoe-perfil-homologacion.read-model';
 
 export type BuscarPerfilPorRouterServicioParams = {
   mikrotikRouterId: number;
   servicioInternetId: number;
+};
+
+export type BuscarPerfilPorRouterCodigoParams = {
+  mikrotikRouterId: number;
+  codigoPerfil: string;
 };
 
 export interface PerfilHomologacionRepositoryPort {
@@ -46,4 +56,26 @@ export interface PerfilHomologacionRepositoryPort {
   findActiveByRouterAndService(
     params: BuscarPerfilPorRouterServicioParams,
   ): Promise<PerfilHomologacionEntity | null>;
+
+  /**
+   * Busca una homologación por MikroTik y código de perfil.
+   *
+   * Se utiliza para evitar que dos servicios del mismo router
+   * intenten utilizar el mismo profile de MikroTik.
+   */
+  findByRouterAndCode(
+    params: BuscarPerfilPorRouterCodigoParams,
+  ): Promise<PerfilHomologacionEntity | null>;
+
+  /**
+   * Obtiene el detalle enriquecido de una homologación.
+   */
+  findDetailById(id: number): Promise<PerfilHomologacionDetalle | null>;
+
+  /**
+   * Lista homologaciones con filtros, relaciones y paginación.
+   */
+  findMany(
+    filters: PerfilHomologacionFindManyFilters,
+  ): Promise<PerfilHomologacionPaginatedResult>;
 }

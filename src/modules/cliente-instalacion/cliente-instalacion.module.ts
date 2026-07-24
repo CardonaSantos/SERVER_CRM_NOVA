@@ -31,6 +31,7 @@ import { ClienteInstalacionMediaPrismaRepository } from './infra/prisma/cliente-
 
 import { ClienteInstalacionAccesoPrismaRepository } from '../ppoe-instalacion-acceso/infra/prisma/cliente-instalacion-acceso.repository.prisma';
 import { PppoeAutomatizacionModule } from '../pppoe-automatizacion/pppoe-automatizacion.module';
+import { ReintentarPrealtaPppoeInstalacionUseCase } from './application/use-cases/reintentar-prealta-pppoe-instalacion.use-case';
 
 @Module({
   imports: [
@@ -55,7 +56,7 @@ import { PppoeAutomatizacionModule } from '../pppoe-automatizacion/pppoe-automat
     CancelarClienteInstalacionUseCase,
     SubirEvidenciaInstalacionUseCase,
     DeleteAllClienteInstalacionUseCase,
-
+    ReintentarPrealtaPppoeInstalacionUseCase,
     {
       provide: CLIENTE_INSTALACION_REPOSITORY,
       useClass: ClienteInstalacionPrismaRepository,

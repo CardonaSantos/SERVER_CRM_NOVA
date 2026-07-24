@@ -19,7 +19,29 @@ import {
   SubirEvidenciaInstalacionUseCase,
 } from '../use-cases/subir-evidencia-instalacion.use-case';
 import { DeleteAllClienteInstalacionUseCase } from '../use-cases/delete-all';
-import { CrearClienteInstalacionResult } from '../../results/crear-cliente-instalacion.result';
+import {
+  CrearClienteInstalacionResult,
+  PrealtaPppoeInstalacionResult,
+} from '../../results/crear-cliente-instalacion.result';
+import { ReintentarPrealtaPppoeInstalacionUseCase } from '../use-cases/reintentar-prealta-pppoe-instalacion.use-case';
+import { ReintentarPrealtaPppoeDto } from '../dto/reintentar-prealta-pppoe.dto';
+
+type ReintentarPrealtaPppoeServiceParams = {
+  instalacionId: number;
+
+  accesoInternetId: number;
+
+  dto: ReintentarPrealtaPppoeDto;
+
+  operadorId: number;
+
+  operadorNombre?: string | null;
+
+  ipOrigen?: string | null;
+
+  userAgent?: string | null;
+};
+
 @Injectable()
 export class ClienteInstalacionApplicationService {
   constructor(
@@ -39,6 +61,8 @@ export class ClienteInstalacionApplicationService {
 
     //test
     private readonly deleteAllInstalacionUseCase: DeleteAllClienteInstalacionUseCase,
+
+    private readonly reintentarPrealtaPppoeInstalacionUseCase: ReintentarPrealtaPppoeInstalacionUseCase,
   ) {}
 
   crear(
@@ -108,6 +132,20 @@ export class ClienteInstalacionApplicationService {
   obtener(id: number) {
     return this.obtenerClienteInstalacionUseCase.execute({
       id,
+    });
+  }
+
+  reintentarPrealtaPppoe(
+    params: ReintentarPrealtaPppoeServiceParams,
+  ): Promise<PrealtaPppoeInstalacionResult> {
+    return this.reintentarPrealtaPppoeInstalacionUseCase.execute({
+      instalacionId: params.instalacionId,
+      accesoInternetId: params.accesoInternetId,
+      mikrotikRouterId: params.dto.mikrotikRouterId,
+      operadorId: params.operadorId,
+      operadorNombre: params.operadorNombre ?? null,
+      ipOrigen: params.ipOrigen ?? null,
+      userAgent: params.userAgent ?? null,
     });
   }
 }
