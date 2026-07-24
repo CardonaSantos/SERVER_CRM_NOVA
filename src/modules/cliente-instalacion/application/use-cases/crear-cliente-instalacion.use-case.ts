@@ -1,7 +1,6 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { HttpException, Inject, Injectable, Logger } from '@nestjs/common';
 import { ClienteInstalacionEntity } from '../../domain/entities/cliente-instalacion.entity';
 import {
-  ClienteInstalacionDetalle,
   ClienteInstalacionRepositoryPort,
   CrearTecnicoInstalacionInput,
 } from '../../domain/ports/cliente-instalacion.repository.port';
@@ -19,19 +18,27 @@ import {
 } from 'src/modules/pppoe-acceso-internet/domain/enums/ppoe-acceso-internet.enum';
 import { ClienteInstalacionAccesoEntity } from 'src/modules/ppoe-instalacion-acceso/domain/entities/ppoe-instalacion-acceso.entity';
 import { AccionInstalacionAcceso } from 'src/modules/ppoe-instalacion-acceso/domain/enums/ppoe-instalacion-acceso.enum';
-import { AccesoInstalacionInput } from '../dto/iniciar-acceso-types.dto';
+
+import {
+  AccesoInstalacionInput,
+  ModoAccesoInstalacion,
+} from '../dto/iniciar-acceso-types.dto';
+import {
+  PPPOE_PREALTA,
+  PppoePrealtaPort,
+} from 'src/modules/pppoe-automatizacion/domain/ports/pppoe-prealta.port';
+
+import {
+  ClienteInstalacionAccesoResult,
+  CrearClienteInstalacionResult,
+  EstadoResultadoPrealtaPppoe,
+  PrealtaPppoeInstalacionResult,
+} from '../../results/crear-cliente-instalacion.result';
 
 export type CrearClienteInstalacionCommand = CrearClienteInstalacionDto & {
   creadoPorId: number;
   acceso: AccesoInstalacionInput;
 };
-
-// OTROS
-
-enum ModoAccesoInstalacion {
-  NUEVO = 'NUEVO',
-  EXISTENTE = 'EXISTENTE',
-}
 
 type ProcesarAccesoInstalacionParams = {
   instalacionId: number;
@@ -96,15 +103,10 @@ type VincularInstalacionAccesoParams = {
   accion: AccionInstalacionAcceso;
 };
 
-type CrearYVincularAccesoParams = {
-  instalacionId: number;
+type ProcesarAccesoInstalacionResult = {
+  acceso: ClienteInstalacionAccesoResult;
 
-  empresaId: number;
-  clienteId: number;
-  servicioInternetId: number | null;
-
-  tecnologia: TecnologiaAccesoInternet;
-  metodoAutenticacion: MetodoAutenticacionInternet;
+  prealtaPppoe: PrealtaPppoeInstalacionResult;
 };
 
 @Injectable()
@@ -120,11 +122,14 @@ export class CrearClienteInstalacionUseCase {
 
     @Inject(CLIENTE_INSTALACION_ACCESO_REPOSITORY)
     private readonly instalacionAccesoRepository: ClienteInstalacionAccesoRepositoryPort,
+
+    @Inject(PPPOE_PREALTA)
+    private readonly pppoePrealta: PppoePrealtaPort,
   ) {}
 
   async execute(
     command: CrearClienteInstalacionCommand,
-  ): Promise<ClienteInstalacionDetalle> {
+  ): Promise<CrearClienteInstalacionResult> {
     const tecnicos = this.normalizarTecnicos(command.tecnicos ?? []);
 
     const coordenadas = this.parseCoordenadas(command.coordenadas);
@@ -185,7 +190,7 @@ export class CrearClienteInstalacionUseCase {
       throw new Error('La instalación creada no tiene un id persistido.');
     }
 
-    await this.procesarAccesoInstalacion({
+    const procesamientoAcceso = await this.procesarAccesoInstalacion({
       instalacionId: created.id,
       command,
     });
@@ -200,23 +205,37 @@ export class CrearClienteInstalacionUseCase {
       );
     }
 
-    return detalle;
+    return {
+      detalle,
+
+      acceso: procesamientoAcceso.acceso,
+
+      prealtaPppoe: procesamientoAcceso.prealtaPppoe,
+    };
   }
 
   private async procesarAccesoInstalacion({
     instalacionId,
     command,
-  }: ProcesarAccesoInstalacionParams): Promise<void> {
+  }: ProcesarAccesoInstalacionParams): Promise<ProcesarAccesoInstalacionResult> {
     const input = command.acceso;
 
     if (input.modo === ModoAccesoInstalacion.EXISTENTE) {
-      await this.vincularAccesoExistente({
+      const acceso = await this.vincularAccesoExistente({
         instalacionId,
         clienteId: command.clienteId,
         accesoInternetId: input.accesoInternetId,
       });
 
-      return;
+      return {
+        acceso,
+
+        /**
+         * En este primer flujo no intentamos crear una prealta
+         * automática para accesos existentes.
+         */
+        prealtaPppoe: this.crearResultadoPrealtaNoAplica(),
+      };
     }
 
     const accesoCreado = await this.crearAccesoNuevo({
@@ -239,7 +258,7 @@ export class CrearClienteInstalacionUseCase {
       accion: AccionInstalacionAcceso.CREADO,
     });
 
-    await this.procesarProvisionamientoNuevo({
+    const prealtaPppoe = await this.procesarProvisionamientoNuevo({
       instalacionId,
 
       empresaId: command.empresaId,
@@ -250,13 +269,28 @@ export class CrearClienteInstalacionUseCase {
       accesoInternetId: accesoCreado.id,
 
       tecnologia: accesoCreado.tecnologia,
-
       metodoAutenticacion: accesoCreado.metodoAutenticacion,
 
       mikrotikRouterId: input.mikrotikRouterId ?? null,
 
       generadoPorId: command.creadoPorId,
     });
+
+    return {
+      acceso: {
+        accesoInternetId: accesoCreado.id,
+
+        modo: ModoAccesoInstalacion.NUEVO,
+
+        tecnologia: accesoCreado.tecnologia,
+
+        metodoAutenticacion: accesoCreado.metodoAutenticacion,
+
+        mikrotikRouterId: input.mikrotikRouterId ?? null,
+      },
+
+      prealtaPppoe,
+    };
   }
 
   /**
@@ -286,7 +320,7 @@ export class CrearClienteInstalacionUseCase {
     instalacionId,
     clienteId,
     accesoInternetId,
-  }: VincularAccesoExistenteParams): Promise<void> {
+  }: VincularAccesoExistenteParams): Promise<ClienteInstalacionAccesoResult> {
     const accesoExistente =
       await this.accesoInternetRepository.findByIdForClient({
         accesoInternetId,
@@ -310,8 +344,25 @@ export class CrearClienteInstalacionUseCase {
       accesoInternetId: accesoExistente.id,
 
       tecnologia: accesoExistente.tecnologia,
+
       metodoAutenticacion: accesoExistente.metodoAutenticacion,
     });
+
+    return {
+      accesoInternetId: accesoExistente.id,
+
+      modo: ModoAccesoInstalacion.EXISTENTE,
+
+      tecnologia: accesoExistente.tecnologia,
+
+      metodoAutenticacion: accesoExistente.metodoAutenticacion,
+
+      /**
+       * El acceso existente no almacena actualmente
+       * el MikroTik asociado.
+       */
+      mikrotikRouterId: null,
+    };
   }
 
   /**
@@ -364,7 +415,7 @@ export class CrearClienteInstalacionUseCase {
     metodoAutenticacion,
     mikrotikRouterId,
     generadoPorId,
-  }: ProcesarProvisionamientoNuevoParams): Promise<void> {
+  }: ProcesarProvisionamientoNuevoParams): Promise<PrealtaPppoeInstalacionResult> {
     const esGponPppoe =
       tecnologia === TecnologiaAccesoInternet.FIBRA_GPON &&
       metodoAutenticacion === MetodoAutenticacionInternet.PPPOE;
@@ -380,7 +431,7 @@ export class CrearClienteInstalacionUseCase {
         throw new Error('Un acceso GPON con PPPoE requiere un MikroTik.');
       }
 
-      await this.handleGponPppoe({
+      return this.handleGponPppoe({
         instalacionId,
 
         empresaId,
@@ -393,7 +444,29 @@ export class CrearClienteInstalacionUseCase {
         generadoPorId,
       });
 
-      return;
+      /**
+       * Resultado temporal.
+       *
+       * En el punto 9, handleGponPppoe() devolverá directamente
+       * el resultado real de PPPOE_PREALTA y esta sección se
+       * reemplazará.
+       */
+      return {
+        aplica: true,
+
+        estado: EstadoResultadoPrealtaPppoe.FALLIDA,
+
+        cuentaPppoeId: null,
+        perfilHomologacionId: null,
+        usuario: null,
+        estadoCuenta: null,
+        generadoEn: null,
+
+        mensaje:
+          'La integración de la prealta PPPoE está pendiente de ejecución.',
+
+        reintentable: true,
+      };
     }
 
     if (tecnologia === TecnologiaAccesoInternet.INALAMBRICO) {
@@ -404,7 +477,7 @@ export class CrearClienteInstalacionUseCase {
         metodoAutenticacion,
       });
 
-      return;
+      return this.crearResultadoPrealtaNoAplica();
     }
 
     if (metodoAutenticacion === MetodoAutenticacionInternet.IP_ESTATICA) {
@@ -415,7 +488,7 @@ export class CrearClienteInstalacionUseCase {
         metodoAutenticacion,
       });
 
-      return;
+      return this.crearResultadoPrealtaNoAplica();
     }
 
     if (metodoAutenticacion === MetodoAutenticacionInternet.DHCP) {
@@ -426,7 +499,7 @@ export class CrearClienteInstalacionUseCase {
         metodoAutenticacion,
       });
 
-      return;
+      return this.crearResultadoPrealtaNoAplica();
     }
 
     await this.handleAccesoGenerico({
@@ -435,8 +508,27 @@ export class CrearClienteInstalacionUseCase {
       tecnologia,
       metodoAutenticacion,
     });
+
+    return this.crearResultadoPrealtaNoAplica();
   }
 
+  private crearResultadoPrealtaNoAplica(): PrealtaPppoeInstalacionResult {
+    return {
+      aplica: false,
+
+      estado: EstadoResultadoPrealtaPppoe.NO_APLICA,
+
+      cuentaPppoeId: null,
+      perfilHomologacionId: null,
+      usuario: null,
+      estadoCuenta: null,
+      generadoEn: null,
+
+      mensaje: null,
+
+      reintentable: false,
+    };
+  }
   private async handleGponPppoe({
     instalacionId,
     empresaId,
@@ -445,35 +537,119 @@ export class CrearClienteInstalacionUseCase {
     accesoInternetId,
     mikrotikRouterId,
     generadoPorId,
-  }: ProvisionamientoGponPppoeParams): Promise<void> {
+  }: ProvisionamientoGponPppoeParams): Promise<PrealtaPppoeInstalacionResult> {
     this.logger.log(
       `Preparando prealta GPON/PPPoE para el acceso ${accesoInternetId}.`,
     );
 
-    /*
-     * Próximo paso:
-     *
-     * await this.pppoePrealta.preparar({
-     *   instalacionId,
-     *
-     *   empresaId,
-     *   clienteId,
-     *   servicioInternetId,
-     *
-     *   accesoInternetId,
-     *   mikrotikRouterId,
-     *
-     *   generadoPorId,
-     * });
-     */
+    try {
+      const resultado = await this.pppoePrealta.preparar({
+        instalacionId,
 
-    void instalacionId;
-    void empresaId;
-    void clienteId;
-    void servicioInternetId;
-    void accesoInternetId;
-    void mikrotikRouterId;
-    void generadoPorId;
+        empresaId,
+        clienteId,
+        servicioInternetId,
+
+        accesoInternetId,
+        mikrotikRouterId,
+
+        /**
+         * En la creación de la instalación, el operador que
+         * origina la prealta es el usuario que registra la orden.
+         */
+        operadorId: generadoPorId,
+
+        operadorNombre: null,
+        ipOrigen: null,
+        userAgent: null,
+      });
+
+      this.logger.log(
+        resultado.creada
+          ? `Prealta PPPoE creada para el acceso ${accesoInternetId}. Cuenta: ${resultado.cuentaPppoeId}.`
+          : `El acceso ${accesoInternetId} ya tenía una prealta PPPoE. Cuenta: ${resultado.cuentaPppoeId}.`,
+      );
+
+      return {
+        aplica: true,
+
+        estado: resultado.creada
+          ? EstadoResultadoPrealtaPppoe.CREADA
+          : EstadoResultadoPrealtaPppoe.YA_EXISTIA,
+
+        cuentaPppoeId: resultado.cuentaPppoeId,
+
+        perfilHomologacionId: resultado.perfilHomologacionId,
+
+        usuario: resultado.usuario,
+
+        estadoCuenta: resultado.estado,
+
+        generadoEn: resultado.generadoEn,
+
+        mensaje: null,
+
+        reintentable: false,
+      };
+    } catch (error: unknown) {
+      const mensaje = this.obtenerMensajeSeguroPrealta(error);
+
+      this.logger.error(
+        `Falló la prealta GPON/PPPoE del acceso ${accesoInternetId}: ${mensaje}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+
+      return {
+        aplica: true,
+
+        estado: EstadoResultadoPrealtaPppoe.FALLIDA,
+
+        cuentaPppoeId: null,
+        perfilHomologacionId: null,
+        usuario: null,
+        estadoCuenta: null,
+        generadoEn: null,
+
+        mensaje,
+
+        reintentable: true,
+      };
+    }
+  }
+
+  private obtenerMensajeSeguroPrealta(error: unknown): string {
+    if (error instanceof HttpException) {
+      const response = error.getResponse();
+
+      if (typeof response === 'string') {
+        return response;
+      }
+
+      if (
+        typeof response === 'object' &&
+        response !== null &&
+        'message' in response
+      ) {
+        const message = (response as { message?: unknown }).message;
+
+        if (typeof message === 'string' && message.trim()) {
+          return message.trim();
+        }
+
+        if (Array.isArray(message)) {
+          const messages = message.filter(
+            (item): item is string =>
+              typeof item === 'string' && item.trim().length > 0,
+          );
+
+          if (messages.length > 0) {
+            return messages.join(' ');
+          }
+        }
+      }
+    }
+
+    return 'No fue posible completar la prealta PPPoE. La instalación y el acceso fueron creados correctamente.';
   }
 
   private async handleAccesoInalambrico(

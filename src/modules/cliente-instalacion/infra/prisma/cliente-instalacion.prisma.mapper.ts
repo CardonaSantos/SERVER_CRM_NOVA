@@ -28,6 +28,7 @@ export class ClienteInstalacionPrismaMapper {
       fechaCancelacion: record.fechaCancelacion,
       fechaActivacionServicio: record.fechaActivacionServicio,
 
+      descripcion: record.descripcion,
       motivo: record.motivo,
       observaciones: record.observaciones,
       resultado: record.resultado,
@@ -77,6 +78,7 @@ export class ClienteInstalacionPrismaMapper {
       fechaCancelacion: props.fechaCancelacion ?? null,
       fechaActivacionServicio: props.fechaActivacionServicio ?? null,
 
+      descripcion: props.descripcion ?? null,
       motivo: props.motivo ?? null,
       observaciones: props.observaciones ?? null,
       resultado: props.resultado ?? null,
@@ -121,6 +123,7 @@ export class ClienteInstalacionPrismaMapper {
       fechaCancelacion: props.fechaCancelacion ?? null,
       fechaActivacionServicio: props.fechaActivacionServicio ?? null,
 
+      descripcion: props.descripcion ?? null,
       motivo: props.motivo ?? null,
       observaciones: props.observaciones ?? null,
       resultado: props.resultado ?? null,

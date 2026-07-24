@@ -5,7 +5,6 @@ import { CrearClienteInstalacionUseCase } from '../use-cases/crear-cliente-insta
 import { ListarClienteInstalacionesUseCase } from '../use-cases/listar-cliente-instalaciones.use-case';
 import { ObtenerClienteInstalacionUseCase } from '../use-cases/obtener-cliente-instalacion.use-case';
 import { ActualizarClienteInstalacionUseCase } from '../use-cases/actualizar-cliente-instalacion.use-case';
-import { dot } from 'node:test/reporters';
 import { ActualizarClienteInstalacionDto } from '../dto/actualizar-cliente-instalacion.dto';
 import { ReprogramarClienteInstalacionDto } from '../dto/reprogramar-cliente-instalacion.dto';
 import { ReprogramarInstalacionClienteUseCase } from '../use-cases/reprogramar-cliente-instalacion.use-case';
@@ -20,7 +19,7 @@ import {
   SubirEvidenciaInstalacionUseCase,
 } from '../use-cases/subir-evidencia-instalacion.use-case';
 import { DeleteAllClienteInstalacionUseCase } from '../use-cases/delete-all';
-
+import { CrearClienteInstalacionResult } from '../../results/crear-cliente-instalacion.result';
 @Injectable()
 export class ClienteInstalacionApplicationService {
   constructor(
@@ -42,11 +41,14 @@ export class ClienteInstalacionApplicationService {
     private readonly deleteAllInstalacionUseCase: DeleteAllClienteInstalacionUseCase,
   ) {}
 
-  crear(dto: CrearClienteInstalacionDto, creadoPorId: number) {
-    // return this.crearClienteInstalacionUseCase.execute({
-    //   ...dto,
-    //   creadoPorId,
-    // });
+  crear(
+    dto: CrearClienteInstalacionDto,
+    creadoPorId: number,
+  ): Promise<CrearClienteInstalacionResult> {
+    return this.crearClienteInstalacionUseCase.execute({
+      ...dto,
+      creadoPorId,
+    });
   }
 
   actualizar(
@@ -63,13 +65,6 @@ export class ClienteInstalacionApplicationService {
 
   listar(filters: FiltrarClienteInstalacionesDto) {
     return this.listarClienteInstalacionesUseCase.execute(filters);
-  }
-
-  obtener(id: number, empresaId: number) {
-    return this.obtenerClienteInstalacionUseCase.execute({
-      id,
-      empresaId,
-    });
   }
 
   // BEHAVIORS
@@ -108,5 +103,11 @@ export class ClienteInstalacionApplicationService {
 
   deleteAll() {
     return this.deleteAllInstalacionUseCase.execute();
+  }
+
+  obtener(id: number) {
+    return this.obtenerClienteInstalacionUseCase.execute({
+      id,
+    });
   }
 }

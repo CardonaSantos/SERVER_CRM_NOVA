@@ -2415,6 +2415,7 @@ model ClienteInstalacion {
   fechaCancelacion         DateTime?
   fechaActivacionServicio  DateTime?
 
+  descripcion String?
   motivo         String?
   observaciones  String?
   resultado      String?

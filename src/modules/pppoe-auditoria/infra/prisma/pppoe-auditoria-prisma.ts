@@ -7,23 +7,19 @@ import {
 } from '@prisma/client';
 
 import { PrismaService } from 'src/prisma/prisma.service';
-
-import { PppoeAuditoriaEntity } from '../../../domain/entities/pppoe-auditoria.entity';
-
+import {
+  BuscarAuditoriasPppoeParams,
+  PppoeAuditoriaOrdenCampo,
+  PppoeAuditoriaOrdenDireccion,
+  PppoeAuditoriaPaginatedResult,
+  PppoeAuditoriaRepositoryPort,
+} from '../../domain/ports/pppoe-auditoria-repository';
+import { PppoeAuditoriaEntity } from '../../domain/entities/pppoe-auditoria.entity';
+import { PppoeAuditoriaPrismaMapper } from './pppoe-auditoria-mapper.prisma';
 import {
   AccionAuditoriaPppoe,
   OrigenOperacionPppoe,
-} from '../../../domain/enums/pppoe-auditoria.enum';
-
-import {
-  BuscarAuditoriasPppoeParams,
-  PppoeAuditoriaOrdenDireccion,
-  PppoeAuditoriaOrdenCampo,
-  PppoeAuditoriaPaginatedResult,
-  PppoeAuditoriaRepositoryPort,
-} from '../../../domain/ports/pppoe-auditoria.repository.port';
-
-import { PppoeAuditoriaPrismaMapper } from '../mappers/pppoe-auditoria-prisma.mapper';
+} from '../../domain/enums/pppoe-auditoria-enums';
 
 @Injectable()
 export class PppoeAuditoriaPrismaRepository

@@ -5,21 +5,26 @@ import {
   ArrayUnique,
   IsArray,
   IsDateString,
+  IsDefined,
   IsEnum,
   IsInt,
-  IsNumber,
   IsOptional,
   IsString,
   MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
-
 import { EstadoInstalacionCliente } from '../../domain/enums/estado-instalacion-cliente.enum';
 import { TipoInstalacionCliente } from '../../domain/enums/tipo-instalacion-cliente.enum';
-
 import { AsignarTecnicoInstalacionDto } from './asignar-tecnico-instalacion.dto';
 import { CrearClienteInstalacionCostosDto } from './crear-instalacion-costos.dto';
+import {
+  AccesoInstalacionBaseDto,
+  AccesoInstalacionInput,
+  CrearAccesoNuevoInstalacionDto,
+  ModoAccesoInstalacion,
+  VincularAccesoExistenteInstalacionDto,
+} from './iniciar-acceso-types.dto';
 
 const toNumber = ({ value }: { value: unknown }) => {
   if (value === undefined || value === null || value === '') {
@@ -76,6 +81,36 @@ export class CrearClienteInstalacionDto {
   @IsInt()
   @Min(1)
   creadoPorId: number;
+
+  /*
+   * Acceso de internet
+   */
+
+  @IsDefined({
+    message: 'La configuración de acceso de internet es obligatoria.',
+  })
+  @ValidateNested()
+  @Type(() => AccesoInstalacionBaseDto, {
+    discriminator: {
+      property: 'modo',
+
+      subTypes: [
+        {
+          name: ModoAccesoInstalacion.NUEVO,
+
+          value: CrearAccesoNuevoInstalacionDto,
+        },
+        {
+          name: ModoAccesoInstalacion.EXISTENTE,
+
+          value: VincularAccesoExistenteInstalacionDto,
+        },
+      ],
+    },
+
+    keepDiscriminatorProperty: true,
+  })
+  acceso: AccesoInstalacionInput;
 
   /*
    * Clasificación y estado inicial
@@ -139,13 +174,6 @@ export class CrearClienteInstalacionDto {
   @MaxLength(500)
   referenciaUbicacion?: string;
 
-  /*
-   * Coordenadas pegadas directamente desde Maps.
-   *
-   * Ejemplo:
-   * "15.668, -91.735"
-   */
-
   @IsOptional()
   @Transform(toOptionalTrimmedString)
   @IsString()
@@ -169,7 +197,9 @@ export class CrearClienteInstalacionDto {
   @IsArray()
   @ArrayMaxSize(20)
   @ArrayUnique((tecnico: AsignarTecnicoInstalacionDto) => tecnico.tecnicoId)
-  @ValidateNested({ each: true })
+  @ValidateNested({
+    each: true,
+  })
   @Type(() => AsignarTecnicoInstalacionDto)
   tecnicos?: AsignarTecnicoInstalacionDto[];
 }

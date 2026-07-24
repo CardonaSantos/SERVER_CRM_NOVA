@@ -43,16 +43,12 @@ export class ClienteInstalacionController {
 
   @Post()
   async crear(@Body() dto: CrearClienteInstalacionDto) {
-    const detalle = await this.clienteInstalacionService.crear(
+    const result = await this.clienteInstalacionService.crear(
       dto,
       dto.creadoPorId,
     );
 
-    this.logger.log(
-      `DTO recibido instalacion:\n${JSON.stringify(dto, null, 2)}`,
-    );
-
-    // return ClienteInstalacionPresenter.detalleToHttp(detalle);
+    return ClienteInstalacionPresenter.crearToHttp(result);
   }
 
   @Get()
@@ -63,11 +59,8 @@ export class ClienteInstalacionController {
   }
 
   @Get(':id')
-  async obtener(
-    @Param('id', ParseIntPipe) id: number,
-    @Query('empresaId', ParseIntPipe) empresaId: number,
-  ) {
-    const detalle = await this.clienteInstalacionService.obtener(id, empresaId);
+  async obtener(@Param('id', ParseIntPipe) id: number) {
+    const detalle = await this.clienteInstalacionService.obtener(id);
 
     return ClienteInstalacionPresenter.detalleToHttp(detalle);
   }

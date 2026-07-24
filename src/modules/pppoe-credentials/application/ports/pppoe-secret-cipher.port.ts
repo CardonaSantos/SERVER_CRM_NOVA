@@ -1,5 +1,3 @@
-export const PPPOE_SECRET_CIPHER = Symbol('PPPOE_SECRET_CIPHER');
-
 export type SecretoPppoeProtegido = {
   secretoCifrado: string;
   secretoIv: string;

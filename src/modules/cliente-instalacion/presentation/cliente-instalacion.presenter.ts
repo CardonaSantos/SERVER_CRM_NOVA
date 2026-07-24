@@ -7,6 +7,7 @@ import {
   ClienteInstalacionTecnicoDetalle,
   ClienteInstalacionUsuarioResumen,
 } from '../domain/ports/cliente-instalacion.repository.port';
+import { CrearClienteInstalacionResult } from '../results/crear-cliente-instalacion.result';
 
 export class ClienteInstalacionPresenter {
   /**
@@ -277,6 +278,44 @@ export class ClienteInstalacionPresenter {
         tecnicos: detalle.conteos.tecnicos,
         evidencias: detalle.conteos.evidencias,
         equipos: detalle.conteos.equipos,
+      },
+    };
+  }
+
+  static crearToHttp(result: CrearClienteInstalacionResult) {
+    return {
+      detalle: ClienteInstalacionPresenter.detalleToHttp(result.detalle),
+
+      acceso: {
+        accesoInternetId: result.acceso.accesoInternetId,
+
+        modo: result.acceso.modo,
+
+        tecnologia: result.acceso.tecnologia,
+
+        metodoAutenticacion: result.acceso.metodoAutenticacion,
+
+        mikrotikRouterId: result.acceso.mikrotikRouterId,
+      },
+
+      prealtaPppoe: {
+        aplica: result.prealtaPppoe.aplica,
+
+        estado: result.prealtaPppoe.estado,
+
+        cuentaPppoeId: result.prealtaPppoe.cuentaPppoeId,
+
+        perfilHomologacionId: result.prealtaPppoe.perfilHomologacionId,
+
+        usuario: result.prealtaPppoe.usuario,
+
+        estadoCuenta: result.prealtaPppoe.estadoCuenta,
+
+        generadoEn: result.prealtaPppoe.generadoEn?.toISOString() ?? null,
+
+        mensaje: result.prealtaPppoe.mensaje,
+
+        reintentable: result.prealtaPppoe.reintentable,
       },
     };
   }

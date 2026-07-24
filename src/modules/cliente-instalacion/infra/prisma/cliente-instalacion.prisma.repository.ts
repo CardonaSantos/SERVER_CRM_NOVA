@@ -463,12 +463,10 @@ export class ClienteInstalacionPrismaRepository
   // DETALLES ClienteInstalacionListItem
   async findDetailById(params: {
     id: number;
-    empresaId: number;
   }): Promise<ClienteInstalacionDetalle | null> {
-    const record = await this.prisma.clienteInstalacion.findFirst({
+    const record = await this.prisma.clienteInstalacion.findUnique({
       where: {
         id: params.id,
-        empresaId: params.empresaId,
       },
 
       include: {

@@ -65,6 +65,7 @@ import { PppoePerfilHomologacionModule } from './modules/pppoe-perfil-homologaci
 import { PppoeClienteCuentaModule } from './modules/pppoe-cliente-cuenta/ppoe-cliente-cuenta.module';
 import { PppoeCredentialsModule } from './modules/pppoe-credentials/pppoe-credentials.module';
 import { PppoeAuditoriaModule } from './modules/pppoe-auditoria/pppoe-auditoria.module';
+import { PppoeAutomatizacionModule } from './modules/pppoe-automatizacion/pppoe-automatizacion.module';
 
 @Module({
   imports: [
@@ -138,6 +139,7 @@ import { PppoeAuditoriaModule } from './modules/pppoe-auditoria/pppoe-auditoria.
     PppoeClienteCuentaModule,
     PppoeCredentialsModule,
     PppoeAuditoriaModule,
+    PppoeAutomatizacionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

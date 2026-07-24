@@ -30,9 +30,15 @@ import { ClienteInstalacionPrismaRepository } from './infra/prisma/cliente-insta
 import { ClienteInstalacionMediaPrismaRepository } from './infra/prisma/cliente-instalacion-media.prisma.repository';
 
 import { ClienteInstalacionAccesoPrismaRepository } from '../ppoe-instalacion-acceso/infra/prisma/cliente-instalacion-acceso.repository.prisma';
+import { PppoeAutomatizacionModule } from '../pppoe-automatizacion/pppoe-automatizacion.module';
 
 @Module({
-  imports: [PrismaModule, DigitalOceanMediaModule, PpoeAccesoInternetModule],
+  imports: [
+    PrismaModule,
+    DigitalOceanMediaModule,
+    PpoeAccesoInternetModule,
+    PppoeAutomatizacionModule,
+  ],
 
   controllers: [ClienteInstalacionController],
 
