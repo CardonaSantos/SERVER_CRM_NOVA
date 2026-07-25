@@ -1,4 +1,5 @@
 import { ClientePppoeCuentaEntity } from '../entities/ppoe-cliente-cuenta.entity';
+import { ClientePppoeCuentaProtegidaInstalacion } from '../read-models/cliente-pppoe-cuenta-protegida-instalacion.read-model';
 
 export const CLIENTE_PPPOE_CUENTA_REPOSITORY = Symbol(
   'CLIENTE_PPPOE_CUENTA_REPOSITORY',
@@ -42,4 +43,15 @@ export interface ClientePppoeCuentaRepositoryPort {
    * futuras iniciadas con el nombre del secret.
    */
   findByUsuario(usuario: string): Promise<ClientePppoeCuentaEntity | null>;
+
+  /**
+   * Obtiene las cuentas PPPoE vinculadas a una instalación,
+   * incluyendo el material cifrado necesario para revelar
+   * temporalmente las contraseñas.
+   *
+   * Este contrato pertenece exclusivamente a la capa interna.
+   */
+  findProtectedByInstalacionId(
+    instalacionId: number,
+  ): Promise<ClientePppoeCuentaProtegidaInstalacion[]>;
 }

@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { Dayjs } from 'dayjs';
+
 import { dayjs } from 'src/Utils/dayjs.config';
+
 import {
   CredencialesPppoeGeneradas,
   GenerarCredencialesPppoeInput,
@@ -12,9 +15,12 @@ export class NovaPppoeCredentialGenerator
 {
   generate({
     clienteId,
+    accesoInternetId,
     fecha = new Date(),
   }: GenerarCredencialesPppoeInput): CredencialesPppoeGeneradas {
     this.assertPositiveId(clienteId, 'clienteId');
+
+    this.assertPositiveId(accesoInternetId, 'accesoInternetId');
 
     const fechaGuatemala = dayjs(fecha);
 
@@ -24,23 +30,26 @@ export class NovaPppoeCredentialGenerator
       );
     }
 
-    const usuario = String(clienteId);
-
-    const secretoPlano = this.buildSecret(fechaGuatemala);
-
     return {
-      usuario,
-      secretoPlano,
+      usuario: this.buildUsername({
+        clienteId,
+        accesoInternetId,
+      }),
 
-      /**
-       * Conserva el instante real utilizado
-       * durante la generación.
-       */
+      secretoPlano: this.buildSecret(fechaGuatemala),
+
       generadoEn: fechaGuatemala.toDate(),
     };
   }
 
-  private buildSecret(fecha: dayjs.Dayjs): string {
+  private buildUsername(params: {
+    clienteId: number;
+    accesoInternetId: number;
+  }): string {
+    return `${params.clienteId}-${params.accesoInternetId}`;
+  }
+
+  private buildSecret(fecha: Dayjs): string {
     return `NV-${fecha.format('YYYY/MM/DD[MH]HH:mm[#]')}`;
   }
 

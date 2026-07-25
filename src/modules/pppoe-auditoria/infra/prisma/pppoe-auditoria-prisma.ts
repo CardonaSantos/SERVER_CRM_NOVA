@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 import {
   AccionAuditoriaPppoe as PrismaAccionAuditoriaPppoe,
@@ -11,7 +11,6 @@ import {
   BuscarAuditoriasPppoeParams,
   PppoeAuditoriaOrdenCampo,
   PppoeAuditoriaOrdenDireccion,
-  PppoeAuditoriaPaginatedResult,
   PppoeAuditoriaRepositoryPort,
 } from '../../domain/ports/pppoe-auditoria-repository';
 import { PppoeAuditoriaEntity } from '../../domain/entities/pppoe-auditoria.entity';
@@ -20,11 +19,216 @@ import {
   AccionAuditoriaPppoe,
   OrigenOperacionPppoe,
 } from '../../domain/enums/pppoe-auditoria-enums';
+import {
+  PppoeAuditoriaFindManyFilters,
+  PppoeAuditoriaListItem,
+  PppoeAuditoriaPaginatedResult,
+} from '../../domain/read-models/pppoe-auditoria-list.read-model';
+import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
+
+const pppoeAuditoriaListSelect = {
+  id: true,
+
+  empresaId: true,
+
+  clienteId: true,
+  accesoInternetId: true,
+  cuentaPppoeId: true,
+  perfilHomologacionId: true,
+
+  instalacionId: true,
+  desinstalacionId: true,
+  operacionId: true,
+
+  operadorId: true,
+
+  origen: true,
+  accion: true,
+
+  descripcion: true,
+
+  estadoCuentaAnterior: true,
+  estadoCuentaNuevo: true,
+
+  usuarioPppoeSnapshot: true,
+  perfilCodigoSnapshot: true,
+  operadorNombreSnapshot: true,
+
+  datos: true,
+
+  ipOrigen: true,
+  userAgent: true,
+
+  creadoEn: true,
+
+  empresa: {
+    select: {
+      id: true,
+      nombre: true,
+      telefono: true,
+      correo: true,
+    },
+  },
+
+  cliente: {
+    select: {
+      id: true,
+      nombre: true,
+      apellidos: true,
+      telefono: true,
+      dpi: true,
+      direccion: true,
+    },
+  },
+
+  operador: {
+    select: {
+      id: true,
+      nombre: true,
+      correo: true,
+      telefono: true,
+      rol: true,
+      activo: true,
+    },
+  },
+
+  accesoInternet: {
+    select: {
+      id: true,
+
+      tecnologia: true,
+      metodoAutenticacion: true,
+      estado: true,
+
+      creadoEn: true,
+
+      servicioInternet: {
+        select: {
+          id: true,
+          nombre: true,
+          velocidad: true,
+          precio: true,
+          estado: true,
+        },
+      },
+    },
+  },
+
+  cuentaPppoe: {
+    select: {
+      id: true,
+
+      usuario: true,
+      estado: true,
+
+      generadoEn: true,
+      activadoEn: true,
+      suspendidoEn: true,
+      eliminadoEn: true,
+
+      ultimaSincronizacionEn: true,
+      ultimoError: true,
+    },
+  },
+
+  perfilHomologacion: {
+    select: {
+      id: true,
+
+      codigoPerfil: true,
+      activo: true,
+
+      mikrotikRouter: {
+        select: {
+          id: true,
+          nombre: true,
+          host: true,
+          sshPort: true,
+          descripcion: true,
+          activo: true,
+        },
+      },
+
+      servicioInternet: {
+        select: {
+          id: true,
+          nombre: true,
+          velocidad: true,
+          precio: true,
+          estado: true,
+        },
+      },
+    },
+  },
+
+  instalacion: {
+    select: {
+      id: true,
+
+      tipo: true,
+      estado: true,
+
+      fechaProgramada: true,
+      fechaInicio: true,
+      fechaFinalizacion: true,
+    },
+  },
+
+  desinstalacion: {
+    select: {
+      id: true,
+
+      tipo: true,
+      motivo: true,
+      estado: true,
+
+      fechaProgramada: true,
+      fechaInicio: true,
+      fechaFinalizacion: true,
+    },
+  },
+
+  operacion: {
+    select: {
+      id: true,
+
+      tipo: true,
+      origen: true,
+      estado: true,
+
+      motivo: true,
+
+      errorCodigo: true,
+      errorMensaje: true,
+
+      iniciadoEn: true,
+      finalizadoEn: true,
+
+      creadoEn: true,
+
+      mikrotikRouter: {
+        select: {
+          id: true,
+          nombre: true,
+          host: true,
+          sshPort: true,
+          descripcion: true,
+          activo: true,
+        },
+      },
+    },
+  },
+} satisfies Prisma.PppoeAuditoriaSelect;
+
+type PppoeAuditoriaListRecord = Prisma.PppoeAuditoriaGetPayload<{
+  select: typeof pppoeAuditoriaListSelect;
+}>;
 
 @Injectable()
 export class PppoeAuditoriaPrismaRepository
   implements PppoeAuditoriaRepositoryPort
 {
+  private readonly logger = new Logger(PppoeAuditoriaPrismaRepository.name);
   private static readonly DEFAULT_PAGE = 1;
   private static readonly DEFAULT_LIMIT = 25;
   private static readonly MAX_LIMIT = 100;
@@ -66,6 +270,10 @@ export class PppoeAuditoriaPrismaRepository
   async findPaginated(
     params: BuscarAuditoriasPppoeParams,
   ): Promise<PppoeAuditoriaPaginatedResult> {
+    this.logger.log(
+      `params recibido en paginated:\n${JSON.stringify(params, null, 2)}`,
+    );
+
     const page = this.normalizePage(params.page);
 
     const limit = this.normalizeLimit(params.limit);
@@ -76,12 +284,16 @@ export class PppoeAuditoriaPrismaRepository
 
     const skip = (page - 1) * limit;
 
-    const [records, total] = await Promise.all([
+    const [records, total] = await this.prisma.$transaction([
       this.prisma.pppoeAuditoria.findMany({
         where,
+
         skip,
         take: limit,
+
         orderBy,
+
+        select: pppoeAuditoriaListSelect,
       }),
 
       this.prisma.pppoeAuditoria.count({
@@ -90,15 +302,17 @@ export class PppoeAuditoriaPrismaRepository
     ]);
 
     return {
-      data: records.map((record) =>
-        PppoeAuditoriaPrismaMapper.toDomain(record),
-      ),
+      data: records.map((record) => this.mapListItem(record)),
 
-      total,
-      page,
-      limit,
+      meta: {
+        total,
 
-      totalPages: total === 0 ? 0 : Math.ceil(total / limit),
+        page,
+
+        limit,
+
+        totalPages: total === 0 ? 0 : Math.ceil(total / limit),
+      },
     };
   }
 
@@ -196,6 +410,553 @@ export class PppoeAuditoriaPrismaRepository
     });
   }
 
+  async findMany(
+    filters: PppoeAuditoriaFindManyFilters,
+  ): Promise<PppoeAuditoriaPaginatedResult> {
+    const page = Math.max(filters.page || 1, 1);
+
+    const limit = Math.min(Math.max(filters.limit || 10, 1), 100);
+
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.PppoeAuditoriaWhereInput = {
+      empresaId: filters.empresaId,
+    };
+    if (filters.accion) {
+      where.accion = this.mapAccionToPrisma(filters.accion);
+    }
+
+    if (filters.origen) {
+      where.origen = this.mapOrigenToPrisma(filters.origen);
+    }
+
+    if (filters.clienteId) {
+      where.clienteId = filters.clienteId;
+    }
+
+    if (filters.instalacionId) {
+      where.instalacionId = filters.instalacionId;
+    }
+
+    if (filters.accesoInternetId) {
+      where.accesoInternetId = filters.accesoInternetId;
+    }
+
+    if (filters.cuentaPppoeId) {
+      where.cuentaPppoeId = filters.cuentaPppoeId;
+    }
+
+    if (filters.perfilHomologacionId) {
+      where.perfilHomologacionId = filters.perfilHomologacionId;
+    }
+
+    if (filters.operadorId) {
+      where.operadorId = filters.operadorId;
+    }
+
+    if (filters.fechaDesde || filters.fechaHasta) {
+      where.creadoEn = {
+        ...(filters.fechaDesde
+          ? {
+              gte: filters.fechaDesde,
+            }
+          : {}),
+
+        ...(filters.fechaHasta
+          ? {
+              lte: filters.fechaHasta,
+            }
+          : {}),
+      };
+    }
+
+    const search = filters.search?.trim();
+
+    if (search) {
+      where.OR = [
+        {
+          descripcion: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+
+        {
+          usuarioPppoeSnapshot: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+
+        {
+          perfilCodigoSnapshot: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+
+        {
+          operadorNombreSnapshot: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+
+        {
+          ipOrigen: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+
+        {
+          cliente: {
+            is: {
+              OR: [
+                {
+                  nombre: {
+                    contains: search,
+                    mode: 'insensitive',
+                  },
+                },
+                {
+                  apellidos: {
+                    contains: search,
+                    mode: 'insensitive',
+                  },
+                },
+                {
+                  telefono: {
+                    contains: search,
+                    mode: 'insensitive',
+                  },
+                },
+                {
+                  dpi: {
+                    contains: search,
+                    mode: 'insensitive',
+                  },
+                },
+              ],
+            },
+          },
+        },
+
+        {
+          operador: {
+            is: {
+              OR: [
+                {
+                  nombre: {
+                    contains: search,
+                    mode: 'insensitive',
+                  },
+                },
+                {
+                  correo: {
+                    contains: search,
+                    mode: 'insensitive',
+                  },
+                },
+              ],
+            },
+          },
+        },
+
+        {
+          cuentaPppoe: {
+            is: {
+              usuario: {
+                contains: search,
+                mode: 'insensitive',
+              },
+            },
+          },
+        },
+
+        {
+          perfilHomologacion: {
+            is: {
+              codigoPerfil: {
+                contains: search,
+                mode: 'insensitive',
+              },
+            },
+          },
+        },
+      ];
+    }
+
+    const [records, total] = await this.prisma.$transaction([
+      this.prisma.pppoeAuditoria.findMany({
+        where,
+
+        skip,
+        take: limit,
+
+        orderBy: [
+          {
+            creadoEn: 'desc',
+          },
+          {
+            id: 'desc',
+          },
+        ],
+
+        select: pppoeAuditoriaListSelect,
+      }),
+
+      this.prisma.pppoeAuditoria.count({
+        where,
+      }),
+    ]);
+
+    return {
+      data: records.map((record) => this.mapListItem(record)),
+
+      meta: {
+        total,
+
+        page,
+
+        limit,
+
+        totalPages: total === 0 ? 0 : Math.ceil(total / limit),
+      },
+    };
+  }
+
+  private mapAccionToPrisma(
+    value: AccionAuditoriaPppoe,
+  ): PrismaAccionAuditoriaPppoe {
+    const prismaValues = Object.values(PrismaAccionAuditoriaPppoe) as string[];
+
+    if (!prismaValues.includes(value)) {
+      throw new Error(`La acción de auditoría "${value}" no existe en Prisma.`);
+    }
+
+    return value as PrismaAccionAuditoriaPppoe;
+  }
+
+  private mapOrigenToPrisma(
+    value: OrigenOperacionPppoe,
+  ): PrismaOrigenOperacionPppoe {
+    const prismaValues = Object.values(PrismaOrigenOperacionPppoe) as string[];
+
+    if (!prismaValues.includes(value)) {
+      throw new Error(`El origen de auditoría "${value}" no existe en Prisma.`);
+    }
+
+    return value as PrismaOrigenOperacionPppoe;
+  }
+
+  private mapRouter(router: {
+    id: number;
+    nombre: string;
+    host: string;
+    sshPort: number;
+    descripcion: string | null;
+    activo: boolean;
+  }) {
+    return {
+      id: router.id,
+
+      nombre: router.nombre,
+
+      host: router.host,
+
+      sshPort: router.sshPort,
+
+      descripcion: router.descripcion,
+
+      activo: router.activo,
+    };
+  }
+
+  private mapServicio(servicio: {
+    id: number;
+    nombre: string;
+    velocidad: string | null;
+    precio: number;
+    estado: unknown;
+  }) {
+    return {
+      id: servicio.id,
+
+      nombre: servicio.nombre,
+
+      velocidad: servicio.velocidad,
+
+      precio: Number(servicio.precio),
+
+      estado: String(servicio.estado),
+    };
+  }
+
+  private mapEnum<T extends string>(
+    value: string,
+    allowedValues: readonly T[],
+    field: string,
+  ): T {
+    if (!allowedValues.includes(value as T)) {
+      throw new Error(
+        `El valor "${value}" de ${field} no está soportado por el dominio.`,
+      );
+    }
+
+    return value as T;
+  }
+
+  private mapNullableEnum<T extends string>(
+    value: string | null,
+    allowedValues: readonly T[],
+    field: string,
+  ): T | null {
+    if (value === null) {
+      return null;
+    }
+
+    return this.mapEnum(value, allowedValues, field);
+  }
+
+  private mapListItem(
+    record: PppoeAuditoriaListRecord,
+  ): PppoeAuditoriaListItem {
+    return {
+      id: record.id,
+
+      empresaId: record.empresaId,
+
+      clienteId: record.clienteId,
+
+      accesoInternetId: record.accesoInternetId,
+
+      cuentaPppoeId: record.cuentaPppoeId,
+
+      perfilHomologacionId: record.perfilHomologacionId,
+
+      instalacionId: record.instalacionId,
+
+      desinstalacionId: record.desinstalacionId,
+
+      operacionId: record.operacionId,
+
+      operadorId: record.operadorId,
+
+      origen: this.mapEnum(
+        record.origen,
+        Object.values(OrigenOperacionPppoe),
+        'origen',
+      ),
+
+      accion: this.mapEnum(
+        record.accion,
+        Object.values(AccionAuditoriaPppoe),
+        'accion',
+      ),
+
+      descripcion: record.descripcion,
+
+      estadoCuentaAnterior: this.mapNullableEnum(
+        record.estadoCuentaAnterior,
+        Object.values(EstadoCuentaPppoe),
+        'estadoCuentaAnterior',
+      ),
+
+      estadoCuentaNuevo: this.mapNullableEnum(
+        record.estadoCuentaNuevo,
+        Object.values(EstadoCuentaPppoe),
+        'estadoCuentaNuevo',
+      ),
+
+      usuarioPppoeSnapshot: record.usuarioPppoeSnapshot,
+
+      perfilCodigoSnapshot: record.perfilCodigoSnapshot,
+
+      operadorNombreSnapshot: record.operadorNombreSnapshot,
+
+      datos: record.datos ?? null,
+
+      ipOrigen: record.ipOrigen,
+
+      userAgent: record.userAgent,
+
+      creadoEn: record.creadoEn,
+
+      empresa: {
+        id: record.empresa.id,
+
+        nombre: record.empresa.nombre,
+
+        telefono: record.empresa.telefono,
+
+        correo: record.empresa.correo,
+      },
+
+      cliente: record.cliente
+        ? {
+            id: record.cliente.id,
+
+            nombre: record.cliente.nombre,
+
+            apellidos: record.cliente.apellidos,
+
+            telefono: record.cliente.telefono,
+
+            dpi: record.cliente.dpi,
+
+            direccion: record.cliente.direccion,
+          }
+        : null,
+
+      operador: record.operador
+        ? {
+            id: record.operador.id,
+
+            nombre: record.operador.nombre,
+
+            correo: record.operador.correo,
+
+            telefono: record.operador.telefono,
+
+            rol: String(record.operador.rol),
+
+            activo: record.operador.activo,
+          }
+        : null,
+
+      accesoInternet: record.accesoInternet
+        ? {
+            id: record.accesoInternet.id,
+
+            tecnologia: String(record.accesoInternet.tecnologia),
+
+            metodoAutenticacion: String(
+              record.accesoInternet.metodoAutenticacion,
+            ),
+
+            estado: String(record.accesoInternet.estado),
+
+            creadoEn: record.accesoInternet.creadoEn,
+
+            servicioInternet: record.accesoInternet.servicioInternet
+              ? this.mapServicio(record.accesoInternet.servicioInternet)
+              : null,
+          }
+        : null,
+
+      cuentaPppoe: record.cuentaPppoe
+        ? {
+            id: record.cuentaPppoe.id,
+
+            usuario: record.cuentaPppoe.usuario,
+
+            estado: this.mapEnum(
+              record.cuentaPppoe.estado,
+              Object.values(EstadoCuentaPppoe),
+              'cuentaPppoe.estado',
+            ),
+
+            generadoEn: record.cuentaPppoe.generadoEn,
+
+            activadoEn: record.cuentaPppoe.activadoEn,
+
+            suspendidoEn: record.cuentaPppoe.suspendidoEn,
+
+            eliminadoEn: record.cuentaPppoe.eliminadoEn,
+
+            ultimaSincronizacionEn: record.cuentaPppoe.ultimaSincronizacionEn,
+
+            ultimoError: record.cuentaPppoe.ultimoError,
+          }
+        : null,
+
+      perfilHomologacion: record.perfilHomologacion
+        ? {
+            id: record.perfilHomologacion.id,
+
+            codigoPerfil: record.perfilHomologacion.codigoPerfil,
+
+            activo: record.perfilHomologacion.activo,
+
+            mikrotikRouter: this.mapRouter(
+              record.perfilHomologacion.mikrotikRouter,
+            ),
+
+            servicioInternet: this.mapServicio(
+              record.perfilHomologacion.servicioInternet,
+            ),
+          }
+        : null,
+
+      instalacion: record.instalacion
+        ? {
+            id: record.instalacion.id,
+
+            tipo: String(record.instalacion.tipo),
+
+            estado: String(record.instalacion.estado),
+
+            fechaProgramada: record.instalacion.fechaProgramada,
+
+            fechaInicio: record.instalacion.fechaInicio,
+
+            fechaFinalizacion: record.instalacion.fechaFinalizacion,
+          }
+        : null,
+
+      desinstalacion: record.desinstalacion
+        ? {
+            id: record.desinstalacion.id,
+
+            tipo: String(record.desinstalacion.tipo),
+
+            motivo: record.desinstalacion.motivo
+              ? String(record.desinstalacion.motivo)
+              : null,
+
+            estado: String(record.desinstalacion.estado),
+
+            fechaProgramada: record.desinstalacion.fechaProgramada,
+
+            fechaInicio: record.desinstalacion.fechaInicio,
+
+            fechaFinalizacion: record.desinstalacion.fechaFinalizacion,
+          }
+        : null,
+
+      operacion: record.operacion
+        ? {
+            id: record.operacion.id,
+
+            tipo: String(record.operacion.tipo),
+
+            origen: this.mapEnum(
+              record.operacion.origen,
+              Object.values(OrigenOperacionPppoe),
+              'operacion.origen',
+            ),
+
+            estado: String(record.operacion.estado),
+
+            motivo: record.operacion.motivo,
+
+            errorCodigo: record.operacion.errorCodigo,
+
+            errorMensaje: record.operacion.errorMensaje,
+
+            iniciadoEn: record.operacion.iniciadoEn,
+
+            finalizadoEn: record.operacion.finalizadoEn,
+
+            creadoEn: record.operacion.creadoEn,
+
+            mikrotikRouter: this.mapRouter(record.operacion.mikrotikRouter),
+          }
+        : null,
+    };
+  }
+
   /**
    * Ejecuta las consultas especializadas de historial.
    *
@@ -231,25 +992,30 @@ export class PppoeAuditoriaPrismaRepository
       empresaId: params.empresaId,
     };
 
-    if (params.clienteId !== undefined) {
+    if (params.clienteId != null) {
       this.assertPositiveInteger(params.clienteId, 'clienteId');
 
       where.clienteId = params.clienteId;
     }
+    if (params.instalacionId != null) {
+      this.assertPositiveInteger(params.instalacionId, 'instalacionId');
 
-    if (params.accesoInternetId !== undefined) {
+      where.instalacionId = params.instalacionId;
+    }
+
+    if (params.accesoInternetId != null) {
       this.assertPositiveInteger(params.accesoInternetId, 'accesoInternetId');
 
       where.accesoInternetId = params.accesoInternetId;
     }
 
-    if (params.cuentaPppoeId !== undefined) {
+    if (params.cuentaPppoeId != null) {
       this.assertPositiveInteger(params.cuentaPppoeId, 'cuentaPppoeId');
 
       where.cuentaPppoeId = params.cuentaPppoeId;
     }
 
-    if (params.perfilHomologacionId !== undefined) {
+    if (params.perfilHomologacionId != null) {
       this.assertPositiveInteger(
         params.perfilHomologacionId,
         'perfilHomologacionId',
@@ -258,44 +1024,18 @@ export class PppoeAuditoriaPrismaRepository
       where.perfilHomologacionId = params.perfilHomologacionId;
     }
 
-    if (params.instalacionId !== undefined) {
-      this.assertPositiveInteger(params.instalacionId, 'instalacionId');
-
-      where.instalacionId = params.instalacionId;
-    }
-
-    if (params.desinstalacionId !== undefined) {
-      this.assertPositiveInteger(params.desinstalacionId, 'desinstalacionId');
-
-      where.desinstalacionId = params.desinstalacionId;
-    }
-
-    if (params.operacionId !== undefined) {
-      this.assertPositiveInteger(params.operacionId, 'operacionId');
-
-      where.operacionId = params.operacionId;
-    }
-
-    if (params.operadorId !== undefined) {
+    if (params.operadorId != null) {
       this.assertPositiveInteger(params.operadorId, 'operadorId');
 
       where.operadorId = params.operadorId;
     }
 
-    if (params.origen !== undefined) {
+    if (params.origen != null) {
       where.origen = this.toPrismaOrigen(params.origen);
     }
 
-    const acciones = this.resolveAcciones(params.accion, params.acciones);
-
-    if (acciones.length === 1) {
-      where.accion = this.toPrismaAccion(acciones[0]);
-    }
-
-    if (acciones.length > 1) {
-      where.accion = {
-        in: acciones.map((accion) => this.toPrismaAccion(accion)),
-      };
+    if (params.accion != null) {
+      where.accion = this.toPrismaAccion(params.accion);
     }
 
     if (params.creadoDesde !== undefined || params.creadoHasta !== undefined) {
@@ -489,4 +1229,6 @@ export class PppoeAuditoriaPrismaRepository
 
     return value as PrismaAccionAuditoriaPppoe;
   }
+
+  // HELPERS DE PAGINADOS
 }

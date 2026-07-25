@@ -86,6 +86,8 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
     const credenciales = this.credentialGenerator.generate({
       clienteId: input.clienteId,
 
+      accesoInternetId: input.accesoInternetId,
+
       fecha: input.fechaReferencia,
     });
 

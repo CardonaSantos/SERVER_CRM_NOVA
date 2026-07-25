@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { CrearClienteInstalacionDto } from '../dto/crear-cliente-instalacion.dto';
 import { FiltrarClienteInstalacionesDto } from '../dto/filtrar-cliente-instalaciones.dto';
 import { CrearClienteInstalacionUseCase } from '../use-cases/crear-cliente-instalacion.use-case';
@@ -25,6 +25,11 @@ import {
 } from '../../results/crear-cliente-instalacion.result';
 import { ReintentarPrealtaPppoeInstalacionUseCase } from '../use-cases/reintentar-prealta-pppoe-instalacion.use-case';
 import { ReintentarPrealtaPppoeDto } from '../dto/reintentar-prealta-pppoe.dto';
+import {
+  PPPOE_CREDENCIALES_INSTALACION,
+  PppoeCredencialesInstalacionPort,
+} from 'src/modules/pppoe-automatizacion/domain/ports/pppoe-credenciales-instalacion.port';
+import { ConsultarCredencialesPppoeInstalacionResult } from 'src/modules/pppoe-automatizacion/application/inputs/consultar-credenciales-pppoe-instalacion.result';
 
 type ReintentarPrealtaPppoeServiceParams = {
   instalacionId: number;
@@ -32,6 +37,18 @@ type ReintentarPrealtaPppoeServiceParams = {
   accesoInternetId: number;
 
   dto: ReintentarPrealtaPppoeDto;
+
+  operadorId: number;
+
+  operadorNombre?: string | null;
+
+  ipOrigen?: string | null;
+
+  userAgent?: string | null;
+};
+
+type ConsultarCredencialesPppoeServiceParams = {
+  instalacionId: number;
 
   operadorId: number;
 
@@ -63,6 +80,9 @@ export class ClienteInstalacionApplicationService {
     private readonly deleteAllInstalacionUseCase: DeleteAllClienteInstalacionUseCase,
 
     private readonly reintentarPrealtaPppoeInstalacionUseCase: ReintentarPrealtaPppoeInstalacionUseCase,
+
+    @Inject(PPPOE_CREDENCIALES_INSTALACION)
+    private readonly credencialesPppoeInstalacion: PppoeCredencialesInstalacionPort,
   ) {}
 
   crear(
@@ -89,6 +109,22 @@ export class ClienteInstalacionApplicationService {
 
   listar(filters: FiltrarClienteInstalacionesDto) {
     return this.listarClienteInstalacionesUseCase.execute(filters);
+  }
+
+  consultarCredencialesPppoe(
+    params: ConsultarCredencialesPppoeServiceParams,
+  ): Promise<ConsultarCredencialesPppoeInstalacionResult> {
+    return this.credencialesPppoeInstalacion.consultar({
+      instalacionId: params.instalacionId,
+
+      operadorId: params.operadorId,
+
+      operadorNombre: params.operadorNombre ?? null,
+
+      ipOrigen: params.ipOrigen ?? null,
+
+      userAgent: params.userAgent ?? null,
+    });
   }
 
   // BEHAVIORS

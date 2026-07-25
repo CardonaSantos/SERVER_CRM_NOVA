@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Logger,
   Param,
   ParseIntPipe,
@@ -28,6 +30,7 @@ import { CancelarClienteInstalacionDto } from '../application/dto/cancelar-clien
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SubirEvidenciaInstalacionDto } from '../application/dto/subir-evidencia-instalacion.dto';
 import { ReintentarPrealtaPppoeDto } from '../application/dto/reintentar-prealta-pppoe.dto';
+import { ConsultarCredencialesPppoeDto } from '../application/dto/consultar-credenciales-pppoe.dto';
 
 type AuthenticatedRequest = Request & {
   user?: {
@@ -90,6 +93,55 @@ export class ClienteInstalacionController {
 
       userAgent: null,
     });
+  }
+
+  @Post(':instalacionId/credenciales-pppoe/revelar')
+  @HttpCode(HttpStatus.OK)
+  async consultarCredencialesPppoe(
+    @Param('instalacionId', ParseIntPipe)
+    instalacionId: number,
+
+    @Body()
+    dto: ConsultarCredencialesPppoeDto,
+  ) {
+    const result =
+      await this.clienteInstalacionService.consultarCredencialesPppoe({
+        instalacionId,
+
+        operadorId: dto.operadorId,
+
+        operadorNombre: null,
+
+        ipOrigen: null,
+
+        userAgent: null,
+      });
+
+    return {
+      instalacionId: result.instalacionId,
+
+      credenciales: result.credenciales.map((credencial) => ({
+        cuentaPppoeId: credencial.cuentaPppoeId,
+
+        accesoInternetId: credencial.accesoInternetId,
+
+        perfilHomologacionId: credencial.perfilHomologacionId,
+
+        mikrotikRouterId: credencial.mikrotikRouterId,
+
+        servicioInternetId: credencial.servicioInternetId,
+
+        codigoPerfil: credencial.codigoPerfil,
+
+        usuario: credencial.usuario,
+
+        contrasena: credencial.contrasena,
+
+        estadoCuenta: credencial.estadoCuenta,
+
+        generadoEn: credencial.generadoEn.toISOString(),
+      })),
+    };
   }
 
   @Get()

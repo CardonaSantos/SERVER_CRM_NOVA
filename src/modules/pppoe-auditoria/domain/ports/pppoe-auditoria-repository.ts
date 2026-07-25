@@ -3,6 +3,10 @@ import {
   AccionAuditoriaPppoe,
   OrigenOperacionPppoe,
 } from '../enums/pppoe-auditoria-enums';
+import {
+  PppoeAuditoriaFindManyFilters,
+  PppoeAuditoriaPaginatedResult,
+} from '../read-models/pppoe-auditoria-list.read-model';
 
 export const PPPOE_AUDITORIA_REPOSITORY = Symbol('PPPOE_AUDITORIA_REPOSITORY');
 
@@ -39,15 +43,11 @@ export type BuscarAuditoriasPppoeParams = {
   ordenPor?: PppoeAuditoriaOrdenCampo;
 
   ordenDireccion?: PppoeAuditoriaOrdenDireccion;
-};
 
-export type PppoeAuditoriaPaginatedResult = {
-  data: PppoeAuditoriaEntity[];
+  search?: string | null;
 
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
+  fechaDesde?: Date | null;
+  fechaHasta?: Date | null;
 };
 
 export interface PppoeAuditoriaRepositoryPort {
@@ -125,4 +125,12 @@ export interface PppoeAuditoriaRepositoryPort {
   findByPerfilHomologacionId(
     perfilHomologacionId: number,
   ): Promise<PppoeAuditoriaEntity[]>;
+
+  /**
+   * CONSEGUIR DATOS PAGINADOS
+   * @param filters
+   */
+  findMany(
+    filters: PppoeAuditoriaFindManyFilters,
+  ): Promise<PppoeAuditoriaPaginatedResult>;
 }
