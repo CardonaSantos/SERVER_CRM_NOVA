@@ -66,6 +66,8 @@ import { PppoeClienteCuentaModule } from './modules/pppoe-cliente-cuenta/ppoe-cl
 import { PppoeCredentialsModule } from './modules/pppoe-credentials/pppoe-credentials.module';
 import { PppoeAuditoriaModule } from './modules/pppoe-auditoria/pppoe-auditoria.module';
 import { PppoeAutomatizacionModule } from './modules/pppoe-automatizacion/pppoe-automatizacion.module';
+import { PppoeOperacionModule } from './modules/pppoe-operacion/pppoe-operacion.module';
+import { MikrotikSshModule } from './modules/mikrotik-ssh/mikrotik-ssh.module';
 
 @Module({
   imports: [
@@ -140,6 +142,8 @@ import { PppoeAutomatizacionModule } from './modules/pppoe-automatizacion/pppoe-
     PppoeCredentialsModule,
     PppoeAuditoriaModule,
     PppoeAutomatizacionModule,
+    PppoeOperacionModule,
+    MikrotikSshModule,
   ],
   controllers: [AppController],
   providers: [AppService],

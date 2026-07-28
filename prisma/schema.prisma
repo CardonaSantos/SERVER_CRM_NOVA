@@ -32,155 +32,155 @@ datasource db {
 
 /// [01] Empresa, Usuarios, Caja y Proveedores
 model Empresa {
-  id                       Int                       @id @default(autoincrement())
-  nombre                   String                    @unique
-  direccion                String?
-  telefono                 String?
-  pbx                      String?
-  correo                   String?
-  sitioWeb                 String?
-  nit                      String?
-  logo1                    String?
-  logo2                    String?
-  logo3                    String?
-  creadoEn                 DateTime                  @default(now())
-  actualizadoEn            DateTime                  @updatedAt
-  albumClientes            AlbumCliente[]
-  clientesInternet         ClienteInternet[]
-  ConfiguracionGlobal      ConfiguracionGlobal[]
-  Factura                  Factura[]
-  facturas                 FacturaInternet[]
-  FacturacionZona          FacturacionZona[]
-  medias                   Media[]
-  plantillas               PlantillaMensaje[]
-  Proveedor                Proveedor[]
-  rutas                    Ruta[]
-  saldoCaja                SaldoCaja?
-  saldoEmpresa             SaldoEmpresa?
-  Servicio                 Servicio[]
-  ServicioInternet         ServicioInternet[]
-  TicketSoporte            TicketSoporte[]
-  Ubicacion                Ubicacion[]
-  empleados                Usuario[]
-  notificaciones           Notificacion[]
-  Olt                      Olt[]
-  MikrotikRouter           MikrotikRouter[]
-  gastoOperativos          GastoOperativo[]
-  categoriaProductos       CategoriaProducto[]
-  productos                Producto[]
-  movimientoInventarios    MovimientoInventario[]
-  bodegas                  Bodega[]
-  prestamosHerramienta     PrestamoHerramienta[]
-  instalacionesCliente     ClienteInstalacion[]
-  desinstalacionesCliente  ClienteDesinstalacion[]
-  historialEstadosCliente  ClienteEstadoHistorial[]
+  id                      Int                      @id @default(autoincrement())
+  nombre                  String                   @unique
+  direccion               String?
+  telefono                String?
+  pbx                     String?
+  correo                  String?
+  sitioWeb                String?
+  nit                     String?
+  logo1                   String?
+  logo2                   String?
+  logo3                   String?
+  creadoEn                DateTime                 @default(now())
+  actualizadoEn           DateTime                 @updatedAt
+  albumClientes           AlbumCliente[]
+  clientesInternet        ClienteInternet[]
+  ConfiguracionGlobal     ConfiguracionGlobal[]
+  Factura                 Factura[]
+  facturas                FacturaInternet[]
+  FacturacionZona         FacturacionZona[]
+  medias                  Media[]
+  plantillas              PlantillaMensaje[]
+  Proveedor               Proveedor[]
+  rutas                   Ruta[]
+  saldoCaja               SaldoCaja?
+  saldoEmpresa            SaldoEmpresa?
+  Servicio                Servicio[]
+  ServicioInternet        ServicioInternet[]
+  TicketSoporte           TicketSoporte[]
+  Ubicacion               Ubicacion[]
+  empleados               Usuario[]
+  notificaciones          Notificacion[]
+  Olt                     Olt[]
+  MikrotikRouter          MikrotikRouter[]
+  gastoOperativos         GastoOperativo[]
+  categoriaProductos      CategoriaProducto[]
+  productos               Producto[]
+  movimientoInventarios   MovimientoInventario[]
+  bodegas                 Bodega[]
+  prestamosHerramienta    PrestamoHerramienta[]
+  instalacionesCliente    ClienteInstalacion[]
+  desinstalacionesCliente ClienteDesinstalacion[]
+  historialEstadosCliente ClienteEstadoHistorial[]
 
-  accesosInternet  ClienteAccesoInternet[]
-  cuentasPppoe     ClientePppoeCuenta[]
+  accesosInternet ClienteAccesoInternet[]
+  cuentasPppoe    ClientePppoeCuenta[]
 
-  perfilesPppoeHomologados  PppoePerfilHomologacion[]
-  operacionesPppoe          PppoeOperacion[]
-  auditoriasPppoe           PppoeAuditoria[]
+  perfilesPppoeHomologados PppoePerfilHomologacion[]
+  operacionesPppoe         PppoeOperacion[]
+  auditoriasPppoe          PppoeAuditoria[]
 }
 
 model Usuario {
-  id                                        Int                     @id @default(autoincrement())
-  empresaId                                 Int
-  nombre                                    String
-  correo                                    String                  @unique
-  telefono                                  String?
-  rol                                       RolUsuario
-  activo                                    Boolean                 @default(true)
-  creadoEn                                  DateTime                @default(now())
-  actualizadoEn                             DateTime                @updatedAt
-  contrasena                                String
-  perfil                                    PerfilUsuario?
-  asistencias                               Asistencia[]            @relation("UsuarioAsistencias")
-  BoletaSoporte                             BoletaSoporte[]
-  clientesAsesorados                        ClienteInternet[]
-  facturasEliminadas                        FacturaEliminada[]
-  facturasCreadas                           FacturaInternet[]       @relation("FacturaInternetCreador")
-  facturasAsignadas                         FacturaRuta[]           @relation("AsignadorFacturaRuta")
-  facturasCobradas                          FacturaRuta[]           @relation("CobradorFacturaRuta")
-  archivosCargados                          Media[]
-  metasTecnico                              MetaTecnicoTicket[]     @relation("MetaTecnicoRelation")
-  MetaTickets                               MetaTickets[]
-  PagoFacturaInternet                       PagoFacturaInternet[]
-  RegistroCaja                              RegistroCaja[]
-  Ruta                                      Ruta[]
-  rutaTurnosComoCobrador                    RutaTurno[]
-  SeguimientoTicket                         SeguimientoTicket[]
-  ticketsCreados                            TicketSoporte[]         @relation("TicketCreador")
-  ticketsAsignados                          TicketSoporte[]         @relation("TicketTecnico")
-  ticketsSoporteTecnico                     TicketSoporteTecnico[]
-  empresa                                   Empresa                 @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  clientesEliminados                        ClienteInternet[]       @relation("ClienteEliminadoPor")
-  notificacionesRecibidas                   NotificacionUsuario[]
-  notificacionesEnviadas                    Notificacion[]          @relation("NotificacionRemitente")
-  logsTiempo                                TicketTimeLog[]         @relation("LogTecnico")
-  creditosRegistrados                       Credito[]
-  pagosCredito                              PagoCredito[]
-  morasPagadas                              MoraCredito[]
-  ubicacionesHistoricas                     UbicacionTecnico[]
-  ubicacionActual                           UbicacionActual?
-  ticketReasignacionsDe                     TicketReasignacion[]    @relation("ReasignacionDe")
-  ticketReasignacionsA                      TicketReasignacion[]    @relation("ReasignacionA")
-  gastoOperativosRegistrados                GastoOperativo[]        @relation("GastosRegistrados")
-  gastoOperativosAprovados                  GastoOperativo[]        @relation("GastosAprobados")
-  ticketGastosAsignados                     TicketGasto[]           @relation("GastosAsignadosTecnico")
-  ticketGastosAprobados                     TicketGasto[]           @relation("GastosAsignadosPor")
-  movimientoInventarios                     MovimientoInventario[]  @relation("MovimientosRealizados")
-  ticketReasignacions                       TicketReasignacion[]    @relation("QuienReasigno")
-  bodegas                                   Bodega[]                @relation("BodegaResponsable")
-  prestamosHerramientaTecnico               TicketHerramientaUso[]  @relation("TicketHerramientaUsoTecnico")
-  prestamosHerramientaRecibidosComoTecnico  PrestamoHerramienta[]   @relation("PrestamosHerramientaTecnico")
-  prestamosHerramientaEntregados            PrestamoHerramienta[]   @relation("PrestamosHerramientaEntregados")
-  prestamosHerramientaRecibidos             PrestamoHerramienta[]   @relation("PrestamosHerramientaRecibidos")
+  id                                       Int                    @id @default(autoincrement())
+  empresaId                                Int
+  nombre                                   String
+  correo                                   String                 @unique
+  telefono                                 String?
+  rol                                      RolUsuario
+  activo                                   Boolean                @default(true)
+  creadoEn                                 DateTime               @default(now())
+  actualizadoEn                            DateTime               @updatedAt
+  contrasena                               String
+  perfil                                   PerfilUsuario?
+  asistencias                              Asistencia[]           @relation("UsuarioAsistencias")
+  BoletaSoporte                            BoletaSoporte[]
+  clientesAsesorados                       ClienteInternet[]
+  facturasEliminadas                       FacturaEliminada[]
+  facturasCreadas                          FacturaInternet[]      @relation("FacturaInternetCreador")
+  facturasAsignadas                        FacturaRuta[]          @relation("AsignadorFacturaRuta")
+  facturasCobradas                         FacturaRuta[]          @relation("CobradorFacturaRuta")
+  archivosCargados                         Media[]
+  metasTecnico                             MetaTecnicoTicket[]    @relation("MetaTecnicoRelation")
+  MetaTickets                              MetaTickets[]
+  PagoFacturaInternet                      PagoFacturaInternet[]
+  RegistroCaja                             RegistroCaja[]
+  Ruta                                     Ruta[]
+  rutaTurnosComoCobrador                   RutaTurno[]
+  SeguimientoTicket                        SeguimientoTicket[]
+  ticketsCreados                           TicketSoporte[]        @relation("TicketCreador")
+  ticketsAsignados                         TicketSoporte[]        @relation("TicketTecnico")
+  ticketsSoporteTecnico                    TicketSoporteTecnico[]
+  empresa                                  Empresa                @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  clientesEliminados                       ClienteInternet[]      @relation("ClienteEliminadoPor")
+  notificacionesRecibidas                  NotificacionUsuario[]
+  notificacionesEnviadas                   Notificacion[]         @relation("NotificacionRemitente")
+  logsTiempo                               TicketTimeLog[]        @relation("LogTecnico")
+  creditosRegistrados                      Credito[]
+  pagosCredito                             PagoCredito[]
+  morasPagadas                             MoraCredito[]
+  ubicacionesHistoricas                    UbicacionTecnico[]
+  ubicacionActual                          UbicacionActual?
+  ticketReasignacionsDe                    TicketReasignacion[]   @relation("ReasignacionDe")
+  ticketReasignacionsA                     TicketReasignacion[]   @relation("ReasignacionA")
+  gastoOperativosRegistrados               GastoOperativo[]       @relation("GastosRegistrados")
+  gastoOperativosAprovados                 GastoOperativo[]       @relation("GastosAprobados")
+  ticketGastosAsignados                    TicketGasto[]          @relation("GastosAsignadosTecnico")
+  ticketGastosAprobados                    TicketGasto[]          @relation("GastosAsignadosPor")
+  movimientoInventarios                    MovimientoInventario[] @relation("MovimientosRealizados")
+  ticketReasignacions                      TicketReasignacion[]   @relation("QuienReasigno")
+  bodegas                                  Bodega[]               @relation("BodegaResponsable")
+  prestamosHerramientaTecnico              TicketHerramientaUso[] @relation("TicketHerramientaUsoTecnico")
+  prestamosHerramientaRecibidosComoTecnico PrestamoHerramienta[]  @relation("PrestamosHerramientaTecnico")
+  prestamosHerramientaEntregados           PrestamoHerramienta[]  @relation("PrestamosHerramientaEntregados")
+  prestamosHerramientaRecibidos            PrestamoHerramienta[]  @relation("PrestamosHerramientaRecibidos")
 
-  instalacionesAsesoradas   ClienteInstalacion[]  @relation("InstalacionAsesor")
-  instalacionesCreadas      ClienteInstalacion[]  @relation("InstalacionCreadoPor")
-  instalacionesCompletadas  ClienteInstalacion[]  @relation("InstalacionCompletadoPor")
+  instalacionesAsesoradas  ClienteInstalacion[] @relation("InstalacionAsesor")
+  instalacionesCreadas     ClienteInstalacion[] @relation("InstalacionCreadoPor")
+  instalacionesCompletadas ClienteInstalacion[] @relation("InstalacionCompletadoPor")
 
-  desinstalacionesSolicitadas  ClienteDesinstalacion[]  @relation("DesinstalacionSolicitadoPor")
-  desinstalacionesEjecutadas   ClienteDesinstalacion[]  @relation("DesinstalacionEjecutadoPor")
-  desinstalacionesCreadas      ClienteDesinstalacion[]  @relation("DesinstalacionCreadoPor")
+  desinstalacionesSolicitadas ClienteDesinstalacion[] @relation("DesinstalacionSolicitadoPor")
+  desinstalacionesEjecutadas  ClienteDesinstalacion[] @relation("DesinstalacionEjecutadoPor")
+  desinstalacionesCreadas     ClienteDesinstalacion[] @relation("DesinstalacionCreadoPor")
 
-  historialEstadosClienteCambiados  ClienteEstadoHistorial[]        @relation("ClienteEstadoCambiadoPor")
-  clientesRestaurados               ClienteInternet[]               @relation("ClienteRestauradoPor")
-  clientesWhatsappDesactivados      ClienteInternet[]               @relation("ClienteWhatsappDesactivadoPor")
-  desinstalacionesComoTecnico       ClienteDesinstalacionTecnico[]  @relation("DesinstalacionTecnicoUsuario")
-  instalacionesComoTecnico          ClienteInstalacionTecnico[]     @relation("InstalacionTecnicoUsuario")
+  historialEstadosClienteCambiados ClienteEstadoHistorial[]       @relation("ClienteEstadoCambiadoPor")
+  clientesRestaurados              ClienteInternet[]              @relation("ClienteRestauradoPor")
+  clientesWhatsappDesactivados     ClienteInternet[]              @relation("ClienteWhatsappDesactivadoPor")
+  desinstalacionesComoTecnico      ClienteDesinstalacionTecnico[] @relation("DesinstalacionTecnicoUsuario")
+  instalacionesComoTecnico         ClienteInstalacionTecnico[]    @relation("InstalacionTecnicoUsuario")
 
-  desInstalacionSolicitud     ClienteDesinstalacionAutorizacion[]  @relation("DesinstalacionAutorizacionSolicitadoPor")
-  desInstalacionAutorizacion  ClienteDesinstalacionAutorizacion[]  @relation("DesinstalacionAutorizacionAutorizadoPor")
+  desInstalacionSolicitud    ClienteDesinstalacionAutorizacion[] @relation("DesinstalacionAutorizacionSolicitadoPor")
+  desInstalacionAutorizacion ClienteDesinstalacionAutorizacion[] @relation("DesinstalacionAutorizacionAutorizadoPor")
 
-  cuentasPppoeGeneradas  ClientePppoeCuenta[]  @relation("PppoeCuentaGeneradaPor")
+  cuentasPppoeGeneradas ClientePppoeCuenta[] @relation("PppoeCuentaGeneradaPor")
 
-  accesosConfigurados  ClienteAccesoConfiguracionTecnica[]  @relation("AccesoConfiguradoPor")
+  accesosConfigurados ClienteAccesoConfiguracionTecnica[] @relation("AccesoConfiguradoPor")
 
-  perfilesPppoeHomologadosCreados  PppoePerfilHomologacion[]  @relation("PppoePerfilHomologacionCreadoPor")
+  perfilesPppoeHomologadosCreados PppoePerfilHomologacion[] @relation("PppoePerfilHomologacionCreadoPor")
 
-  perfilesPppoeHomologadosActualizados  PppoePerfilHomologacion[]  @relation("PppoePerfilHomologacionActualizadoPor")
+  perfilesPppoeHomologadosActualizados PppoePerfilHomologacion[] @relation("PppoePerfilHomologacionActualizadoPor")
 
-  operacionesPppoeIniciadas  PppoeOperacion[]  @relation("PppoeOperacionIniciadaPor")
+  operacionesPppoeIniciadas PppoeOperacion[] @relation("PppoeOperacionIniciadaPor")
 
-  operacionesPppoeReautenticadas  PppoeOperacion[]  @relation("PppoeOperacionReautenticadaPor")
+  operacionesPppoeReautenticadas PppoeOperacion[] @relation("PppoeOperacionReautenticadaPor")
 
-  auditoriasPppoeOperadas  PppoeAuditoria[]  @relation("PppoeAuditoriaOperador")
+  auditoriasPppoeOperadas PppoeAuditoria[] @relation("PppoeAuditoriaOperador")
 }
 
 model UbicacionTecnico {
-  id             Int       @id @default(autoincrement())
-  usuarioId      Int
-  latitud        Float
-  longitud       Float
-  precision      Float?
-  velocidad      Float?
-  bateria        Int?
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @default(now())
+  id            Int      @id @default(autoincrement())
+  usuarioId     Int
+  latitud       Float
+  longitud      Float
+  precision     Float?
+  velocidad     Float?
+  bateria       Int?
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @default(now())
 
-  usuario  Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@index([usuarioId])
   @@index([creadoEn])
@@ -188,341 +188,341 @@ model UbicacionTecnico {
 }
 
 model UbicacionActual {
-  usuarioId      Int       @id
-  latitud        Float
-  longitud       Float
-  precision      Float?
-  velocidad      Float?
-  bateria        Int?
-  actualizadoEn  DateTime  @updatedAt
+  usuarioId     Int      @id
+  latitud       Float
+  longitud      Float
+  precision     Float?
+  velocidad     Float?
+  bateria       Int?
+  actualizadoEn DateTime @updatedAt
 
-  usuario  Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 }
 
 model PerfilUsuario {
-  id         Int  @id @default(autoincrement())
-  usuarioId  Int  @unique
+  id        Int @id @default(autoincrement())
+  usuarioId Int @unique
 
-  avatarUrl       String?
-  avatarKey       String?
-  avatarBucket    String?
-  avatarMimeType  String?
-  avatarSize      Int?
+  avatarUrl      String?
+  avatarKey      String?
+  avatarBucket   String?
+  avatarMimeType String?
+  avatarSize     Int?
 
-  portadaUrl       String?
-  portadaKey       String?
-  portadaBucket    String?
-  portadaMimeType  String?
-  portadaSize      Int?
+  portadaUrl      String?
+  portadaKey      String?
+  portadaBucket   String?
+  portadaMimeType String?
+  portadaSize     Int?
 
-  bio       String?
-  telefono  String?
+  bio      String?
+  telefono String?
 
-  notificarWhatsApp  Boolean  @default(true)
-  notificarPush      Boolean  @default(true)
-  notificarSonido    Boolean  @default(true)
+  notificarWhatsApp Boolean @default(true)
+  notificarPush     Boolean @default(true)
+  notificarSonido   Boolean @default(true)
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
-  usuario  Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 }
 
 model ConfiguracionGlobal {
-  id             Int       @id @default(autoincrement())
-  empresaId      Int
-  clave          String    @unique
-  valor          String
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
-  empresa        Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  id            Int      @id @default(autoincrement())
+  empresaId     Int
+  clave         String   @unique
+  valor         String
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+  empresa       Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 }
 
 model SaldoEmpresa {
-  id             Int       @id @default(autoincrement())
-  saldo          Float     @default(0)
-  egresos        Float     @default(0)
-  totalIngresos  Float
-  empresaId      Int       @unique
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
-  empresa        Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  id            Int      @id @default(autoincrement())
+  saldo         Float    @default(0)
+  egresos       Float    @default(0)
+  totalIngresos Float
+  empresaId     Int      @unique
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+  empresa       Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 }
 
 model SaldoCaja {
-  id             Int             @id @default(autoincrement())
-  saldo          Float           @default(0)
-  egreso         Float           @default(0)
-  totalIngresos  Float
-  totalEgresos   Float
-  empresaId      Int             @unique
-  creadoEn       DateTime        @default(now())
-  actualizadoEn  DateTime        @updatedAt
-  registrosCaja  RegistroCaja[]
-  empresa        Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  id            Int            @id @default(autoincrement())
+  saldo         Float          @default(0)
+  egreso        Float          @default(0)
+  totalIngresos Float
+  totalEgresos  Float
+  empresaId     Int            @unique
+  creadoEn      DateTime       @default(now())
+  actualizadoEn DateTime       @updatedAt
+  registrosCaja RegistroCaja[]
+  empresa       Empresa        @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 }
 
 model RegistroCaja {
-  id             Int         @id @default(autoincrement())
-  saldoInicial   Float
-  saldoFinal     Float
-  usuarioId      Int?
-  cajaId         Int?
-  creadoEn       DateTime    @default(now())
-  actualizadoEn  DateTime    @updatedAt
-  caja           SaldoCaja?  @relation(fields: [cajaId], references: [id])
-  usuario        Usuario?    @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  id            Int        @id @default(autoincrement())
+  saldoInicial  Float
+  saldoFinal    Float
+  usuarioId     Int?
+  cajaId        Int?
+  creadoEn      DateTime   @default(now())
+  actualizadoEn DateTime   @updatedAt
+  caja          SaldoCaja? @relation(fields: [cajaId], references: [id])
+  usuario       Usuario?   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 }
 
 model Proveedor {
-  id         Int      @id @default(autoincrement())
-  nombre     String
-  correo     String?
-  telefono   String?
-  direccion  String?
-  empresaId  Int
-  empresa    Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  id        Int     @id @default(autoincrement())
+  nombre    String
+  correo    String?
+  telefono  String?
+  direccion String?
+  empresaId Int
+  empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
-  movimientoInventarios  MovimientoInventario[]
+  movimientoInventarios MovimientoInventario[]
 }
 
 /// [02] Geografía
 model Departamento {
-  id          Int                @id @default(autoincrement())
-  nombre      String             @unique
-  clientes    ClienteInternet[]
-  municipios  Municipio[]
+  id         Int               @id @default(autoincrement())
+  nombre     String            @unique
+  clientes   ClienteInternet[]
+  municipios Municipio[]
 }
 
 model Municipio {
-  id              Int                @id @default(autoincrement())
-  nombre          String             @unique
-  departamentoId  Int
-  clientes        ClienteInternet[]
-  departamento    Departamento       @relation(fields: [departamentoId], references: [id], onDelete: Cascade)
-  Sector          Sector[]
+  id             Int               @id @default(autoincrement())
+  nombre         String            @unique
+  departamentoId Int
+  clientes       ClienteInternet[]
+  departamento   Departamento      @relation(fields: [departamentoId], references: [id], onDelete: Cascade)
+  Sector         Sector[]
 }
 
 model Sector {
-  id             Int                @id @default(autoincrement())
-  nombre         String
-  descripcion    String?
-  municipioId    Int
-  creadoEn       DateTime           @default(now())
-  actualizadoEn  DateTime           @updatedAt
-  clientes       ClienteInternet[]
-  municipio      Municipio          @relation(fields: [municipioId], references: [id], onDelete: Cascade)
+  id            Int               @id @default(autoincrement())
+  nombre        String
+  descripcion   String?
+  municipioId   Int
+  creadoEn      DateTime          @default(now())
+  actualizadoEn DateTime          @updatedAt
+  clientes      ClienteInternet[]
+  municipio     Municipio         @relation(fields: [municipioId], references: [id], onDelete: Cascade)
 }
 
 model Ubicacion {
-  id         Int               @id @default(autoincrement())
-  creadoEn   DateTime          @default(now())
-  latitud    Float?
-  longitud   Float?
-  clienteId  Int?              @unique
-  empresaId  Int
-  cliente    ClienteInternet?  @relation(fields: [clienteId], references: [id])
-  empresa    Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  id        Int              @id @default(autoincrement())
+  creadoEn  DateTime         @default(now())
+  latitud   Float?
+  longitud  Float?
+  clienteId Int?             @unique
+  empresaId Int
+  cliente   ClienteInternet? @relation(fields: [clienteId], references: [id])
+  empresa   Empresa          @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 }
 
 /// [03] Facturación - Configuración y Plantillas
 model FacturacionZona {
-  id                             Int                @id @default(autoincrement())
-  nombre                         String
-  empresaId                      Int
-  diaGeneracionFactura           Int
-  diaPago                        Int
-  diaRecordatorio                Int?
-  horaRecordatorio               String?
-  enviarRecordatorio             Boolean            @default(true)
-  diaCorte                       Int?
-  suspenderTrasFacturas          Int?
-  creadoEn                       DateTime           @default(now())
-  actualizadoEn                  DateTime           @updatedAt
-  diaSegundoRecordatorio         Int?
-  email                          Boolean            @default(false)
-  llamada                        Boolean            @default(false)
-  sms                            Boolean            @default(false)
-  telegram                       Boolean            @default(true)
-  whatsapp                       Boolean            @default(true)
-  enviarAvisoPago                Boolean            @default(true)
-  enviarRecordatorio1            Boolean            @default(true)
-  enviarRecordatorio2            Boolean            @default(true)
-  enviarRecordatorioGeneracion   Boolean            @default(true)
-  enviarSiTieneFacturasVencidas  Boolean            @default(false)
-  clientes                       ClienteInternet[]
-  facturas                       FacturaInternet[]
-  empresa                        Empresa            @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  id                            Int               @id @default(autoincrement())
+  nombre                        String
+  empresaId                     Int
+  diaGeneracionFactura          Int
+  diaPago                       Int
+  diaRecordatorio               Int?
+  horaRecordatorio              String?
+  enviarRecordatorio            Boolean           @default(true)
+  diaCorte                      Int?
+  suspenderTrasFacturas         Int?
+  creadoEn                      DateTime          @default(now())
+  actualizadoEn                 DateTime          @updatedAt
+  diaSegundoRecordatorio        Int?
+  email                         Boolean           @default(false)
+  llamada                       Boolean           @default(false)
+  sms                           Boolean           @default(false)
+  telegram                      Boolean           @default(true)
+  whatsapp                      Boolean           @default(true)
+  enviarAvisoPago               Boolean           @default(true)
+  enviarRecordatorio1           Boolean           @default(true)
+  enviarRecordatorio2           Boolean           @default(true)
+  enviarRecordatorioGeneracion  Boolean           @default(true)
+  enviarSiTieneFacturasVencidas Boolean           @default(false)
+  clientes                      ClienteInternet[]
+  facturas                      FacturaInternet[]
+  empresa                       Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 }
 
 model PlantillaMensaje {
-  id             Int            @id @default(autoincrement())
-  nombre         String
-  tipo           TipoPlantilla
-  body           String
-  empresaId      Int
-  creadoEn       DateTime       @default(now())
-  actualizadoEn  DateTime       @updatedAt
-  empresa        Empresa        @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  id            Int           @id @default(autoincrement())
+  nombre        String
+  tipo          TipoPlantilla
+  body          String
+  empresaId     Int
+  creadoEn      DateTime      @default(now())
+  actualizadoEn DateTime      @updatedAt
+  empresa       Empresa       @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 }
 
 model PlantillaContrato {
-  id             Int       @id @default(autoincrement())
-  nombre         String
-  body           String
-  empresaId      Int
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  id            Int      @id @default(autoincrement())
+  nombre        String
+  body          String
+  empresaId     Int
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 }
 
 /// [04] Servicios
 model TipoServicio {
-  id             Int             @id @default(autoincrement())
-  nombre         String          @unique
-  descripcion    String?
-  estado         EstadoServicio  @default(ACTIVO)
-  creadoEn       DateTime        @default(now())
-  actualizadoEn  DateTime        @updatedAt
-  servicios      Servicio[]
+  id            Int            @id @default(autoincrement())
+  nombre        String         @unique
+  descripcion   String?
+  estado        EstadoServicio @default(ACTIVO)
+  creadoEn      DateTime       @default(now())
+  actualizadoEn DateTime       @updatedAt
+  servicios     Servicio[]
 }
 
 model Servicio {
-  id               Int                @id @default(autoincrement())
-  nombre           String
-  descripcion      String?
-  precio           Float
-  estado           EstadoServicio     @default(ACTIVO)
-  tipoServicioId   Int?
-  empresaId        Int
-  creadoEn         DateTime           @default(now())
-  actualizadoEn    DateTime           @updatedAt
-  clientes         ClienteServicio[]
-  FacturaServicio  FacturaServicio[]
-  empresa          Empresa            @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  tipoServicio     TipoServicio?      @relation(fields: [tipoServicioId], references: [id], onDelete: Restrict)
+  id              Int               @id @default(autoincrement())
+  nombre          String
+  descripcion     String?
+  precio          Float
+  estado          EstadoServicio    @default(ACTIVO)
+  tipoServicioId  Int?
+  empresaId       Int
+  creadoEn        DateTime          @default(now())
+  actualizadoEn   DateTime          @updatedAt
+  clientes        ClienteServicio[]
+  FacturaServicio FacturaServicio[]
+  empresa         Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  tipoServicio    TipoServicio?     @relation(fields: [tipoServicioId], references: [id], onDelete: Restrict)
 }
 
 model ServicioInternet {
-  id             Int                @id @default(autoincrement())
-  nombre         String
-  velocidad      String?
-  precio         Float
-  estado         EstadoServicio     @default(ACTIVO)
-  creadoEn       DateTime           @default(now())
-  actualizadoEn  DateTime           @updatedAt
-  empresaId      Int
-  clientes       ClienteInternet[]
-  empresa        Empresa            @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  id            Int               @id @default(autoincrement())
+  nombre        String
+  velocidad     String?
+  precio        Float
+  estado        EstadoServicio    @default(ACTIVO)
+  creadoEn      DateTime          @default(now())
+  actualizadoEn DateTime          @updatedAt
+  empresaId     Int
+  clientes      ClienteInternet[]
+  empresa       Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
-  instalacionesCliente     ClienteInstalacion[]
-  desinstalacionesCliente  ClienteDesinstalacion[]
+  instalacionesCliente    ClienteInstalacion[]
+  desinstalacionesCliente ClienteDesinstalacion[]
 
-  accesosInternet           ClienteAccesoInternet[]
-  perfilesPppoeHomologados  PppoePerfilHomologacion[]
+  accesosInternet          ClienteAccesoInternet[]
+  perfilesPppoeHomologados PppoePerfilHomologacion[]
 }
 
 /// [05] Clientes Internet y Relacionados
 model ClienteInternet {
   // Identidad
-  id         Int   @id @default(autoincrement())
-  empresaId  Int?
-  asesorId   Int?
+  id                         Int                    @id @default(autoincrement())
+  empresaId                  Int?
+  asesorId                   Int?
   // Información personal
-  nombre         String
-  apellidos      String?
-  dpi            String?
-  observaciones  String?
-  nota           String?
+  nombre                     String
+  apellidos                  String?
+  dpi                        String?
+  observaciones              String?
+  nota                       String?
   // Información de contacto
-  telefono                    String?
-  direccion                   String?
-  contactoReferenciaNombre    String?
-  contactoReferenciaTelefono  String?
+  telefono                   String?
+  direccion                  String?
+  contactoReferenciaNombre   String?
+  contactoReferenciaTelefono String?
   // Servicio y red
-  contrasenaWifi      String?
-  ssidRouter          String?
-  fechaInstalacion    DateTime?
-  servicioInternetId  Int?
-  sectorId            Int?
+  contrasenaWifi             String?
+  ssidRouter                 String?
+  fechaInstalacion           DateTime?
+  servicioInternetId         Int?
+  sectorId                   Int?
   // Opciones y flags
-  enviarRecordatorio  Boolean    @default(true)
-  isEliminado         Boolean    @default(false)
-  eliminadoEn         DateTime?
+  enviarRecordatorio         Boolean                @default(true)
+  isEliminado                Boolean                @default(false)
+  eliminadoEn                DateTime?
   // ESTADO DE SERVICIO-CLIENTE Y COBRANZA =>
-  estadoCliente   EstadoCliente
-  estadoCobranza  EstadoCobranzaCliente  @default(AL_DIA)
+  estadoCliente              EstadoCliente
+  estadoCobranza             EstadoCobranzaCliente  @default(AL_DIA)
   // Geografía
-  municipioId        Int?
-  departamentoId     Int?
-  facturacionZonaId  Int?
+  municipioId                Int?
+  departamentoId             Int?
+  facturacionZonaId          Int?
   //Optico
-  mikrotikRouterId        Int?
-  MikrotikRouter          MikrotikRouter?         @relation(fields: [mikrotikRouterId], references: [id])
-  estadoServicioMikrotik  EstadoServicioMikrotik  @default(SIN_MIKROTIK)
+  mikrotikRouterId           Int?
+  MikrotikRouter             MikrotikRouter?        @relation(fields: [mikrotikRouterId], references: [id])
+  estadoServicioMikrotik     EstadoServicioMikrotik @default(SIN_MIKROTIK)
 
   //BUSQUEDA
-  searchNombre  String?
+  searchNombre   String?
   // Metadatos
-  creadoEn        DateTime   @default(now())
-  actualizadoEn   DateTime   @updatedAt
-  desinstaladoEn  DateTime?
+  creadoEn       DateTime  @default(now())
+  actualizadoEn  DateTime  @updatedAt
+  desinstaladoEn DateTime?
 
   // Relaciones principales
-  empresa           Empresa?           @relation(fields: [empresaId], references: [id])
-  asesor            Usuario?           @relation(fields: [asesorId], references: [id])
-  departamento      Departamento?      @relation(fields: [departamentoId], references: [id])
-  municipio         Municipio?         @relation(fields: [municipioId], references: [id])
-  facturacionZona   FacturacionZona?   @relation(fields: [facturacionZonaId], references: [id])
-  sector            Sector?            @relation(fields: [sectorId], references: [id])
-  servicioInternet  ServicioInternet?  @relation(fields: [servicioInternetId], references: [id])
+  empresa                  Empresa?                  @relation(fields: [empresaId], references: [id])
+  asesor                   Usuario?                  @relation(fields: [asesorId], references: [id])
+  departamento             Departamento?             @relation(fields: [departamentoId], references: [id])
+  municipio                Municipio?                @relation(fields: [municipioId], references: [id])
+  facturacionZona          FacturacionZona?          @relation(fields: [facturacionZonaId], references: [id])
+  sector                   Sector?                   @relation(fields: [sectorId], references: [id])
+  servicioInternet         ServicioInternet?         @relation(fields: [servicioInternetId], references: [id])
   // Relaciones de datos / hijos
-  albumClientes             AlbumCliente[]
-  clienteServicios          ClienteServicio[]
-  CobroRuta                 CobroRuta[]
-  ContratoFisico            ContratoFisico?
-  ContratoServicioInternet  ContratoServicioInternet?  @relation("ContratoCliente")
-  factura                   Factura[]
-  facturaInternet           FacturaInternet[]
-  fotos                     Fotos[]
-  IP                        IP?
-  Lead                      Lead[]
-  medias                    Media[]
-  pagoFactura               PagoFactura[]
-  PagoFacturaInternet       PagoFacturaInternet[]
-  RecordatorioPago          RecordatorioPago[]
-  ticketSoporte             TicketSoporte[]
-  ubicacion                 Ubicacion?
-  saldoCliente              saldoCliente?
-  ruta                      Ruta[]                     @relation("ClienteInternetToRuta")
-  eliminadoPorId            Int?
-  eliminadoPor              Usuario?                   @relation("ClienteEliminadoPor", fields: [eliminadoPorId], references: [id], onDelete: SetNull)
+  albumClientes            AlbumCliente[]
+  clienteServicios         ClienteServicio[]
+  CobroRuta                CobroRuta[]
+  ContratoFisico           ContratoFisico?
+  ContratoServicioInternet ContratoServicioInternet? @relation("ContratoCliente")
+  factura                  Factura[]
+  facturaInternet          FacturaInternet[]
+  fotos                    Fotos[]
+  IP                       IP?
+  Lead                     Lead[]
+  medias                   Media[]
+  pagoFactura              PagoFactura[]
+  PagoFacturaInternet      PagoFacturaInternet[]
+  RecordatorioPago         RecordatorioPago[]
+  ticketSoporte            TicketSoporte[]
+  ubicacion                Ubicacion?
+  saldoCliente             saldoCliente?
+  ruta                     Ruta[]                    @relation("ClienteInternetToRuta")
+  eliminadoPorId           Int?
+  eliminadoPor             Usuario?                  @relation("ClienteEliminadoPor", fields: [eliminadoPorId], references: [id], onDelete: SetNull)
 
-  creditos           Credito[]
-  expediente         ClienteExpediente?  //DE CREDITO
-  documentosCredito  DocumentoCredito[]
+  creditos          Credito[]
+  expediente        ClienteExpediente? //DE CREDITO
+  documentosCredito DocumentoCredito[]
 
-  serialProductos  SerialProducto[]
+  serialProductos SerialProducto[]
 
-  instalaciones     ClienteInstalacion[]
-  desinstalaciones  ClienteDesinstalacion[]
-  historialEstados  ClienteEstadoHistorial[]
+  instalaciones         ClienteInstalacion[]
+  desinstalaciones      ClienteDesinstalacion[]
+  historialEstados      ClienteEstadoHistorial[]
   // ACCESOS A INTERNET Y CONFIGS
-  accesosInternet  ClienteAccesoInternet[]
+  accesosInternet       ClienteAccesoInternet[]
   // Soft delete / restauración
-  motivoEliminacion      String?
-  comentarioEliminacion  String?
-  restauradoEn           DateTime?
-  restauradoPorId        Int?
-  restauradoPor          Usuario?   @relation("ClienteRestauradoPor", fields: [restauradoPorId], references: [id], onDelete: SetNull)
+  motivoEliminacion     String?
+  comentarioEliminacion String?
+  restauradoEn          DateTime?
+  restauradoPorId       Int?
+  restauradoPor         Usuario?                 @relation("ClienteRestauradoPor", fields: [restauradoPorId], references: [id], onDelete: SetNull)
 
   // WhatsApp
-  whatsappActivo             Boolean    @default(true)
-  whatsappDesactivadoEn      DateTime?
-  whatsappDesactivadoPorId   Int?
-  motivoWhatsappDesactivado  String?
-  whatsappDesactivadoPor     Usuario?   @relation("ClienteWhatsappDesactivadoPor", fields: [whatsappDesactivadoPorId], references: [id], onDelete: SetNull)
+  whatsappActivo            Boolean   @default(true)
+  whatsappDesactivadoEn     DateTime?
+  whatsappDesactivadoPorId  Int?
+  motivoWhatsappDesactivado String?
+  whatsappDesactivadoPor    Usuario?  @relation("ClienteWhatsappDesactivadoPor", fields: [whatsappDesactivadoPorId], references: [id], onDelete: SetNull)
 
-  auditoriasPppoe  PppoeAuditoria[]
+  auditoriasPppoe PppoeAuditoria[]
 
   @@index([empresaId, isEliminado])
   @@index([empresaId, estadoCliente])
@@ -531,38 +531,38 @@ model ClienteInternet {
 }
 
 model ClienteAccesoInternet {
-  id  Int  @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  empresaId  Int
-  clienteId  Int
+  empresaId Int
+  clienteId Int
 
-  servicioInternetId  Int?
+  servicioInternetId Int?
 
-  tecnologia           TecnologiaAccesoInternet
-  metodoAutenticacion  MetodoAutenticacionInternet
-  estado               EstadoAccesoInternet         @default(PENDIENTE)
+  tecnologia          TecnologiaAccesoInternet
+  metodoAutenticacion MetodoAutenticacionInternet
+  estado              EstadoAccesoInternet        @default(PENDIENTE)
 
-  activadoEn    DateTime?
-  suspendidoEn  DateTime?
-  dadoDeBajaEn  DateTime?
+  activadoEn   DateTime?
+  suspendidoEn DateTime?
+  dadoDeBajaEn DateTime?
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
-  empresa  Empresa  @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Restrict)
 
-  cliente  ClienteInternet  @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  cliente ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Restrict)
 
-  servicioInternet  ServicioInternet?  @relation(fields: [servicioInternetId], references: [id], onDelete: SetNull)
+  servicioInternet ServicioInternet? @relation(fields: [servicioInternetId], references: [id], onDelete: SetNull)
 
-  instalaciones  ClienteInstalacionAcceso[]
-  cuentaPppoe    ClientePppoeCuenta?
+  instalaciones ClienteInstalacionAcceso[]
+  cuentaPppoe   ClientePppoeCuenta?
 
-  equipos               ClienteAccesoEquipo[]
-  configuracionTecnica  ClienteAccesoConfiguracionTecnica?
+  equipos              ClienteAccesoEquipo[]
+  configuracionTecnica ClienteAccesoConfiguracionTecnica?
 
-  desinstalaciones  ClienteDesinstalacion[]
-  auditoriasPppoe   PppoeAuditoria[]
+  desinstalaciones ClienteDesinstalacion[]
+  auditoriasPppoe  PppoeAuditoria[]
 
   @@index([empresaId, clienteId])
   @@index([empresaId, estado])
@@ -570,61 +570,61 @@ model ClienteAccesoInternet {
 }
 
 model ClienteInstalacionAcceso {
-  id  Int  @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  instalacionId     Int
-  accesoInternetId  Int
+  instalacionId    Int
+  accesoInternetId Int
 
-  accion  AccionInstalacionAcceso
+  accion AccionInstalacionAcceso
 
-  creadoEn  DateTime  @default(now())
+  creadoEn DateTime @default(now())
 
-  instalacion  ClienteInstalacion  @relation(fields: [instalacionId], references: [id], onDelete: Cascade)
+  instalacion ClienteInstalacion @relation(fields: [instalacionId], references: [id], onDelete: Cascade)
 
-  accesoInternet  ClienteAccesoInternet  @relation(fields: [accesoInternetId], references: [id], onDelete: Restrict)
+  accesoInternet ClienteAccesoInternet @relation(fields: [accesoInternetId], references: [id], onDelete: Restrict)
 
   @@unique([instalacionId, accesoInternetId])
   @@index([accesoInternetId])
 }
 
 model ClientePppoeCuenta {
-  id  Int  @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  empresaId         Int
-  accesoInternetId  Int  @unique
+  empresaId        Int
+  accesoInternetId Int @unique
 
-  perfilHomologacionId  Int
+  perfilHomologacionId Int
 
-  usuario  String
+  usuario String
 
-  secretoCifrado  String
-  secretoIv       String
-  secretoAuthTag  String
-  versionClave    Int     @default(1)
+  secretoCifrado String
+  secretoIv      String
+  secretoAuthTag String
+  versionClave   Int    @default(1)
 
-  estado  EstadoCuentaPppoe  @default(PENDIENTE_ACTIVACION)
+  estado EstadoCuentaPppoe @default(PENDIENTE_ACTIVACION)
 
-  generadoPorId  Int?
+  generadoPorId Int?
 
-  generadoEn      DateTime   @default(now())
-  secretCreadoEn  DateTime?
-  activadoEn      DateTime?
-  suspendidoEn    DateTime?
-  eliminadoEn     DateTime?
+  generadoEn     DateTime  @default(now())
+  secretCreadoEn DateTime?
+  activadoEn     DateTime?
+  suspendidoEn   DateTime?
+  eliminadoEn    DateTime?
 
-  ultimaSincronizacionEn  DateTime?
-  ultimoError             String?
+  ultimaSincronizacionEn DateTime?
+  ultimoError            String?
 
-  actualizadoEn  DateTime  @updatedAt
+  actualizadoEn DateTime @updatedAt
 
-  empresa             Empresa                  @relation(fields: [empresaId], references: [id], onDelete: Restrict)
-  accesoInternet      ClienteAccesoInternet    @relation(fields: [accesoInternetId], references: [id], onDelete: Restrict)
-  perfilHomologacion  PppoePerfilHomologacion  @relation(fields: [perfilHomologacionId], references: [id], onDelete: Restrict)
+  empresa            Empresa                 @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  accesoInternet     ClienteAccesoInternet   @relation(fields: [accesoInternetId], references: [id], onDelete: Restrict)
+  perfilHomologacion PppoePerfilHomologacion @relation(fields: [perfilHomologacionId], references: [id], onDelete: Restrict)
 
-  generadoPor  Usuario?  @relation("PppoeCuentaGeneradaPor", fields: [generadoPorId], references: [id], onDelete: Restrict)
+  generadoPor Usuario? @relation("PppoeCuentaGeneradaPor", fields: [generadoPorId], references: [id], onDelete: Restrict)
 
-  operaciones  PppoeOperacion[]
-  auditorias   PppoeAuditoria[]
+  operaciones PppoeOperacion[]
+  auditorias  PppoeAuditoria[]
 
   @@unique([empresaId, usuario])
   @@index([empresaId, estado])
@@ -633,106 +633,209 @@ model ClientePppoeCuenta {
 }
 
 model PppoeOperacion {
-  id  Int  @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  empresaId         Int
-  cuentaPppoeId     Int
-  mikrotikRouterId  Int
+  // ==========================================================
+  // CONTEXTO PRINCIPAL
+  // ==========================================================
 
-  instalacionId     Int?
-  desinstalacionId  Int?
+  empresaId            Int
+  cuentaPppoeId        Int
+  mikrotikRouterId     Int
+  perfilHomologacionId Int?
 
-  tipo    TipoOperacionPppoe
-  origen  OrigenOperacionPppoe
-  estado  EstadoOperacionPppoe  @default(PENDIENTE)
+  instalacionId    Int?
+  desinstalacionId Int?
 
-  iniciadoPorId       Int?
-  reautenticadoPorId  Int?
+  // ==========================================================
+  // REINTENTOS E IDEMPOTENCIA
+  // ==========================================================
 
-  requiereReautenticacion  Boolean    @default(false)
-  reautenticacionExitosa   Boolean?
-  reautenticadoEn          DateTime?
+  reintentoDeId Int?
+  numeroIntento Int  @default(1)
 
-  motivo  String?
+  claveIdempotencia String
 
-  errorCodigo   String?
-  errorMensaje  String?
+  // ==========================================================
+  // CLASIFICACIÓN
+  // ==========================================================
 
-  iniciadoEn    DateTime?
-  finalizadoEn  DateTime?
+  tipo   TipoOperacionPppoe
+  origen OrigenOperacionPppoe
+  canal  CanalOperacionPppoe  @default(SSH)
+  estado EstadoOperacionPppoe @default(PENDIENTE)
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  // ==========================================================
+  // RESPONSABLE Y AUTORIZACIÓN
+  // ==========================================================
 
-  empresa         Empresa             @relation(fields: [empresaId], references: [id], onDelete: Restrict)
-  cuentaPppoe     ClientePppoeCuenta  @relation(fields: [cuentaPppoeId], references: [id], onDelete: Restrict)
-  mikrotikRouter  MikrotikRouter      @relation(fields: [mikrotikRouterId], references: [id], onDelete: Restrict)
+  iniciadoPorId      Int?
+  reautenticadoPorId Int?
 
-  instalacion  ClienteInstalacion?  @relation(fields: [instalacionId], references: [id], onDelete: Restrict)
+  requiereReautenticacion Boolean   @default(false)
+  reautenticacionExitosa  Boolean?
+  reautenticadoEn         DateTime?
 
-  desinstalacion  ClienteDesinstalacion?  @relation(fields: [desinstalacionId], references: [id], onDelete: Restrict)
+  // ==========================================================
+  // CONTEXTO HISTÓRICO NO SENSIBLE
+  // ==========================================================
 
-  iniciadoPor  Usuario?  @relation("PppoeOperacionIniciadaPor", fields: [iniciadoPorId], references: [id], onDelete: Restrict)
+  usuarioPppoeSnapshot String
+  codigoPerfilSnapshot String?
+  routerHostSnapshot   String?
+  routerPuertoSnapshot Int?
 
-  reautenticadoPor  Usuario?  @relation("PppoeOperacionReautenticadaPor", fields: [reautenticadoPorId], references: [id], onDelete: Restrict)
+  // ==========================================================
+  // RESULTADO
+  // ==========================================================
 
-  pasos       PppoeOperacionPaso[]
-  auditorias  PppoeAuditoria[]
+  motivo String?
 
+  resultado Json?
+
+  errorCodigo  String?
+  errorMensaje String?
+
+  // ==========================================================
+  // TIEMPOS
+  // ==========================================================
+
+  iniciadoEn   DateTime?
+  finalizadoEn DateTime?
+  canceladoEn  DateTime?
+
+  duracionMs Int?
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  // ==========================================================
+  // RELACIONES PRINCIPALES
+  // ==========================================================
+
+  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+
+  cuentaPppoe ClientePppoeCuenta @relation(fields: [cuentaPppoeId], references: [id], onDelete: Restrict)
+
+  mikrotikRouter MikrotikRouter @relation(fields: [mikrotikRouterId], references: [id], onDelete: Restrict)
+
+  perfilHomologacion PppoePerfilHomologacion? @relation(fields: [perfilHomologacionId], references: [id], onDelete: Restrict)
+
+  instalacion ClienteInstalacion? @relation(fields: [instalacionId], references: [id], onDelete: Restrict)
+
+  desinstalacion ClienteDesinstalacion? @relation(fields: [desinstalacionId], references: [id], onDelete: Restrict)
+
+  iniciadoPor Usuario? @relation("PppoeOperacionIniciadaPor", fields: [iniciadoPorId], references: [id], onDelete: Restrict)
+
+  reautenticadoPor Usuario? @relation("PppoeOperacionReautenticadaPor", fields: [reautenticadoPorId], references: [id], onDelete: Restrict)
+
+  // ==========================================================
+  // CADENA DE REINTENTOS
+  // ==========================================================
+
+  reintentoDe PppoeOperacion? @relation("PppoeOperacionReintentos", fields: [reintentoDeId], references: [id], onDelete: SetNull)
+
+  reintentos PppoeOperacion[] @relation("PppoeOperacionReintentos")
+
+  // ==========================================================
+  // TRAZABILIDAD
+  // ==========================================================
+
+  pasos      PppoeOperacionPaso[]
+  auditorias PppoeAuditoria[]
+
+  // ==========================================================
+  // RESTRICCIONES E ÍNDICES
+  // ==========================================================
+
+  @@unique([empresaId, claveIdempotencia])
   @@index([empresaId, creadoEn])
   @@index([cuentaPppoeId, creadoEn])
   @@index([mikrotikRouterId, creadoEn])
+  @@index([perfilHomologacionId])
   @@index([instalacionId])
   @@index([desinstalacionId])
-  @@index([estado, creadoEn])
+  @@index([reintentoDeId])
+  @@index([tipo, estado, creadoEn])
+  @@index([canal, creadoEn])
   @@index([iniciadoPorId])
   @@index([reautenticadoPorId])
 }
 
+model PppoeOperacionPaso {
+  id Int @id @default(autoincrement())
+
+  operacionId Int
+
+  tipo   TipoPasoPppoe
+  orden  Int
+  estado EstadoPasoPppoe @default(PENDIENTE)
+
+  comandoSanitizado   String?
+  respuestaSanitizada String?
+
+  errorCodigo  String?
+  errorMensaje String?
+
+  iniciadoEn   DateTime?
+  finalizadoEn DateTime?
+
+  duracionMs Int?
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  operacion PppoeOperacion @relation(fields: [operacionId], references: [id], onDelete: Restrict)
+
+  @@unique([operacionId, orden])
+  @@index([operacionId, estado])
+  @@index([operacionId, tipo])
+}
+
 model PppoeAuditoria {
-  id  Int  @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  empresaId  Int
+  empresaId Int
 
-  clienteId             Int?
-  accesoInternetId      Int?
-  cuentaPppoeId         Int?
-  perfilHomologacionId  Int?
+  clienteId            Int?
+  accesoInternetId     Int?
+  cuentaPppoeId        Int?
+  perfilHomologacionId Int?
 
-  instalacionId     Int?
-  desinstalacionId  Int?
-  operacionId       Int?
+  instalacionId    Int?
+  desinstalacionId Int?
+  operacionId      Int?
 
-  operadorId  Int?
+  operadorId Int?
 
-  origen  OrigenOperacionPppoe
-  accion  AccionAuditoriaPppoe
+  origen OrigenOperacionPppoe
+  accion AccionAuditoriaPppoe
 
-  descripcion  String
+  descripcion String
 
-  estadoCuentaAnterior  EstadoCuentaPppoe?
-  estadoCuentaNuevo     EstadoCuentaPppoe?
+  estadoCuentaAnterior EstadoCuentaPppoe?
+  estadoCuentaNuevo    EstadoCuentaPppoe?
 
-  usuarioPppoeSnapshot    String?
-  perfilCodigoSnapshot    String?
-  operadorNombreSnapshot  String?
+  usuarioPppoeSnapshot   String?
+  perfilCodigoSnapshot   String?
+  operadorNombreSnapshot String?
 
-  datos  Json?
+  datos Json?
 
-  ipOrigen   String?
-  userAgent  String?
+  ipOrigen  String?
+  userAgent String?
 
-  creadoEn  DateTime  @default(now())
+  creadoEn DateTime @default(now())
 
-  empresa             Empresa                   @relation(fields: [empresaId], references: [id], onDelete: Restrict)
-  cliente             ClienteInternet?          @relation(fields: [clienteId], references: [id], onDelete: Restrict)
-  accesoInternet      ClienteAccesoInternet?    @relation(fields: [accesoInternetId], references: [id], onDelete: Restrict)
-  cuentaPppoe         ClientePppoeCuenta?       @relation(fields: [cuentaPppoeId], references: [id], onDelete: Restrict)
-  perfilHomologacion  PppoePerfilHomologacion?  @relation(fields: [perfilHomologacionId], references: [id], onDelete: Restrict)
-  instalacion         ClienteInstalacion?       @relation(fields: [instalacionId], references: [id], onDelete: Restrict)
-  desinstalacion      ClienteDesinstalacion?    @relation(fields: [desinstalacionId], references: [id], onDelete: Restrict)
-  operacion           PppoeOperacion?           @relation(fields: [operacionId], references: [id], onDelete: Restrict)
-  operador            Usuario?                  @relation("PppoeAuditoriaOperador", fields: [operadorId], references: [id], onDelete: Restrict)
+  empresa            Empresa                  @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  cliente            ClienteInternet?         @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  accesoInternet     ClienteAccesoInternet?   @relation(fields: [accesoInternetId], references: [id], onDelete: Restrict)
+  cuentaPppoe        ClientePppoeCuenta?      @relation(fields: [cuentaPppoeId], references: [id], onDelete: Restrict)
+  perfilHomologacion PppoePerfilHomologacion? @relation(fields: [perfilHomologacionId], references: [id], onDelete: Restrict)
+  instalacion        ClienteInstalacion?      @relation(fields: [instalacionId], references: [id], onDelete: Restrict)
+  desinstalacion     ClienteDesinstalacion?   @relation(fields: [desinstalacionId], references: [id], onDelete: Restrict)
+  operacion          PppoeOperacion?          @relation(fields: [operacionId], references: [id], onDelete: Restrict)
+  operador           Usuario?                 @relation("PppoeAuditoriaOperador", fields: [operadorId], references: [id], onDelete: Restrict)
 
   @@index([empresaId, creadoEn])
   @@index([clienteId, creadoEn])
@@ -746,76 +849,47 @@ model PppoeAuditoria {
   @@index([accion, creadoEn])
 }
 
-model PppoeOperacionPaso {
-  id  Int  @id @default(autoincrement())
-
-  operacionId  Int
-
-  tipo    TipoPasoPppoe
-  orden   Int
-  estado  EstadoPasoPppoe  @default(PENDIENTE)
-
-  comandoSanitizado    String?
-  respuestaSanitizada  String?
-
-  errorCodigo   String?
-  errorMensaje  String?
-
-  iniciadoEn    DateTime?
-  finalizadoEn  DateTime?
-
-  duracionMs  Int?
-
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
-
-  operacion  PppoeOperacion  @relation(fields: [operacionId], references: [id], onDelete: Restrict)
-
-  @@unique([operacionId, orden])
-  @@index([operacionId, estado])
-}
-
 // FLUJOS DE PPOE
 
 model ClienteAccesoEquipo {
-  id  Int  @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  accesoInternetId  Int
+  accesoInternetId Int
 
-  productoId        Int
-  serialProductoId  Int?
+  productoId       Int
+  serialProductoId Int?
 
-  instalacionAsignacionId  Int?
-  instalacionRetiroId      Int?
+  instalacionAsignacionId Int?
+  instalacionRetiroId     Int?
 
-  modoOperacion  ModoOperacionEquipo?
+  modoOperacion ModoOperacionEquipo?
 
-  rol  RolEquipoAcceso
+  rol RolEquipoAcceso
 
-  ipGestion  String?
+  ipGestion String?
 
-  asignadoEn  DateTime   @default(now())
-  retiradoEn  DateTime?
+  asignadoEn DateTime  @default(now())
+  retiradoEn DateTime?
 
-  activo  Boolean  @default(true)
+  activo Boolean @default(true)
 
-  observaciones  String?
+  observaciones String?
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
-  accesoInternet  ClienteAccesoInternet  @relation(fields: [accesoInternetId], references: [id], onDelete: Restrict)
+  accesoInternet ClienteAccesoInternet @relation(fields: [accesoInternetId], references: [id], onDelete: Restrict)
 
-  producto  Producto  @relation(fields: [productoId], references: [id], onDelete: Restrict)
+  producto Producto @relation(fields: [productoId], references: [id], onDelete: Restrict)
 
-  serialProducto  SerialProducto?  @relation(fields: [serialProductoId], references: [id], onDelete: Restrict)
+  serialProducto SerialProducto? @relation(fields: [serialProductoId], references: [id], onDelete: Restrict)
 
-  instalacionAsignacion  ClienteInstalacion?  @relation("AccesoEquipoInstalacionAsignacion", fields: [instalacionAsignacionId], references: [id], onDelete: SetNull)
+  instalacionAsignacion ClienteInstalacion? @relation("AccesoEquipoInstalacionAsignacion", fields: [instalacionAsignacionId], references: [id], onDelete: SetNull)
 
-  instalacionRetiro  ClienteInstalacion?  @relation("AccesoEquipoInstalacionRetiro", fields: [instalacionRetiroId], references: [id], onDelete: SetNull)
+  instalacionRetiro ClienteInstalacion? @relation("AccesoEquipoInstalacionRetiro", fields: [instalacionRetiroId], references: [id], onDelete: SetNull)
 
   // configuracionesWifi ClienteAccesoWifi[]
-  retiroDesinstalacion  ClienteDesinstalacionEquipo?
+  retiroDesinstalacion ClienteDesinstalacionEquipo?
 
   @@index([accesoInternetId, activo])
   @@index([productoId])
@@ -825,32 +899,33 @@ model ClienteAccesoEquipo {
 }
 
 model PppoePerfilHomologacion {
-  id  Int  @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  empresaId           Int
-  mikrotikRouterId    Int
-  servicioInternetId  Int
+  empresaId          Int
+  mikrotikRouterId   Int
+  servicioInternetId Int
 
-  codigoPerfil  String
+  codigoPerfil String
 
-  activo  Boolean  @default(true)
+  activo Boolean @default(true)
 
-  creadoPorId       Int?
-  actualizadoPorId  Int?
+  creadoPorId      Int?
+  actualizadoPorId Int?
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
-  empresa           Empresa           @relation(fields: [empresaId], references: [id], onDelete: Restrict)
-  mikrotikRouter    MikrotikRouter    @relation(fields: [mikrotikRouterId], references: [id], onDelete: Restrict)
-  servicioInternet  ServicioInternet  @relation(fields: [servicioInternetId], references: [id], onDelete: Restrict)
+  empresa          Empresa          @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  mikrotikRouter   MikrotikRouter   @relation(fields: [mikrotikRouterId], references: [id], onDelete: Restrict)
+  servicioInternet ServicioInternet @relation(fields: [servicioInternetId], references: [id], onDelete: Restrict)
 
-  cuentas     ClientePppoeCuenta[]
-  auditorias  PppoeAuditoria[]
+  cuentas    ClientePppoeCuenta[]
+  auditorias PppoeAuditoria[]
 
-  creadoPor  Usuario?  @relation("PppoePerfilHomologacionCreadoPor", fields: [creadoPorId], references: [id], onDelete: Restrict)
+  creadoPor Usuario? @relation("PppoePerfilHomologacionCreadoPor", fields: [creadoPorId], references: [id], onDelete: Restrict)
 
-  actualizadoPor  Usuario?  @relation("PppoePerfilHomologacionActualizadoPor", fields: [actualizadoPorId], references: [id], onDelete: Restrict)
+  actualizadoPor  Usuario?         @relation("PppoePerfilHomologacionActualizadoPor", fields: [actualizadoPorId], references: [id], onDelete: Restrict)
+  pppoeOperacions PppoeOperacion[]
 
   @@unique([mikrotikRouterId, servicioInternetId])
   @@unique([mikrotikRouterId, codigoPerfil])
@@ -861,172 +936,172 @@ model PppoePerfilHomologacion {
 }
 
 model ClienteAccesoConfiguracionTecnica {
-  id  Int  @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  accesoInternetId  Int   @unique
-  instalacionId     Int?
+  accesoInternetId Int  @unique
+  instalacionId    Int?
 
-  potenciaOpticaRxDbm  Decimal?  @db.Decimal(6, 2)
-  senalInalambricaDbm  Decimal?  @db.Decimal(6, 2)
+  potenciaOpticaRxDbm Decimal? @db.Decimal(6, 2)
+  senalInalambricaDbm Decimal? @db.Decimal(6, 2)
 
-  ssid                     String?
-  contrasenaWifiProtegida  String?
-  bandaWifi                BandaWifi?
-  canal                    Int?
-  anchoCanalMhz            Int?
+  ssid                    String?
+  contrasenaWifiProtegida String?
+  bandaWifi               BandaWifi?
+  canal                   Int?
+  anchoCanalMhz           Int?
 
-  ipv4  String?
-  ipv6  String?
+  ipv4 String?
+  ipv6 String?
 
-  gateway        String?
-  dnsPrimario    String?
-  dnsSecundario  String?
+  gateway       String?
+  dnsPrimario   String?
+  dnsSecundario String?
 
-  observaciones  String?
+  observaciones String?
 
-  configuradoPorId  Int?
+  configuradoPorId Int?
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
-  accesoInternet  ClienteAccesoInternet  @relation(fields: [accesoInternetId], references: [id], onDelete: Restrict)
-  instalacion     ClienteInstalacion?    @relation(fields: [instalacionId], references: [id], onDelete: SetNull)
-  configuradoPor  Usuario?               @relation("AccesoConfiguradoPor", fields: [configuradoPorId], references: [id], onDelete: SetNull)
+  accesoInternet ClienteAccesoInternet @relation(fields: [accesoInternetId], references: [id], onDelete: Restrict)
+  instalacion    ClienteInstalacion?   @relation(fields: [instalacionId], references: [id], onDelete: SetNull)
+  configuradoPor Usuario?              @relation("AccesoConfiguradoPor", fields: [configuradoPorId], references: [id], onDelete: SetNull)
 
   @@index([instalacionId])
   @@index([configuradoPorId])
 }
 
 model IP {
-  id           Int               @id @default(autoincrement())
-  direccionIp  String?           @default("192.168.1.1")
-  clienteId    Int?              @unique
-  gateway      String?           @default("192.168.1.1")
-  mascara      String?           @default("255.255.255.0")
-  cliente      ClienteInternet?  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  id          Int              @id @default(autoincrement())
+  direccionIp String?          @default("192.168.1.1")
+  clienteId   Int?             @unique
+  gateway     String?          @default("192.168.1.1")
+  mascara     String?          @default("255.255.255.0")
+  cliente     ClienteInternet? @relation(fields: [clienteId], references: [id], onDelete: Cascade)
 }
 
 model Fotos {
-  id             Int              @id @default(autoincrement())
-  nombreFoto     String
-  url            String?
-  clienteId      Int
-  creadoEn       DateTime         @default(now())
-  actualizadoEn  DateTime         @updatedAt
-  cliente        ClienteInternet  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  id            Int             @id @default(autoincrement())
+  nombreFoto    String
+  url           String?
+  clienteId     Int
+  creadoEn      DateTime        @default(now())
+  actualizadoEn DateTime        @updatedAt
+  cliente       ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Cascade)
 }
 
 model saldoCliente {
-  id              Int              @id @default(autoincrement())
-  saldoPendiente  Float?           @default(0)
-  saldoFavor      Float?           @default(0)
-  totalPagos      Float?           @default(0)
-  clienteId       Int              @unique
-  creadoEn        DateTime         @default(now())
-  actualizadoEn   DateTime         @updatedAt
-  ultimoPago      DateTime?
-  cliente         ClienteInternet  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  id             Int             @id @default(autoincrement())
+  saldoPendiente Float?          @default(0)
+  saldoFavor     Float?          @default(0)
+  totalPagos     Float?          @default(0)
+  clienteId      Int             @unique
+  creadoEn       DateTime        @default(now())
+  actualizadoEn  DateTime        @updatedAt
+  ultimoPago     DateTime?
+  cliente        ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Cascade)
 }
 
 model ContratoFisico {
-  id               Int               @id @default(autoincrement())
-  clienteId        Int?              @unique
-  idContrato       String            @unique
-  fechaFirma       DateTime?         @default(now())
-  archivoContrato  String?
-  creadoEn         DateTime?         @default(now())
-  actualizadoEn    DateTime          @updatedAt
-  observaciones    String?
-  comentario       String?
-  mediaId          Int?
-  cliente          ClienteInternet?  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  media            Media?            @relation(fields: [mediaId], references: [id])
+  id              Int              @id @default(autoincrement())
+  clienteId       Int?             @unique
+  idContrato      String           @unique
+  fechaFirma      DateTime?        @default(now())
+  archivoContrato String?
+  creadoEn        DateTime?        @default(now())
+  actualizadoEn   DateTime         @updatedAt
+  observaciones   String?
+  comentario      String?
+  mediaId         Int?
+  cliente         ClienteInternet? @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  media           Media?           @relation(fields: [mediaId], references: [id])
 }
 
 model ContratoServicioInternet {
-  id                          Int              @id @default(autoincrement())
-  clienteId                   Int              @unique
-  fechaInstalacionProgramada  DateTime?
-  costoInstalacion            Float?
-  fechaPago                   DateTime?
-  observaciones               String?
-  creadoEn                    DateTime         @default(now())
-  actualizadoEn               DateTime         @updatedAt
-  cliente                     ClienteInternet  @relation("ContratoCliente", fields: [clienteId], references: [id], onDelete: Cascade)
+  id                         Int             @id @default(autoincrement())
+  clienteId                  Int             @unique
+  fechaInstalacionProgramada DateTime?
+  costoInstalacion           Float?
+  fechaPago                  DateTime?
+  observaciones              String?
+  creadoEn                   DateTime        @default(now())
+  actualizadoEn              DateTime        @updatedAt
+  cliente                    ClienteInternet @relation("ContratoCliente", fields: [clienteId], references: [id], onDelete: Cascade)
 }
 
 model ClienteServicio {
-  id             Int                    @id @default(autoincrement())
-  clienteId      Int
-  servicioId     Int
-  fechaInicio    DateTime               @default(now())
-  fechaFin       DateTime?
-  estado         EstadoClienteServicio  @default(ACTIVO)
-  creadoEn       DateTime               @default(now())
-  actualizadoEn  DateTime               @updatedAt
-  cliente        ClienteInternet        @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  servicio       Servicio               @relation(fields: [servicioId], references: [id], onDelete: Cascade)
+  id            Int                   @id @default(autoincrement())
+  clienteId     Int
+  servicioId    Int
+  fechaInicio   DateTime              @default(now())
+  fechaFin      DateTime?
+  estado        EstadoClienteServicio @default(ACTIVO)
+  creadoEn      DateTime              @default(now())
+  actualizadoEn DateTime              @updatedAt
+  cliente       ClienteInternet       @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  servicio      Servicio              @relation(fields: [servicioId], references: [id], onDelete: Cascade)
 }
 
 model Lead {
-  id         Int               @id @default(autoincrement())
-  nombre     String
-  correo     String?
-  telefono   String?
-  fuente     String
-  estado     String
-  creadoEn   DateTime          @default(now())
-  clienteId  Int?
-  cliente    ClienteInternet?  @relation(fields: [clienteId], references: [id])
+  id        Int              @id @default(autoincrement())
+  nombre    String
+  correo    String?
+  telefono  String?
+  fuente    String
+  estado    String
+  creadoEn  DateTime         @default(now())
+  clienteId Int?
+  cliente   ClienteInternet? @relation(fields: [clienteId], references: [id])
 }
 
 /// [06] Media y Álbumes
 /// /////////////////////////////////////////////////////////////////////////////
 /// /////////////////////////////////////////////////////////////////////////////
 model Media {
-  id               Int               @id @default(autoincrement())
-  empresaId        Int
-  clienteId        Int?
-  albumId          Int?
-  subidoPorId      Int?
-  categoria        CategoriaMedia    @default(CLIENTE_GENERAL)
-  tipo             TipoMedia
-  estado           EstadoMedia       @default(PENDIENTE)
-  bucket           String?
-  region           String?
-  key              String
-  cdnUrl           String?
-  mimeType         String?
-  extension        String?
-  tamanioBytes     BigInt?
-  ancho            Int?
-  alto             Int?
-  duracionSeg      Int?
-  checksumSha256   String?           @db.VarChar(64)
-  titulo           String?
-  descripcion      String?
-  etiqueta         String?
-  orden            Int               @default(0)
-  tomadoEn         DateTime?
-  publico          Boolean           @default(false)
-  eliminadoEn      DateTime?
-  metadatos        Json?
-  creadoEn         DateTime          @default(now())
-  actualizadoEn    DateTime          @updatedAt
-  notas            String?
-  portadaDe        AlbumCliente[]    @relation("PortadaAlbum")
-  contratoFisicos  ContratoFisico[]
-  album            AlbumCliente?     @relation("AlbumMedias", fields: [albumId], references: [id])
-  cliente          ClienteInternet?  @relation(fields: [clienteId], references: [id])
-  empresa          Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  subidoPor        Usuario?          @relation(fields: [subidoPorId], references: [id])
+  id              Int              @id @default(autoincrement())
+  empresaId       Int
+  clienteId       Int?
+  albumId         Int?
+  subidoPorId     Int?
+  categoria       CategoriaMedia   @default(CLIENTE_GENERAL)
+  tipo            TipoMedia
+  estado          EstadoMedia      @default(PENDIENTE)
+  bucket          String?
+  region          String?
+  key             String
+  cdnUrl          String?
+  mimeType        String?
+  extension       String?
+  tamanioBytes    BigInt?
+  ancho           Int?
+  alto            Int?
+  duracionSeg     Int?
+  checksumSha256  String?          @db.VarChar(64)
+  titulo          String?
+  descripcion     String?
+  etiqueta        String?
+  orden           Int              @default(0)
+  tomadoEn        DateTime?
+  publico         Boolean          @default(false)
+  eliminadoEn     DateTime?
+  metadatos       Json?
+  creadoEn        DateTime         @default(now())
+  actualizadoEn   DateTime         @updatedAt
+  notas           String?
+  portadaDe       AlbumCliente[]   @relation("PortadaAlbum")
+  contratoFisicos ContratoFisico[]
+  album           AlbumCliente?    @relation("AlbumMedias", fields: [albumId], references: [id])
+  cliente         ClienteInternet? @relation(fields: [clienteId], references: [id])
+  empresa         Empresa          @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  subidoPor       Usuario?         @relation(fields: [subidoPorId], references: [id])
 
-  evidenciasEntregaHerramienta     PrestamoHerramienta[]  @relation("EvidenciaEntregaHerramienta")
-  evidenciasDevolucionHerramienta  PrestamoHerramienta[]  @relation("EvidenciaDevolucionHerramienta")
+  evidenciasEntregaHerramienta    PrestamoHerramienta[] @relation("EvidenciaEntregaHerramienta")
+  evidenciasDevolucionHerramienta PrestamoHerramienta[] @relation("EvidenciaDevolucionHerramienta")
 
-  evidenciasInstalacion     ClienteInstalacionMedia[]
-  evidenciasDesinstalacion  ClienteDesinstalacionMedia[]
-  gastoOperativos           GastoOperativo[]              @relation("EvidenciaGastoOperativo")
+  evidenciasInstalacion    ClienteInstalacionMedia[]
+  evidenciasDesinstalacion ClienteDesinstalacionMedia[]
+  gastoOperativos          GastoOperativo[]             @relation("EvidenciaGastoOperativo")
 
   @@unique([bucket, key])
   @@index([clienteId, albumId, creadoEn(sort: Desc)])
@@ -1034,20 +1109,20 @@ model Media {
 }
 
 model AlbumCliente {
-  id             Int              @id @default(autoincrement())
-  empresaId      Int
-  clienteId      Int
-  nombre         String
-  descripcion    String?
-  portadaId      Int?
-  esGeneral      Boolean          @default(false)
-  creadoEn       DateTime         @default(now())
-  actualizadoEn  DateTime         @updatedAt
-  orden          Int?
-  cliente        ClienteInternet  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  empresa        Empresa          @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  portadaDe      Media?           @relation("PortadaAlbum", fields: [portadaId], references: [id])
-  medias         Media[]          @relation("AlbumMedias")
+  id            Int             @id @default(autoincrement())
+  empresaId     Int
+  clienteId     Int
+  nombre        String
+  descripcion   String?
+  portadaId     Int?
+  esGeneral     Boolean         @default(false)
+  creadoEn      DateTime        @default(now())
+  actualizadoEn DateTime        @updatedAt
+  orden         Int?
+  cliente       ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  empresa       Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  portadaDe     Media?          @relation("PortadaAlbum", fields: [portadaId], references: [id])
+  medias        Media[]         @relation("AlbumMedias")
 
   @@unique([clienteId, nombre])
   @@index([clienteId, creadoEn(sort: Desc)])
@@ -1055,127 +1130,127 @@ model AlbumCliente {
 
 /// [07] Facturación - Operaciones
 model FacturaInternet {
-  id                     Int                    @id @default(autoincrement())
-  fechaPagoEsperada      DateTime?
-  fechaPagada            DateTime?
-  montoPago              Float?
-  saldoPendiente         Float?                 @default(0)
-  empresaId              Int
-  clienteId              Int
-  creadoEn               DateTime               @default(now())
-  actualizadoEn          DateTime               @updatedAt
-  detalleFactura         String?
-  nombreClienteFactura   String?
-  facturacionZonaId      Int?
-  estadoFacturaInternet  StateFacturaInternet   @default(PENDIENTE)
-  creadorId              Int?
-  periodo                String                 @db.VarChar(6)
-  serviciosAdicionales   Factura[]              @relation("ServiciosPorInternet")
-  facturasEliminadas     FacturaEliminada[]
-  cliente                ClienteInternet        @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  creador                Usuario?               @relation("FacturaInternetCreador", fields: [creadorId], references: [id])
-  empresa                Empresa                @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  facturacionZona        FacturacionZona?       @relation(fields: [facturacionZonaId], references: [id])
-  rutasAsignadas         FacturaRuta[]
-  pagos                  PagoFacturaInternet[]
-  RecordatorioPago       RecordatorioPago[]
+  id                    Int                   @id @default(autoincrement())
+  fechaPagoEsperada     DateTime?
+  fechaPagada           DateTime?
+  montoPago             Float?
+  saldoPendiente        Float?                @default(0)
+  empresaId             Int
+  clienteId             Int
+  creadoEn              DateTime              @default(now())
+  actualizadoEn         DateTime              @updatedAt
+  detalleFactura        String?
+  nombreClienteFactura  String?
+  facturacionZonaId     Int?
+  estadoFacturaInternet StateFacturaInternet  @default(PENDIENTE)
+  creadorId             Int?
+  periodo               String                @db.VarChar(6)
+  serviciosAdicionales  Factura[]             @relation("ServiciosPorInternet")
+  facturasEliminadas    FacturaEliminada[]
+  cliente               ClienteInternet       @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  creador               Usuario?              @relation("FacturaInternetCreador", fields: [creadorId], references: [id])
+  empresa               Empresa               @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  facturacionZona       FacturacionZona?      @relation(fields: [facturacionZonaId], references: [id])
+  rutasAsignadas        FacturaRuta[]
+  pagos                 PagoFacturaInternet[]
+  RecordatorioPago      RecordatorioPago[]
 
   @@unique([clienteId, facturacionZonaId, periodo])
 }
 
 model Factura {
-  id                 Int                @id @default(autoincrement())
-  empresaId          Int
-  clienteId          Int
-  tipoFactura        TipoFactura
-  montoTotal         Float
-  saldoPendiente     Float              @default(0)
-  fechaEmision       DateTime           @default(now())
-  fechaVencimiento   DateTime?
-  estado             EstadoFactura      @default(PENDIENTE)
-  creadoEn           DateTime           @default(now())
-  actualizadoEn      DateTime           @updatedAt
-  facturaInternetId  Int?
-  cliente            ClienteInternet    @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  empresa            Empresa            @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  facturaInternet    FacturaInternet?   @relation("ServiciosPorInternet", fields: [facturaInternetId], references: [id])
-  servicios          FacturaServicio[]
-  pagos              PagoFactura[]
+  id                Int               @id @default(autoincrement())
+  empresaId         Int
+  clienteId         Int
+  tipoFactura       TipoFactura
+  montoTotal        Float
+  saldoPendiente    Float             @default(0)
+  fechaEmision      DateTime          @default(now())
+  fechaVencimiento  DateTime?
+  estado            EstadoFactura     @default(PENDIENTE)
+  creadoEn          DateTime          @default(now())
+  actualizadoEn     DateTime          @updatedAt
+  facturaInternetId Int?
+  cliente           ClienteInternet   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  empresa           Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  facturaInternet   FacturaInternet?  @relation("ServiciosPorInternet", fields: [facturaInternetId], references: [id])
+  servicios         FacturaServicio[]
+  pagos             PagoFactura[]
 }
 
 model FacturaServicio {
-  id              Int       @id @default(autoincrement())
-  facturaId       Int
-  servicioId      Int
-  cantidad        Int       @default(1)
-  precioUnitario  Float
-  total           Float
-  creadoEn        DateTime  @default(now())
-  actualizadoEn   DateTime  @updatedAt
-  factura         Factura   @relation(fields: [facturaId], references: [id], onDelete: Cascade)
-  servicio        Servicio  @relation(fields: [servicioId], references: [id], onDelete: Cascade)
+  id             Int      @id @default(autoincrement())
+  facturaId      Int
+  servicioId     Int
+  cantidad       Int      @default(1)
+  precioUnitario Float
+  total          Float
+  creadoEn       DateTime @default(now())
+  actualizadoEn  DateTime @updatedAt
+  factura        Factura  @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+  servicio       Servicio @relation(fields: [servicioId], references: [id], onDelete: Cascade)
 }
 
 model PagoFacturaInternet {
-  id                  Int                        @id @default(autoincrement())
-  facturaInternetId   Int
-  clienteId           Int
-  montoPagado         Float
-  metodoPago          MetodoPagoFacturaInternet
-  fechaPago           DateTime                   @default(now())
-  creadoEn            DateTime                   @default(now())
-  cobradorId          Int?
-  numeroBoleta        String?                    @unique
-  codigoConfirmacion  String?                    @unique
-  facturaRutaId       Int?
-  origen              OrigenPago                 @default(RUTA)
-  cliente             ClienteInternet            @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  cobrador            Usuario?                   @relation(fields: [cobradorId], references: [id])
-  facturaInternet     FacturaInternet            @relation(fields: [facturaInternetId], references: [id], onDelete: Cascade)
-  facturaRuta         FacturaRuta?               @relation(fields: [facturaRutaId], references: [id])
+  id                 Int                       @id @default(autoincrement())
+  facturaInternetId  Int
+  clienteId          Int
+  montoPagado        Float
+  metodoPago         MetodoPagoFacturaInternet
+  fechaPago          DateTime                  @default(now())
+  creadoEn           DateTime                  @default(now())
+  cobradorId         Int?
+  numeroBoleta       String?                   @unique
+  codigoConfirmacion String?                   @unique
+  facturaRutaId      Int?
+  origen             OrigenPago                @default(RUTA)
+  cliente            ClienteInternet           @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  cobrador           Usuario?                  @relation(fields: [cobradorId], references: [id])
+  facturaInternet    FacturaInternet           @relation(fields: [facturaInternetId], references: [id], onDelete: Cascade)
+  facturaRuta        FacturaRuta?              @relation(fields: [facturaRutaId], references: [id])
 
   @@index([facturaRutaId])
   @@index([facturaInternetId, fechaPago])
 }
 
 model PagoFactura {
-  id           Int              @id @default(autoincrement())
-  facturaId    Int
-  clienteId    Int
-  montoPagado  Float
-  metodoPago   MetodoPago
-  fechaPago    DateTime         @default(now())
-  creadoEn     DateTime         @default(now())
-  cliente      ClienteInternet  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  factura      Factura          @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+  id          Int             @id @default(autoincrement())
+  facturaId   Int
+  clienteId   Int
+  montoPagado Float
+  metodoPago  MetodoPago
+  fechaPago   DateTime        @default(now())
+  creadoEn    DateTime        @default(now())
+  cliente     ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  factura     Factura         @relation(fields: [facturaId], references: [id], onDelete: Cascade)
 }
 
 model RecordatorioPago {
-  id                 Int                        @id @default(autoincrement())
-  clienteId          Int
-  facturaInternetId  Int
-  tipo               String
-  mensaje            String
-  fechaEnviado       DateTime
-  creadoEn           DateTime                   @default(now())
-  actualizadoEn      DateTime                   @updatedAt
-  resultado          ResultadoRecordatorioPago
-  cliente            ClienteInternet            @relation(fields: [clienteId], references: [id])
-  facturaInternet    FacturaInternet            @relation(fields: [facturaInternetId], references: [id], onDelete: Cascade)
+  id                Int                       @id @default(autoincrement())
+  clienteId         Int
+  facturaInternetId Int
+  tipo              String
+  mensaje           String
+  fechaEnviado      DateTime
+  creadoEn          DateTime                  @default(now())
+  actualizadoEn     DateTime                  @updatedAt
+  resultado         ResultadoRecordatorioPago
+  cliente           ClienteInternet           @relation(fields: [clienteId], references: [id])
+  facturaInternet   FacturaInternet           @relation(fields: [facturaInternetId], references: [id], onDelete: Cascade)
 }
 
 model FacturaEliminada {
-  id                 Int               @id @default(autoincrement())
-  facturaInternetId  Int?
-  periodo            String
-  montoPago          Float
-  fechaPagoEsperada  DateTime
-  clienteId          Int
-  usuarioId          Int
-  fechaEliminacion   DateTime          @default(now())
-  motivo             String?
-  facturaInternet    FacturaInternet?  @relation(fields: [facturaInternetId], references: [id])
-  usuario            Usuario           @relation(fields: [usuarioId], references: [id])
+  id                Int              @id @default(autoincrement())
+  facturaInternetId Int?
+  periodo           String
+  montoPago         Float
+  fechaPagoEsperada DateTime
+  clienteId         Int
+  usuarioId         Int
+  fechaEliminacion  DateTime         @default(now())
+  motivo            String?
+  facturaInternet   FacturaInternet? @relation(fields: [facturaInternetId], references: [id])
+  usuario           Usuario          @relation(fields: [usuarioId], references: [id])
 
   @@index([usuarioId])
   @@index([facturaInternetId])
@@ -1183,37 +1258,37 @@ model FacturaEliminada {
 
 /// [08] Rutas de Cobro
 model Ruta {
-  id             Int                @id @default(autoincrement())
-  nombreRuta     String
-  cobradorId     Int?
-  montoCobrado   Int                @default(0)
-  estadoRuta     EstadoRuta         @default(ACTIVO)
-  empresaId      Int
-  observaciones  String?
-  actualizadoEn  DateTime           @updatedAt
-  creadoEn       DateTime           @default(now())
-  cobros         CobroRuta[]        @relation("RutaToCobros")
-  facturas       FacturaRuta[]
-  cobrador       Usuario?           @relation(fields: [cobradorId], references: [id], onDelete: Cascade)
-  empresa        Empresa            @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  turnos         RutaTurno[]
-  clientes       ClienteInternet[]  @relation("ClienteInternetToRuta")
+  id            Int               @id @default(autoincrement())
+  nombreRuta    String
+  cobradorId    Int?
+  montoCobrado  Int               @default(0)
+  estadoRuta    EstadoRuta        @default(ACTIVO)
+  empresaId     Int
+  observaciones String?
+  actualizadoEn DateTime          @updatedAt
+  creadoEn      DateTime          @default(now())
+  cobros        CobroRuta[]       @relation("RutaToCobros")
+  facturas      FacturaRuta[]
+  cobrador      Usuario?          @relation(fields: [cobradorId], references: [id], onDelete: Cascade)
+  empresa       Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  turnos        RutaTurno[]
+  clientes      ClienteInternet[] @relation("ClienteInternetToRuta")
 }
 
 model RutaTurno {
-  id              Int              @id @default(autoincrement())
-  rutaId          Int
-  fecha           DateTime
-  cobradorId      Int?
-  estado          EstadoRutaTurno  @default(ABIERTA)
-  aperturaEn      DateTime         @default(now())
-  cierreEn        DateTime?
-  notas           String?
-  totalAsignadas  Int              @default(0)
-  totalCobradas   Int              @default(0)
-  sumaCobros      Float            @default(0)
-  cobrador        Usuario?         @relation(fields: [cobradorId], references: [id])
-  ruta            Ruta             @relation(fields: [rutaId], references: [id], onDelete: Cascade)
+  id             Int             @id @default(autoincrement())
+  rutaId         Int
+  fecha          DateTime
+  cobradorId     Int?
+  estado         EstadoRutaTurno @default(ABIERTA)
+  aperturaEn     DateTime        @default(now())
+  cierreEn       DateTime?
+  notas          String?
+  totalAsignadas Int             @default(0)
+  totalCobradas  Int             @default(0)
+  sumaCobros     Float           @default(0)
+  cobrador       Usuario?        @relation(fields: [cobradorId], references: [id])
+  ruta           Ruta            @relation(fields: [rutaId], references: [id], onDelete: Cascade)
 
   @@unique([rutaId, fecha])
   @@index([estado])
@@ -1221,21 +1296,21 @@ model RutaTurno {
 }
 
 model FacturaRuta {
-  id             Int                    @id @default(autoincrement())
-  rutaId         Int
-  facturaId      Int
-  asignadaEn     DateTime               @default(now())
-  asignadaPorId  Int?
-  estado         EstadoAsignacionRuta   @default(ASIGNADA)
-  motivo         String?
-  cobradaEn      DateTime?
-  cobradaPorId   Int?
-  observaciones  String?
-  asignadaPor    Usuario?               @relation("AsignadorFacturaRuta", fields: [asignadaPorId], references: [id])
-  cobradaPor     Usuario?               @relation("CobradorFacturaRuta", fields: [cobradaPorId], references: [id])
-  factura        FacturaInternet        @relation(fields: [facturaId], references: [id], onDelete: Cascade)
-  ruta           Ruta                   @relation(fields: [rutaId], references: [id], onDelete: Cascade)
-  pagos          PagoFacturaInternet[]
+  id            Int                   @id @default(autoincrement())
+  rutaId        Int
+  facturaId     Int
+  asignadaEn    DateTime              @default(now())
+  asignadaPorId Int?
+  estado        EstadoAsignacionRuta  @default(ASIGNADA)
+  motivo        String?
+  cobradaEn     DateTime?
+  cobradaPorId  Int?
+  observaciones String?
+  asignadaPor   Usuario?              @relation("AsignadorFacturaRuta", fields: [asignadaPorId], references: [id])
+  cobradaPor    Usuario?              @relation("CobradorFacturaRuta", fields: [cobradaPorId], references: [id])
+  factura       FacturaInternet       @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+  ruta          Ruta                  @relation(fields: [rutaId], references: [id], onDelete: Cascade)
+  pagos         PagoFacturaInternet[]
 
   @@unique([rutaId, facturaId])
   @@index([facturaId, estado])
@@ -1243,231 +1318,231 @@ model FacturaRuta {
 }
 
 model CobroRuta {
-  id             Int              @id @default(autoincrement())
-  clienteId      Int
-  rutaId         Int
-  montoCobrado   Int
-  estadoCobro    EstadoCobro
-  fechaCobro     DateTime         @default(now())
-  observaciones  String?
-  actualizadoEn  DateTime         @updatedAt
-  creadoEn       DateTime         @default(now())
-  cliente        ClienteInternet  @relation(fields: [clienteId], references: [id])
-  ruta           Ruta             @relation("RutaToCobros", fields: [rutaId], references: [id])
+  id            Int             @id @default(autoincrement())
+  clienteId     Int
+  rutaId        Int
+  montoCobrado  Int
+  estadoCobro   EstadoCobro
+  fechaCobro    DateTime        @default(now())
+  observaciones String?
+  actualizadoEn DateTime        @updatedAt
+  creadoEn      DateTime        @default(now())
+  cliente       ClienteInternet @relation(fields: [clienteId], references: [id])
+  ruta          Ruta            @relation("RutaToCobros", fields: [rutaId], references: [id])
 }
 
 /// [09] Soporte y Tickets
 model TicketSoporte {
-  id                      Int                     @id @default(autoincrement())
-  clienteId               Int?                    // <--- Agrega el signo de interrogación
-  empresaId               Int?
-  tecnicoId               Int?
-  creadoPorId             Int?
-  estado                  EstadoTicketSoporte     @default(ABIERTA)
-  prioridad               PrioridadTicketSoporte  @default(MEDIA)
-  titulo                  String?
-  descripcion             String?
-  fechaCierre             DateTime?
-  fechaApertura           DateTime                @default(now())
-  fechaAsignacion         DateTime?
-  fechaInicioAtencion     DateTime?
-  fechaResolucionTecnico  DateTime?
+  id                     Int                    @id @default(autoincrement())
+  clienteId              Int? // <--- Agrega el signo de interrogación
+  empresaId              Int?
+  tecnicoId              Int?
+  creadoPorId            Int?
+  estado                 EstadoTicketSoporte    @default(ABIERTA)
+  prioridad              PrioridadTicketSoporte @default(MEDIA)
+  titulo                 String?
+  descripcion            String?
+  fechaCierre            DateTime?
+  fechaApertura          DateTime               @default(now())
+  fechaAsignacion        DateTime?
+  fechaInicioAtencion    DateTime?
+  fechaResolucionTecnico DateTime?
   // FIJAR
-  creadoEn       DateTime?  @default(now())
-  actualizadoEn  DateTime   @default(now()) @updatedAt
+  creadoEn               DateTime?              @default(now())
+  actualizadoEn          DateTime               @default(now()) @updatedAt
 
-  fijado  Boolean  @default(false)
+  fijado Boolean @default(false)
 
-  resumen  TicketResumen?  @relation("TicketResumenTicket")
+  resumen TicketResumen? @relation("TicketResumenTicket")
 
-  boleta             BoletaSoporte?
-  SeguimientoTicket  SeguimientoTicket[]
-  etiquetas          TicketEtiqueta[]
+  boleta            BoletaSoporte?
+  SeguimientoTicket SeguimientoTicket[]
+  etiquetas         TicketEtiqueta[]
   // cliente           ClienteInternet        @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  cliente       ClienteInternet?        @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  creadoPor     Usuario?                @relation("TicketCreador", fields: [creadoPorId], references: [id])
-  empresa       Empresa?                @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  tecnico       Usuario?                @relation("TicketTecnico", fields: [tecnicoId], references: [id])
-  asignaciones  TicketSoporteTecnico[]
-  logsTiempo    TicketTimeLog[]
+  cliente           ClienteInternet?       @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  creadoPor         Usuario?               @relation("TicketCreador", fields: [creadoPorId], references: [id])
+  empresa           Empresa?               @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  tecnico           Usuario?               @relation("TicketTecnico", fields: [tecnicoId], references: [id])
+  asignaciones      TicketSoporteTecnico[]
+  logsTiempo        TicketTimeLog[]
 
-  ticketReasignacions  TicketReasignacion[]
+  ticketReasignacions TicketReasignacion[]
 
-  ticketGastos           TicketGasto[]
-  movimientosInventario  MovimientoInventario[]
+  ticketGastos          TicketGasto[]
+  movimientosInventario MovimientoInventario[]
 
-  serialProductos  SerialProducto[]
+  serialProductos SerialProducto[]
 
-  herramientasUsadas  TicketHerramientaUso[]
+  herramientasUsadas TicketHerramientaUso[]
 
-  instalacionesCliente     ClienteInstalacion[]
-  desinstalacionesCliente  ClienteDesinstalacion[]
+  instalacionesCliente    ClienteInstalacion[]
+  desinstalacionesCliente ClienteDesinstalacion[]
 }
 
 model TicketTimeLog {
-  id  Int  @id @default(autoincrement())
+  id        Int           @id @default(autoincrement())
   // Relación con el Ticket
   ticketId  Int
-  ticket    TicketSoporte  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticket    TicketSoporte @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   // Relación con el Usuario (Técnico)
-  tecnicoId  Int
-  tecnico    Usuario  @relation("LogTecnico", fields: [tecnicoId], references: [id])
+  tecnicoId Int
+  tecnico   Usuario       @relation("LogTecnico", fields: [tecnicoId], references: [id])
 
-  inicio           DateTime   @default(now())
-  fin              DateTime?
-  duracionMinutos  Int?
+  inicio          DateTime  @default(now())
+  fin             DateTime?
+  duracionMinutos Int?
 }
 
 model BoletaSoporte {
-  id             Int             @id @default(autoincrement())
-  ticketId       Int?            @unique
-  conforme       Boolean         @default(false)
-  firmadoPor     String?
-  observaciones  String?
-  fechaFirma     DateTime?
-  generadoPorId  Int?
-  creadoEn       DateTime        @default(now())
-  actualizadoEn  DateTime        @updatedAt
-  generadoPor    Usuario?        @relation(fields: [generadoPorId], references: [id])
-  ticket         TicketSoporte?  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  id            Int            @id @default(autoincrement())
+  ticketId      Int?           @unique
+  conforme      Boolean        @default(false)
+  firmadoPor    String?
+  observaciones String?
+  fechaFirma    DateTime?
+  generadoPorId Int?
+  creadoEn      DateTime       @default(now())
+  actualizadoEn DateTime       @updatedAt
+  generadoPor   Usuario?       @relation(fields: [generadoPorId], references: [id])
+  ticket        TicketSoporte? @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 }
 
 model EtiquetaTicket {
-  id             Int               @id @default(autoincrement())
-  nombre         String            @unique
-  actualizadoEn  DateTime?         @updatedAt
-  creadoEn       DateTime?         @default(now())
-  tickets        TicketEtiqueta[]
+  id            Int              @id @default(autoincrement())
+  nombre        String           @unique
+  actualizadoEn DateTime?        @updatedAt
+  creadoEn      DateTime?        @default(now())
+  tickets       TicketEtiqueta[]
 }
 
 model TicketEtiqueta {
-  id             Int             @id @default(autoincrement())
-  ticketId       Int
-  etiquetaId     Int
-  actualizadoEn  DateTime?       @updatedAt
-  creadoEn       DateTime?       @default(now())
-  etiqueta       EtiquetaTicket  @relation(fields: [etiquetaId], references: [id], onDelete: Cascade)
-  ticket         TicketSoporte   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  id            Int            @id @default(autoincrement())
+  ticketId      Int
+  etiquetaId    Int
+  actualizadoEn DateTime?      @updatedAt
+  creadoEn      DateTime?      @default(now())
+  etiqueta      EtiquetaTicket @relation(fields: [etiquetaId], references: [id], onDelete: Cascade)
+  ticket        TicketSoporte  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@unique([ticketId, etiquetaId])
 }
 
 model SeguimientoTicket {
-  id             Int            @id @default(autoincrement())
-  ticketId       Int
-  usuarioId      Int
-  descripcion    String
-  fechaRegistro  DateTime       @default(now())
-  ticket         TicketSoporte  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  usuario        Usuario        @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  id            Int           @id @default(autoincrement())
+  ticketId      Int
+  usuarioId     Int
+  descripcion   String
+  fechaRegistro DateTime      @default(now())
+  ticket        TicketSoporte @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  usuario       Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @default(now()) @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @default(now()) @updatedAt
 }
 
 //PIVOTE TEC. ASIGNADOS Y RESUELTOS POR ->
 model TicketSoporteTecnico {
-  id             Int       @id @default(autoincrement())
-  ticketId       Int
-  tecnicoId      Int
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  id            Int      @id @default(autoincrement())
+  ticketId      Int
+  tecnicoId     Int
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
   // rol en la resolución
-  esResponsable         Boolean    @default(false) // true si este técnico cuenta como "lo resolvió"
-  resolvioEn            DateTime?  // cuándo este técnico marcó como resuelto (si aplica)
-  tiempoTecnicoMinutos  Int?       // tiempo que le asignas a este técnico en este ticket
+  esResponsable        Boolean   @default(false) // true si este técnico cuenta como "lo resolvió"
+  resolvioEn           DateTime? // cuándo este técnico marcó como resuelto (si aplica)
+  tiempoTecnicoMinutos Int? // tiempo que le asignas a este técnico en este ticket
 
-  tecnico  Usuario        @relation(fields: [tecnicoId], references: [id], onDelete: Cascade)
-  ticket   TicketSoporte  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  tecnico Usuario       @relation(fields: [tecnicoId], references: [id], onDelete: Cascade)
+  ticket  TicketSoporte @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@unique([ticketId, tecnicoId])
   @@index([tecnicoId])
 }
 
 model MetaTecnicoTicket {
-  id                Int               @id @default(autoincrement())
-  tecnicoId         Int
-  fechaInicio       DateTime          @default(now())
-  fechaFin          DateTime
-  metaTickets       Int
-  ticketsResueltos  Int               @default(0)
-  cumplida          Boolean           @default(false)
-  fechaCumplida     DateTime?
-  titulo            String?
-  estado            EstadoMetaTicket
-  actualizadoEn     DateTime          @updatedAt
-  creadoEn          DateTime          @default(now())
-  tecnico           Usuario           @relation("MetaTecnicoRelation", fields: [tecnicoId], references: [id], onDelete: Cascade)
+  id               Int              @id @default(autoincrement())
+  tecnicoId        Int
+  fechaInicio      DateTime         @default(now())
+  fechaFin         DateTime
+  metaTickets      Int
+  ticketsResueltos Int              @default(0)
+  cumplida         Boolean          @default(false)
+  fechaCumplida    DateTime?
+  titulo           String?
+  estado           EstadoMetaTicket
+  actualizadoEn    DateTime         @updatedAt
+  creadoEn         DateTime         @default(now())
+  tecnico          Usuario          @relation("MetaTecnicoRelation", fields: [tecnicoId], references: [id], onDelete: Cascade)
 
   @@index([tecnicoId, fechaInicio, fechaFin])
 }
 
 model MetaTickets {
-  id                Int                @id @default(autoincrement())
-  tituloMetaTicket  String
-  fechaInicio       DateTime           @default(now())
-  fechaFin          DateTime?
-  ticketsMeta       Int
-  ticketsAvance     Int                @default(0)
-  estado            EstadoMetaTickets  @default(ACTIVO)
-  usuarioId         Int?
-  cumplida          Boolean            @default(false)
-  fechaCompletada   DateTime?
-  usuario           Usuario?           @relation(fields: [usuarioId], references: [id])
+  id               Int               @id @default(autoincrement())
+  tituloMetaTicket String
+  fechaInicio      DateTime          @default(now())
+  fechaFin         DateTime?
+  ticketsMeta      Int
+  ticketsAvance    Int               @default(0)
+  estado           EstadoMetaTickets @default(ACTIVO)
+  usuarioId        Int?
+  cumplida         Boolean           @default(false)
+  fechaCompletada  DateTime?
+  usuario          Usuario?          @relation(fields: [usuarioId], references: [id])
 }
 
 // NUEVA TELEMETRÍA
 model TicketResumen {
-  id          Int   @id @default(autoincrement())
-  ticketId    Int   @unique
-  solucionId  Int?
+  id         Int  @id @default(autoincrement())
+  ticketId   Int  @unique
+  solucionId Int?
 
   // Qué se hizo / cómo quedó
-  resueltoComo   String?  // texto libre: "Se rehizo acometida, se cambió ONT, etc."
-  notasInternas  String?
+  resueltoComo  String? // texto libre: "Se rehizo acometida, se cambió ONT, etc."
+  notasInternas String?
 
   // Reaperturas / intentos
-  reabierto          Boolean  @default(false)
-  numeroReaperturas  Int      @default(0)
-  intentos           Int      @default(1) // intentos totales sobre el mismo ticket
+  reabierto         Boolean @default(false)
+  numeroReaperturas Int     @default(0)
+  intentos          Int     @default(1) // intentos totales sobre el mismo ticket
 
   // Tiempos (en minutos) -> los calculas con las fechas del ticket y los guardas aquí
-  tiempoTotalMinutos    Int?  // desde apertura hasta cierre
-  tiempoTecnicoMinutos  Int?  // desde inicio atención hasta resolución técnico
+  tiempoTotalMinutos   Int? // desde apertura hasta cierre
+  tiempoTecnicoMinutos Int? // desde inicio atención hasta resolución técnico
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
-  ticket    TicketSoporte    @relation("TicketResumenTicket", fields: [ticketId], references: [id], onDelete: Cascade)
-  solucion  SolucionTicket?  @relation(fields: [solucionId], references: [id])
+  ticket   TicketSoporte   @relation("TicketResumenTicket", fields: [ticketId], references: [id], onDelete: Cascade)
+  solucion SolucionTicket? @relation(fields: [solucionId], references: [id])
 
   @@index([solucionId])
 }
 
 //tabla de soluciones custom
 model SolucionTicket {
-  id             Int              @id @default(autoincrement())
-  solucion       String           @unique // p.ej: "REDROPEO", "CAMBIO_IP", "RECONFIG_ROUTER"
-  descripcion    String?
-  tickets        TicketResumen[]
-  isEliminado    Boolean          @default(false)
-  creadoEn       DateTime         @default(now())
-  actualizadoEn  DateTime         @default(now()) @updatedAt
+  id            Int             @id @default(autoincrement())
+  solucion      String          @unique // p.ej: "REDROPEO", "CAMBIO_IP", "RECONFIG_ROUTER"
+  descripcion   String?
+  tickets       TicketResumen[]
+  isEliminado   Boolean         @default(false)
+  creadoEn      DateTime        @default(now())
+  actualizadoEn DateTime        @default(now()) @updatedAt
 }
 
 /// [10] Asistencia / RRHH
 model Asistencia {
-  id               Int        @id @default(autoincrement())
-  usuarioId        Int
-  fecha            DateTime
-  horaEntrada      DateTime
-  horaSalida       DateTime?
-  minutosTarde     Int?
-  trabajoCompleto  Boolean    @default(false)
-  creadoEn         DateTime?  @default(now())
-  actualizadoEn    DateTime   @updatedAt
-  usuario          Usuario    @relation("UsuarioAsistencias", fields: [usuarioId], references: [id], onDelete: Cascade)
+  id              Int       @id @default(autoincrement())
+  usuarioId       Int
+  fecha           DateTime
+  horaEntrada     DateTime
+  horaSalida      DateTime?
+  minutosTarde    Int?
+  trabajoCompleto Boolean   @default(false)
+  creadoEn        DateTime? @default(now())
+  actualizadoEn   DateTime  @updatedAt
+  usuario         Usuario   @relation("UsuarioAsistencias", fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@unique([usuarioId, fecha])
   @@index([usuarioId, fecha])
@@ -1475,50 +1550,50 @@ model Asistencia {
 
 /// [11] Modelos de Prueba
 model TestCategory {
-  id        String  @id @default(uuid())
-  name      String
-  products  Test[]
+  id       String @id @default(uuid())
+  name     String
+  products Test[]
 }
 
 model Test {
-  id          String        @id @default(uuid())
-  name        String
-  categoryId  String
-  category    TestCategory  @relation(fields: [categoryId], references: [id])
+  id         String       @id @default(uuid())
+  name       String
+  categoryId String
+  category   TestCategory @relation(fields: [categoryId], references: [id])
 }
 
 /// [12] Notificaciones
 model Notificacion {
-  id         Int       @id @default(autoincrement())
-  empresaId  Int?      // noti pertenece a una empresa (o null si GLOBAL)
-  empresa    Empresa?  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  id        Int      @id @default(autoincrement())
+  empresaId Int? // noti pertenece a una empresa (o null si GLOBAL)
+  empresa   Empresa? @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
   // Contenido
-  titulo     String?
-  mensaje    String
-  categoria  CategoriaNotificacion  @default(OTROS)
-  subtipo    String?                // ej: 'FACTURAS_GENERADAS', 'PAGO_REGISTRADO', 'TICKET_CREADO'
-  severidad  SeveridadNotificacion  @default(INFO)
-  url        String?
+  titulo         String?
+  mensaje        String
+  categoria      CategoriaNotificacion @default(OTROS)
+  subtipo        String? // ej: 'FACTURAS_GENERADAS', 'PAGO_REGISTRADO', 'TICKET_CREADO'
+  severidad      SeveridadNotificacion @default(INFO)
+  url            String?
   // Contexto de negocio
-  referenciaTipo  String?  // 'TicketSoporte', 'FacturaInternet', 'ClienteInternet', etc.
-  referenciaId    Int?     // ID de la entidad referenciada
-  route           String?  // ej: '/tickets/123' o '/facturacion/internet?zona=1&periodo=202501'
-  actionLabel     String?  // ej: 'Ver detalle'
+  referenciaTipo String? // 'TicketSoporte', 'FacturaInternet', 'ClienteInternet', etc.
+  referenciaId   Int? // ID de la entidad referenciada
+  route          String? // ej: '/tickets/123' o '/facturacion/internet?zona=1&periodo=202501'
+  actionLabel    String? // ej: 'Ver detalle'
 
   // Emisor / auditoría
-  remitenteId  Int?
-  remitente    Usuario?  @relation("NotificacionRemitente", fields: [remitenteId], references: [id])
+  remitenteId Int?
+  remitente   Usuario? @relation("NotificacionRemitente", fields: [remitenteId], references: [id])
 
-  audiencia  AudienciaNotificacion  @default(USUARIOS)
+  audiencia AudienciaNotificacion @default(USUARIOS)
 
-  fechaCreacion  DateTime   @default(now())
-  visibleDesde   DateTime?
-  expiraEn       DateTime?
-  programadaEn   DateTime?  // si algún día quieres programar envíos diferidos
+  fechaCreacion DateTime  @default(now())
+  visibleDesde  DateTime?
+  expiraEn      DateTime?
+  programadaEn  DateTime? // si algún día quieres programar envíos diferidos
 
   // Estado por usuario
-  destinatarios  NotificacionUsuario[]
+  destinatarios NotificacionUsuario[]
 
   @@index([empresaId, categoria, severidad, fechaCreacion])
   @@index([referenciaTipo, referenciaId])
@@ -1526,21 +1601,21 @@ model Notificacion {
 }
 
 model NotificacionUsuario {
-  id              Int  @id @default(autoincrement())
-  usuarioId       Int
-  notificacionId  Int
+  id             Int @id @default(autoincrement())
+  usuarioId      Int
+  notificacionId Int
 
-  usuario       Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  notificacion  Notificacion  @relation(fields: [notificacionId], references: [id], onDelete: Cascade)
+  usuario      Usuario      @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  notificacion Notificacion @relation(fields: [notificacionId], references: [id], onDelete: Cascade)
 
   // Estado por usuario
-  leido        Boolean    @default(false)
-  leidoEn      DateTime?
-  eliminado    Boolean    @default(false) // oculto/dismiss
-  eliminadoEn  DateTime?
+  leido       Boolean   @default(false)
+  leidoEn     DateTime?
+  eliminado   Boolean   @default(false) // oculto/dismiss
+  eliminadoEn DateTime?
 
-  recibidoEn   DateTime   @default(now())
-  fijadoHasta  DateTime?  // si quieres poder pinear notis en la UI
+  recibidoEn  DateTime  @default(now())
+  fijadoHasta DateTime? // si quieres poder pinear notis en la UI
 
   @@unique([usuarioId, notificacionId]) // evita duplicados
   @@index([usuarioId, eliminado, leido, recibidoEn])
@@ -1548,52 +1623,52 @@ model NotificacionUsuario {
 
 /// [13] OLT
 model Olt {
-  id             Int      @id @default(autoincrement())
-  nombre         String   // Nombre amigable: "OLT TP-Link Jacaltenango"
-  modelo         String?  // "P1201-16"
-  vendor         String?  // "TP-Link"
-  serie          String?  // Device SN
-  mgmtIp         String   // IP de gestión
-  mgmtVlan       Int?     // VLAN de gestión si la usas
-  telnetPort     Int      @default(23)
-  snmpCommunity  String?  // solo lectura normalmente
+  id            Int     @id @default(autoincrement())
+  nombre        String // Nombre amigable: "OLT TP-Link Jacaltenango"
+  modelo        String? // "P1201-16"
+  vendor        String? // "TP-Link"
+  serie         String? // Device SN
+  mgmtIp        String // IP de gestión
+  mgmtVlan      Int? // VLAN de gestión si la usas
+  telnetPort    Int     @default(23)
+  snmpCommunity String? // solo lectura normalmente
 
-  empresaId  Int
-  empresa    Empresa  @relation(fields: [empresaId], references: [id])
+  empresaId Int
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
 
-  MikrotikRouter  MikrotikRouter[]
+  MikrotikRouter MikrotikRouter[]
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
   @@unique([empresaId, nombre])
 }
 
 /// [14] MIKROTIK-ROUTER
 model MikrotikRouter {
-  id           Int      @id @default(autoincrement())
-  nombre       String   // "MKT Core Jacaltenango"
-  host         String   // IP o FQDN de gestión
-  sshPort      Int      @default(22)
-  usuario      String   // usuario de automatización (la pass la manejas fuera)
-  descripcion  String?
-  activo       Boolean  @default(true)
-  passwordEnc  String?  // contraseña encriptada base64
+  id          Int     @id @default(autoincrement())
+  nombre      String // "MKT Core Jacaltenango"
+  host        String // IP o FQDN de gestión
+  sshPort     Int     @default(22)
+  usuario     String // usuario de automatización (la pass la manejas fuera)
+  descripcion String?
+  activo      Boolean @default(true)
+  passwordEnc String? // contraseña encriptada base64
 
-  empresaId  Int
-  empresa    Empresa  @relation(fields: [empresaId], references: [id])
+  empresaId Int
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
 
   // Opcional
-  oltId  Int?
-  olt    Olt?  @relation(fields: [oltId], references: [id])
+  oltId Int?
+  olt   Olt? @relation(fields: [oltId], references: [id])
 
-  clientesInternet  ClienteInternet[]  // Clientes que cuelgan de este Mikrotik
+  clientesInternet ClienteInternet[] // Clientes que cuelgan de este Mikrotik
 
-  perfilesPppoeHomologados  PppoePerfilHomologacion[]
-  operacionesPppoe          PppoeOperacion[]
+  perfilesPppoeHomologados PppoePerfilHomologacion[]
+  operacionesPppoe         PppoeOperacion[]
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
   @@unique([empresaId, nombre])
 }
@@ -1601,231 +1676,231 @@ model MikrotikRouter {
 // [15] CREDITO MODULO
 
 model Credito {
-  id                     Int              @id @default(autoincrement())
-  clienteId              Int
-  cliente                ClienteInternet  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  montoCapital           Decimal          @db.Decimal(12, 2)
-  interesPorcentaje      Decimal          @db.Decimal(6, 4)
-  interesMoraPorcentaje  Decimal          @db.Decimal(6, 4)
+  id                    Int             @id @default(autoincrement())
+  clienteId             Int
+  cliente               ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  montoCapital          Decimal         @db.Decimal(12, 2)
+  interesPorcentaje     Decimal         @db.Decimal(6, 4)
+  interesMoraPorcentaje Decimal         @db.Decimal(6, 4)
 
-  intervaloDias     Int
-  interesTipo       InteresTipo
-  plazoCuotas       Int
-  frecuencia        FrecuenciaPago
-  montoTotal        Decimal                   @db.Decimal(12, 2)
-  montoCuota        Decimal                   @db.Decimal(12, 2)
-  estado            EstadoCredito
-  fechaInicio       DateTime
-  fechaFinEstimada  DateTime
-  cuotas            CuotaCredito[]
-  pagos             PagoCredito[]
-  historialEstados  CreditoEstadoHistorial[]
-  documentos        DocumentoCredito[]
-  origenCredito     OrigenCredito             @default(USUARIO)
-  contratoSnapshot  CreditoContrato?
-  observaciones     String?
-  creadoPorId       Int?
-  creadoPor         Usuario?                  @relation(fields: [creadoPorId], references: [id], onDelete: SetNull)
-  engancheMonto     Decimal?                  @db.Decimal(12, 2)
-  engancheFecha     DateTime?
+  intervaloDias    Int
+  interesTipo      InteresTipo
+  plazoCuotas      Int
+  frecuencia       FrecuenciaPago
+  montoTotal       Decimal                  @db.Decimal(12, 2)
+  montoCuota       Decimal                  @db.Decimal(12, 2)
+  estado           EstadoCredito
+  fechaInicio      DateTime
+  fechaFinEstimada DateTime
+  cuotas           CuotaCredito[]
+  pagos            PagoCredito[]
+  historialEstados CreditoEstadoHistorial[]
+  documentos       DocumentoCredito[]
+  origenCredito    OrigenCredito            @default(USUARIO)
+  contratoSnapshot CreditoContrato?
+  observaciones    String?
+  creadoPorId      Int?
+  creadoPor        Usuario?                 @relation(fields: [creadoPorId], references: [id], onDelete: SetNull)
+  engancheMonto    Decimal?                 @db.Decimal(12, 2)
+  engancheFecha    DateTime?
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 }
 
 model CuotaCredito {
-  id         Int      @id @default(autoincrement())
-  creditoId  Int
-  credito    Credito  @relation(fields: [creditoId], references: [id], onDelete: Cascade)
+  id        Int     @id @default(autoincrement())
+  creditoId Int
+  credito   Credito @relation(fields: [creditoId], references: [id], onDelete: Cascade)
 
-  numeroCuota  Int
-  fechaVenc    DateTime
+  numeroCuota Int
+  fechaVenc   DateTime
 
-  montoCapital  Decimal  @db.Decimal(12, 2)
-  montoInteres  Decimal  @db.Decimal(14, 4)
-  montoTotal    Decimal  @db.Decimal(12, 2)
+  montoCapital Decimal @db.Decimal(12, 2)
+  montoInteres Decimal @db.Decimal(14, 4)
+  montoTotal   Decimal @db.Decimal(12, 2)
 
-  montoPagado  Decimal        @default(0) @db.Decimal(12, 2)
-  estado       EstadoCuota
-  pagos        PagoCuota[]
-  moras        MoraCredito[]
+  montoPagado Decimal       @default(0) @db.Decimal(12, 2)
+  estado      EstadoCuota
+  pagos       PagoCuota[]
+  moras       MoraCredito[]
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
   @@unique([creditoId, numeroCuota])
 }
 
 model PagoCuota {
-  id  Int  @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  cuotaId  Int
-  cuota    CuotaCredito  @relation(fields: [cuotaId], references: [id], onDelete: Cascade)
+  cuotaId Int
+  cuota   CuotaCredito @relation(fields: [cuotaId], references: [id], onDelete: Cascade)
 
-  pagoCreditoId  Int
-  pagoCredito    PagoCredito  @relation(fields: [pagoCreditoId], references: [id], onDelete: Cascade)
+  pagoCreditoId Int
+  pagoCredito   PagoCredito @relation(fields: [pagoCreditoId], references: [id], onDelete: Cascade)
 
-  monto  Decimal  @db.Decimal(12, 2)
+  monto Decimal @db.Decimal(12, 2)
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
   @@unique([cuotaId, pagoCreditoId])
 }
 
 model PagoCredito {
-  id  Int  @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  creditoId  Int
-  credito    Credito  @relation(fields: [creditoId], references: [id], onDelete: Cascade)
+  creditoId Int
+  credito   Credito @relation(fields: [creditoId], references: [id], onDelete: Cascade)
 
-  registradoPorId  Int?
-  registradoPor    Usuario?  @relation(fields: [registradoPorId], references: [id], onDelete: SetNull)
+  registradoPorId Int?
+  registradoPor   Usuario? @relation(fields: [registradoPorId], references: [id], onDelete: SetNull)
 
-  montoTotal  Decimal   @db.Decimal(12, 2)
-  fechaPago   DateTime
+  montoTotal Decimal  @db.Decimal(12, 2)
+  fechaPago  DateTime
 
-  metodoPago   String?
-  referencia   String?
-  observacion  String?
+  metodoPago  String?
+  referencia  String?
+  observacion String?
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
   // BACK-RELATION
-  aplicaciones  PagoCuota[]
+  aplicaciones PagoCuota[]
 }
 
 model CreditoEstadoHistorial {
-  id         Int      @id @default(autoincrement())
-  creditoId  Int
-  credito    Credito  @relation(fields: [creditoId], references: [id], onDelete: Cascade)
+  id        Int     @id @default(autoincrement())
+  creditoId Int
+  credito   Credito @relation(fields: [creditoId], references: [id], onDelete: Cascade)
 
-  estado  EstadoCredito
-  motivo  String?
+  estado EstadoCredito
+  motivo String?
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 }
 
 model MoraCredito {
-  id       Int           @id @default(autoincrement())
-  cuotaId  Int
-  cuota    CuotaCredito  @relation(fields: [cuotaId], references: [id], onDelete: Cascade)
+  id      Int          @id @default(autoincrement())
+  cuotaId Int
+  cuota   CuotaCredito @relation(fields: [cuotaId], references: [id], onDelete: Cascade)
 
-  diasMora  Int
-  interes   Decimal  @db.Decimal(14, 4)
+  diasMora Int
+  interes  Decimal @db.Decimal(14, 4)
 
-  calculadoEn  DateTime  @default(now())
+  calculadoEn DateTime @default(now())
 
-  estado  EstadoMora  @default(PENDIENTE)
+  estado EstadoMora @default(PENDIENTE)
 
-  pagadoEn     DateTime?
-  pagadoPorId  Int?
-  pagadoPor    Usuario?   @relation(fields: [pagadoPorId], references: [id], onDelete: Cascade)
+  pagadoEn    DateTime?
+  pagadoPorId Int?
+  pagadoPor   Usuario?  @relation(fields: [pagadoPorId], references: [id], onDelete: Cascade)
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 }
 
 model CreditoContrato {
-  id         Int      @id @default(autoincrement())
-  creditoId  Int      @unique
-  credito    Credito  @relation(fields: [creditoId], references: [id], onDelete: Cascade)
+  id        Int     @id @default(autoincrement())
+  creditoId Int     @unique
+  credito   Credito @relation(fields: [creditoId], references: [id], onDelete: Cascade)
 
-  contenido  String     // HTML / Markdown / Texto legal
-  version    String
-  firmadoEn  DateTime?
+  contenido String // HTML / Markdown / Texto legal
+  version   String
+  firmadoEn DateTime?
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 }
 
 // [16] CREDITO CREDENCIALES
 
 model PlantillaLegal {
-  id  Int  @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  tipo       TipoPlantillaLegal
-  nombre     String
-  contenido  String              // HTML o Markdown con placeholders
-  version    String
-  activa     Boolean             @default(true)
+  tipo      TipoPlantillaLegal
+  nombre    String
+  contenido String // HTML o Markdown con placeholders
+  version   String
+  activa    Boolean            @default(true)
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 }
 
 model DocumentoCredito {
-  id  Int  @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  creditoId  Int
-  credito    Credito  @relation(fields: [creditoId], references: [id])
+  creditoId Int
+  credito   Credito @relation(fields: [creditoId], references: [id])
 
-  clienteId  Int
-  cliente    ClienteInternet  @relation(fields: [clienteId], references: [id])
+  clienteId Int
+  cliente   ClienteInternet @relation(fields: [clienteId], references: [id])
 
-  tipo              TipoPlantillaLegal
-  versionPlantilla  String
+  tipo             TipoPlantillaLegal
+  versionPlantilla String
 
-  contenidoFinal  String     // HTML final ya renderizado
-  firmadoEn       DateTime?
-  archivoUrl      String?
+  contenidoFinal String // HTML final ya renderizado
+  firmadoEn      DateTime?
+  archivoUrl     String?
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 }
 
 model ClienteExpediente {
-  id         Int              @id @default(autoincrement())
-  clienteId  Int              @unique
-  cliente    ClienteInternet  @relation(fields: [clienteId], references: [id])
+  id        Int             @id @default(autoincrement())
+  clienteId Int             @unique
+  cliente   ClienteInternet @relation(fields: [clienteId], references: [id])
 
-  fuenteIngresos  String?
-  tieneDeudas     Boolean?
-  detalleDeudas   String?
+  fuenteIngresos String?
+  tieneDeudas    Boolean?
+  detalleDeudas  String?
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
-  referencias  ClienteReferencia[]
-  archivos     ClienteArchivo[]
+  referencias ClienteReferencia[]
+  archivos    ClienteArchivo[]
 }
 
 model ClienteArchivo {
-  id            Int                @id @default(autoincrement())
-  expedienteId  Int
-  expediente    ClienteExpediente  @relation(fields: [expedienteId], references: [id])
+  id           Int               @id @default(autoincrement())
+  expedienteId Int
+  expediente   ClienteExpediente @relation(fields: [expedienteId], references: [id])
 
-  tipo         TipoArchivoCliente
-  url          String
-  descripcion  String?
+  tipo        TipoArchivoCliente
+  url         String
+  descripcion String?
 
   // NUEVOS (claves)
-  key       String  // key en DigitalOcean
-  bucket    String
-  mimeType  String
-  size      Int
+  key      String // key en DigitalOcean
+  bucket   String
+  mimeType String
+  size     Int
 
   // control
-  estado       String     @default("LISTO")
-  eliminadoAt  DateTime?
+  estado      String    @default("LISTO")
+  eliminadoAt DateTime?
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 }
 
 model ClienteReferencia {
-  id            Int                @id @default(autoincrement())
-  expedienteId  Int
-  expediente    ClienteExpediente  @relation(fields: [expedienteId], references: [id])
+  id           Int               @id @default(autoincrement())
+  expedienteId Int
+  expediente   ClienteExpediente @relation(fields: [expedienteId], references: [id])
 
-  nombre    String
-  telefono  String
-  relacion  String
+  nombre   String
+  telefono String
+  relacion String
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 }
 
 // NUEVOS MODULOS - INVENTARIO Y GASTO TICKETS
@@ -1887,60 +1962,60 @@ model ClienteReferencia {
 
 // HERRAMIENTAS
 model PrestamoHerramienta {
-  id  Int  @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  empresaId  Int
-  empresa    Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId Int
+  empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
   // Herramienta exacta prestada
-  serialProductoId  Int
-  serialProducto    SerialProducto  @relation(fields: [serialProductoId], references: [id], onDelete: Restrict)
+  serialProductoId Int
+  serialProducto   SerialProducto @relation(fields: [serialProductoId], references: [id], onDelete: Restrict)
 
   // Bodega desde donde salió
-  bodegaOrigenId  Int?
-  bodegaOrigen    Bodega?  @relation("PrestamoBodegaOrigen", fields: [bodegaOrigenId], references: [id], onDelete: SetNull)
+  bodegaOrigenId Int?
+  bodegaOrigen   Bodega? @relation("PrestamoBodegaOrigen", fields: [bodegaOrigenId], references: [id], onDelete: SetNull)
 
   // Bodega a donde debería regresar
-  bodegaRetornoId  Int?
-  bodegaRetorno    Bodega?  @relation("PrestamoBodegaRetorno", fields: [bodegaRetornoId], references: [id], onDelete: SetNull)
+  bodegaRetornoId Int?
+  bodegaRetorno   Bodega? @relation("PrestamoBodegaRetorno", fields: [bodegaRetornoId], references: [id], onDelete: SetNull)
 
   // Técnico responsable
-  tecnicoId  Int
-  tecnico    Usuario  @relation("PrestamosHerramientaTecnico", fields: [tecnicoId], references: [id], onDelete: Cascade)
+  tecnicoId Int
+  tecnico   Usuario @relation("PrestamosHerramientaTecnico", fields: [tecnicoId], references: [id], onDelete: Cascade)
 
   // Quién entregó y quién recibió de vuelta
-  entregadoPorId  Int?
-  entregadoPor    Usuario?  @relation("PrestamosHerramientaEntregados", fields: [entregadoPorId], references: [id], onDelete: SetNull)
+  entregadoPorId Int?
+  entregadoPor   Usuario? @relation("PrestamosHerramientaEntregados", fields: [entregadoPorId], references: [id], onDelete: SetNull)
 
-  recibidoPorId  Int?
-  recibidoPor    Usuario?  @relation("PrestamosHerramientaRecibidos", fields: [recibidoPorId], references: [id], onDelete: SetNull)
+  recibidoPorId Int?
+  recibidoPor   Usuario? @relation("PrestamosHerramientaRecibidos", fields: [recibidoPorId], references: [id], onDelete: SetNull)
 
-  estado  EstadoPrestamoHerramienta  @default(PRESTADO)
+  estado EstadoPrestamoHerramienta @default(PRESTADO)
 
-  fechaPrestamo            DateTime   @default(now())
-  fechaEsperadaDevolucion  DateTime?
-  fechaDevolucion          DateTime?
+  fechaPrestamo           DateTime  @default(now())
+  fechaEsperadaDevolucion DateTime?
+  fechaDevolucion         DateTime?
 
-  observacionEntrega     String?
-  observacionDevolucion  String?
-  motivoNoDevuelto       String?
+  observacionEntrega    String?
+  observacionDevolucion String?
+  motivoNoDevuelto      String?
 
-  evidenciaEntregaMediaId  Int?
-  evidenciaEntregaMedia    Media?  @relation("EvidenciaEntregaHerramienta", fields: [evidenciaEntregaMediaId], references: [id], onDelete: SetNull)
+  evidenciaEntregaMediaId Int?
+  evidenciaEntregaMedia   Media? @relation("EvidenciaEntregaHerramienta", fields: [evidenciaEntregaMediaId], references: [id], onDelete: SetNull)
 
-  evidenciaDevolucionMediaId  Int?
-  evidenciaDevolucionMedia    Media?  @relation("EvidenciaDevolucionHerramienta", fields: [evidenciaDevolucionMediaId], references: [id], onDelete: SetNull)
+  evidenciaDevolucionMediaId Int?
+  evidenciaDevolucionMedia   Media? @relation("EvidenciaDevolucionHerramienta", fields: [evidenciaDevolucionMediaId], references: [id], onDelete: SetNull)
 
-  movimientoSalidaId  Int?                   @unique
-  movimientoSalida    MovimientoInventario?  @relation("MovimientoSalidaPrestamo", fields: [movimientoSalidaId], references: [id], onDelete: SetNull)
+  movimientoSalidaId Int?                  @unique
+  movimientoSalida   MovimientoInventario? @relation("MovimientoSalidaPrestamo", fields: [movimientoSalidaId], references: [id], onDelete: SetNull)
 
-  movimientoRetornoId  Int?                   @unique
-  movimientoRetorno    MovimientoInventario?  @relation("MovimientoRetornoPrestamo", fields: [movimientoRetornoId], references: [id], onDelete: SetNull)
+  movimientoRetornoId Int?                  @unique
+  movimientoRetorno   MovimientoInventario? @relation("MovimientoRetornoPrestamo", fields: [movimientoRetornoId], references: [id], onDelete: SetNull)
 
-  ticketsUso  TicketHerramientaUso[]
+  ticketsUso TicketHerramientaUso[]
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
   @@index([empresaId, estado])
   @@index([serialProductoId])
@@ -1949,24 +2024,24 @@ model PrestamoHerramienta {
 }
 
 model TicketHerramientaUso {
-  id  Int  @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  prestamoHerramientaId  Int
-  prestamoHerramienta    PrestamoHerramienta  @relation(fields: [prestamoHerramientaId], references: [id], onDelete: Cascade)
+  prestamoHerramientaId Int
+  prestamoHerramienta   PrestamoHerramienta @relation(fields: [prestamoHerramientaId], references: [id], onDelete: Cascade)
 
-  ticketId  Int
-  ticket    TicketSoporte  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId Int
+  ticket   TicketSoporte @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
-  tecnicoId  Int?
-  tecnico    Usuario?  @relation("TicketHerramientaUsoTecnico", fields: [tecnicoId], references: [id], onDelete: SetNull)
+  tecnicoId Int?
+  tecnico   Usuario? @relation("TicketHerramientaUsoTecnico", fields: [tecnicoId], references: [id], onDelete: SetNull)
 
-  usadoEn           DateTime  @default(now())
-  devueltoEnTicket  Boolean   @default(false)
+  usadoEn          DateTime @default(now())
+  devueltoEnTicket Boolean  @default(false)
 
-  nota  String?
+  nota String?
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
   @@unique([prestamoHerramientaId, ticketId])
   @@index([ticketId])
@@ -1978,21 +2053,21 @@ model TicketHerramientaUso {
 // ============================================================
 
 model TicketReasignacion {
-  id        Int            @id @default(autoincrement())
-  ticketId  Int
-  ticket    TicketSoporte  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  id       Int           @id @default(autoincrement())
+  ticketId Int
+  ticket   TicketSoporte @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
-  tecnicoAnteriorId  Int?
-  tecnicoAnterior    Usuario?  @relation("ReasignacionDe", fields: [tecnicoAnteriorId], references: [id], onDelete: SetNull)
-  tecnicoNuevoId     Int
-  tecnicoNuevo       Usuario   @relation("ReasignacionA", fields: [tecnicoNuevoId], references: [id], onDelete: Cascade)
-  reasignadoPorId    Int?
-  reasignadoPor      Usuario?  @relation("QuienReasigno", fields: [reasignadoPorId], references: [id], onDelete: SetNull)
+  tecnicoAnteriorId Int?
+  tecnicoAnterior   Usuario? @relation("ReasignacionDe", fields: [tecnicoAnteriorId], references: [id], onDelete: SetNull)
+  tecnicoNuevoId    Int
+  tecnicoNuevo      Usuario  @relation("ReasignacionA", fields: [tecnicoNuevoId], references: [id], onDelete: Cascade)
+  reasignadoPorId   Int?
+  reasignadoPor     Usuario? @relation("QuienReasigno", fields: [reasignadoPorId], references: [id], onDelete: SetNull)
 
-  motivo         String?
-  reasignadoEn   DateTime  @default(now())
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  motivo        String?
+  reasignadoEn  DateTime @default(now())
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
   @@index([ticketId])
   @@index([tecnicoNuevoId])
@@ -2005,45 +2080,45 @@ model TicketReasignacion {
 // ============================================================
 
 model GastoOperativo {
-  id         Int      @id @default(autoincrement())
-  empresaId  Int
-  empresa    Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  id        Int     @id @default(autoincrement())
+  empresaId Int
+  empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
-  registradoPorId  Int?
-  registradoPor    Usuario?  @relation("GastosRegistrados", fields: [registradoPorId], references: [id], onDelete: SetNull)
+  registradoPorId Int?
+  registradoPor   Usuario? @relation("GastosRegistrados", fields: [registradoPorId], references: [id], onDelete: SetNull)
 
-  tipoGasto    TipoGasto
-  subtipo      String?
-  descripcion  String?
+  tipoGasto   TipoGasto
+  subtipo     String?
+  descripcion String?
 
-  montoTotal     Decimal  @default(0) @db.Decimal(12, 2)
-  esRecuperable  Boolean  @default(false)
+  montoTotal    Decimal @default(0) @db.Decimal(12, 2)
+  esRecuperable Boolean @default(false)
 
-  evidenciaMediaId  Int?
-  evidenciaMedia    Media?  @relation("EvidenciaGastoOperativo", fields: [evidenciaMediaId], references: [id])
+  evidenciaMediaId Int?
+  evidenciaMedia   Media? @relation("EvidenciaGastoOperativo", fields: [evidenciaMediaId], references: [id])
 
-  productoId  Int?
-  producto    Producto?  @relation(fields: [productoId], references: [id], onDelete: SetNull)
+  productoId Int?
+  producto   Producto? @relation(fields: [productoId], references: [id], onDelete: SetNull)
 
-  movimientoInventarioId  Int?                   @unique
-  movimientoInventario    MovimientoInventario?  @relation(fields: [movimientoInventarioId], references: [id], onDelete: SetNull)
+  movimientoInventarioId Int?                  @unique
+  movimientoInventario   MovimientoInventario? @relation(fields: [movimientoInventarioId], references: [id], onDelete: SetNull)
 
-  estado         EstadoGasto  @default(BORRADOR)
-  aprobadoPorId  Int?
-  aprobadoPor    Usuario?     @relation("GastosAprobados", fields: [aprobadoPorId], references: [id], onDelete: SetNull)
-  aprobadoEn     DateTime?
+  estado        EstadoGasto @default(BORRADOR)
+  aprobadoPorId Int?
+  aprobadoPor   Usuario?    @relation("GastosAprobados", fields: [aprobadoPorId], references: [id], onDelete: SetNull)
+  aprobadoEn    DateTime?
 
-  fechaGasto     DateTime  @default(now())
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  fechaGasto    DateTime @default(now())
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
-  ticketAsignaciones  TicketGasto[]
+  ticketAsignaciones TicketGasto[]
 
-  clienteInstalacionId  Int?
-  clienteInstalacion    ClienteInstalacion?  @relation(fields: [clienteInstalacionId], references: [id], onDelete: SetNull)
+  clienteInstalacionId Int?
+  clienteInstalacion   ClienteInstalacion? @relation(fields: [clienteInstalacionId], references: [id], onDelete: SetNull)
 
-  clienteDesinstalacionId  Int?
-  clienteDesinstalacion    ClienteDesinstalacion?  @relation(fields: [clienteDesinstalacionId], references: [id], onDelete: SetNull)
+  clienteDesinstalacionId Int?
+  clienteDesinstalacion   ClienteDesinstalacion? @relation(fields: [clienteDesinstalacionId], references: [id], onDelete: SetNull)
 
   @@index([clienteInstalacionId])
   @@index([clienteDesinstalacionId])
@@ -2059,23 +2134,23 @@ model GastoOperativo {
 // ============================================================
 
 model TicketGasto {
-  id        Int             @id @default(autoincrement())
-  ticketId  Int
-  ticket    TicketSoporte   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  gastoId   Int
-  gasto     GastoOperativo  @relation(fields: [gastoId], references: [id], onDelete: Cascade)
+  id       Int            @id @default(autoincrement())
+  ticketId Int
+  ticket   TicketSoporte  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  gastoId  Int
+  gasto    GastoOperativo @relation(fields: [gastoId], references: [id], onDelete: Cascade)
 
-  montoAsignado       Decimal   @default(0) @db.Decimal(12, 2)
-  porcentajeAsignado  Decimal?  @db.Decimal(6, 2) // 25.00 = 25%
+  montoAsignado      Decimal  @default(0) @db.Decimal(12, 2)
+  porcentajeAsignado Decimal? @db.Decimal(6, 2) // 25.00 = 25%
 
-  tecnicoId      Int?
-  tecnico        Usuario?  @relation("GastosAsignadosTecnico", fields: [tecnicoId], references: [id], onDelete: SetNull)
-  asignadoPorId  Int?
-  asignadoPor    Usuario?  @relation("GastosAsignadosPor", fields: [asignadoPorId], references: [id], onDelete: SetNull)
+  tecnicoId     Int?
+  tecnico       Usuario? @relation("GastosAsignadosTecnico", fields: [tecnicoId], references: [id], onDelete: SetNull)
+  asignadoPorId Int?
+  asignadoPor   Usuario? @relation("GastosAsignadosPor", fields: [asignadoPorId], references: [id], onDelete: SetNull)
 
-  nota           String?
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  nota          String?
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
   @@unique([ticketId, gastoId])
   @@index([ticketId])
@@ -2089,29 +2164,29 @@ model TicketGasto {
 // ============================================================
 
 model Bodega {
-  id         Int      @id @default(autoincrement())
-  empresaId  Int
-  empresa    Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  id        Int     @id @default(autoincrement())
+  empresaId Int
+  empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
-  nombre         String      // "Almacén Central", "Vehículo Técnico #1"
-  tipo           TipoBodega  @default(ALMACEN)
-  descripcion    String?
-  responsableId  Int?        // usuario encargado de esta bodega
-  responsable    Usuario?    @relation("BodegaResponsable", fields: [responsableId], references: [id], onDelete: SetNull)
-  activo         Boolean     @default(true)
+  nombre        String // "Almacén Central", "Vehículo Técnico #1"
+  tipo          TipoBodega @default(ALMACEN)
+  descripcion   String?
+  responsableId Int? // usuario encargado de esta bodega
+  responsable   Usuario?   @relation("BodegaResponsable", fields: [responsableId], references: [id], onDelete: SetNull)
+  activo        Boolean    @default(true)
 
-  stockProductos      StockProducto[]
-  movimientosOrigen   MovimientoInventario[]  @relation("MovimientoOrigen")
-  movimientosDestino  MovimientoInventario[]  @relation("MovimientoDestino")
-  seriales            SerialProducto[]        // items serializables guardados aquí
+  stockProductos     StockProducto[]
+  movimientosOrigen  MovimientoInventario[] @relation("MovimientoOrigen")
+  movimientosDestino MovimientoInventario[] @relation("MovimientoDestino")
+  seriales           SerialProducto[] // items serializables guardados aquí
 
-  prestamosOrigen   PrestamoHerramienta[]  @relation("PrestamoBodegaOrigen")
-  prestamosRetorno  PrestamoHerramienta[]  @relation("PrestamoBodegaRetorno")
+  prestamosOrigen  PrestamoHerramienta[] @relation("PrestamoBodegaOrigen")
+  prestamosRetorno PrestamoHerramienta[] @relation("PrestamoBodegaRetorno")
 
-  equiposDesinstalacionRecibidos  ClienteDesinstalacionEquipo[]
+  equiposDesinstalacionRecibidos ClienteDesinstalacionEquipo[]
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
   @@unique([empresaId, nombre])
   @@index([empresaId])
@@ -2122,17 +2197,17 @@ model Bodega {
 // ============================================================
 
 model CategoriaProducto {
-  id         Int      @id @default(autoincrement())
-  empresaId  Int
-  empresa    Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  id        Int     @id @default(autoincrement())
+  empresaId Int
+  empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
-  nombre       String      // "Equipos Ópticos", "Cable y Conectores", "Herramientas"
-  descripcion  String?
-  activo       Boolean     @default(true)
-  productos    Producto[]
+  nombre      String // "Equipos Ópticos", "Cable y Conectores", "Herramientas"
+  descripcion String?
+  activo      Boolean    @default(true)
+  productos   Producto[]
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
   @@unique([empresaId, nombre])
 }
@@ -2144,42 +2219,42 @@ model CategoriaProducto {
 // ============================================================
 
 model Producto {
-  id         Int      @id @default(autoincrement())
-  empresaId  Int
-  empresa    Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  id        Int     @id @default(autoincrement())
+  empresaId Int
+  empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
-  categoriaId  Int?
-  categoria    CategoriaProducto?  @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  categoriaId Int?
+  categoria   CategoriaProducto? @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
 
-  nombre        String
-  descripcion   String?
-  sku           String?
-  unidadMedida  String?  @default("unidad")
+  nombre       String
+  descripcion  String?
+  sku          String?
+  unidadMedida String? @default("unidad")
 
-  costoPromedio  Decimal   @default(0) @db.Decimal(12, 2)
-  costoUltimo    Decimal?  @db.Decimal(12, 2)
+  costoPromedio Decimal  @default(0) @db.Decimal(12, 2)
+  costoUltimo   Decimal? @db.Decimal(12, 2)
 
-  stockTotal   Decimal  @default(0) @db.Decimal(10, 2)
-  stockMinimo  Decimal  @default(0) @db.Decimal(10, 2)
+  stockTotal  Decimal @default(0) @db.Decimal(10, 2)
+  stockMinimo Decimal @default(0) @db.Decimal(10, 2)
 
-  esSeriable  Boolean  @default(false)
-  esActivo    Boolean  @default(false)
+  esSeriable Boolean @default(false)
+  esActivo   Boolean @default(false)
 
-  activo       Boolean  @default(true)
-  isEliminado  Boolean  @default(false)
+  activo      Boolean @default(true)
+  isEliminado Boolean @default(false)
 
-  stockPorBodega    StockProducto[]
-  seriales          SerialProducto[]
-  movimientos       MovimientoInventario[]
-  gastosOperativos  GastoOperativo[]
+  stockPorBodega   StockProducto[]
+  seriales         SerialProducto[]
+  movimientos      MovimientoInventario[]
+  gastosOperativos GastoOperativo[]
 
-  instalacionesCliente     ClienteInstalacionEquipo[]
-  desinstalacionesCliente  ClienteDesinstalacionEquipo[]
+  instalacionesCliente    ClienteInstalacionEquipo[]
+  desinstalacionesCliente ClienteDesinstalacionEquipo[]
 
-  equiposAcceso  ClienteAccesoEquipo[]
+  equiposAcceso ClienteAccesoEquipo[]
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
   @@unique([empresaId, sku])
   @@index([empresaId, categoriaId])
@@ -2193,18 +2268,18 @@ model Producto {
 // ============================================================
 
 model StockProducto {
-  id          Int       @id @default(autoincrement())
-  productoId  Int
-  producto    Producto  @relation(fields: [productoId], references: [id], onDelete: Cascade)
-  bodegaId    Int
-  bodega      Bodega    @relation(fields: [bodegaId], references: [id], onDelete: Cascade)
+  id         Int      @id @default(autoincrement())
+  productoId Int
+  producto   Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  bodegaId   Int
+  bodega     Bodega   @relation(fields: [bodegaId], references: [id], onDelete: Cascade)
 
-  cantidad  Decimal  @default(0) @db.Decimal(10, 2)
+  cantidad          Decimal @default(0) @db.Decimal(10, 2)
   // Cantidad reservada para movimientos pendientes (futuro)
-  cantidadReservada  Decimal  @default(0) @db.Decimal(10, 2)
+  cantidadReservada Decimal @default(0) @db.Decimal(10, 2)
   // cantidadDisponible = cantidad - cantidadReservada (calculado en query)
 
-  actualizadoEn  DateTime  @updatedAt
+  actualizadoEn DateTime @updatedAt
 
   @@unique([productoId, bodegaId])
   @@index([bodegaId])
@@ -2218,39 +2293,39 @@ model StockProducto {
 // ============================================================
 
 model SerialProducto {
-  id          Int       @id @default(autoincrement())
-  productoId  Int
-  producto    Producto  @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  id         Int      @id @default(autoincrement())
+  productoId Int
+  producto   Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
 
-  serial  String        // MAC address o número de serie del fabricante
-  estado  EstadoSerial  @default(EN_STOCK)
+  serial String // MAC address o número de serie del fabricante
+  estado EstadoSerial @default(EN_STOCK)
 
   // Ubicación actual del equipo
-  bodegaId  Int?     // null si ya está instalado en campo
-  bodega    Bodega?  @relation(fields: [bodegaId], references: [id], onDelete: SetNull)
+  bodegaId Int? // null si ya está instalado en campo
+  bodega   Bodega? @relation(fields: [bodegaId], references: [id], onDelete: SetNull)
 
   // Si está instalado
-  clienteId            Int?
-  cliente              ClienteInternet?  @relation(fields: [clienteId], references: [id], onDelete: SetNull)
-  ticketInstalacionId  Int?              // ticket donde se realizó la instalación
-  ticketInstalacion    TicketSoporte?    @relation(fields: [ticketInstalacionId], references: [id], onDelete: SetNull)
+  clienteId           Int?
+  cliente             ClienteInternet? @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  ticketInstalacionId Int? // ticket donde se realizó la instalación
+  ticketInstalacion   TicketSoporte?   @relation(fields: [ticketInstalacionId], references: [id], onDelete: SetNull)
 
-  instaladoEn  DateTime?
+  instaladoEn DateTime?
 
   // Si está defectuoso / en reparación
-  motivoBaja  String?
-  fechaBaja   DateTime?
+  motivoBaja String?
+  fechaBaja  DateTime?
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
-  movimientos           MovimientoInventario[]
-  prestamosHerramienta  PrestamoHerramienta[]
+  movimientos          MovimientoInventario[]
+  prestamosHerramienta PrestamoHerramienta[]
 
-  instalacionesCliente     ClienteInstalacionEquipo[]
-  desinstalacionesCliente  ClienteDesinstalacionEquipo[]
+  instalacionesCliente    ClienteInstalacionEquipo[]
+  desinstalacionesCliente ClienteDesinstalacionEquipo[]
 
-  equiposAcceso  ClienteAccesoEquipo[]
+  equiposAcceso ClienteAccesoEquipo[]
 
   @@unique([serial])
   @@index([productoId, estado])
@@ -2258,57 +2333,57 @@ model SerialProducto {
 }
 
 model MovimientoInventario {
-  id         Int      @id @default(autoincrement())
-  empresaId  Int
-  empresa    Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  id        Int     @id @default(autoincrement())
+  empresaId Int
+  empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
-  productoId  Int
-  producto    Producto  @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  productoId Int
+  producto   Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
 
-  tipoMovimiento  TipoMovimiento
+  tipoMovimiento TipoMovimiento
 
-  cantidad       Decimal  @db.Decimal(10, 2)
-  costoUnitario  Decimal  @db.Decimal(12, 2)
-  costoTotal     Decimal  @db.Decimal(14, 2) // cantidad × costoUnitario
+  cantidad      Decimal @db.Decimal(10, 2)
+  costoUnitario Decimal @db.Decimal(12, 2)
+  costoTotal    Decimal @db.Decimal(14, 2) // cantidad × costoUnitario
 
   // Dónde entra/sale el stock
-  bodegaOrigenId   Int?
-  bodegaOrigen     Bodega?  @relation("MovimientoOrigen", fields: [bodegaOrigenId], references: [id], onDelete: SetNull)
-  bodegaDestinoId  Int?
-  bodegaDestino    Bodega?  @relation("MovimientoDestino", fields: [bodegaDestinoId], references: [id], onDelete: SetNull)
+  bodegaOrigenId  Int?
+  bodegaOrigen    Bodega? @relation("MovimientoOrigen", fields: [bodegaOrigenId], references: [id], onDelete: SetNull)
+  bodegaDestinoId Int?
+  bodegaDestino   Bodega? @relation("MovimientoDestino", fields: [bodegaDestinoId], references: [id], onDelete: SetNull)
 
   // Contexto del movimiento
-  ticketId  Int?            // SALIDA ligada a un ticket de soporte
-  ticket    TicketSoporte?  @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  ticketId Int? // SALIDA ligada a un ticket de soporte
+  ticket   TicketSoporte? @relation(fields: [ticketId], references: [id], onDelete: SetNull)
 
-  proveedorId  Int?        // ENTRADA de compra
-  proveedor    Proveedor?  @relation(fields: [proveedorId], references: [id], onDelete: SetNull)
+  proveedorId Int? // ENTRADA de compra
+  proveedor   Proveedor? @relation(fields: [proveedorId], references: [id], onDelete: SetNull)
 
-  referencia  String?  // nro. factura de compra, orden de trabajo
-  notas       String?
+  referencia String? // nro. factura de compra, orden de trabajo
+  notas      String?
 
-  realizadoPorId  Int?
-  realizadoPor    Usuario?  @relation("MovimientosRealizados", fields: [realizadoPorId], references: [id], onDelete: SetNull)
+  realizadoPorId Int?
+  realizadoPor   Usuario? @relation("MovimientosRealizados", fields: [realizadoPorId], references: [id], onDelete: SetNull)
 
   // Snapshot del stock total del producto al momento del movimiento (para auditoría)
-  stockResultante  Decimal?  @db.Decimal(10, 2)
+  stockResultante Decimal? @db.Decimal(10, 2)
 
   // Si el item es seriable, qué serial específico se movió
-  serialId        Int?
-  serialProducto  SerialProducto?  @relation(fields: [serialId], references: [id], onDelete: SetNull)
+  serialId       Int?
+  serialProducto SerialProducto? @relation(fields: [serialId], references: [id], onDelete: SetNull)
 
-  prestamoSalida   PrestamoHerramienta?  @relation("MovimientoSalidaPrestamo")
-  prestamoRetorno  PrestamoHerramienta?  @relation("MovimientoRetornoPrestamo")
+  prestamoSalida  PrestamoHerramienta? @relation("MovimientoSalidaPrestamo")
+  prestamoRetorno PrestamoHerramienta? @relation("MovimientoRetornoPrestamo")
 
-  instalacionesCliente     ClienteInstalacionEquipo[]
-  desinstalacionesCliente  ClienteDesinstalacionEquipo[]
+  instalacionesCliente    ClienteInstalacionEquipo[]
+  desinstalacionesCliente ClienteDesinstalacionEquipo[]
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
   // Relación inversa: el GastoOperativo auto-generado por este movimiento (si aplica)
   // FK está en GastoOperativo.movimientoInventarioId
-  gastoOperativo  GastoOperativo?
+  gastoOperativo GastoOperativo?
 
   @@index([serialId])
   @@index([productoId, tipoMovimiento, creadoEn])
@@ -2319,73 +2394,73 @@ model MovimientoInventario {
 }
 
 model ClienteInstalacionMedia {
-  id             Int  @id @default(autoincrement())
-  instalacionId  Int
-  mediaId        Int
+  id            Int @id @default(autoincrement())
+  instalacionId Int
+  mediaId       Int
 
-  tipo         TipoEvidenciaClienteOperacion  @default(OTRO)
-  descripcion  String?
-  orden        Int                            @default(0)
+  tipo        TipoEvidenciaClienteOperacion @default(OTRO)
+  descripcion String?
+  orden       Int                           @default(0)
 
-  creadoEn  DateTime  @default(now())
+  creadoEn DateTime @default(now())
 
-  instalacion  ClienteInstalacion  @relation(fields: [instalacionId], references: [id], onDelete: Cascade)
-  media        Media               @relation(fields: [mediaId], references: [id], onDelete: Restrict)
+  instalacion ClienteInstalacion @relation(fields: [instalacionId], references: [id], onDelete: Cascade)
+  media       Media              @relation(fields: [mediaId], references: [id], onDelete: Restrict)
 
   @@unique([instalacionId, mediaId])
   @@index([mediaId])
 }
 
 model ClienteInstalacionTecnico {
-  id             Int   @id @default(autoincrement())
-  instalacionId  Int
-  tecnicoId      Int?
+  id            Int  @id @default(autoincrement())
+  instalacionId Int
+  tecnicoId     Int?
 
-  rol  RolTecnicoOperacionCliente  @default(APOYO)
+  rol RolTecnicoOperacionCliente @default(APOYO)
 
-  esResponsable  Boolean  @default(false)
-  tiempoMinutos  Int?
-  observaciones  String?
+  esResponsable Boolean @default(false)
+  tiempoMinutos Int?
+  observaciones String?
 
-  tecnicoNombreSnapshot  String?
+  tecnicoNombreSnapshot String?
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
-  instalacion  ClienteInstalacion  @relation(fields: [instalacionId], references: [id], onDelete: Cascade)
-  tecnico      Usuario?            @relation("InstalacionTecnicoUsuario", fields: [tecnicoId], references: [id], onDelete: SetNull)
+  instalacion ClienteInstalacion @relation(fields: [instalacionId], references: [id], onDelete: Cascade)
+  tecnico     Usuario?           @relation("InstalacionTecnicoUsuario", fields: [tecnicoId], references: [id], onDelete: SetNull)
 
   @@index([instalacionId])
   @@index([tecnicoId])
 }
 
 model ClienteInstalacionEquipo {
-  id             Int  @id @default(autoincrement())
-  instalacionId  Int
+  id            Int @id @default(autoincrement())
+  instalacionId Int
 
-  productoId              Int?
-  serialProductoId        Int?
-  movimientoInventarioId  Int?
+  productoId             Int?
+  serialProductoId       Int?
+  movimientoInventarioId Int?
 
-  descripcion  String?
-  cantidad     Decimal  @default(1) @db.Decimal(10, 2)
+  descripcion String?
+  cantidad    Decimal @default(1) @db.Decimal(10, 2)
 
-  costoUnitario  Decimal  @default(0) @db.Decimal(12, 2)
-  costoTotal     Decimal  @default(0) @db.Decimal(12, 2)
+  costoUnitario Decimal @default(0) @db.Decimal(12, 2)
+  costoTotal    Decimal @default(0) @db.Decimal(12, 2)
 
-  esPrincipal  Boolean  @default(false)
+  esPrincipal Boolean @default(false)
 
-  serialSnapshot  String?
-  notas           String?
+  serialSnapshot String?
+  notas          String?
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
-  instalacion  ClienteInstalacion  @relation(fields: [instalacionId], references: [id], onDelete: Cascade)
+  instalacion ClienteInstalacion @relation(fields: [instalacionId], references: [id], onDelete: Cascade)
 
-  producto              Producto?              @relation(fields: [productoId], references: [id], onDelete: SetNull)
-  serialProducto        SerialProducto?        @relation(fields: [serialProductoId], references: [id], onDelete: SetNull)
-  movimientoInventario  MovimientoInventario?  @relation(fields: [movimientoInventarioId], references: [id], onDelete: SetNull)
+  producto             Producto?             @relation(fields: [productoId], references: [id], onDelete: SetNull)
+  serialProducto       SerialProducto?       @relation(fields: [serialProductoId], references: [id], onDelete: SetNull)
+  movimientoInventario MovimientoInventario? @relation(fields: [movimientoInventarioId], references: [id], onDelete: SetNull)
 
   @@index([instalacionId])
   @@index([productoId])
@@ -2394,73 +2469,73 @@ model ClienteInstalacionEquipo {
 }
 
 model ClienteInstalacion {
-  id  Int  @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  empresaId  Int
-  clienteId  Int
+  empresaId Int
+  clienteId Int
 
-  servicioInternetId  Int?
-  ticketId            Int?
+  servicioInternetId Int?
+  ticketId           Int?
 
-  asesorId         Int?
-  creadoPorId      Int?
-  completadoPorId  Int?
+  asesorId        Int?
+  creadoPorId     Int?
+  completadoPorId Int?
 
-  tipo    TipoInstalacionCliente    @default(NUEVA)
-  estado  EstadoInstalacionCliente  @default(PROGRAMADA)
+  tipo   TipoInstalacionCliente   @default(NUEVA)
+  estado EstadoInstalacionCliente @default(PROGRAMADA)
 
-  fechaProgramada          DateTime?
-  fechaInicio              DateTime?
-  fechaFinalizacion        DateTime?
-  fechaCancelacion         DateTime?
-  fechaActivacionServicio  DateTime?
+  fechaProgramada         DateTime?
+  fechaInicio             DateTime?
+  fechaFinalizacion       DateTime?
+  fechaCancelacion        DateTime?
+  fechaActivacionServicio DateTime?
 
-  descripcion String?
-  motivo         String?
-  observaciones  String?
-  resultado      String?
+  descripcion   String?
+  motivo        String?
+  observaciones String?
+  resultado     String?
 
-  direccionInstalacion  String?
-  referenciaUbicacion   String?
-  latitud               Float?
-  longitud              Float?
+  direccionInstalacion String?
+  referenciaUbicacion  String?
+  latitud              Float?
+  longitud             Float?
 
-  costoInstalacion     Decimal  @default(0) @db.Decimal(12, 2)
-  costoMateriales      Decimal  @default(0) @db.Decimal(12, 2)
-  costoManoObra        Decimal  @default(0) @db.Decimal(12, 2)
-  costoOtros           Decimal  @default(0) @db.Decimal(12, 2)
-  montoCobradoCliente  Decimal  @default(0) @db.Decimal(12, 2)
+  costoInstalacion    Decimal @default(0) @db.Decimal(12, 2)
+  costoMateriales     Decimal @default(0) @db.Decimal(12, 2)
+  costoManoObra       Decimal @default(0) @db.Decimal(12, 2)
+  costoOtros          Decimal @default(0) @db.Decimal(12, 2)
+  montoCobradoCliente Decimal @default(0) @db.Decimal(12, 2)
   // saldoPendiente      Decimal @default(0) @db.Decimal(12, 2)
 
-  notasCostos  String?
+  notasCostos String?
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
-  empresa           Empresa            @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  cliente           ClienteInternet    @relation(fields: [clienteId], references: [id], onDelete: Restrict)
-  servicioInternet  ServicioInternet?  @relation(fields: [servicioInternetId], references: [id], onDelete: SetNull)
-  ticket            TicketSoporte?     @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  empresa          Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  cliente          ClienteInternet   @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  servicioInternet ServicioInternet? @relation(fields: [servicioInternetId], references: [id], onDelete: SetNull)
+  ticket           TicketSoporte?    @relation(fields: [ticketId], references: [id], onDelete: SetNull)
 
-  asesor         Usuario?  @relation("InstalacionAsesor", fields: [asesorId], references: [id], onDelete: SetNull)
-  creadoPor      Usuario?  @relation("InstalacionCreadoPor", fields: [creadoPorId], references: [id], onDelete: SetNull)
-  completadoPor  Usuario?  @relation("InstalacionCompletadoPor", fields: [completadoPorId], references: [id], onDelete: SetNull)
+  asesor        Usuario? @relation("InstalacionAsesor", fields: [asesorId], references: [id], onDelete: SetNull)
+  creadoPor     Usuario? @relation("InstalacionCreadoPor", fields: [creadoPorId], references: [id], onDelete: SetNull)
+  completadoPor Usuario? @relation("InstalacionCompletadoPor", fields: [completadoPorId], references: [id], onDelete: SetNull)
 
-  tecnicos          ClienteInstalacionTecnico[]
-  evidencias        ClienteInstalacionMedia[]
-  equipos           ClienteInstalacionEquipo[]
-  gastosOperativos  GastoOperativo[]
+  tecnicos         ClienteInstalacionTecnico[]
+  evidencias       ClienteInstalacionMedia[]
+  equipos          ClienteInstalacionEquipo[]
+  gastosOperativos GastoOperativo[]
 
-  clienteInstalacionAccesos  ClienteInstalacionAcceso[]
+  clienteInstalacionAccesos ClienteInstalacionAcceso[]
 
-  equiposAccesoAsignados  ClienteAccesoEquipo[]  @relation("AccesoEquipoInstalacionAsignacion")
+  equiposAccesoAsignados ClienteAccesoEquipo[] @relation("AccesoEquipoInstalacionAsignacion")
 
-  equiposAccesoRetirados  ClienteAccesoEquipo[]  @relation("AccesoEquipoInstalacionRetiro")
+  equiposAccesoRetirados ClienteAccesoEquipo[] @relation("AccesoEquipoInstalacionRetiro")
 
-  configuracionesTecnicas  ClienteAccesoConfiguracionTecnica[]
+  configuracionesTecnicas ClienteAccesoConfiguracionTecnica[]
 
-  operacionesPppoe  PppoeOperacion[]
-  auditoriasPppoe   PppoeAuditoria[]
+  operacionesPppoe PppoeOperacion[]
+  auditoriasPppoe  PppoeAuditoria[]
 
   @@index([empresaId, estado])
   @@index([empresaId, clienteId])
@@ -2475,74 +2550,74 @@ model ClienteInstalacion {
 
 // DESINSTALACION
 model ClienteDesinstalacion {
-  id  Int  @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  empresaId  Int
-  clienteId  Int
+  empresaId Int
+  clienteId Int
 
-  servicioInternetId  Int?
-  ticketId            Int?
+  servicioInternetId Int?
+  ticketId           Int?
 
-  accesoInternetId  Int?
+  accesoInternetId Int?
 
-  solicitadoPorId  Int?
-  ejecutadoPorId   Int?
-  creadoPorId      Int?
+  solicitadoPorId Int?
+  ejecutadoPorId  Int?
+  creadoPorId     Int?
 
-  tipo    TipoDesinstalacionCliente     @default(COMPLETA)
-  motivo  MotivoDesinstalacionCliente?
-  estado  EstadoDesinstalacionCliente   @default(PROGRAMADA)
+  tipo   TipoDesinstalacionCliente    @default(COMPLETA)
+  motivo MotivoDesinstalacionCliente?
+  estado EstadoDesinstalacionCliente  @default(PROGRAMADA)
 
-  fechaSolicitud     DateTime?
-  fechaProgramada    DateTime?
-  fechaInicio        DateTime?
-  fechaFinalizacion  DateTime?
-  fechaCancelacion   DateTime?
+  fechaSolicitud    DateTime?
+  fechaProgramada   DateTime?
+  fechaInicio       DateTime?
+  fechaFinalizacion DateTime?
+  fechaCancelacion  DateTime?
 
-  requiereRetiroEquipo  Boolean  @default(true)
-  equipoRecuperado      Boolean  @default(false)
+  requiereRetiroEquipo Boolean @default(true)
+  equipoRecuperado     Boolean @default(false)
 
-  saldoClienteAlMomento  Decimal  @default(0) @db.Decimal(12, 2)
-  costoDesinstalacion    Decimal  @default(0) @db.Decimal(12, 2)
-  costoTransporte        Decimal  @default(0) @db.Decimal(12, 2)
-  costoManoObra          Decimal  @default(0) @db.Decimal(12, 2)
-  costoOtros             Decimal  @default(0) @db.Decimal(12, 2)
+  saldoClienteAlMomento Decimal @default(0) @db.Decimal(12, 2)
+  costoDesinstalacion   Decimal @default(0) @db.Decimal(12, 2)
+  costoTransporte       Decimal @default(0) @db.Decimal(12, 2)
+  costoManoObra         Decimal @default(0) @db.Decimal(12, 2)
+  costoOtros            Decimal @default(0) @db.Decimal(12, 2)
 
-  direccionServicio    String?
-  referenciaUbicacion  String?
-  latitud              Float?
-  longitud             Float?
+  direccionServicio   String?
+  referenciaUbicacion String?
+  latitud             Float?
+  longitud            Float?
 
-  firmadoPor   String?
-  dpiFirmante  String?
-  conforme     Boolean?
+  firmadoPor  String?
+  dpiFirmante String?
+  conforme    Boolean?
 
-  observaciones  String?
-  resultado      String?
-  metadata       Json?
+  observaciones String?
+  resultado     String?
+  metadata      Json?
 
-  creadoEn       DateTime  @default(now())
-  actualizadoEn  DateTime  @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
-  empresa           Empresa            @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  cliente           ClienteInternet    @relation(fields: [clienteId], references: [id], onDelete: Restrict)
-  servicioInternet  ServicioInternet?  @relation(fields: [servicioInternetId], references: [id], onDelete: SetNull)
-  ticket            TicketSoporte?     @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  empresa          Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  cliente          ClienteInternet   @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  servicioInternet ServicioInternet? @relation(fields: [servicioInternetId], references: [id], onDelete: SetNull)
+  ticket           TicketSoporte?    @relation(fields: [ticketId], references: [id], onDelete: SetNull)
 
-  solicitadoPor  Usuario?  @relation("DesinstalacionSolicitadoPor", fields: [solicitadoPorId], references: [id], onDelete: SetNull)
-  ejecutadoPor   Usuario?  @relation("DesinstalacionEjecutadoPor", fields: [ejecutadoPorId], references: [id], onDelete: SetNull)
-  creadoPor      Usuario?  @relation("DesinstalacionCreadoPor", fields: [creadoPorId], references: [id], onDelete: SetNull)
+  solicitadoPor Usuario? @relation("DesinstalacionSolicitadoPor", fields: [solicitadoPorId], references: [id], onDelete: SetNull)
+  ejecutadoPor  Usuario? @relation("DesinstalacionEjecutadoPor", fields: [ejecutadoPorId], references: [id], onDelete: SetNull)
+  creadoPor     Usuario? @relation("DesinstalacionCreadoPor", fields: [creadoPorId], references: [id], onDelete: SetNull)
 
-  tecnicos                            ClienteDesinstalacionTecnico[]
-  evidencias                          ClienteDesinstalacionMedia[]
-  equipos                             ClienteDesinstalacionEquipo[]
-  gastosOperativos                    GastoOperativo[]
-  clienteDesinstalacionAutorizacions  ClienteDesinstalacionAutorizacion[]
+  tecnicos                           ClienteDesinstalacionTecnico[]
+  evidencias                         ClienteDesinstalacionMedia[]
+  equipos                            ClienteDesinstalacionEquipo[]
+  gastosOperativos                   GastoOperativo[]
+  clienteDesinstalacionAutorizacions ClienteDesinstalacionAutorizacion[]
 
-  accesoInternet  ClienteAccesoInternet?  @relation(fields: [accesoInternetId], references: [id], onDelete: SetNull)
+  accesoInternet ClienteAccesoInternet? @relation(fields: [accesoInternetId], references: [id], onDelete: SetNull)
 
-  operacionesPppoe  PppoeOperacion[]
-  auditoriasPppoe   PppoeAuditoria[]
+  operacionesPppoe PppoeOperacion[]
+  auditoriasPppoe  PppoeAuditoria[]
 
   @@index([empresaId, estado])
   @@index([empresaId, clienteId])
@@ -2557,64 +2632,64 @@ model ClienteDesinstalacion {
 }
 
 model ClienteDesinstalacionTecnico {
-  id                     Int                         @id @default(autoincrement())
-  desinstalacionId       Int
-  tecnicoId              Int?
-  rol                    RolTecnicoOperacionCliente  @default(APOYO)
-  esResponsable          Boolean                     @default(false)
-  tiempoMinutos          Int?
-  observaciones          String?
-  tecnicoNombreSnapshot  String?
-  creadoEn               DateTime                    @default(now())
-  actualizadoEn          DateTime                    @updatedAt
-  desinstalacion         ClienteDesinstalacion       @relation(fields: [desinstalacionId], references: [id], onDelete: Cascade)
-  tecnico                Usuario?                    @relation("DesinstalacionTecnicoUsuario", fields: [tecnicoId], references: [id], onDelete: SetNull)
+  id                    Int                        @id @default(autoincrement())
+  desinstalacionId      Int
+  tecnicoId             Int?
+  rol                   RolTecnicoOperacionCliente @default(APOYO)
+  esResponsable         Boolean                    @default(false)
+  tiempoMinutos         Int?
+  observaciones         String?
+  tecnicoNombreSnapshot String?
+  creadoEn              DateTime                   @default(now())
+  actualizadoEn         DateTime                   @updatedAt
+  desinstalacion        ClienteDesinstalacion      @relation(fields: [desinstalacionId], references: [id], onDelete: Cascade)
+  tecnico               Usuario?                   @relation("DesinstalacionTecnicoUsuario", fields: [tecnicoId], references: [id], onDelete: SetNull)
 
   @@index([desinstalacionId])
   @@index([tecnicoId])
 }
 
 model ClienteDesinstalacionMedia {
-  id                Int                            @id @default(autoincrement())
-  desinstalacionId  Int
-  mediaId           Int
-  tipo              TipoEvidenciaClienteOperacion  @default(OTRO)
-  descripcion       String?
-  orden             Int                            @default(0)
-  creadoEn          DateTime                       @default(now())
-  desinstalacion    ClienteDesinstalacion          @relation(fields: [desinstalacionId], references: [id], onDelete: Cascade)
-  media             Media                          @relation(fields: [mediaId], references: [id], onDelete: Restrict)
+  id               Int                           @id @default(autoincrement())
+  desinstalacionId Int
+  mediaId          Int
+  tipo             TipoEvidenciaClienteOperacion @default(OTRO)
+  descripcion      String?
+  orden            Int                           @default(0)
+  creadoEn         DateTime                      @default(now())
+  desinstalacion   ClienteDesinstalacion         @relation(fields: [desinstalacionId], references: [id], onDelete: Cascade)
+  media            Media                         @relation(fields: [mediaId], references: [id], onDelete: Restrict)
 
   @@unique([desinstalacionId, mediaId])
   @@index([mediaId])
 }
 
 model ClienteDesinstalacionEquipo {
-  id                      Int   @id @default(autoincrement())
-  desinstalacionId        Int
-  productoId              Int?
-  serialProductoId        Int?
-  movimientoInventarioId  Int?
-  bodegaDestinoId         Int?
+  id                     Int  @id @default(autoincrement())
+  desinstalacionId       Int
+  productoId             Int?
+  serialProductoId       Int?
+  movimientoInventarioId Int?
+  bodegaDestinoId        Int?
 
-  accesoEquipoId  Int?  @unique
+  accesoEquipoId Int? @unique
 
-  accesoEquipo  ClienteAccesoEquipo?  @relation(fields: [accesoEquipoId], references: [id], onDelete: Restrict)
+  accesoEquipo ClienteAccesoEquipo? @relation(fields: [accesoEquipoId], references: [id], onDelete: Restrict)
 
-  descripcion        String?
-  cantidad           Decimal               @default(1) @db.Decimal(10, 2)
-  estadoRetiro       EstadoEquipoRetirado  @default(RECUPERADO_BUENO)
-  costoRecuperacion  Decimal               @default(0) @db.Decimal(12, 2)
-  serialSnapshot     String?
-  notas              String?
-  creadoEn           DateTime              @default(now())
-  actualizadoEn      DateTime              @updatedAt
+  descripcion       String?
+  cantidad          Decimal              @default(1) @db.Decimal(10, 2)
+  estadoRetiro      EstadoEquipoRetirado @default(RECUPERADO_BUENO)
+  costoRecuperacion Decimal              @default(0) @db.Decimal(12, 2)
+  serialSnapshot    String?
+  notas             String?
+  creadoEn          DateTime             @default(now())
+  actualizadoEn     DateTime             @updatedAt
 
-  desinstalacion        ClienteDesinstalacion  @relation(fields: [desinstalacionId], references: [id], onDelete: Cascade)
-  producto              Producto?              @relation(fields: [productoId], references: [id], onDelete: SetNull)
-  serialProducto        SerialProducto?        @relation(fields: [serialProductoId], references: [id], onDelete: SetNull)
-  movimientoInventario  MovimientoInventario?  @relation(fields: [movimientoInventarioId], references: [id], onDelete: SetNull)
-  bodegaDestino         Bodega?                @relation(fields: [bodegaDestinoId], references: [id], onDelete: SetNull)
+  desinstalacion       ClienteDesinstalacion @relation(fields: [desinstalacionId], references: [id], onDelete: Cascade)
+  producto             Producto?             @relation(fields: [productoId], references: [id], onDelete: SetNull)
+  serialProducto       SerialProducto?       @relation(fields: [serialProductoId], references: [id], onDelete: SetNull)
+  movimientoInventario MovimientoInventario? @relation(fields: [movimientoInventarioId], references: [id], onDelete: SetNull)
+  bodegaDestino        Bodega?               @relation(fields: [bodegaDestinoId], references: [id], onDelete: SetNull)
 
   @@index([desinstalacionId])
   @@index([productoId])
@@ -2624,26 +2699,26 @@ model ClienteDesinstalacionEquipo {
 }
 
 model ClienteEstadoHistorial {
-  id  Int  @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  empresaId  Int
-  clienteId  Int
+  empresaId Int
+  clienteId Int
 
-  tipoCambio              TipoCambioEstadoCliente
-  estadoAnterior          EstadoCliente?
-  estadoNuevo             EstadoCliente?
-  isEliminadoAnterior     Boolean?
-  isEliminadoNuevo        Boolean?
-  whatsappActivoAnterior  Boolean?
-  whatsappActivoNuevo     Boolean?
-  motivo                  String?
-  descripcion             String?
-  cambiadoPorId           Int?
-  creadoEn                DateTime                 @default(now())
+  tipoCambio             TipoCambioEstadoCliente
+  estadoAnterior         EstadoCliente?
+  estadoNuevo            EstadoCliente?
+  isEliminadoAnterior    Boolean?
+  isEliminadoNuevo       Boolean?
+  whatsappActivoAnterior Boolean?
+  whatsappActivoNuevo    Boolean?
+  motivo                 String?
+  descripcion            String?
+  cambiadoPorId          Int?
+  creadoEn               DateTime                @default(now())
 
-  empresa      Empresa          @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  cliente      ClienteInternet  @relation(fields: [clienteId], references: [id], onDelete: Restrict)
-  cambiadoPor  Usuario?         @relation("ClienteEstadoCambiadoPor", fields: [cambiadoPorId], references: [id], onDelete: SetNull)
+  empresa     Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  cliente     ClienteInternet @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  cambiadoPor Usuario?        @relation("ClienteEstadoCambiadoPor", fields: [cambiadoPorId], references: [id], onDelete: SetNull)
 
   @@index([clienteId, creadoEn])
   @@index([empresaId, tipoCambio])
@@ -2651,25 +2726,25 @@ model ClienteEstadoHistorial {
 }
 
 model ClienteDesinstalacionAutorizacion {
-  id  Int  @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  desinstalacionId  Int
+  desinstalacionId Int
 
-  solicitadoPorId  Int?
-  autorizadoPorId  Int?
+  solicitadoPorId Int?
+  autorizadoPorId Int?
 
-  estado  EstadoAutorizacionDesinstalacion  @default(PENDIENTE)
+  estado EstadoAutorizacionDesinstalacion @default(PENDIENTE)
 
-  motivoSolicitud        String?
-  comentarioAutorizador  String?
+  motivoSolicitud       String?
+  comentarioAutorizador String?
 
-  fechaSolicitud  DateTime   @default(now())
-  fechaRespuesta  DateTime?
+  fechaSolicitud DateTime  @default(now())
+  fechaRespuesta DateTime?
 
-  desinstalacion  ClienteDesinstalacion  @relation(fields: [desinstalacionId], references: [id], onDelete: Cascade)
+  desinstalacion ClienteDesinstalacion @relation(fields: [desinstalacionId], references: [id], onDelete: Cascade)
 
-  solicitadoPor  Usuario?  @relation("DesinstalacionAutorizacionSolicitadoPor", fields: [solicitadoPorId], references: [id], onDelete: SetNull)
-  autorizadoPor  Usuario?  @relation("DesinstalacionAutorizacionAutorizadoPor", fields: [autorizadoPorId], references: [id], onDelete: SetNull)
+  solicitadoPor Usuario? @relation("DesinstalacionAutorizacionSolicitadoPor", fields: [solicitadoPorId], references: [id], onDelete: SetNull)
+  autorizadoPor Usuario? @relation("DesinstalacionAutorizacionAutorizadoPor", fields: [autorizadoPorId], references: [id], onDelete: SetNull)
 
   @@index([desinstalacionId])
   @@index([estado])
@@ -2779,7 +2854,6 @@ enum TipoCambioEstadoCliente {
   OTRO
 }
 
-
 // ============================================================
 // ACCESOS DE INTERNET Y CONFIGURACIÓN TÉCNICA
 // ============================================================
@@ -2839,7 +2913,6 @@ enum BandaWifi {
   DOBLE_BANDA
 }
 
-
 // ============================================================
 // PPPoE: CUENTAS, OPERACIONES Y AUDITORÍA
 // ============================================================
@@ -2893,11 +2966,23 @@ enum EstadoOperacionPppoe {
 }
 
 enum TipoPasoPppoe {
+  CONECTAR_ROUTER
+  BUSCAR_SECRET
+
   AGREGAR_SECRET
+  CONFIRMAR_SECRET
+
   HABILITAR_SECRET
   DESHABILITAR_SECRET
+
   REMOVER_SESION_ACTIVA
   ELIMINAR_SECRET
+}
+
+enum CanalOperacionPppoe {
+  SSH
+  ROUTEROS_API
+  MANUAL
 }
 
 enum EstadoPasoPppoe {
@@ -2935,7 +3020,6 @@ enum AccionAuditoriaPppoe {
   HOJA_VISUALIZADA
   HOJA_GENERADA
 }
-
 
 // ============================================================
 // SOPORTE, OPERACIONES Y GASTOS
@@ -3018,7 +3102,6 @@ enum EstadoMetaTickets {
   CANCELADO
 }
 
-
 // ============================================================
 // INVENTARIO, BODEGAS, SERIALES Y HERRAMIENTAS
 // ============================================================
@@ -3055,7 +3138,6 @@ enum EstadoPrestamoHerramienta {
   PERDIDO // no regresó
   CANCELADO // préstamo anulado
 }
-
 
 // ============================================================
 // CLIENTES, SERVICIOS Y USUARIOS
@@ -3105,7 +3187,6 @@ enum RolUsuario {
   SUPER_ADMIN
   COBRADOR
 }
-
 
 // ============================================================
 // FACTURACIÓN, PAGOS Y COBRANZA
@@ -3181,7 +3262,6 @@ enum TipoPlantilla {
   CORTE
 }
 
-
 // ============================================================
 // RUTAS DE COBRO
 // ============================================================
@@ -3208,7 +3288,6 @@ enum EstadoRuta {
   EN_CURSO
   ASIGNADA
 }
-
 
 // ============================================================
 // CRÉDITOS
@@ -3266,7 +3345,6 @@ enum EstadoMora {
   PAGADA
 }
 
-
 // ============================================================
 // NOTIFICACIONES
 // ============================================================
@@ -3296,7 +3374,6 @@ enum AudienciaNotificacion {
   EMPRESA // todos los usuarios de la empresa
   GLOBAL // todo el sistema (multi-empresa)
 }
-
 
 // ============================================================
 // ARCHIVOS, MEDIA Y ALMACENAMIENTO
