@@ -1,55 +1,83 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
+  Get,
+  Param,
   ParseIntPipe,
-  Logger,
+  Patch,
+  Post,
 } from '@nestjs/common';
-import { MikroTikService } from '../application/mikro-tik.service';
+
 import { CreateMikroTikDto } from '../dto/create-mikro-tik.dto';
+
 import { UpdateMikroTikDto } from '../dto/update-mikro-tik.dto';
+
+import { CrearMikrotikRouterUseCase } from '../application/use-cases/crear-mikrotik-router.use-case';
+
+import { ActualizarMikrotikRouterUseCase } from '../application/use-cases/actualizar-mikrotik-router.use-case';
+
+import { ObtenerMikrotikRouterUseCase } from '../application/use-cases/obtener-mikrotik-router.use-case';
+
+import { ListarMikrotikRoutersUseCase } from '../application/use-cases/listar-mikrotik-routers.use-case';
+
+import { EliminarMikrotikRouterUseCase } from '../application/use-cases/eliminar-mikrotik-router.use-case';
+
 @Controller('mikro-tik')
 export class MikroTikController {
-  private readonly logger = new Logger(MikroTikController.name);
-  constructor(private readonly mikroTikService: MikroTikService) {}
+  constructor(
+    private readonly crearMikrotikRouter: CrearMikrotikRouterUseCase,
 
-  // POST
+    private readonly actualizarMikrotikRouter: ActualizarMikrotikRouterUseCase,
+
+    private readonly obtenerMikrotikRouter: ObtenerMikrotikRouterUseCase,
+
+    private readonly listarMikrotikRouters: ListarMikrotikRoutersUseCase,
+
+    private readonly eliminarMikrotikRouter: EliminarMikrotikRouterUseCase,
+  ) {}
+
   @Post()
-  async create(@Body() dto: CreateMikroTikDto) {
-    this.logger.log(`DTO recibido:\n${JSON.stringify(dto, null, 2)}`);
-
-    return this.mikroTikService.create(dto);
+  create(
+    @Body()
+    dto: CreateMikroTikDto,
+  ) {
+    return this.crearMikrotikRouter.execute(dto);
   }
 
-  // GET
-  @Get('')
-  async getAll() {
-    return this.mikroTikService.getAll();
+  @Get()
+  getAll() {
+    return this.listarMikrotikRouters.execute();
   }
 
   @Get(':id')
-  async getById(@Param('id', ParseIntPipe) id: number) {
-    return this.mikroTikService.getById(id);
+  getById(
+    @Param('id', ParseIntPipe)
+    id: number,
+  ) {
+    return this.obtenerMikrotikRouter.execute(id);
   }
 
-  // DELETE
-  @Delete()
-  async deleteAll() {
-    return this.mikroTikService.deleteAll();
+  @Patch(':id')
+  update(
+    @Param('id', ParseIntPipe)
+    id: number,
+
+    @Body()
+    dto: UpdateMikroTikDto,
+  ) {
+    return this.actualizarMikrotikRouter.execute({
+      id,
+
+      ...dto,
+    });
   }
 
   @Delete(':id')
-  async deleteById(@Param('id', ParseIntPipe) id: number) {
-    return this.mikroTikService.deleteById(id);
-  }
-
-  @Patch()
-  async update(@Body() dto: CreateMikroTikDto) {
-    this.logger.log(`DTO recibido:\n${JSON.stringify(dto, null, 2)}`);
-    return this.mikroTikService.update(dto);
+  deleteById(
+    @Param('id', ParseIntPipe)
+    id: number,
+  ) {
+    return this.eliminarMikrotikRouter.execute(id);
   }
 }

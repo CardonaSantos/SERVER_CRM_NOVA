@@ -343,7 +343,11 @@ export class ClientePppoeCuentaEntity {
 
     ClientePppoeCuentaEntity.assertValidDate(fecha, 'fecha');
 
-    this.props.secretCreadoEn = new Date(fecha);
+    if (!this.props.secretCreadoEn) {
+      this.props.secretCreadoEn = new Date(fecha);
+    }
+
+    this.props.ultimaSincronizacionEn = new Date(fecha);
 
     this.props.ultimaSincronizacionEn = new Date(fecha);
 
@@ -410,10 +414,48 @@ export class ClientePppoeCuentaEntity {
    * Confirma que el servicio fue suspendido
    * en MikroTik.
    */
+  /**
+   * Confirma que el servicio quedó suspendido.
+   *
+   * ERROR se admite únicamente para completar un reintento
+   * de una operación de suspensión previamente fallida.
+   */
   marcarSuspendida(fecha: Date = new Date()): void {
     this.assertPersisted();
 
-    this.assertCurrentState([EstadoCuentaPppoe.ACTIVA], 'suspender la cuenta');
+    this.assertCurrentState(
+      [EstadoCuentaPppoe.ACTIVA, EstadoCuentaPppoe.ERROR],
+      'suspender la cuenta',
+    );
+
+    if (!this.props.secretCreadoEn || !this.props.activadoEn) {
+      throw new Error(
+        'No puede suspenderse una cuenta que nunca fue activada.',
+      );
+    }
+
+    ClientePppoeCuentaEntity.assertValidDate(fecha, 'fecha');
+
+    this.props.suspendidoEn = new Date(fecha);
+
+    this.props.ultimaSincronizacionEn = new Date(fecha);
+
+    this.cambiarEstado(EstadoCuentaPppoe.SUSPENDIDA, fecha);
+  }
+
+  confirmarSuspensionTrasReintento(fecha: Date = new Date()): void {
+    this.assertPersisted();
+
+    this.assertCurrentState(
+      [EstadoCuentaPppoe.ERROR],
+      'confirmar la suspensión reintentada',
+    );
+
+    if (!this.props.secretCreadoEn || !this.props.activadoEn) {
+      throw new Error(
+        'No puede confirmarse la suspensión de una cuenta que nunca fue activada.',
+      );
+    }
 
     this.props.suspendidoEn = new Date(fecha);
 

@@ -243,18 +243,66 @@ export class ClienteInstalacionEntity {
 
     const fechaFinalizacion = params.fechaFinalizacion ?? new Date();
 
+    if (Number.isNaN(fechaFinalizacion.getTime())) {
+      throw new Error('fechaFinalizacion debe contener una fecha válida.');
+    }
+
     this.props.estado = EstadoInstalacionCliente.COMPLETADA;
+
     this.props.completadoPorId = params.completadoPorId;
-    this.props.fechaFinalizacion = fechaFinalizacion;
+
+    this.props.fechaFinalizacion = new Date(fechaFinalizacion);
+
     this.props.resultado = this.normalizeOptionalText(params.resultado);
+
     this.props.observaciones =
       this.normalizeOptionalText(params.observaciones) ??
       this.props.observaciones;
 
-    if (params.activarServicio) {
-      this.props.fechaActivacionServicio = fechaFinalizacion;
-      //   AQUI A FUTURO USAR EL METODO PARA ENCENDER POR MEDIO DE PPOE
+    this.ensureValidBaseProps();
+  }
+
+  /**
+   * Confirma que el servicio fue activado después
+   * de una operación remota exitosa.
+   *
+   * Este método no ejecuta SSH.
+   */
+  marcarServicioActivado(fecha: Date = new Date()): void {
+    this.ensurePersisted('marcar el servicio como activado');
+
+    if (this.props.estado !== EstadoInstalacionCliente.COMPLETADA) {
+      throw new Error(
+        'Solo una instalación completada puede confirmar la activación del servicio.',
+      );
     }
+
+    const fechaActivacion = new Date(fecha);
+
+    if (Number.isNaN(fechaActivacion.getTime())) {
+      throw new Error('La fecha de activación del servicio no es válida.');
+    }
+
+    if (
+      this.props.fechaFinalizacion &&
+      fechaActivacion.getTime() < this.props.fechaFinalizacion.getTime()
+    ) {
+      throw new Error(
+        'La activación del servicio no puede ser anterior a la finalización de la instalación.',
+      );
+    }
+
+    /**
+     * La primera activación confirmada se conserva.
+     *
+     * Una repetición de la misma solicitud es
+     * idempotente.
+     */
+    if (this.props.fechaActivacionServicio) {
+      return;
+    }
+
+    this.props.fechaActivacionServicio = fechaActivacion;
 
     this.ensureValidBaseProps();
   }

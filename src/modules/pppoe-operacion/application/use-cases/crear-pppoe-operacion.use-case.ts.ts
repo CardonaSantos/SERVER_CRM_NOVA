@@ -5,14 +5,13 @@ import {
   CanalOperacionPppoe,
   EstadoOperacionPppoe,
   TipoOperacionPppoe,
-  TipoPasoPppoe,
 } from '../../domain/enums/pppoe-operacion-operacion-paso.enums';
 import {
   PPPOE_OPERACION_REPOSITORY,
   PppoeOperacionAggregate,
   PppoeOperacionRepositoryPort,
 } from '../../domain/ports/pppoe-operacion-repository.port';
-import { CrearPppoeOperacionPasoInicialProps } from '../../domain/props/pppoe-operacion-paso.props';
+import { PppoeOperacionPlanFactory } from '../../factories/pppoe-operacion-plan.factory';
 
 /**
  * INPUT DEL CASO DE USO
@@ -212,7 +211,7 @@ export class CrearPppoeOperacionUseCase {
      *  PLANIFICACIÓN DE PASOS
      */
 
-    const steps = this.buildInitialSteps(input.tipo);
+    const steps = PppoeOperacionPlanFactory.crearPasos(input.tipo);
 
     /**
      *  PERSISTENCIA DEL AGREGADO
@@ -223,105 +222,6 @@ export class CrearPppoeOperacionUseCase {
 
       pasos: steps,
     });
-  }
-
-  /**
-   * PLANIFICACIÓN DE PASOS
-   * Construye la secuencia técnica correspondiente
-   * a cada tipo de operación.
-   *
-   * Los órdenes comienzan en 1 y son continuos.
-   */
-  private buildInitialSteps(
-    tipo: TipoOperacionPppoe,
-  ): CrearPppoeOperacionPasoInicialProps[] {
-    switch (tipo) {
-      /**
-       * Crear un secret nuevo o confirmar que el existente
-       * coincide con la configuración esperada.
-       */
-      case TipoOperacionPppoe.CREAR_SECRET:
-        return this.createSteps([
-          TipoPasoPppoe.CONECTAR_ROUTER,
-
-          TipoPasoPppoe.BUSCAR_SECRET,
-
-          TipoPasoPppoe.AGREGAR_SECRET,
-
-          TipoPasoPppoe.CONFIRMAR_SECRET,
-        ]);
-
-      /**
-       * Reactivar un secret que ya existe.
-       */
-      case TipoOperacionPppoe.ACTIVAR_SECRET:
-        return this.createSteps([
-          TipoPasoPppoe.CONECTAR_ROUTER,
-
-          TipoPasoPppoe.BUSCAR_SECRET,
-
-          TipoPasoPppoe.HABILITAR_SECRET,
-
-          TipoPasoPppoe.CONFIRMAR_SECRET,
-        ]);
-
-      /**
-       * Deshabilitar el secret y remover inmediatamente
-       * una posible sesión activa.
-       */
-      case TipoOperacionPppoe.SUSPENDER_SERVICIO:
-        return this.createSteps([
-          TipoPasoPppoe.CONECTAR_ROUTER,
-
-          TipoPasoPppoe.BUSCAR_SECRET,
-
-          TipoPasoPppoe.DESHABILITAR_SECRET,
-
-          TipoPasoPppoe.REMOVER_SESION_ACTIVA,
-
-          TipoPasoPppoe.CONFIRMAR_SECRET,
-        ]);
-
-      /**
-       * Retirar definitivamente el secret del router.
-       */
-      case TipoOperacionPppoe.ELIMINAR_SECRET:
-        return this.createSteps([
-          TipoPasoPppoe.CONECTAR_ROUTER,
-
-          TipoPasoPppoe.BUSCAR_SECRET,
-
-          TipoPasoPppoe.DESHABILITAR_SECRET,
-
-          TipoPasoPppoe.REMOVER_SESION_ACTIVA,
-
-          TipoPasoPppoe.ELIMINAR_SECRET,
-
-          TipoPasoPppoe.CONFIRMAR_SECRET,
-        ]);
-
-      default: {
-        const exhaustiveCheck: never = tipo;
-
-        throw new Error(
-          `Tipo de operación PPPoE no soportado: ${exhaustiveCheck}.`,
-        );
-      }
-    }
-  }
-
-  /**
-   * Convierte una lista ordenada de tipos de paso
-   * en props listas para createWithSteps().
-   */
-  private createSteps(
-    types: TipoPasoPppoe[],
-  ): CrearPppoeOperacionPasoInicialProps[] {
-    return types.map((type, index) => ({
-      tipo: type,
-
-      orden: index + 1,
-    }));
   }
 
   /**

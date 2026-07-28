@@ -5,25 +5,18 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-
 import { OrigenOperacionPppoe } from '../../../pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
-
 import { PppoeOperacionEntity } from '../../domain/entities/pppoe-operacion.entity';
-
 import {
   CanalOperacionPppoe,
   EstadoOperacionPppoe,
-  TipoOperacionPppoe,
-  TipoPasoPppoe,
 } from '../../domain/enums/pppoe-operacion-operacion-paso.enums';
-
 import {
   PPPOE_OPERACION_REPOSITORY,
   PppoeOperacionAggregate,
   PppoeOperacionRepositoryPort,
 } from '../../domain/ports/pppoe-operacion-repository.port';
-
-import { CrearPppoeOperacionPasoInicialProps } from '../../domain/props/pppoe-operacion-paso.props';
+import { PppoeOperacionPlanFactory } from '../../factories/pppoe-operacion-plan.factory';
 
 /**
  * Datos necesarios para generar un nuevo intento.
@@ -156,7 +149,7 @@ export class CrearReintentoPppoeOperacionUseCase {
 
     const reintento = this.createRetryEntity(ultimoIntento, input);
 
-    const pasos = this.buildInitialSteps(reintento.tipo);
+    const pasos = PppoeOperacionPlanFactory.crearPasos(reintento.tipo);
 
     return this.repository.createWithSteps({
       operacion: reintento,
@@ -270,67 +263,6 @@ export class CrearReintentoPppoeOperacionUseCase {
     throw new ConflictException(
       'La clave de idempotencia ya pertenece a otra operación PPPoE.',
     );
-  }
-
-  /**
-   * Genera los pasos correspondientes al tipo
-   * de operación.
-   */
-  private buildInitialSteps(
-    tipo: TipoOperacionPppoe,
-  ): CrearPppoeOperacionPasoInicialProps[] {
-    switch (tipo) {
-      case TipoOperacionPppoe.CREAR_SECRET:
-        return this.createSteps([
-          TipoPasoPppoe.CONECTAR_ROUTER,
-          TipoPasoPppoe.BUSCAR_SECRET,
-          TipoPasoPppoe.AGREGAR_SECRET,
-          TipoPasoPppoe.CONFIRMAR_SECRET,
-        ]);
-
-      case TipoOperacionPppoe.ACTIVAR_SECRET:
-        return this.createSteps([
-          TipoPasoPppoe.CONECTAR_ROUTER,
-          TipoPasoPppoe.BUSCAR_SECRET,
-          TipoPasoPppoe.HABILITAR_SECRET,
-          TipoPasoPppoe.CONFIRMAR_SECRET,
-        ]);
-
-      case TipoOperacionPppoe.SUSPENDER_SERVICIO:
-        return this.createSteps([
-          TipoPasoPppoe.CONECTAR_ROUTER,
-          TipoPasoPppoe.BUSCAR_SECRET,
-          TipoPasoPppoe.DESHABILITAR_SECRET,
-          TipoPasoPppoe.REMOVER_SESION_ACTIVA,
-          TipoPasoPppoe.CONFIRMAR_SECRET,
-        ]);
-
-      case TipoOperacionPppoe.ELIMINAR_SECRET:
-        return this.createSteps([
-          TipoPasoPppoe.CONECTAR_ROUTER,
-          TipoPasoPppoe.BUSCAR_SECRET,
-          TipoPasoPppoe.DESHABILITAR_SECRET,
-          TipoPasoPppoe.REMOVER_SESION_ACTIVA,
-          TipoPasoPppoe.ELIMINAR_SECRET,
-          TipoPasoPppoe.CONFIRMAR_SECRET,
-        ]);
-
-      default: {
-        const exhaustiveCheck: never = tipo;
-
-        throw new Error(`Tipo de operación no soportado: ${exhaustiveCheck}.`);
-      }
-    }
-  }
-
-  private createSteps(
-    tipos: TipoPasoPppoe[],
-  ): CrearPppoeOperacionPasoInicialProps[] {
-    return tipos.map((tipo, index) => ({
-      tipo,
-
-      orden: index + 1,
-    }));
   }
 
   private validateInput(input: CrearReintentoPppoeOperacionUseCaseInput): void {

@@ -19,11 +19,8 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "prisma:seed": "npx prisma db seed",
-    "fill:periodo": "ts-node prisma/fill-periodo.ts",
-    "fix:duplicates": "ts-node prisma/fix-duplicates.ts",
-    "backfill:clientes-search": "ts-node prisma/backfill-search-nombre.ts",
-    "migrate:estado-cobranza": "ts-node -r dotenv/config -r tsconfig-paths/register scripts/estado-cobranza-migration.ts",
-    "test:mikrotik:ssh": "ts-node -r tsconfig-paths/register scripts/test-mikrotik-ssh.ts"
+    "test:mikrotik:ssh": "ts-node -r tsconfig-paths/register scripts/test-mikrotik-ssh.ts",
+    "test:mikrotik:ssh:write": "ts-node -r tsconfig-paths/register scripts/test-mikrotik-ssh-write.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

@@ -113,10 +113,12 @@ export type IniciarClienteInstalacionParams = {
 
 export type CompletarClienteInstalacionParams = {
   completadoPorId: number;
+
   resultado?: string | null;
+
   observaciones?: string | null;
+
   fechaFinalizacion?: Date;
-  activarServicio?: boolean;
 };
 
 export type CancelarClienteInstalacionParams = {

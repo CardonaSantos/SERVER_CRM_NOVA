@@ -1,4 +1,3 @@
-// create-mikrotik.dto.ts
 import {
   IsBoolean,
   IsInt,
@@ -6,48 +5,56 @@ import {
   IsOptional,
   IsString,
   Max,
+  MaxLength,
   Min,
 } from 'class-validator';
 
 export class CreateMikroTikDto {
-  @IsString()
-  @IsNotEmpty()
-  nombre: string;
-
-  @IsString()
-  passwordEnc: string;
-
-  @IsString()
-  @IsNotEmpty()
-  host: string;
-
   @IsInt()
   @Min(1)
-  @Max(65535)
-  @IsOptional() // si no lo envían, tú puedes poner 22 en el service
+  empresaId: number;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(160)
+  nombre: string;
+
+  /**
+   * Contraseña plana recibida temporalmente.
+   *
+   * Nunca se persiste directamente.
+   */
+  @IsString()
+  @IsNotEmpty()
+  password: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(255)
+  host: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(65_535)
   sshPort?: number;
 
   @IsString()
   @IsNotEmpty()
+  @MaxLength(160)
   usuario: string;
 
   @IsOptional()
   @IsString()
-  descripcion?: string;
+  @MaxLength(2_000)
+  descripcion?: string | null;
 
   @IsOptional()
   @IsBoolean()
-  activo?: boolean; // default true en service / DB
+  activo?: boolean;
 
   @IsOptional()
   @IsInt()
-  oltId?: number;
-
-  @IsOptional()
-  @IsInt()
-  empresaId?: number;
-
-  @IsOptional()
-  @IsInt()
-  id: number;
+  @Min(1)
+  oltId?: number | null;
 }
