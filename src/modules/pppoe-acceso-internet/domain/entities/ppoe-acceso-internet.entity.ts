@@ -147,6 +147,8 @@ export class ClienteAccesoInternetEntity {
    * o preparado en la infraestructura.
    */
   iniciarConfiguracion(fecha: Date = new Date()): void {
+    this.assertNotBaja();
+
     if (this.props.estado === EstadoAccesoInternet.CONFIGURANDO) {
       return;
     }
@@ -175,9 +177,21 @@ export class ClienteAccesoInternetEntity {
       return;
     }
 
+    const estadosPermitidos: EstadoAccesoInternet[] = [
+      EstadoAccesoInternet.PENDIENTE,
+      EstadoAccesoInternet.CONFIGURANDO,
+      EstadoAccesoInternet.SUSPENDIDO,
+    ];
+
+    if (!estadosPermitidos.includes(this.props.estado)) {
+      throw new Error(
+        `No puede activarse un acceso en estado ${this.props.estado}.`,
+      );
+    }
+
     this.props.estado = EstadoAccesoInternet.ACTIVO;
 
-    this.props.activadoEn ??= fecha;
+    this.props.activadoEn ??= new Date(fecha);
 
     this.props.suspendidoEn = null;
 
@@ -200,7 +214,7 @@ export class ClienteAccesoInternetEntity {
 
     this.props.estado = EstadoAccesoInternet.SUSPENDIDO;
 
-    this.props.suspendidoEn = fecha;
+    this.props.suspendidoEn = new Date(fecha);
 
     this.touch(fecha);
   }
@@ -210,11 +224,12 @@ export class ClienteAccesoInternetEntity {
    */
   darDeBaja(fecha: Date = new Date()): void {
     if (this.props.estado === EstadoAccesoInternet.BAJA) {
-      throw new Error('El acceso de internet ya se encuentra dado de baja');
+      return;
     }
 
     this.props.estado = EstadoAccesoInternet.BAJA;
-    this.props.dadoDeBajaEn = fecha;
+
+    this.props.dadoDeBajaEn = new Date(fecha);
 
     this.touch(fecha);
   }
