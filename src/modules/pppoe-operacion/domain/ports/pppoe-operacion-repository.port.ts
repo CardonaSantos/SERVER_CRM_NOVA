@@ -8,6 +8,18 @@ import { PppoeOperacionPasoEntity } from '../entities/pppoe-operacion-paso.entit
 import { CrearPppoeOperacionPasoInicialProps } from '../props/pppoe-operacion-paso.props';
 import { PppoeOperacionEntity } from '../entities/pppoe-operacion.entity';
 
+export type ReclamarPppoeOperacionParaEjecucionParams = {
+  empresaId: number;
+
+  operacionId: number;
+
+  estadoEsperado:
+    | EstadoOperacionPppoe.PENDIENTE
+    | EstadoOperacionPppoe.AUTORIZADA;
+
+  operacionIniciada: PppoeOperacionEntity;
+};
+
 /**
  * Token utilizado para inyectar el repositorio
  * de escritura de operaciones PPPoE.
@@ -243,6 +255,20 @@ export interface PppoeOperacionRepositoryPort {
    * - cancelar();
    */
   saveOperation(entity: PppoeOperacionEntity): Promise<PppoeOperacionEntity>;
+
+  /**
+   * Intenta reclamar atómicamente una operación
+   * para comenzar su ejecución técnica.
+   *
+   * Solo actualiza cuando el registro todavía conserva
+   * el estado esperado.
+   *
+   * Retorna null cuando otra solicitud reclamó o modificó
+   * la operación antes de completar la actualización.
+   */
+  claimForExecution(
+    params: ReclamarPppoeOperacionParaEjecucionParams,
+  ): Promise<PppoeOperacionEntity | null>;
 
   /**
    * Persiste los cambios realizados sobre un paso.

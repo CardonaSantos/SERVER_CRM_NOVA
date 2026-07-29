@@ -15,7 +15,9 @@ import {
   GuardarPppoeOperacionPasoParams,
   PppoeOperacionAggregate,
   PppoeOperacionRepositoryPort,
+  ReclamarPppoeOperacionParaEjecucionParams,
 } from '../../domain/ports/pppoe-operacion-repository.port';
+import { EstadoOperacionPppoe } from '../../domain/enums/pppoe-operacion-operacion-paso.enums';
 import {
   BuscarPppoeOperacionDetalleParams,
   PppoeOperacionQueryPort,
@@ -128,6 +130,102 @@ export class PppoeOperacionPrismaRepository
     });
 
     return PppoeOperacionPrismaMapper.toDomain(updated);
+  }
+
+  /**
+   * Reclama atómicamente una operación para su ejecución.
+   *
+   * Solo una solicitud puede cambiar:
+   *
+   * PENDIENTE | AUTORIZADA -> EJECUTANDO
+   *
+   * Cuando otra solicitud cambió previamente el estado,
+   * updateMany devuelve count = 0 y no se ejecutará SSH.
+   */
+  async claimForExecution(
+    params: ReclamarPppoeOperacionParaEjecucionParams,
+  ): Promise<PppoeOperacionEntity | null> {
+    this.assertCompanyAndOperationIds(params);
+
+    const primitives = params.operacionIniciada.toPersistedPrimitives();
+
+    if (primitives.id !== params.operacionId) {
+      throw new Error('La operación iniciada no coincide con operacionId.');
+    }
+
+    if (primitives.empresaId !== params.empresaId) {
+      throw new Error(
+        'La operación iniciada no pertenece a la empresa indicada.',
+      );
+    }
+
+    if (primitives.estado !== EstadoOperacionPppoe.EJECUTANDO) {
+      throw new Error(
+        `La operación reclamada debe estar EJECUTANDO. Estado recibido: ${primitives.estado}.`,
+      );
+    }
+
+    if (!primitives.iniciadoEn) {
+      throw new Error('La operación reclamada debe contener iniciadoEn.');
+    }
+
+    const result = await this.prisma.pppoeOperacion.updateMany({
+      where: {
+        id: params.operacionId,
+
+        empresaId: params.empresaId,
+
+        /**
+         * Compare-and-set.
+         *
+         * La actualización solo ocurre si el registro
+         * todavía conserva el estado esperado.
+         */
+        estado: PppoeOperacionPrismaEnumMapper.estadoOperacionToPrisma(
+          params.estadoEsperado,
+        ),
+      },
+
+      data: {
+        estado: PppoeOperacionPrismaEnumMapper.estadoOperacionToPrisma(
+          EstadoOperacionPppoe.EJECUTANDO,
+        ),
+
+        iniciadoEn: primitives.iniciadoEn,
+      },
+    });
+
+    /**
+     * Otra solicitud reclamó o modificó la operación.
+     */
+    if (result.count === 0) {
+      return null;
+    }
+
+    /**
+     * Por id solo puede actualizarse un registro.
+     */
+    if (result.count !== 1) {
+      throw new Error(
+        `La reclamación de la operación ${params.operacionId} modificó una cantidad inesperada de registros: ${result.count}.`,
+      );
+    }
+
+    const claimed = await this.prisma.pppoeOperacion.findFirst({
+      where: {
+        id: params.operacionId,
+
+        empresaId: params.empresaId,
+      },
+    });
+
+    if (!claimed) {
+      throw new Error(
+        `La operación PPPoE ${params.operacionId} fue reclamada, pero no pudo recargarse.`,
+      );
+    }
+
+    return PppoeOperacionPrismaMapper.toDomain(claimed);
   }
 
   /**

@@ -67,6 +67,17 @@ export type CrearPppoeOperacionUseCaseInput = {
 };
 
 /**
+ * Resultado de la creación idempotente.
+ *
+ * `creada` permite que los consumidores registren
+ * eventos secundarios solamente cuando la operación
+ * fue insertada realmente.
+ */
+export type CrearPppoeOperacionUseCaseResult = PppoeOperacionAggregate & {
+  creada: boolean;
+};
+
+/**
  * CASO DE USO
  * Crea una operación PPPoE y sus pasos técnicos iniciales.
  *
@@ -91,7 +102,7 @@ export class CrearPppoeOperacionUseCase {
    */
   async execute(
     input: CrearPppoeOperacionUseCaseInput,
-  ): Promise<PppoeOperacionAggregate> {
+  ): Promise<CrearPppoeOperacionUseCaseResult> {
     /**
      * ========================================================
      * 1. IDEMPOTENCIA
@@ -140,7 +151,11 @@ export class CrearPppoeOperacionUseCase {
        * Se devuelve la operación creada en la primera
        * ejecución de la misma solicitud.
        */
-      return existingAggregate;
+      return {
+        ...existingAggregate,
+
+        creada: false,
+      };
     }
 
     /**
@@ -217,11 +232,17 @@ export class CrearPppoeOperacionUseCase {
      *  PERSISTENCIA DEL AGREGADO
      */
 
-    return this.repository.createWithSteps({
+    const createdAggregate = await this.repository.createWithSteps({
       operacion: operation,
 
       pasos: steps,
     });
+
+    return {
+      ...createdAggregate,
+
+      creada: true,
+    };
   }
 
   /**

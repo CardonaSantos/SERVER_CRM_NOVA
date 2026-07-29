@@ -73,6 +73,24 @@ export type SuspenderServicioPppoeInput =
   };
 
 /**
+ * Elimina definitivamente el secret durante
+ * una desinstalación autorizada.
+ */
+export type EliminarSecretPppoeInput =
+  EjecutarProvisionamientoPppoeBaseInput & {
+    /**
+     * Desinstalación que origina la eliminación.
+     */
+    desinstalacionId: number;
+
+    /**
+     * Instalación relacionada, cuando todavía
+     * se conserva esa referencia operativa.
+     */
+    instalacionId?: number | null;
+  };
+
+/**
  * Genera y ejecuta un intento nuevo sobre una operación
  * previamente FALLIDA o PARCIAL.
  */
@@ -107,8 +125,8 @@ export type EjecutarOperacionPppoeResult = {
 
   estadoOperacion: EstadoOperacionPppoe;
 
-  estadoCuenta: EstadoCuentaPppoe;
-
+  //   estadoCuenta: EstadoCuentaPppoe;
+  estadoCuenta: EstadoCuentaPppoe | null;
   numeroIntento: number;
 
   reintentable: boolean;

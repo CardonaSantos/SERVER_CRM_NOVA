@@ -18,6 +18,21 @@ import {
 } from '../../domain/ports/pppoe-operacion-repository.port';
 import { PppoeOperacionPlanFactory } from '../../factories/pppoe-operacion-plan.factory';
 
+export type CrearReintentoPppoeOperacionUseCaseResult =
+  PppoeOperacionAggregate & {
+    /**
+     * true solamente cuando este llamado insertó
+     * realmente una operación nueva.
+     */
+    creada: boolean;
+
+    /**
+     * Último intento de la cadena desde el cual
+     * se creó el nuevo reintento.
+     */
+    operacionAnteriorId: number | null;
+  };
+
 /**
  * Datos necesarios para generar un nuevo intento.
  */
@@ -70,7 +85,7 @@ export class CrearReintentoPppoeOperacionUseCase {
 
   async execute(
     input: CrearReintentoPppoeOperacionUseCaseInput,
-  ): Promise<PppoeOperacionAggregate> {
+  ): Promise<CrearReintentoPppoeOperacionUseCaseResult> {
     this.validateInput(input);
 
     const operacionSolicitada = await this.repository.findById({
@@ -104,7 +119,22 @@ export class CrearReintentoPppoeOperacionUseCase {
         operacionRaizId,
       );
 
-      return this.loadExistingAggregate(input.empresaId, existingOperation);
+      const existingAggregate = await this.loadExistingAggregate(
+        input.empresaId,
+        existingOperation,
+      );
+
+      return {
+        ...existingAggregate,
+
+        creada: false,
+
+        /*
+         * No es necesario para auditoría porque una
+         * operación existente no vuelve a auditarse.
+         */
+        operacionAnteriorId: null,
+      };
     }
 
     /**
@@ -129,6 +159,8 @@ export class CrearReintentoPppoeOperacionUseCase {
       );
     }
 
+    const ultimoIntentoId = this.requireOperationId(ultimoIntento);
+
     const runningOperation = await this.repository.findRunningOperation({
       empresaId: input.empresaId,
 
@@ -151,11 +183,19 @@ export class CrearReintentoPppoeOperacionUseCase {
 
     const pasos = PppoeOperacionPlanFactory.crearPasos(reintento.tipo);
 
-    return this.repository.createWithSteps({
+    const createdAggregate = await this.repository.createWithSteps({
       operacion: reintento,
 
       pasos,
     });
+
+    return {
+      ...createdAggregate,
+
+      creada: true,
+
+      operacionAnteriorId: ultimoIntentoId,
+    };
   }
 
   /**
@@ -197,6 +237,16 @@ export class CrearReintentoPppoeOperacionUseCase {
 
       throw error;
     }
+  }
+
+  private requireOperationId(operacion: PppoeOperacionEntity): number {
+    if (operacion.id === null) {
+      throw new ConflictException(
+        'La operación PPPoE persistida no contiene identificador.',
+      );
+    }
+
+    return operacion.id;
   }
 
   /**

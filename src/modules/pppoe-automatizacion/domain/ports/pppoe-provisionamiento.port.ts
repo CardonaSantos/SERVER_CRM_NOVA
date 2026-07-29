@@ -2,6 +2,7 @@ import {
   ActivarSecretPppoeInput,
   CrearSecretPppoeInput,
   EjecutarOperacionPppoeResult,
+  EliminarSecretPppoeInput,
   ReintentarOperacionPppoeInput,
   SuspenderServicioPppoeInput,
 } from '../props/pppoe-provisionamiento.props';
@@ -40,6 +41,14 @@ export interface PppoeProvisionamientoPort {
    */
   suspenderServicio(
     input: SuspenderServicioPppoeInput,
+  ): Promise<EjecutarOperacionPppoeResult>;
+
+  /**
+   * Deshabilita, desconecta y elimina definitivamente
+   * el secret asociado a una desinstalación.
+   */
+  eliminarSecret(
+    input: EliminarSecretPppoeInput,
   ): Promise<EjecutarOperacionPppoeResult>;
 
   /**

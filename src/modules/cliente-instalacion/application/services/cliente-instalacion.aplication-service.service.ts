@@ -59,6 +59,33 @@ type ConsultarCredencialesPppoeServiceParams = {
   userAgent?: string | null;
 };
 
+type IniciarClienteInstalacionServiceParams = {
+  instalacionId: number;
+
+  dto: IniciarInstalacionClienteDto;
+
+  operadorId: number;
+
+  operadorNombre?: string | null;
+
+  ipOrigen?: string | null;
+
+  userAgent?: string | null;
+};
+type CompletarClienteInstalacionServiceParams = {
+  instalacionId: number;
+
+  dto: CompletarClienteInstalacionDto;
+
+  operadorId: number;
+
+  operadorNombre?: string | null;
+
+  ipOrigen?: string | null;
+
+  userAgent?: string | null;
+};
+
 @Injectable()
 export class ClienteInstalacionApplicationService {
   constructor(
@@ -136,17 +163,41 @@ export class ClienteInstalacionApplicationService {
     });
   }
 
-  iniciar(dto: IniciarInstalacionClienteDto, id: number) {
+  iniciar(params: IniciarClienteInstalacionServiceParams) {
     return this.iniciarClienteInstalacionUseCase.execute({
-      id,
-      fechaInicio: dto.fechaInicio,
+      id: params.instalacionId,
+
+      fechaInicio: params.dto.fechaInicio,
+
+      operadorId: params.operadorId,
+
+      operadorNombre: params.operadorNombre ?? null,
+
+      ipOrigen: params.ipOrigen ?? null,
+
+      userAgent: params.userAgent ?? null,
     });
   }
 
-  completar(dto: CompletarClienteInstalacionDto, id: number) {
+  completar(params: CompletarClienteInstalacionServiceParams) {
     return this.completarClienteInstalacionUseCase.execute({
-      ...dto,
-      id,
+      ...params.dto,
+
+      id: params.instalacionId,
+
+      /*
+       * La identidad del usuario autenticado prevalece
+       * sobre cualquier valor recibido en el body.
+       */
+      completadoPorId: params.operadorId,
+
+      operadorId: params.operadorId,
+
+      operadorNombre: params.operadorNombre ?? null,
+
+      ipOrigen: params.ipOrigen ?? null,
+
+      userAgent: params.userAgent ?? null,
     });
   }
 

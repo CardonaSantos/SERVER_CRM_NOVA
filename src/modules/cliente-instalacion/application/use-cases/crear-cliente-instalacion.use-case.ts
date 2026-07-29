@@ -443,30 +443,6 @@ export class CrearClienteInstalacionUseCase {
 
         generadoPorId,
       });
-
-      /**
-       * Resultado temporal.
-       *
-       * En el punto 9, handleGponPppoe() devolverá directamente
-       * el resultado real de PPPOE_PREALTA y esta sección se
-       * reemplazará.
-       */
-      return {
-        aplica: true,
-
-        estado: EstadoResultadoPrealtaPppoe.FALLIDA,
-
-        cuentaPppoeId: null,
-        perfilHomologacionId: null,
-        usuario: null,
-        estadoCuenta: null,
-        generadoEn: null,
-
-        mensaje:
-          'La integración de la prealta PPPoE está pendiente de ejecución.',
-
-        reintentable: true,
-      };
     }
 
     if (tecnologia === TecnologiaAccesoInternet.INALAMBRICO) {
