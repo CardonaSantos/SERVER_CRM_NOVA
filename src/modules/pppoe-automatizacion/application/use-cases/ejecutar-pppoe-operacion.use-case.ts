@@ -56,6 +56,9 @@ import {
   PppoeOperacionAuditoriaPort,
 } from '../../domain/ports/pppoe-operacion-auditoria.port';
 import { EliminarSecretPppoeExecutor } from '../executors/eliminar-secret-pppoe.executor';
+import { CLIENTE_ACCESO_INTERNET_REPOSITORY } from 'src/modules/pppoe-acceso-internet/infra/tokens/token-ppoe-acceso-internet.token';
+import { ClienteAccesoInternetRepositoryPort } from 'src/modules/pppoe-acceso-internet/domain/ports/ppoe-acceso-internet.port';
+import { ClienteAccesoInternetEntity } from 'src/modules/pppoe-acceso-internet/domain/entities/ppoe-acceso-internet.entity';
 
 /**
  * Ejecuta una operación PPPoE previamente creada.
@@ -134,11 +137,16 @@ export class EjecutarPppoeOperacionUseCase {
 
     @Inject(PPPOE_OPERACION_REPOSITORY)
     private readonly operacionRepository: PppoeOperacionRepositoryPort,
+
+    @Inject(CLIENTE_ACCESO_INTERNET_REPOSITORY)
+    private readonly accesoRepository: ClienteAccesoInternetRepositoryPort,
   ) {}
 
   async execute(
     input: EjecutarPppoeOperacionUseCaseInput,
   ): Promise<EjecutarOperacionPppoeResult> {
+    let acceso: ClienteAccesoInternetEntity | null = null;
+
     this.validateInput(input);
 
     /*
@@ -205,6 +213,12 @@ export class EjecutarPppoeOperacionUseCase {
        */
       estadoCuentaInicial = contexto.cuenta.estado;
 
+      acceso = await this.findRequiredAccess({
+        empresaId: input.empresaId,
+
+        cuenta: contexto.cuenta,
+      });
+
       /*
        * ======================================================
        * 2. PREPARAR ESTADO LOCAL
@@ -218,6 +232,12 @@ export class EjecutarPppoeOperacionUseCase {
       });
 
       accountPrepared = true;
+
+      acceso = await this.prepareAccessForOperation({
+        operacion: aggregate.operacion,
+
+        acceso,
+      });
 
       contexto = {
         ...contexto,
@@ -250,12 +270,23 @@ export class EjecutarPppoeOperacionUseCase {
        * 4. SINCRONIZAR CUENTA LOCAL
        * ======================================================
        */
+      const fechaSincronizacion = new Date();
+
       cuenta = await this.applySuccessfulAccountResult({
         operacion: aggregate.operacion,
 
         cuenta,
+
+        fecha: fechaSincronizacion,
       });
 
+      acceso = await this.applySuccessfulAccessResult({
+        operacion: aggregate.operacion,
+
+        acceso,
+
+        fecha: fechaSincronizacion,
+      });
       /*
        * ======================================================
        * 5. FINALIZAR OPERACIÓN
@@ -405,6 +436,47 @@ export class EjecutarPppoeOperacionUseCase {
     }
   }
 
+  private async applySuccessfulAccessResult(params: {
+    operacion: PppoeOperacionEntity;
+
+    acceso: ClienteAccesoInternetEntity;
+
+    fecha: Date;
+  }): Promise<ClienteAccesoInternetEntity> {
+    switch (params.operacion.tipo) {
+      case TipoOperacionPppoe.CREAR_SECRET:
+        /*
+         * Continúa CONFIGURANDO.
+         *
+         * El secret existe, pero todavía está
+         * deshabilitado.
+         */
+        return params.acceso;
+
+      case TipoOperacionPppoe.ACTIVAR_SECRET:
+        params.acceso.activar(params.fecha);
+
+        break;
+
+      case TipoOperacionPppoe.SUSPENDER_SERVICIO:
+        params.acceso.suspender(params.fecha);
+
+        break;
+
+      case TipoOperacionPppoe.ELIMINAR_SECRET:
+        params.acceso.darDeBaja(params.fecha);
+
+        break;
+
+      default:
+        throw new ConflictException(
+          `No existe transición exitosa del acceso para la operación ${params.operacion.tipo}.`,
+        );
+    }
+
+    return this.accesoRepository.update(params.acceso);
+  }
+
   /**
    * Prepara la cuenta según el tipo de operación.
    */
@@ -438,6 +510,49 @@ export class EjecutarPppoeOperacionUseCase {
           `No existe preparación local para la operación ${params.operacion.tipo}.`,
         );
     }
+  }
+
+  private async prepareAccessForOperation(params: {
+    operacion: PppoeOperacionEntity;
+
+    acceso: ClienteAccesoInternetEntity;
+  }): Promise<ClienteAccesoInternetEntity> {
+    switch (params.operacion.tipo) {
+      case TipoOperacionPppoe.CREAR_SECRET:
+        params.acceso.iniciarConfiguracion();
+
+        return this.accesoRepository.update(params.acceso);
+
+      case TipoOperacionPppoe.ACTIVAR_SECRET:
+      case TipoOperacionPppoe.SUSPENDER_SERVICIO:
+      case TipoOperacionPppoe.ELIMINAR_SECRET:
+        return params.acceso;
+
+      default:
+        throw new ConflictException(
+          `No existe preparación del acceso para la operación ${params.operacion.tipo}.`,
+        );
+    }
+  }
+
+  private async findRequiredAccess(params: {
+    empresaId: number;
+
+    cuenta: ClientePppoeCuentaEntity;
+  }): Promise<ClienteAccesoInternetEntity> {
+    const acceso = await this.accesoRepository.findById({
+      empresaId: params.empresaId,
+
+      accesoInternetId: params.cuenta.accesoInternetId,
+    });
+
+    if (!acceso) {
+      throw new ConflictException(
+        `No existe el acceso de internet ${params.cuenta.accesoInternetId} asociado a la cuenta PPPoE.`,
+      );
+    }
+
+    return acceso;
   }
 
   /**
@@ -674,25 +789,27 @@ export class EjecutarPppoeOperacionUseCase {
     operacion: PppoeOperacionEntity;
 
     cuenta: ClientePppoeCuentaEntity;
+
+    fecha: Date;
   }): Promise<ClientePppoeCuentaEntity> {
     switch (params.operacion.tipo) {
       case TipoOperacionPppoe.CREAR_SECRET:
-        params.cuenta.marcarSecretCreado();
+        params.cuenta.marcarSecretCreado(params.fecha);
 
         break;
 
       case TipoOperacionPppoe.ACTIVAR_SECRET:
-        params.cuenta.marcarActiva();
+        params.cuenta.marcarActiva(params.fecha);
 
         break;
 
       case TipoOperacionPppoe.SUSPENDER_SERVICIO:
-        params.cuenta.marcarSuspendida();
+        params.cuenta.marcarSuspendida(params.fecha);
 
         break;
 
       case TipoOperacionPppoe.ELIMINAR_SECRET:
-        params.cuenta.marcarEliminada();
+        params.cuenta.marcarEliminada(params.fecha);
 
         break;
 

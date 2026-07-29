@@ -34,9 +34,15 @@ import { PPPOE_OPERACION_AUDITORIA } from './domain/ports/pppoe-operacion-audito
 import { PppoeOperacionAuditoriaService } from './application/services/pppoe-operacion-auditoria.service';
 import { EliminarSecretPppoeExecutor } from './application/executors/eliminar-secret-pppoe.executor';
 import { CrearYEjecutarEliminacionPppoeUseCase } from './application/use-cases/crear-y-ejecutar-eliminacion-pppoe.use-case';
+import { PppoeOperacionAdminService } from './application/services/pppoe-operacion-admin.service';
+import { PppoeOperacionAdminController } from './presentation/pppoe-operacion-admin.controller';
+import { AuthModule } from 'src/auth/auth.module';
+import { PpoeAccesoInternetModule } from '../pppoe-acceso-internet/ppoe-acceso-internet.module';
 
 @Module({
+  controllers: [PppoeOperacionAdminController],
   imports: [
+    AuthModule,
     PppoePerfilHomologacionModule,
     PppoeOperacionModule,
     PppoeClienteCuentaModule,
@@ -44,7 +50,7 @@ import { CrearYEjecutarEliminacionPppoeUseCase } from './application/use-cases/c
     PppoeCredentialsModule,
 
     PppoeAuditoriaModule,
-
+    PpoeAccesoInternetModule,
     MikroTikModule,
   ],
 
@@ -58,6 +64,7 @@ import { CrearYEjecutarEliminacionPppoeUseCase } from './application/use-cases/c
     /*
      * Servicios internos
      */
+    PppoeOperacionAdminService,
     ResolverContextoEjecucionPppoeService,
     PppoeOperacionStepRunnerService,
     PppoeOperacionAuditoriaService,

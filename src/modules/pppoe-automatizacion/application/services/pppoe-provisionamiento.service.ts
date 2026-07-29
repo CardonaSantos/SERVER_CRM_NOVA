@@ -3,6 +3,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 
 import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
@@ -38,6 +39,16 @@ import {
   PppoeOperacionAuditoriaPort,
 } from '../../domain/ports/pppoe-operacion-auditoria.port';
 import { CrearYEjecutarEliminacionPppoeUseCase } from '../use-cases/crear-y-ejecutar-eliminacion-pppoe.use-case';
+
+import {
+  PPPOE_OPERACION_REPOSITORY,
+  PppoeOperacionRepositoryPort,
+} from 'src/modules/pppoe-operacion/domain/ports/pppoe-operacion-repository.port';
+
+import { MIKROTIK_ROUTER_CONNECTION_CONTEXT } from 'src/mikro-tik/infra/tokens/mikrotik-router.tokens';
+
+import { MikrotikRouterConnectionContextPort } from 'src/mikro-tik/domain/ports/mikrotik-router-connection-context.port';
+
 /**
  * Implementación de la fachada pública
  * de provisionamiento PPPoE.
@@ -64,6 +75,12 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
     private readonly crearReintentoUseCase: CrearReintentoPppoeOperacionUseCase,
 
     private readonly ejecutarOperacionUseCase: EjecutarPppoeOperacionUseCase,
+
+    @Inject(PPPOE_OPERACION_REPOSITORY)
+    private readonly operacionRepository: PppoeOperacionRepositoryPort,
+
+    @Inject(MIKROTIK_ROUTER_CONNECTION_CONTEXT)
+    private readonly routerContext: MikrotikRouterConnectionContextPort,
 
     @Inject(PPPOE_OPERACION_AUDITORIA)
     private readonly operacionAuditoria: PppoeOperacionAuditoriaPort,
@@ -120,6 +137,12 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
   ): Promise<EjecutarOperacionPppoeResult> {
     this.validateRetryInput(input);
 
+    const routerSnapshot = await this.resolveCurrentRetryRouterSnapshot({
+      empresaId: input.empresaId,
+
+      operacionId: input.operacionId,
+    });
+
     const aggregate = await this.crearReintentoUseCase.execute({
       empresaId: input.empresaId,
 
@@ -133,17 +156,16 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
 
       motivo: input.motivo,
 
-      /**
-       * No se cambia manualmente:
+      /*
+       * El reintento captura nuevamente el destino actual.
        *
-       * - router;
-       * - perfil;
-       * - canal;
-       * - política de reautenticación.
-       *
-       * El nuevo intento hereda dichos valores
-       * de la última operación de la cadena.
+       * No copia el snapshot histórico del intento anterior.
        */
+      mikrotikRouterId: routerSnapshot.mikrotikRouterId,
+
+      routerHostSnapshot: routerSnapshot.routerHostSnapshot,
+
+      routerPuertoSnapshot: routerSnapshot.routerPuertoSnapshot,
     });
 
     const operacion = aggregate.operacion;
@@ -215,6 +237,85 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
 
       operacionId,
     });
+  }
+
+  private async resolveCurrentRetryRouterSnapshot(params: {
+    empresaId: number;
+
+    operacionId: number;
+  }): Promise<{
+    mikrotikRouterId: number;
+
+    routerHostSnapshot: string;
+
+    routerPuertoSnapshot: number;
+  }> {
+    /*
+     * El endpoint permite enviar la operación raíz
+     * o cualquier intento perteneciente a la cadena.
+     */
+    const operacionSolicitada = await this.operacionRepository.findById({
+      empresaId: params.empresaId,
+
+      operacionId: params.operacionId,
+    });
+
+    if (!operacionSolicitada) {
+      throw new NotFoundException(
+        `No existe la operación PPPoE ${params.operacionId}.`,
+      );
+    }
+
+    const operacionRaizId =
+      operacionSolicitada.reintentoDeId ??
+      this.requireOperationId(operacionSolicitada);
+
+    /*
+     * El snapshot se construye para el contexto del último
+     * intento de la cadena, no necesariamente para el ID
+     * enviado por el controlador.
+     */
+    const ultimoIntento = await this.operacionRepository.findLatestAttempt({
+      empresaId: params.empresaId,
+
+      operacionRaizId,
+    });
+
+    if (!ultimoIntento) {
+      throw new NotFoundException(
+        `No se encontró la cadena de intentos de la operación ${operacionRaizId}.`,
+      );
+    }
+
+    const router = await this.routerContext.resolve(
+      ultimoIntento.mikrotikRouterId,
+    );
+
+    const host = router.host?.trim();
+
+    if (!host) {
+      throw new ConflictException(
+        `El router MikroTik ${ultimoIntento.mikrotikRouterId} no contiene un host válido.`,
+      );
+    }
+
+    if (
+      !Number.isInteger(router.port) ||
+      router.port < 1 ||
+      router.port > 65_535
+    ) {
+      throw new ConflictException(
+        `El router MikroTik ${ultimoIntento.mikrotikRouterId} no contiene un puerto SSH válido.`,
+      );
+    }
+
+    return {
+      mikrotikRouterId: ultimoIntento.mikrotikRouterId,
+
+      routerHostSnapshot: host,
+
+      routerPuertoSnapshot: router.port,
+    };
   }
 
   /**

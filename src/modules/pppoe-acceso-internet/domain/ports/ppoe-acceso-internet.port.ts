@@ -5,20 +5,24 @@ export type BuscarAccesoInternetDelClienteParams = {
   clienteId: number;
 };
 
+export type BuscarAccesoInternetPorIdParams = {
+  empresaId: number;
+  accesoInternetId: number;
+};
+
 export interface ClienteAccesoInternetRepositoryPort {
-  /**
-   * Persiste un acceso de internet nuevo.
-   */
   create(
     entity: ClienteAccesoInternetEntity,
   ): Promise<ClienteAccesoInternetEntity>;
 
-  /**
-   * Busca un acceso y valida que pertenezca al cliente indicado.
-   *
-   * Se utilizará cuando una instalación trabaje sobre
-   * un acceso previamente existente.
-   */
+  update(
+    entity: ClienteAccesoInternetEntity,
+  ): Promise<ClienteAccesoInternetEntity>;
+
+  findById(
+    params: BuscarAccesoInternetPorIdParams,
+  ): Promise<ClienteAccesoInternetEntity | null>;
+
   findByIdForClient(
     params: BuscarAccesoInternetDelClienteParams,
   ): Promise<ClienteAccesoInternetEntity | null>;

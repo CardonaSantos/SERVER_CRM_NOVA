@@ -65,11 +65,11 @@ export type CrearReintentoPppoeOperacionUseCaseInput = {
 
   codigoPerfilSnapshot?: string | null;
 
-  mikrotikRouterId?: number;
+  mikrotikRouterId: number;
 
-  routerHostSnapshot?: string;
+  routerHostSnapshot: string;
 
-  routerPuertoSnapshot?: number;
+  routerPuertoSnapshot: number;
 };
 
 /**
@@ -331,12 +331,11 @@ export class CrearReintentoPppoeOperacionUseCase {
       'perfilHomologacionId',
     );
 
-    this.assertOptionalPositiveInteger(
-      input.mikrotikRouterId,
-      'mikrotikRouterId',
-    );
+    this.assertPositiveInteger(input.mikrotikRouterId, 'mikrotikRouterId');
 
-    this.assertOptionalPort(input.routerPuertoSnapshot);
+    this.assertRequiredString(input.routerHostSnapshot, 'routerHostSnapshot');
+
+    this.assertPort(input.routerPuertoSnapshot);
   }
 
   private assertPositiveInteger(value: number, field: string): void {
@@ -362,11 +361,7 @@ export class CrearReintentoPppoeOperacionUseCase {
     }
   }
 
-  private assertOptionalPort(value?: number): void {
-    if (value === undefined) {
-      return;
-    }
-
+  private assertPort(value: number): void {
     if (!Number.isInteger(value) || value < 1 || value > 65_535) {
       throw new BadRequestException(
         'routerPuertoSnapshot debe estar entre 1 y 65535.',

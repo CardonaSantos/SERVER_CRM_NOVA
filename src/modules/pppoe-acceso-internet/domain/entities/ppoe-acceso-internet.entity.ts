@@ -147,7 +147,15 @@ export class ClienteAccesoInternetEntity {
    * o preparado en la infraestructura.
    */
   iniciarConfiguracion(fecha: Date = new Date()): void {
-    this.assertNotBaja();
+    if (this.props.estado === EstadoAccesoInternet.CONFIGURANDO) {
+      return;
+    }
+
+    if (this.props.estado !== EstadoAccesoInternet.PENDIENTE) {
+      throw new Error(
+        `No puede iniciarse la configuración de un acceso en estado ${this.props.estado}.`,
+      );
+    }
 
     this.props.estado = EstadoAccesoInternet.CONFIGURANDO;
 
@@ -163,8 +171,14 @@ export class ClienteAccesoInternetEntity {
   activar(fecha: Date = new Date()): void {
     this.assertNotBaja();
 
+    if (this.props.estado === EstadoAccesoInternet.ACTIVO) {
+      return;
+    }
+
     this.props.estado = EstadoAccesoInternet.ACTIVO;
+
     this.props.activadoEn ??= fecha;
+
     this.props.suspendidoEn = null;
 
     this.touch(fecha);
@@ -174,13 +188,18 @@ export class ClienteAccesoInternetEntity {
    * Suspende temporalmente un acceso activo.
    */
   suspender(fecha: Date = new Date()): void {
+    if (this.props.estado === EstadoAccesoInternet.SUSPENDIDO) {
+      return;
+    }
+
     if (this.props.estado !== EstadoAccesoInternet.ACTIVO) {
       throw new Error(
-        'Solamente se puede suspender un acceso que se encuentra activo',
+        `Solamente puede suspenderse un acceso ACTIVO. Estado actual: ${this.props.estado}.`,
       );
     }
 
     this.props.estado = EstadoAccesoInternet.SUSPENDIDO;
+
     this.props.suspendidoEn = fecha;
 
     this.touch(fecha);

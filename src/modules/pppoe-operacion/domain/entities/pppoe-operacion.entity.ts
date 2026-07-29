@@ -136,11 +136,12 @@ export type CrearReintentoPppoeOperacionInput = {
    * Permite cambiar el destino cuando el router fue corregido
    * o sustituido.
    */
-  mikrotikRouterId?: number;
 
-  routerHostSnapshot?: string;
+  mikrotikRouterId: number;
 
-  routerPuertoSnapshot?: number;
+  routerHostSnapshot: string;
+
+  routerPuertoSnapshot: number;
 };
 
 /**
@@ -859,19 +860,20 @@ export class PppoeOperacionEntity {
     }
 
     const operacionRaizId = this.props.reintentoDeId ?? this.props.id;
+    const routerHostSnapshot = input.routerHostSnapshot;
 
-    const routerHostSnapshot =
-      input.routerHostSnapshot ?? this.props.routerHostSnapshot;
+    const routerPuertoSnapshot = input.routerPuertoSnapshot;
 
-    const routerPuertoSnapshot =
-      input.routerPuertoSnapshot ?? this.props.routerPuertoSnapshot;
-
-    if (!routerHostSnapshot) {
+    if (typeof routerHostSnapshot !== 'string' || !routerHostSnapshot.trim()) {
       throw new Error('El reintento necesita routerHostSnapshot.');
     }
 
-    if (routerPuertoSnapshot === null) {
-      throw new Error('El reintento necesita routerPuertoSnapshot.');
+    if (
+      !Number.isInteger(routerPuertoSnapshot) ||
+      routerPuertoSnapshot < 1 ||
+      routerPuertoSnapshot > 65_535
+    ) {
+      throw new Error('El reintento necesita un routerPuertoSnapshot válido.');
     }
 
     return PppoeOperacionEntity.create({
@@ -879,8 +881,8 @@ export class PppoeOperacionEntity {
 
       cuentaPppoeId: this.props.cuentaPppoeId,
 
-      mikrotikRouterId: input.mikrotikRouterId ?? this.props.mikrotikRouterId,
-
+      // mikrotikRouterId: input.mikrotikRouterId ?? this.props.mikrotikRouterId,
+      mikrotikRouterId: input.mikrotikRouterId,
       perfilHomologacionId:
         input.perfilHomologacionId !== undefined
           ? input.perfilHomologacionId

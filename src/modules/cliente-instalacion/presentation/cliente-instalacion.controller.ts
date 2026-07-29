@@ -33,6 +33,9 @@ import { ReintentarPrealtaPppoeDto } from '../application/dto/reintentar-prealta
 import { ConsultarCredencialesPppoeDto } from '../application/dto/consultar-credenciales-pppoe.dto';
 
 import type { Request } from 'express';
+import { UseGuards } from '@nestjs/common';
+
+import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 
 type IniciarClienteInstalacionServiceParams = {
   instalacionId: number;
@@ -110,26 +113,29 @@ export class ClienteInstalacionController {
     });
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post(':instalacionId/credenciales-pppoe/revelar')
   @HttpCode(HttpStatus.OK)
   async consultarCredencialesPppoe(
     @Param('instalacionId', ParseIntPipe)
     instalacionId: number,
 
-    @Body()
-    dto: ConsultarCredencialesPppoeDto,
+    @Req()
+    req: AuthenticatedRequest,
   ) {
+    const actor = this.getAuthenticatedActor(req);
+
     const result =
       await this.clienteInstalacionService.consultarCredencialesPppoe({
         instalacionId,
 
-        operadorId: dto.operadorId,
+        operadorId: actor.operadorId,
 
-        operadorNombre: null,
+        operadorNombre: actor.operadorNombre,
 
-        ipOrigen: null,
+        ipOrigen: actor.ipOrigen,
 
-        userAgent: null,
+        userAgent: actor.userAgent,
       });
 
     return {
@@ -201,6 +207,7 @@ export class ClienteInstalacionController {
   }
 
   @Post('iniciar/:id')
+  @UseGuards(JwtAuthGuard)
   async iniciar(
     @Body()
     dto: IniciarInstalacionClienteDto,
@@ -231,6 +238,7 @@ export class ClienteInstalacionController {
   }
 
   @Post('completar/:id')
+  @UseGuards(JwtAuthGuard)
   async completar(
     @Body()
     dto: CompletarClienteInstalacionDto,
