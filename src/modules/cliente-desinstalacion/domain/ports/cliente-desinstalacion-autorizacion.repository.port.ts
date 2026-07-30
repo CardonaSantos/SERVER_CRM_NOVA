@@ -30,4 +30,8 @@ export interface ClienteDesinstalacionAutorizacionRepositoryPort {
   save(
     entity: ClienteDesinstalacionAutorizacionEntity,
   ): Promise<ClienteDesinstalacionAutorizacionEntity>;
+
+  findUltimaByDesinstalacionId(
+    desinstalacionId: number,
+  ): Promise<ClienteDesinstalacionAutorizacionEntity | null>;
 }

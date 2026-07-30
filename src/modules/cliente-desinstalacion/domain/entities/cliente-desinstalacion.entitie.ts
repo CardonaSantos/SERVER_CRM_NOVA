@@ -331,9 +331,11 @@ export class ClienteDesinstalacionEntity {
 
     this.props.fechaCancelacion = null;
 
-    this.props.resultado = ClienteDesinstalacionEntity.normalizeOptionalText(
-      params.resultado,
-    );
+    if (params.resultado !== undefined) {
+      this.props.resultado = ClienteDesinstalacionEntity.normalizeOptionalText(
+        params.resultado,
+      );
+    }
 
     if (params.observaciones !== undefined) {
       this.props.observaciones =
@@ -343,8 +345,9 @@ export class ClienteDesinstalacionEntity {
     this.props.equipoRecuperado =
       params.equipoRecuperado ?? this.props.equipoRecuperado;
 
-    this.props.conforme = params.conforme ?? null;
-
+    if (params.conforme !== undefined) {
+      this.props.conforme = params.conforme;
+    }
     this.ensureValid();
   }
 
@@ -540,6 +543,16 @@ export class ClienteDesinstalacionEntity {
     this.ensurePersisted('actualizar datos generales');
 
     this.ensureEditable();
+
+    const intentaModificarRelacionTecnica =
+      params.accesoInternetId !== undefined ||
+      params.servicioInternetId !== undefined;
+
+    if (intentaModificarRelacionTecnica && !this.isProgramada) {
+      throw new Error(
+        'El acceso y el servicio de internet solo pueden modificarse mientras la desinstalación está PROGRAMADA.',
+      );
+    }
 
     if (params.servicioInternetId !== undefined) {
       this.props.servicioInternetId = params.servicioInternetId;

@@ -11,6 +11,7 @@ import { dayjs } from 'src/Utils/dayjs.config';
 import { TipoDesinstalacionCliente } from '../../domain/enums/tipo-desinstalacion-cliente.enum';
 import { ClienteDesinstalacionTecnicoRepositoryPort } from '../../domain/ports/cliente-desinstalacion-tecnico.repository.port';
 import { ClienteDesinstalacionTecnicoEntity } from '../../domain/entities/cliente-desinstalacion-tecnico.entity';
+import { ValidarAccesoDesinstalacionService } from '../services/validar-acceso-desinstalacion.service';
 
 export type CrearClienteDesInstalacionCommand =
   CrearClienteDesinstalacionDto & {
@@ -25,6 +26,8 @@ export type CrearClienteDesinstalacionResult = {
 @Injectable()
 export class CrearDesinstalacionUseCase {
   constructor(
+    private readonly validarAccesoDesinstalacionService: ValidarAccesoDesinstalacionService,
+
     @Inject(CLIENTE_DESINSTALACION_REPOSITORY)
     private readonly clienteDesinstalacionRepository: ClienteDesInstalacionRepositoryPort,
 
@@ -42,6 +45,15 @@ export class CrearDesinstalacionUseCase {
       throw new ConflictException(
         'Solo puede haber un técnico responsable por desinstalación.',
       );
+    }
+
+    if (command.accesoInternetId !== undefined) {
+      await this.validarAccesoDesinstalacionService.validar({
+        empresaId: command.empresaId,
+        clienteId: command.clienteId,
+        servicioInternetId: command.servicioInternetId ?? null,
+        accesoInternetId: command.accesoInternetId,
+      });
     }
 
     const desinstalacion = ClienteDesinstalacionEntity.create({

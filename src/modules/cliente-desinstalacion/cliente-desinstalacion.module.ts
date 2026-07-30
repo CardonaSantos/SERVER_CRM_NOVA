@@ -27,11 +27,17 @@ import { ListarTecnicosDesinstalacionUseCase } from './application/use-cases/lis
 import { EliminarTecnicoDesinstalacionUseCase } from './application/use-cases/eliminar-tecnico-desinstalacion.use-case';
 import { ClienteDesinstalacionTecnicoPrismaRepository } from './infra/prisma/cliente-desinstalacion-tecnico.prisma.repository';
 import { MarcarFallidaClienteDesinstalacionUseCase } from './application/use-cases/marcar-fallida-cliente-desinstalacion.use-case';
+import { ValidarAccesoDesinstalacionService } from './application/services/validar-acceso-desinstalacion.service';
+import { PpoeAccesoInternetModule } from '../pppoe-acceso-internet/ppoe-acceso-internet.module';
+
+import { ValidarAutorizacionDesinstalacionService } from './application/services/validar-autorizacion-desinstalacion.service';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, PpoeAccesoInternetModule, AuthModule],
   controllers: [ClienteDesinstalacionController],
   providers: [
+    ValidarAutorizacionDesinstalacionService,
     ClienteDesInstalacionApplicationService,
     MarcarFallidaClienteDesinstalacionUseCase,
     CrearDesinstalacionUseCase,
@@ -52,7 +58,7 @@ import { MarcarFallidaClienteDesinstalacionUseCase } from './application/use-cas
     AsignarTecnicoDesinstalacionUseCase,
     ListarTecnicosDesinstalacionUseCase,
     EliminarTecnicoDesinstalacionUseCase,
-
+    ValidarAccesoDesinstalacionService,
     {
       provide: CLIENTE_DESINSTALACION_REPOSITORY,
       useClass: ClienteDesInstalacionPrismaRepository,

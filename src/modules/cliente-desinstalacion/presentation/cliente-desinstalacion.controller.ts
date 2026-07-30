@@ -9,6 +9,8 @@ import {
   Post,
   Query,
   Req,
+  UnauthorizedException,
+  UseGuards,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
@@ -33,7 +35,10 @@ import { ClienteDesInstalacionApplicationService } from '../application/services
 import { ClienteDesinstalacionAutorizacionPresenter } from './autorizacion-cliente-desinstalacion.presenter';
 import { ClienteDesinstalacionPresenter } from './cliente-desinstalacion.presenter';
 import { ClienteDesinstalacionTecnicoPresenter } from './cliente-desinstalacion-tecnico.presenter';
+import { MarcarFallidaClienteDesinstalacionDto } from '../application/dto/marcar-fallida-cliente-desinstalacion.dto';
+import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
 @UsePipes(
   new ValidationPipe({
     transform: true,
@@ -63,8 +68,7 @@ export class ClienteDesinstalacionController {
     @Body() dto: AprobarDesinstalacionAutorizacionDto,
     @Req() req: any,
   ) {
-    const autorizadoPorId = req.user?.id ?? 1;
-
+    const autorizadoPorId = this.obtenerUsuarioId(req);
     const result = await this.clienteDesinstalacionService.aprobarAutorizacion(
       id,
       dto,
@@ -80,7 +84,7 @@ export class ClienteDesinstalacionController {
     @Body() dto: RechazarDesinstalacionAutorizacionDto,
     @Req() req: any,
   ) {
-    const autorizadoPorId = req.user?.id ?? 1;
+    const autorizadoPorId = this.obtenerUsuarioId(req);
 
     const result = await this.clienteDesinstalacionService.rechazarAutorizacion(
       id,
@@ -95,7 +99,7 @@ export class ClienteDesinstalacionController {
 
   @Post()
   async crear(@Body() dto: CrearClienteDesinstalacionDto, @Req() req: any) {
-    const creadoPorId = req.user?.id ?? dto.solicitadoPorId ?? 1;
+    const creadoPorId = this.obtenerUsuarioId(req);
 
     const result = await this.clienteDesinstalacionService.crear(
       dto,
@@ -166,10 +170,14 @@ export class ClienteDesinstalacionController {
   async iniciar(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: IniciarClienteDesinstalacionDto,
+    @Req() req: any,
   ) {
+    const ejecutadoPorId = this.obtenerUsuarioId(req);
+
     const desinstalacion = await this.clienteDesinstalacionService.iniciar(
       id,
       dto,
+      ejecutadoPorId,
     );
 
     return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
@@ -201,14 +209,26 @@ export class ClienteDesinstalacionController {
     return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
   }
 
+  @Patch(':id/fallar')
+  async marcarFallida(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: MarcarFallidaClienteDesinstalacionDto,
+  ) {
+    const desinstalacion =
+      await this.clienteDesinstalacionService.marcarFallida(id, dto);
+
+    return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
+  }
+
   // AUTORIZACIÓN POR DESINSTALACIÓN
 
   @Post(':id/autorizaciones')
   async crearAutorizacion(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: SolicitarDesinstalacionAutorizacionDto,
+    @Req() req: any,
   ) {
-    const solicitadoPorId = dto.solicitadoPorId;
+    const solicitadoPorId = this.obtenerUsuarioId(req);
 
     const autorizacion =
       await this.clienteDesinstalacionService.crearAutorizacion(
@@ -255,5 +275,17 @@ export class ClienteDesinstalacionController {
     return {
       ok: true,
     };
+  }
+
+  private obtenerUsuarioId(req: any): number {
+    const usuarioId = Number(req.user?.id);
+
+    if (!Number.isInteger(usuarioId) || usuarioId <= 0) {
+      throw new UnauthorizedException(
+        'No se pudo identificar al usuario autenticado.',
+      );
+    }
+
+    return usuarioId;
   }
 }

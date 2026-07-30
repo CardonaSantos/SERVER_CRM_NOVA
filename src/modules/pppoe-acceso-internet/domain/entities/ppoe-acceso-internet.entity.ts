@@ -110,6 +110,10 @@ export class ClienteAccesoInternetEntity {
     return this.props.estado;
   }
 
+  get empresaId(): number {
+    return this.props.empresaId;
+  }
+
   /*
    * Fechas de estado
    */

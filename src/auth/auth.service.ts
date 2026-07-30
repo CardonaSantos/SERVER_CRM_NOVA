@@ -58,6 +58,37 @@ export class AuthService {
     return result;
   }
 
+  async reautenticarUsuarioPorId(
+    usuarioId: number,
+    contrasenaActual: string,
+  ): Promise<void> {
+    if (
+      !Number.isInteger(usuarioId) ||
+      usuarioId <= 0 ||
+      typeof contrasenaActual !== 'string' ||
+      contrasenaActual.trim().length === 0
+    ) {
+      throw new UnauthorizedException(
+        'No se pudo confirmar la identidad del usuario.',
+      );
+    }
+
+    const contrasenaValida = await this.userService.validarContrasenaActual(
+      usuarioId,
+      contrasenaActual,
+    );
+
+    if (!contrasenaValida) {
+      this.logger.warn(`Reautenticación fallida para el usuario ${usuarioId}.`);
+
+      throw new UnauthorizedException(
+        'No se pudo confirmar la identidad del usuario.',
+      );
+    }
+
+    this.logger.log(`Usuario ${usuarioId} reautenticado correctamente.`);
+  }
+
   async login(correo: string, contrasena: string) {
     try {
       const usuario = await this.validarUsuario(correo, contrasena);

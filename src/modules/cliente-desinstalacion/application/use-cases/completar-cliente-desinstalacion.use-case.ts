@@ -30,13 +30,18 @@ export class CompletarClienteDesinstalacionUseCase {
 
     desinstalacion.completar({
       ejecutadoPorId: command.ejecutadoPorId,
-      resultado: command.resultado ?? null,
-      observaciones: command.observaciones ?? null,
+
+      resultado: command.resultado,
+
+      observaciones: command.observaciones,
+
       fechaFinalizacion: command.fechaFinalizacion
         ? dayjs(command.fechaFinalizacion).toDate()
         : undefined,
-      equipoRecuperado: command.equipoRecuperado ?? false,
-      conforme: command.conforme ?? null,
+
+      equipoRecuperado: command.equipoRecuperado,
+
+      conforme: command.conforme,
     });
 
     return this.clienteDesinstalacionRepository.save(desinstalacion);

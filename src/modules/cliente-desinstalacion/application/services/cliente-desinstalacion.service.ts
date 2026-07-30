@@ -96,10 +96,15 @@ export class ClienteDesInstalacionApplicationService {
     });
   }
 
-  iniciar(id: number, dto: IniciarClienteDesinstalacionDto) {
+  iniciar(
+    id: number,
+    dto: IniciarClienteDesinstalacionDto,
+    ejecutadoPorId: number,
+  ) {
     return this.iniciarClienteDesinstalacionUseCase.execute({
       id,
       ...dto,
+      ejecutadoPorId,
     });
   }
 

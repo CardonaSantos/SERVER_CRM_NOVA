@@ -119,4 +119,28 @@ export class ClienteDesinstalacionAutorizacionPrismaRepository
 
     return ClienteDesinstalacionAutorizacionPrismaMapper.toDomain(record);
   }
+
+  async findUltimaByDesinstalacionId(
+    desinstalacionId: number,
+  ): Promise<ClienteDesinstalacionAutorizacionEntity | null> {
+    const record =
+      await this.prisma.clienteDesinstalacionAutorizacion.findFirst({
+        where: {
+          desinstalacionId,
+        },
+
+        orderBy: [
+          {
+            fechaSolicitud: 'desc',
+          },
+          {
+            id: 'desc',
+          },
+        ],
+      });
+
+    return record
+      ? ClienteDesinstalacionAutorizacionPrismaMapper.toDomain(record)
+      : null;
+  }
 }
