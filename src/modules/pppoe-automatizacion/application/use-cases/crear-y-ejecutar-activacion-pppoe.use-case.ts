@@ -6,6 +6,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
+import { MikrotikRouterRepositoryPort } from 'src/mikro-tik/domain/ports/mikrotik-router-repository.port';
+import { MIKROTIK_ROUTER_REPOSITORY } from 'src/mikro-tik/infra/tokens/mikrotik-router.tokens';
+
 import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
 
 import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
@@ -17,71 +20,99 @@ import {
 
 import { PppoeOperacionEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion.entity';
 
+import { TipoOperacionPppoe } from 'src/modules/pppoe-operacion/domain/enums/pppoe-operacion-operacion-paso.enums';
+
 import {
   PPPOE_OPERACION_REPOSITORY,
   PppoeOperacionRepositoryPort,
 } from 'src/modules/pppoe-operacion/domain/ports/pppoe-operacion-repository.port';
 
-import { TipoOperacionPppoe } from 'src/modules/pppoe-operacion/domain/enums/pppoe-operacion-operacion-paso.enums';
-
 import { PerfilHomologacionRepositoryPort } from 'src/modules/pppoe-perfil-homologacion/domain/ports/ppoe-perfil-homologacion.port';
 
-import { EjecutarOperacionPppoeResult } from '../../domain/props/pppoe-provisionamiento.props';
-
-import { EjecutarPppoeOperacionUseCase } from './ejecutar-pppoe-operacion.use-case';
-import { CrearPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/crear-pppoe-operacion.use-case.ts';
 import { PPPOE_PERFIL_HOMOLOGACION_REPOSITORY } from 'src/modules/pppoe-perfil-homologacion/infra/tokens/ppoe-perfil-homologacion.token';
-import { MIKROTIK_ROUTER_REPOSITORY } from 'src/mikro-tik/infra/tokens/mikrotik-router.tokens';
-import { MikrotikRouterRepositoryPort } from 'src/mikro-tik/domain/ports/mikrotik-router-repository.port';
+
 import {
   PPPOE_OPERACION_AUDITORIA,
   PppoeOperacionAuditoriaPort,
 } from '../../domain/ports/pppoe-operacion-auditoria.port';
 
+import { EjecutarOperacionPppoeResult } from '../../domain/props/pppoe-provisionamiento.props';
+
+import { EjecutarPppoeOperacionUseCase } from './ejecutar-pppoe-operacion.use-case';
+import { CrearPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/crear-pppoe-operacion.use-case.ts';
+
 /**
- * Actor que solicita la activación.
+ * Determina la intención comercial de ACTIVAR_SECRET.
+ *
+ * Ambas modalidades reutilizan la misma operación técnica,
+ * pero tienen reglas de entrada diferentes.
+ */
+export enum ModoActivacionPppoe {
+  INSTALACION = 'INSTALACION',
+
+  REACTIVACION_MANUAL = 'REACTIVACION_MANUAL',
+}
+
+/**
+ * Actor que solicita la activación o reactivación.
  */
 export type ActorActivacionPppoeInput = {
   origen: OrigenOperacionPppoe;
 
   iniciadoPorId: number | null;
 
-  operadorNombre?: string | null;
-
   ipOrigen?: string | null;
 
   userAgent?: string | null;
 };
 
-/**
- * Datos necesarios para crear y ejecutar
- * una operación ACTIVAR_SECRET.
- */
-export type CrearYEjecutarActivacionPppoeInput = {
+type ActivacionPppoeBaseInput = {
   empresaId: number;
 
   cuentaPppoeId: number;
 
-  instalacionId?: number | null;
-
   claveIdempotencia: string;
 
   actor: ActorActivacionPppoeInput;
+};
+
+/**
+ * Activación provocada por el flujo de instalación.
+ */
+export type ActivacionPppoeInstalacionInput = ActivacionPppoeBaseInput & {
+  modo: ModoActivacionPppoe.INSTALACION;
+
+  instalacionId: number;
 
   motivo?: string | null;
 };
 
 /**
+ * Reactivación administrativa de una cuenta suspendida.
+ */
+export type ReactivacionPppoeManualInput = ActivacionPppoeBaseInput & {
+  modo: ModoActivacionPppoe.REACTIVACION_MANUAL;
+
+  motivo: string;
+};
+
+export type CrearYEjecutarActivacionPppoeInput =
+  | ActivacionPppoeInstalacionInput
+  | ReactivacionPppoeManualInput;
+
+/**
  * Crea y ejecuta una operación ACTIVAR_SECRET.
  *
- * El secret debe existir previamente en MikroTik.
+ * Modalidades:
  *
- * Estados válidos de la cuenta:
+ * - INSTALACION:
+ *   EN_INSTALACION | EN_ACTIVACION -> ACTIVA
  *
- * - EN_INSTALACION;
- * - SUSPENDIDA;
- * - ERROR con secret creado;
- * - EN_ACTIVACION.
+ * - REACTIVACION_MANUAL:
+ *   SUSPENDIDA -> ACTIVA
+ *
+ * Las operaciones fallidas o parciales deben utilizar
+ * el flujo explícito de reintento.
  */
 @Injectable()
 export class CrearYEjecutarActivacionPppoeUseCase {
@@ -111,6 +142,8 @@ export class CrearYEjecutarActivacionPppoeUseCase {
   ): Promise<EjecutarOperacionPppoeResult> {
     this.validateInput(input);
 
+    const claveIdempotencia = input.claveIdempotencia.trim();
+
     /*
      * ========================================================
      * 1. CUENTA PPPoE
@@ -122,6 +155,14 @@ export class CrearYEjecutarActivacionPppoeUseCase {
     if (!cuenta) {
       throw new NotFoundException(
         `No existe la cuenta PPPoE ${input.cuentaPppoeId}.`,
+      );
+    }
+
+    const cuentaId = cuenta.id;
+
+    if (cuentaId === null) {
+      throw new ConflictException(
+        'La cuenta PPPoE no contiene un identificador persistido.',
       );
     }
 
@@ -155,7 +196,9 @@ export class CrearYEjecutarActivacionPppoeUseCase {
 
     const perfilProps = perfil.toPrimitives();
 
-    if (perfilProps.id === null) {
+    const perfilHomologacionId = perfilProps.id;
+
+    if (perfilHomologacionId === null) {
       throw new ConflictException(
         'La homologación PPPoE no contiene un identificador persistido.',
       );
@@ -167,7 +210,7 @@ export class CrearYEjecutarActivacionPppoeUseCase {
       );
     }
 
-    if (perfilProps.id !== cuenta.perfilHomologacionId) {
+    if (perfilHomologacionId !== cuenta.perfilHomologacionId) {
       throw new ConflictException(
         'La homologación PPPoE no coincide con la asignada a la cuenta.',
       );
@@ -189,7 +232,9 @@ export class CrearYEjecutarActivacionPppoeUseCase {
       );
     }
 
-    if (router.id === null) {
+    const routerId = router.id;
+
+    if (routerId === null) {
       throw new ConflictException(
         'El router MikroTik no contiene un identificador persistido.',
       );
@@ -201,6 +246,10 @@ export class CrearYEjecutarActivacionPppoeUseCase {
       );
     }
 
+    const instalacionId = this.resolveInstalacionId(input);
+
+    const motivo = this.resolveMotivo(input);
+
     /*
      * ========================================================
      * 4. IDEMPOTENCIA PREVIA
@@ -211,7 +260,7 @@ export class CrearYEjecutarActivacionPppoeUseCase {
       await this.operacionRepository.findByIdempotencyKey({
         empresaId: input.empresaId,
 
-        claveIdempotencia: input.claveIdempotencia,
+        claveIdempotencia,
       });
 
     if (existingOperation) {
@@ -220,7 +269,7 @@ export class CrearYEjecutarActivacionPppoeUseCase {
 
         operacion: existingOperation,
 
-        routerId: router.id,
+        routerId,
       });
 
       return this.resolveOperation({
@@ -231,17 +280,17 @@ export class CrearYEjecutarActivacionPppoeUseCase {
         estadoCuenta: cuenta.estado,
 
         cuentaTieneSecret: cuenta.tieneSecretCreado,
+
+        modo: input.modo,
       });
     }
 
     /*
-     * Antes de crear una nueva operación comprobamos
-     * que la cuenta realmente pueda activarse.
-     *
-     * Esto evita crear operaciones PENDIENTES inválidas.
+     * Evita crear una operación PENDIENTE inválida.
      */
-
     this.assertAccountCanBeActivated({
+      modo: input.modo,
+
       estado: cuenta.estado,
 
       tieneSecret: cuenta.tieneSecretCreado,
@@ -256,17 +305,17 @@ export class CrearYEjecutarActivacionPppoeUseCase {
     const aggregate = await this.crearOperacion.execute({
       empresaId: input.empresaId,
 
-      cuentaPppoeId: cuenta.id,
+      cuentaPppoeId: cuentaId,
 
-      mikrotikRouterId: router.id,
+      mikrotikRouterId: routerId,
 
-      perfilHomologacionId: perfilProps.id,
+      perfilHomologacionId,
 
-      instalacionId: input.instalacionId ?? null,
+      instalacionId,
 
       desinstalacionId: null,
 
-      claveIdempotencia: input.claveIdempotencia,
+      claveIdempotencia,
 
       tipo: TipoOperacionPppoe.ACTIVAR_SECRET,
 
@@ -276,7 +325,7 @@ export class CrearYEjecutarActivacionPppoeUseCase {
 
       requiereReautenticacion: false,
 
-      motivo: input.motivo ?? 'Activación del secret PPPoE en MikroTik.',
+      motivo,
 
       usuarioPppoeSnapshot: cuenta.usuario,
 
@@ -287,14 +336,15 @@ export class CrearYEjecutarActivacionPppoeUseCase {
       routerPuertoSnapshot: router.sshPort,
     });
 
+    /*
+     * La auditoría de creación conserva el actor HTTP.
+     */
     if (aggregate.creada) {
       await this.operacionAuditoria.registrarCreada({
         operacion: aggregate.operacion,
 
         actor: {
           operadorId: input.actor.iniciadoPorId,
-
-          operadorNombre: input.actor.operadorNombre ?? null,
 
           ipOrigen: input.actor.ipOrigen ?? null,
 
@@ -307,7 +357,6 @@ export class CrearYEjecutarActivacionPppoeUseCase {
      * CrearPppoeOperacionUseCase también protege la
      * idempotencia frente a una carrera concurrente.
      */
-
     return this.resolveOperation({
       empresaId: input.empresaId,
 
@@ -316,12 +365,14 @@ export class CrearYEjecutarActivacionPppoeUseCase {
       estadoCuenta: cuenta.estado,
 
       cuentaTieneSecret: cuenta.tieneSecretCreado,
+
+      modo: input.modo,
     });
   }
 
   /**
    * Ejecuta una operación PENDIENTE o devuelve
-   * el estado de una operación ya procesada.
+   * el resultado persistido si ya fue procesada.
    */
   private async resolveOperation(params: {
     empresaId: number;
@@ -331,12 +382,14 @@ export class CrearYEjecutarActivacionPppoeUseCase {
     estadoCuenta: EstadoCuentaPppoe;
 
     cuentaTieneSecret: boolean;
+
+    modo: ModoActivacionPppoe;
   }): Promise<EjecutarOperacionPppoeResult> {
     const operacionId = this.requireOperationId(params.operacion);
 
     /*
-     * La misma clave puede repetirse después de que
-     * la primera solicitud terminó.
+     * La misma clave puede repetirse después
+     * de que la operación terminó.
      */
     if (params.operacion.esTerminal()) {
       return this.buildExistingResult({
@@ -372,6 +425,8 @@ export class CrearYEjecutarActivacionPppoeUseCase {
     }
 
     this.assertAccountCanBeActivated({
+      modo: params.modo,
+
       estado: params.estadoCuenta,
 
       tieneSecret: params.cuentaTieneSecret,
@@ -385,9 +440,12 @@ export class CrearYEjecutarActivacionPppoeUseCase {
   }
 
   /**
-   * Estados locales válidos antes de ACTIVAR_SECRET.
+   * Valida el estado local según la intención
+   * comercial de ACTIVAR_SECRET.
    */
   private assertAccountCanBeActivated(params: {
+    modo: ModoActivacionPppoe;
+
     estado: EstadoCuentaPppoe;
 
     tieneSecret: boolean;
@@ -398,25 +456,50 @@ export class CrearYEjecutarActivacionPppoeUseCase {
       );
     }
 
-    const estadosPermitidos: EstadoCuentaPppoe[] = [
-      EstadoCuentaPppoe.EN_INSTALACION,
-
-      EstadoCuentaPppoe.SUSPENDIDA,
-
-      EstadoCuentaPppoe.ERROR,
-
-      EstadoCuentaPppoe.EN_ACTIVACION,
-    ];
-
-    if (!estadosPermitidos.includes(params.estado)) {
+    /*
+     * Un fallo debe conservar su cadena mediante
+     * una operación nueva de reintento.
+     */
+    if (params.estado === EstadoCuentaPppoe.ERROR) {
       throw new ConflictException(
-        `No puede activarse la cuenta PPPoE desde el estado ${params.estado}.`,
+        'La cuenta PPPoE está en ERROR. Debe utilizarse el flujo de reintento de operación.',
       );
     }
+
+    if (params.modo === ModoActivacionPppoe.INSTALACION) {
+      const estadosPermitidos: EstadoCuentaPppoe[] = [
+        EstadoCuentaPppoe.EN_INSTALACION,
+
+        EstadoCuentaPppoe.EN_ACTIVACION,
+      ];
+
+      if (!estadosPermitidos.includes(params.estado)) {
+        throw new ConflictException(
+          `No puede activarse la cuenta PPPoE desde el estado ${params.estado} dentro del flujo de instalación.`,
+        );
+      }
+
+      return;
+    }
+
+    if (params.modo === ModoActivacionPppoe.REACTIVACION_MANUAL) {
+      if (params.estado !== EstadoCuentaPppoe.SUSPENDIDA) {
+        throw new ConflictException(
+          `No puede reactivarse la cuenta PPPoE desde el estado ${params.estado}.`,
+        );
+      }
+
+      return;
+    }
+
+    throw new ConflictException(
+      `Modo de activación PPPoE no soportado: ${params.modo}.`,
+    );
   }
 
   /**
-   * Evita reutilizar una clave para otra intención.
+   * Evita reutilizar una clave de idempotencia
+   * para una intención diferente.
    */
   private assertCompatibleExistingOperation(params: {
     input: CrearYEjecutarActivacionPppoeInput;
@@ -425,6 +508,8 @@ export class CrearYEjecutarActivacionPppoeUseCase {
 
     routerId: number;
   }): void {
+    const expectedInstalacionId = this.resolveInstalacionId(params.input);
+
     const sameAccount =
       params.operacion.cuentaPppoeId === params.input.cuentaPppoeId;
 
@@ -434,9 +519,17 @@ export class CrearYEjecutarActivacionPppoeUseCase {
       params.operacion.tipo === TipoOperacionPppoe.ACTIVAR_SECRET;
 
     const sameInstallation =
-      params.operacion.instalacionId === (params.input.instalacionId ?? null);
+      params.operacion.instalacionId === expectedInstalacionId;
 
-    if (sameAccount && sameRouter && sameType && sameInstallation) {
+    const hasNoUninstallation = params.operacion.desinstalacionId === null;
+
+    if (
+      sameAccount &&
+      sameRouter &&
+      sameType &&
+      sameInstallation &&
+      hasNoUninstallation
+    ) {
       return;
     }
 
@@ -478,6 +571,37 @@ export class CrearYEjecutarActivacionPppoeUseCase {
     };
   }
 
+  /**
+   * La instalación solamente se relaciona cuando
+   * ACTIVAR_SECRET pertenece al flujo de instalación.
+   */
+  private resolveInstalacionId(
+    input: CrearYEjecutarActivacionPppoeInput,
+  ): number | null {
+    if (input.modo === ModoActivacionPppoe.INSTALACION) {
+      return input.instalacionId;
+    }
+
+    return null;
+  }
+
+  /**
+   * La reactivación manual exige motivo explícito.
+   *
+   * La instalación puede utilizar un motivo descriptivo
+   * predeterminado.
+   */
+  private resolveMotivo(input: CrearYEjecutarActivacionPppoeInput): string {
+    if (input.modo === ModoActivacionPppoe.REACTIVACION_MANUAL) {
+      return input.motivo.trim();
+    }
+
+    return (
+      input.motivo?.trim() ||
+      'Activación del servicio PPPoE durante la instalación.'
+    );
+  }
+
   private requireOperationId(operacion: PppoeOperacionEntity): number {
     if (operacion.id === null) {
       throw new ConflictException(
@@ -492,8 +616,6 @@ export class CrearYEjecutarActivacionPppoeUseCase {
     this.assertPositiveInteger(input.empresaId, 'empresaId');
 
     this.assertPositiveInteger(input.cuentaPppoeId, 'cuentaPppoeId');
-
-    this.assertOptionalPositiveInteger(input.instalacionId, 'instalacionId');
 
     this.assertRequiredString(input.claveIdempotencia, 'claveIdempotencia');
 
@@ -516,23 +638,36 @@ export class CrearYEjecutarActivacionPppoeUseCase {
         'actor.iniciadoPorId es obligatorio cuando el origen es OPERADOR.',
       );
     }
+
+    if (input.modo === ModoActivacionPppoe.INSTALACION) {
+      this.assertPositiveInteger(input.instalacionId, 'instalacionId');
+
+      return;
+    }
+
+    if (input.modo === ModoActivacionPppoe.REACTIVACION_MANUAL) {
+      this.assertRequiredString(input.motivo, 'motivo');
+
+      if (input.motivo.trim().length < 5) {
+        throw new BadRequestException(
+          'motivo debe contener al menos 5 caracteres.',
+        );
+      }
+
+      return;
+    }
+
+    throw new BadRequestException(
+      `Modo de activación PPPoE no soportado: ${String(
+        (input as { modo?: unknown }).modo,
+      )}.`,
+    );
   }
 
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
       throw new BadRequestException(`${field} debe ser un entero positivo.`);
     }
-  }
-
-  private assertOptionalPositiveInteger(
-    value: number | null | undefined,
-    field: string,
-  ): void {
-    if (value === null || value === undefined) {
-      return;
-    }
-
-    this.assertPositiveInteger(value, field);
   }
 
   private assertRequiredString(value: string, field: string): void {

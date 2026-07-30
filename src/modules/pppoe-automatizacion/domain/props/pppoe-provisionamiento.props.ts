@@ -9,6 +9,27 @@ import {
 
 import { PppoeOperacionResultado } from 'src/modules/pppoe-operacion/domain/props/pppoe-operacion.props';
 
+export type ReactivarServicioPppoeInput = {
+  empresaId: number;
+
+  cuentaPppoeId: number;
+
+  claveIdempotencia: string;
+
+  motivo: string;
+
+  actor: ActorProvisionamientoPppoeInput;
+};
+export type ActorProvisionamientoPppoeInput = {
+  origen: OrigenOperacionPppoe;
+
+  iniciadoPorId: number | null;
+
+  ipOrigen?: string | null;
+
+  userAgent?: string | null;
+};
+
 /**
  * Contexto del actor que origina una operación.
  *
@@ -67,11 +88,21 @@ export type ActivarSecretPppoeInput = EjecutarProvisionamientoPppoeBaseInput & {
  *
  * Puede originarse por cobranza, operador o sistema.
  */
-export type SuspenderServicioPppoeInput =
-  EjecutarProvisionamientoPppoeBaseInput & {
-    instalacionId?: number | null;
-  };
+export type SuspenderServicioPppoeInput = {
+  empresaId: number;
 
+  cuentaPppoeId: number;
+
+  claveIdempotencia: string;
+
+  /**
+   * Obligatorio para conservar la razón administrativa
+   * de la suspensión.
+   */
+  motivo: string;
+
+  actor: ActorProvisionamientoPppoeInput;
+};
 /**
  * Elimina definitivamente el secret durante
  * una desinstalación autorizada.
@@ -87,7 +118,7 @@ export type EliminarSecretPppoeInput =
      * Instalación relacionada, cuando todavía
      * se conserva esa referencia operativa.
      */
-    instalacionId?: number | null;
+    instalacionId: number;
   };
 
 /**

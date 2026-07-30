@@ -35,13 +35,23 @@ export class CrearDesinstalacionUseCase {
   async execute(
     command: CrearClienteDesInstalacionCommand,
   ): Promise<CrearClienteDesinstalacionResult> {
+    const responsableCount =
+      command.tecnicos?.filter((tecnico) => tecnico.esResponsable).length ?? 0;
+
+    if (responsableCount > 1) {
+      throw new ConflictException(
+        'Solo puede haber un técnico responsable por desinstalación.',
+      );
+    }
+
     const desinstalacion = ClienteDesinstalacionEntity.create({
       clienteId: command.clienteId,
       empresaId: command.empresaId,
 
       servicioInternetId: command.servicioInternetId ?? null,
-      ticketId: command.ticketId ?? null,
 
+      ticketId: command.ticketId ?? null,
+      accesoInternetId: command.accesoInternetId ?? null,
       solicitadoPorId: command.solicitadoPorId ?? command.creadoPorId ?? null,
       creadoPorId: command.creadoPorId ?? null,
       ejecutadoPorId: command.ejecutadoPorId ?? null,
@@ -82,16 +92,6 @@ export class CrearDesinstalacionUseCase {
     let savedTecnicos: ClienteDesinstalacionTecnicoEntity[] = [];
 
     if (command.tecnicos?.length) {
-      const responsableCount = command.tecnicos.filter(
-        (tecnico) => tecnico.esResponsable,
-      ).length;
-
-      if (responsableCount > 1) {
-        throw new ConflictException(
-          'Solo puede haber un técnico responsable por desinstalación.',
-        );
-      }
-
       const tecnicos = command.tecnicos.map((tecnico) =>
         ClienteDesinstalacionTecnicoEntity.create({
           desinstalacionId: savedProps.id!,

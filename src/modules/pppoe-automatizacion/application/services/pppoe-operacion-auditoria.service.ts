@@ -215,8 +215,6 @@ export class PppoeOperacionAuditoriaService
 
         perfilCodigoSnapshot: primitives.codigoPerfilSnapshot,
 
-        operadorNombreSnapshot: input.params.actor?.operadorNombre ?? null,
-
         datos: input.datos,
 
         ipOrigen: input.params.actor?.ipOrigen ?? null,
@@ -225,7 +223,6 @@ export class PppoeOperacionAuditoriaService
 
         creadoEn: input.params.fecha,
       });
-
       await this.repository.create(entity);
     } catch {
       /*
@@ -245,6 +242,8 @@ export class PppoeOperacionAuditoriaService
   private buildCommonData(
     operacion: PppoeOperacionEntity,
   ): DatosAuditoriaPppoe {
+    const primitives = operacion.toPrimitives();
+
     return {
       tipoOperacion: operacion.tipo,
 
@@ -261,6 +260,8 @@ export class PppoeOperacionAuditoriaService
       instalacionId: operacion.instalacionId,
 
       desinstalacionId: operacion.desinstalacionId,
+
+      motivo: primitives.motivo,
     };
   }
 

@@ -3,6 +3,7 @@ import {
   CrearSecretPppoeInput,
   EjecutarOperacionPppoeResult,
   EliminarSecretPppoeInput,
+  ReactivarServicioPppoeInput,
   ReintentarOperacionPppoeInput,
   SuspenderServicioPppoeInput,
 } from '../props/pppoe-provisionamiento.props';
@@ -34,6 +35,16 @@ export interface PppoeProvisionamientoPort {
    */
   activarSecret(
     input: ActivarSecretPppoeInput,
+  ): Promise<EjecutarOperacionPppoeResult>;
+
+  /**
+   * Reactiva manualmente una cuenta PPPoE suspendida.
+   *
+   * Reutiliza ACTIVAR_SECRET, pero no pertenece
+   * al flujo de instalación.
+   */
+  reactivarServicio(
+    input: ReactivarServicioPppoeInput,
   ): Promise<EjecutarOperacionPppoeResult>;
 
   /**

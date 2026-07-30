@@ -26,13 +26,14 @@ import { AsignarTecnicoDesinstalacionUseCase } from './application/use-cases/asi
 import { ListarTecnicosDesinstalacionUseCase } from './application/use-cases/listar-tecnicos-desintalacion.use-case';
 import { EliminarTecnicoDesinstalacionUseCase } from './application/use-cases/eliminar-tecnico-desinstalacion.use-case';
 import { ClienteDesinstalacionTecnicoPrismaRepository } from './infra/prisma/cliente-desinstalacion-tecnico.prisma.repository';
+import { MarcarFallidaClienteDesinstalacionUseCase } from './application/use-cases/marcar-fallida-cliente-desinstalacion.use-case';
 
 @Module({
   imports: [PrismaModule],
   controllers: [ClienteDesinstalacionController],
   providers: [
     ClienteDesInstalacionApplicationService,
-
+    MarcarFallidaClienteDesinstalacionUseCase,
     CrearDesinstalacionUseCase,
     ListarClienteDesinstalacionesUseCase,
     ObtenerClienteDesinstalacionUseCase,

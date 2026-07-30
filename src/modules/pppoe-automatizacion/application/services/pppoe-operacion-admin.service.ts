@@ -24,8 +24,6 @@ import { RecuperarPppoeOperacionInterrumpidaUseCase } from '../use-cases/recuper
 export type ActorAdministrativoPppoe = {
   operadorId: number;
 
-  operadorNombre?: string | null;
-
   ipOrigen?: string | null;
 
   userAgent?: string | null;
@@ -80,16 +78,37 @@ export type SuspenderPppoeManualParams = {
 
   cuentaPppoeId: number;
 
-  instalacionId?: number | null;
-
   claveIdempotencia: string;
 
-  motivo?: string | null;
+  motivo: string;
 
   actor: ActorAdministrativoPppoe;
 };
 
+export type ReactivarPppoeManualParams = {
+  empresaId: number;
+
+  cuentaPppoeId: number;
+
+  claveIdempotencia: string;
+
+  motivo: string;
+
+  actor: ActorAdministrativoPppoe;
+};
+
+type AccionManualCuentaPppoeParams = {
+  empresaId: number;
+
+  cuentaPppoeId: number;
+
+  claveIdempotencia: string;
+
+  motivo: string;
+};
+
 /**
+ *
  * Fachada de aplicación para las acciones administrativas
  * sobre operaciones PPPoE.
  *
@@ -202,21 +221,19 @@ export class PppoeOperacionAdminService {
 
       operacionId: params.operacionId,
 
-      claveIdempotencia: params.claveIdempotencia,
+      claveIdempotencia: params.claveIdempotencia.trim(),
 
       actor: {
         origen: OrigenOperacionPppoe.OPERADOR,
 
         iniciadoPorId: params.actor.operadorId,
 
-        operadorNombre: params.actor.operadorNombre ?? null,
-
         ipOrigen: params.actor.ipOrigen ?? null,
 
         userAgent: params.actor.userAgent ?? null,
       },
 
-      motivo: params.motivo ?? null,
+      motivo: params.motivo?.trim() || null,
     });
   }
 
@@ -243,40 +260,109 @@ export class PppoeOperacionAdminService {
   }
 
   /**
-   * Suspensión administrativa manual.
+   * Suspende manualmente una cuenta PPPoE.
    *
-   * No depende de cobranza ni facturación.
+   * La acción no depende de instalación, cobranza
+   * ni facturación.
+   */
+  /**
+   * Suspende manualmente una cuenta PPPoE.
+   *
+   * La acción no depende de instalación, cobranza
+   * ni facturación.
    */
   suspenderManual(
     params: SuspenderPppoeManualParams,
   ): Promise<EjecutarOperacionPppoeResult> {
     this.validateActor(params.actor);
 
+    this.validateManualAccountAction(params, 'suspensión');
+
     return this.provisionamiento.suspenderServicio({
       empresaId: params.empresaId,
 
       cuentaPppoeId: params.cuentaPppoeId,
 
-      instalacionId: params.instalacionId ?? null,
+      claveIdempotencia: params.claveIdempotencia.trim(),
 
-      claveIdempotencia: params.claveIdempotencia,
+      motivo: params.motivo.trim(),
 
       actor: {
         origen: OrigenOperacionPppoe.OPERADOR,
 
         iniciadoPorId: params.actor.operadorId,
 
-        operadorNombre: params.actor.operadorNombre ?? null,
+        ipOrigen: params.actor.ipOrigen ?? null,
+
+        userAgent: params.actor.userAgent ?? null,
+      },
+    });
+  }
+
+  /**
+   * Reactiva manualmente una cuenta PPPoE suspendida.
+   *
+   * No pertenece al flujo de instalación.
+   */
+  reactivarManual(
+    params: ReactivarPppoeManualParams,
+  ): Promise<EjecutarOperacionPppoeResult> {
+    this.validateActor(params.actor);
+
+    this.validateManualAccountAction(params, 'reactivación');
+
+    return this.provisionamiento.reactivarServicio({
+      empresaId: params.empresaId,
+
+      cuentaPppoeId: params.cuentaPppoeId,
+
+      claveIdempotencia: params.claveIdempotencia.trim(),
+
+      motivo: params.motivo.trim(),
+
+      actor: {
+        origen: OrigenOperacionPppoe.OPERADOR,
+
+        iniciadoPorId: params.actor.operadorId,
 
         ipOrigen: params.actor.ipOrigen ?? null,
 
         userAgent: params.actor.userAgent ?? null,
       },
-
-      motivo: params.motivo ?? 'Suspensión manual del servicio PPPoE.',
     });
   }
 
+  /**
+   * Validaciones comunes para acciones administrativas
+   * directas sobre una cuenta PPPoE.
+   */
+  private validateManualAccountAction(
+    params: AccionManualCuentaPppoeParams,
+    accion: 'suspensión' | 'reactivación',
+  ): void {
+    if (!Number.isInteger(params.empresaId) || params.empresaId <= 0) {
+      throw new BadRequestException('empresaId debe ser un entero positivo.');
+    }
+
+    if (!Number.isInteger(params.cuentaPppoeId) || params.cuentaPppoeId <= 0) {
+      throw new BadRequestException(
+        'cuentaPppoeId debe ser un entero positivo.',
+      );
+    }
+
+    if (
+      typeof params.claveIdempotencia !== 'string' ||
+      !params.claveIdempotencia.trim()
+    ) {
+      throw new BadRequestException('claveIdempotencia es obligatoria.');
+    }
+
+    if (typeof params.motivo !== 'string' || params.motivo.trim().length < 5) {
+      throw new BadRequestException(
+        `El motivo de ${accion} debe contener al menos 5 caracteres.`,
+      );
+    }
+  }
   private requireOperationId(operacion: PppoeOperacionEntity): number {
     if (operacion.id === null) {
       throw new ConflictException(

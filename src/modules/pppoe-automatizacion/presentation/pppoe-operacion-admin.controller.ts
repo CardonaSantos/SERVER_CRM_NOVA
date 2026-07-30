@@ -17,41 +17,37 @@ import {
 
 import type { Request } from 'express';
 
+import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
+
 import { PppoeOperacionAdminService } from '../application/services/pppoe-operacion-admin.service';
 
 import { AutorizarPppoeOperacionDto } from './dto/autorizar-pppoe-operacion.dto';
-
 import { CancelarPppoeOperacionDto } from './dto/cancelar-pppoe-operacion.dto';
-
 import { ListarPppoeOperacionesQueryDto } from './dto/listar-pppoe-operaciones-query.dto';
-
 import { RecuperarPppoeOperacionDto } from './dto/recuperar-pppoe-operacion.dto';
-
 import { ReintentarPppoeOperacionDto } from './dto/reintentar-pppoe-operacion.dto';
 
-import { SuspenderPppoeManualDto } from './dto/suspender-pppoe-manual.dto';
-import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 type AuthenticatedRequest = Request & {
   user?: {
     id?: number | string;
-
     sub?: number | string;
-
     userId?: number | string;
-
-    nombre?: string;
-
-    empresaId?: number;
   };
 };
 
+/**
+ * Contexto HTTP del operador autenticado.
+ *
+ * operadorNombre se mantiene en null únicamente para
+ * conservar compatibilidad con el contrato actual del
+ * servicio de aplicación.
+ *
+ * La fuente de verdad es operadorId, relacionado con Usuario.
+ */
 type ActorAdministrativoHttp = {
   operadorId: number;
-
-  operadorNombre: string | null;
-
+  operadorNombre: null;
   ipOrigen: string | null;
-
   userAgent: string | null;
 };
 
@@ -68,7 +64,7 @@ export class PppoeOperacionAdminController {
   constructor(private readonly adminService: PppoeOperacionAdminService) {}
 
   /**
-   * Listado paginado administrativo.
+   * Lista las operaciones PPPoE de forma paginada.
    */
   @Get()
   listar(
@@ -79,37 +75,27 @@ export class PppoeOperacionAdminController {
       empresaId: query.empresaId,
 
       page: query.page,
-
       limit: query.limit,
 
       search: query.search,
 
       cuentaPppoeId: query.cuentaPppoeId,
-
       mikrotikRouterId: query.mikrotikRouterId,
-
       perfilHomologacionId: query.perfilHomologacionId,
 
       instalacionId: query.instalacionId,
-
       desinstalacionId: query.desinstalacionId,
 
       iniciadoPorId: query.iniciadoPorId,
-
       reautenticadoPorId: query.reautenticadoPorId,
-
       reintentoDeId: query.reintentoDeId,
 
       tipos: query.tipos,
-
       origenes: query.origenes,
-
       canales: query.canales,
-
       estados: query.estados,
 
       requiereReautenticacion: query.requiereReautenticacion,
-
       numeroIntento: query.numeroIntento,
 
       fechaDesde: query.fechaDesde ? new Date(query.fechaDesde) : undefined,
@@ -117,13 +103,12 @@ export class PppoeOperacionAdminController {
       fechaHasta: query.fechaHasta ? new Date(query.fechaHasta) : undefined,
 
       ordenPor: query.ordenPor,
-
       ordenDireccion: query.ordenDireccion,
     });
   }
 
   /**
-   * Detalle enriquecido de una operación.
+   * Obtiene el detalle enriquecido de una operación.
    */
   @Get(':operacionId')
   obtenerDetalle(
@@ -135,14 +120,13 @@ export class PppoeOperacionAdminController {
   ) {
     return this.adminService.obtenerDetalle({
       empresaId,
-
       operacionId,
     });
   }
 
   /**
-   * Autoriza mediante reautenticación y ejecuta
-   * inmediatamente la operación.
+   * Reautentica al operador y autoriza una operación
+   * protegida que continúa en estado PENDIENTE.
    */
   @Post(':operacionId/autorizar')
   @HttpCode(HttpStatus.OK)
@@ -158,18 +142,17 @@ export class PppoeOperacionAdminController {
   ) {
     return this.adminService.autorizarYEjecutar({
       empresaId: dto.empresaId,
-
       operacionId,
-
       password: dto.password,
-
       actor: this.getActor(req),
     });
   }
 
   /**
-   * Crea una operación nueva a partir de una
-   * operación FALLIDA o PARCIAL.
+   * Crea una nueva operación a partir de una operación
+   * FALLIDA o PARCIAL.
+   *
+   * La operación anterior no se modifica ni se reutiliza.
    */
   @Post(':operacionId/reintentar')
   @HttpCode(HttpStatus.OK)
@@ -185,11 +168,9 @@ export class PppoeOperacionAdminController {
   ) {
     return this.adminService.reintentar({
       empresaId: dto.empresaId,
-
       operacionId,
 
       claveIdempotencia: dto.claveIdempotencia,
-
       motivo: dto.motivo ?? null,
 
       actor: this.getActor(req),
@@ -197,9 +178,10 @@ export class PppoeOperacionAdminController {
   }
 
   /**
-   * Recupera una operación EJECUTANDO abandonada.
+   * Recupera una operación que quedó EJECUTANDO
+   * después de una interrupción.
    *
-   * No repite SSH.
+   * La recuperación no repite comandos SSH.
    */
   @Post(':operacionId/recuperar')
   @HttpCode(HttpStatus.OK)
@@ -215,7 +197,6 @@ export class PppoeOperacionAdminController {
   ) {
     return this.adminService.recuperar({
       empresaId: dto.empresaId,
-
       operacionId,
 
       confirmarAbandono: dto.confirmarAbandono,
@@ -228,7 +209,7 @@ export class PppoeOperacionAdminController {
 
   /**
    * Cancela una operación PENDIENTE o AUTORIZADA
-   * que todavía no haya ejecutado pasos.
+   * que todavía no haya ejecutado pasos técnicos.
    */
   @Post(':operacionId/cancelar')
   @HttpCode(HttpStatus.OK)
@@ -244,44 +225,16 @@ export class PppoeOperacionAdminController {
   ) {
     return this.adminService.cancelar({
       empresaId: dto.empresaId,
-
       operacionId,
-
       motivo: dto.motivo,
-
       actor: this.getActor(req),
     });
   }
 
   /**
-   * Suspensión manual administrativa.
-   *
-   * No depende de cobranza ni facturación.
+   * Obtiene exclusivamente del JWT la identidad
+   * del operador que ejecuta la acción.
    */
-  @Post('acciones/suspender')
-  @HttpCode(HttpStatus.OK)
-  suspenderManual(
-    @Body()
-    dto: SuspenderPppoeManualDto,
-
-    @Req()
-    req: AuthenticatedRequest,
-  ) {
-    return this.adminService.suspenderManual({
-      empresaId: dto.empresaId,
-
-      cuentaPppoeId: dto.cuentaPppoeId,
-
-      instalacionId: dto.instalacionId ?? null,
-
-      claveIdempotencia: dto.claveIdempotencia,
-
-      motivo: dto.motivo ?? null,
-
-      actor: this.getActor(req),
-    });
-  }
-
   private getActor(req: AuthenticatedRequest): ActorAdministrativoHttp {
     const rawOperadorId = req.user?.id ?? req.user?.sub ?? req.user?.userId;
 
@@ -296,7 +249,14 @@ export class PppoeOperacionAdminController {
     return {
       operadorId,
 
-      operadorNombre: req.user?.nombre?.trim() || null,
+      /**
+       * No almacenamos snapshot del nombre.
+       *
+       * Los retornos pueden poblar la relación Usuario
+       * mediante operadorId, iniciadoPorId o
+       * reautenticadoPorId.
+       */
+      operadorNombre: null,
 
       ipOrigen: this.getClientIp(req),
 
@@ -304,6 +264,9 @@ export class PppoeOperacionAdminController {
     };
   }
 
+  /**
+   * Obtiene la IP de origen de la petición.
+   */
   private getClientIp(req: AuthenticatedRequest): string | null {
     const forwardedFor = req.headers['x-forwarded-for'];
 

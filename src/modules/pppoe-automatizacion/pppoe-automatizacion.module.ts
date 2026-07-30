@@ -38,9 +38,10 @@ import { PppoeOperacionAdminService } from './application/services/pppoe-operaci
 import { PppoeOperacionAdminController } from './presentation/pppoe-operacion-admin.controller';
 import { AuthModule } from 'src/auth/auth.module';
 import { PpoeAccesoInternetModule } from '../pppoe-acceso-internet/ppoe-acceso-internet.module';
+import { PppoeCuentaAccionesController } from './presentation/pppoe-cuenta-acciones.controller';
 
 @Module({
-  controllers: [PppoeOperacionAdminController],
+  controllers: [PppoeOperacionAdminController, PppoeCuentaAccionesController],
   imports: [
     AuthModule,
     PppoePerfilHomologacionModule,

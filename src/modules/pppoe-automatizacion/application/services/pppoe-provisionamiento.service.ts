@@ -19,13 +19,17 @@ import {
   CrearSecretPppoeInput,
   EjecutarOperacionPppoeResult,
   EliminarSecretPppoeInput,
+  ReactivarServicioPppoeInput,
   ReintentarOperacionPppoeInput,
   SuspenderServicioPppoeInput,
 } from '../../domain/props/pppoe-provisionamiento.props';
 
 import { CrearYEjecutarOperacionPppoeUseCase } from '../use-cases/crear-y-ejecutar-operacion-pppoe.use-case';
 
-import { CrearYEjecutarActivacionPppoeUseCase } from '../use-cases/crear-y-ejecutar-activacion-pppoe.use-case';
+import {
+  CrearYEjecutarActivacionPppoeUseCase,
+  ModoActivacionPppoe,
+} from '../use-cases/crear-y-ejecutar-activacion-pppoe.use-case';
 
 import { CrearYEjecutarSuspensionPppoeUseCase } from '../use-cases/crear-y-ejecutar-suspension-pppoe.use-case';
 
@@ -99,12 +103,81 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
   }
 
   /**
-   * Habilita o confirma habilitado el secret.
+   * Activa el secret durante el flujo de instalación.
+   *
+   * La reactivación de una cuenta suspendida utilizará
+   * una operación pública separada.
    */
   activarSecret(
     input: ActivarSecretPppoeInput,
   ): Promise<EjecutarOperacionPppoeResult> {
-    return this.activarSecretUseCase.execute(input);
+    const instalacionId = input.instalacionId;
+
+    if (
+      typeof instalacionId !== 'number' ||
+      !Number.isInteger(instalacionId) ||
+      instalacionId <= 0
+    ) {
+      throw new BadRequestException(
+        'instalacionId es obligatorio para activar el servicio desde una instalación.',
+      );
+    }
+
+    return this.activarSecretUseCase.execute({
+      modo: ModoActivacionPppoe.INSTALACION,
+
+      empresaId: input.empresaId,
+
+      cuentaPppoeId: input.cuentaPppoeId,
+
+      instalacionId,
+
+      claveIdempotencia: input.claveIdempotencia,
+
+      actor: {
+        origen: input.actor.origen,
+
+        iniciadoPorId: input.actor.iniciadoPorId,
+
+        ipOrigen: input.actor.ipOrigen ?? null,
+
+        userAgent: input.actor.userAgent ?? null,
+      },
+
+      motivo: input.motivo ?? null,
+    });
+  }
+
+  /**
+   * Reactiva manualmente una cuenta PPPoE suspendida.
+   *
+   * No pertenece a una instalación y exige un
+   * motivo administrativo explícito.
+   */
+  reactivarServicio(
+    input: ReactivarServicioPppoeInput,
+  ): Promise<EjecutarOperacionPppoeResult> {
+    return this.activarSecretUseCase.execute({
+      modo: ModoActivacionPppoe.REACTIVACION_MANUAL,
+
+      empresaId: input.empresaId,
+
+      cuentaPppoeId: input.cuentaPppoeId,
+
+      claveIdempotencia: input.claveIdempotencia,
+
+      motivo: input.motivo,
+
+      actor: {
+        origen: input.actor.origen,
+
+        iniciadoPorId: input.actor.iniciadoPorId,
+
+        ipOrigen: input.actor.ipOrigen ?? null,
+
+        userAgent: input.actor.userAgent ?? null,
+      },
+    });
   }
 
   /**

@@ -16,6 +16,12 @@ import { TipoDesinstalacionCliente } from '../../domain/enums/tipo-desinstalacio
 import { AsignarTecnicoDesinstalacionDto } from './tecnico-desinstalacion.dto';
 
 export class CrearClienteDesinstalacionDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  accesoInternetId?: number | null;
+
   @IsInt()
   @Min(1)
   empresaId: number;

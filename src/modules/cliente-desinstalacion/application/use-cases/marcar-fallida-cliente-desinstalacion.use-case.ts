@@ -13,22 +13,22 @@ import { ClienteDesInstalacionRepositoryPort } from '../../domain/ports/cliente-
 
 import { CLIENTE_DESINSTALACION_REPOSITORY } from '../../infra/tokens/cliente-desinstalacion.token';
 
-import { CancelarClienteDesinstalacionDto } from '../dto/cancelar-cliente-desinstalacion.dto';
+import { MarcarFallidaClienteDesinstalacionDto } from '../dto/marcar-fallida-cliente-desinstalacion.dto';
 
-export type CancelarClienteDesinstalacionCommand =
-  CancelarClienteDesinstalacionDto & {
+export type MarcarFallidaClienteDesinstalacionCommand =
+  MarcarFallidaClienteDesinstalacionDto & {
     id: number;
   };
 
 @Injectable()
-export class CancelarClienteDesinstalacionUseCase {
+export class MarcarFallidaClienteDesinstalacionUseCase {
   constructor(
     @Inject(CLIENTE_DESINSTALACION_REPOSITORY)
     private readonly clienteDesinstalacionRepository: ClienteDesInstalacionRepositoryPort,
   ) {}
 
   async execute(
-    command: CancelarClienteDesinstalacionCommand,
+    command: MarcarFallidaClienteDesinstalacionCommand,
   ): Promise<ClienteDesinstalacionEntity> {
     const desinstalacion = await this.clienteDesinstalacionRepository.findById(
       command.id,
@@ -39,20 +39,22 @@ export class CancelarClienteDesinstalacionUseCase {
     }
 
     try {
-      desinstalacion.cancelar({
-        fechaCancelacion: command.fechaCancelacion
-          ? dayjs(command.fechaCancelacion).toDate()
-          : undefined,
-
+      desinstalacion.marcarFallida({
         motivo: command.motivo ?? null,
 
+        resultado: command.resultado ?? null,
+
         observaciones: command.observaciones ?? null,
+
+        fechaFinalizacion: command.fechaFinalizacion
+          ? dayjs(command.fechaFinalizacion).toDate()
+          : undefined,
       });
     } catch (error) {
       throw new ConflictException(
         error instanceof Error
           ? error.message
-          : 'No se pudo cancelar la desinstalación.',
+          : 'No se pudo marcar la desinstalación como fallida.',
       );
     }
 

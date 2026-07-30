@@ -25,14 +25,22 @@ export class PppoeAuditoriaEntity {
     'contrasenaoperador',
     'contrasenassh',
 
+    'secret',
+    'secreto',
     'secretoplano',
     'secretocifrado',
     'secretoiv',
     'secretoauthtag',
 
+    'clave',
     'privatekey',
     'claveprivada',
+    'sshpassword',
+    'aeskey',
 
+    'token',
+    'accesstoken',
+    'refreshtoken',
     'authorization',
     'cookie',
   ]);
@@ -700,9 +708,10 @@ export class PppoeAuditoriaEntity {
    */
   private static assertSafeDataKey(key: string): void {
     const normalizedKey = key
-      .trim()
-      .toLowerCase()
-      .replace(/[\s_-]/g, '');
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .toLowerCase();
 
     if (this.SENSITIVE_DATA_KEYS.has(normalizedKey)) {
       throw new Error(

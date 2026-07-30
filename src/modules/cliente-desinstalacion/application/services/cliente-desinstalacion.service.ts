@@ -30,10 +30,13 @@ import { AsignarTecnicoDesinstalacionUseCase } from '../use-cases/asignar-tecnic
 import { ListarTecnicosDesinstalacionUseCase } from '../use-cases/listar-tecnicos-desintalacion.use-case';
 import { EliminarTecnicoDesinstalacionUseCase } from '../use-cases/eliminar-tecnico-desinstalacion.use-case';
 import { AsignarTecnicoDesinstalacionDto } from '../dto/tecnico-desinstalacion.dto';
+import { MarcarFallidaClienteDesinstalacionUseCase } from '../use-cases/marcar-fallida-cliente-desinstalacion.use-case';
+import { MarcarFallidaClienteDesinstalacionDto } from '../dto/marcar-fallida-cliente-desinstalacion.dto';
 
 @Injectable()
 export class ClienteDesInstalacionApplicationService {
   constructor(
+    private readonly marcarFallidaUseCase: MarcarFallidaClienteDesinstalacionUseCase,
     private readonly crearDesinstalacionUseCase: CrearDesinstalacionUseCase,
     private readonly listarClienteDesinstalacionesUseCase: ListarClienteDesinstalacionesUseCase,
     private readonly obtenerClienteDesinstalacionUseCase: ObtenerClienteDesinstalacionUseCase,
@@ -74,6 +77,13 @@ export class ClienteDesInstalacionApplicationService {
 
   actualizar(id: number, dto: ActualizarClienteDesinstalacionDto) {
     return this.actualizarClienteDesinstalacionUseCase.execute({
+      id,
+      ...dto,
+    });
+  }
+
+  marcarFallida(id: number, dto: MarcarFallidaClienteDesinstalacionDto) {
+    return this.marcarFallidaUseCase.execute({
       id,
       ...dto,
     });

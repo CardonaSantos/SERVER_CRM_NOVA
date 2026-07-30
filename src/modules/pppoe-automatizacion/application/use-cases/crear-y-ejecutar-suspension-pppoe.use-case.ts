@@ -41,18 +41,20 @@ import {
 
 /**
  * Actor que solicita la suspensión.
+ *
+ * La identidad se conserva mediante iniciadoPorId
+ * y su relación con Usuario.
  */
 export type ActorSuspensionPppoeInput = {
   origen: OrigenOperacionPppoe;
 
   iniciadoPorId: number | null;
 
-  operadorNombre?: string | null;
-
   ipOrigen?: string | null;
 
   userAgent?: string | null;
 };
+
 /**
  * Datos necesarios para crear y ejecutar
  * una operación SUSPENDER_SERVICIO.
@@ -64,11 +66,9 @@ export type CrearYEjecutarSuspensionPppoeInput = {
 
   claveIdempotencia: string;
 
+  motivo: string;
+
   actor: ActorSuspensionPppoeInput;
-
-  motivo?: string | null;
-
-  instalacionId?: number | null;
 };
 
 /**
@@ -265,11 +265,15 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
 
       perfilHomologacionId: perfilProps.id,
 
-      instalacionId: input.instalacionId ?? null,
+      /*
+       * La suspensión manual actúa sobre la cuenta PPPoE,
+       * no sobre la instalación que originó el acceso.
+       */
+      instalacionId: null,
 
       desinstalacionId: null,
 
-      claveIdempotencia: input.claveIdempotencia,
+      claveIdempotencia: input.claveIdempotencia.trim(),
 
       tipo: TipoOperacionPppoe.SUSPENDER_SERVICIO,
 
@@ -277,15 +281,9 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
 
       iniciadoPorId: input.actor.iniciadoPorId,
 
-      /*
-       * La política de autorización de suspensión puede
-       * endurecerse posteriormente para acciones manuales.
-       *
-       * Por ahora este flujo se ejecuta sin reautenticación.
-       */
       requiereReautenticacion: false,
 
-      motivo: input.motivo ?? 'Suspensión del servicio PPPoE en MikroTik.',
+      motivo: input.motivo.trim(),
 
       usuarioPppoeSnapshot: cuenta.usuario,
 
@@ -302,8 +300,6 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
 
         actor: {
           operadorId: input.actor.iniciadoPorId,
-
-          operadorNombre: input.actor.operadorNombre ?? null,
 
           ipOrigen: input.actor.ipOrigen ?? null,
 
@@ -454,8 +450,7 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
     const sameType =
       params.operacion.tipo === TipoOperacionPppoe.SUSPENDER_SERVICIO;
 
-    const sameInstallation =
-      params.operacion.instalacionId === (params.input.instalacionId ?? null);
+    const hasNoInstallation = params.operacion.instalacionId === null;
 
     const hasNoUninstallation = params.operacion.desinstalacionId === null;
 
@@ -463,7 +458,7 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
       sameAccount &&
       sameRouter &&
       sameType &&
-      sameInstallation &&
+      hasNoInstallation &&
       hasNoUninstallation
     ) {
       return;
@@ -525,7 +520,13 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
 
     this.assertRequiredString(input.claveIdempotencia, 'claveIdempotencia');
 
-    this.assertOptionalPositiveInteger(input.instalacionId, 'instalacionId');
+    this.assertRequiredString(input.motivo, 'motivo');
+
+    if (input.motivo.trim().length < 5) {
+      throw new BadRequestException(
+        'motivo debe contener al menos 5 caracteres.',
+      );
+    }
 
     if (!input.actor) {
       throw new BadRequestException('actor es obligatorio.');
@@ -558,15 +559,5 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
     if (typeof value !== 'string' || !value.trim()) {
       throw new BadRequestException(`${field} es obligatorio.`);
     }
-  }
-  private assertOptionalPositiveInteger(
-    value: number | null | undefined,
-    field: string,
-  ): void {
-    if (value === null || value === undefined) {
-      return;
-    }
-
-    this.assertPositiveInteger(value, field);
   }
 }

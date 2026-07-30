@@ -32,6 +32,8 @@ export class ActualizarClienteDesinstalacionUseCase {
       servicioInternetId: command.servicioInternetId,
       ticketId: command.ticketId,
 
+      accesoInternetId: command.accesoInternetId,
+
       solicitadoPorId: command.solicitadoPorId,
       ejecutadoPorId: command.ejecutadoPorId,
 
