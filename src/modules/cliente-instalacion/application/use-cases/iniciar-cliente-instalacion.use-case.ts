@@ -47,14 +47,14 @@ export type IniciarInstalacionClienteCommand = IniciarInstalacionClienteDto &
   };
 
 /**
- * Inicia una instalación.
- *
- * Cuando la instalación contiene un acceso nuevo
- * FIBRA_GPON + PPPoE:
- *
  * 1. valida que exista una prealta;
  * 2. cambia la instalación a EN_PROCESO;
- * 3. crea o confirma el secret deshabilitado en MikroTik.
+ * 3. crea o confirma el secret en MikroTik;
+ * 4. opcionalmente lo habilita cuando
+ *    activarServicio=true.
+ *
+ * La instalación permanece EN_PROCESO hasta
+ * completar el trabajo físico.
  *
  * La operación SSH no participa en una transacción
  * de base de datos.
@@ -173,7 +173,59 @@ export class IniciarClienteInstalacionUseCase {
     });
 
     this.assertSuccessfulProvisioning(resultadoPppoe);
+    this.assertSuccessfulProvisioning(resultadoPppoe);
 
+    /*
+     * Por defecto conservamos el flujo actual:
+     * el secret queda creado y deshabilitado.
+     */
+    if (command.activarServicio !== true) {
+      return instalacionPersistida;
+    }
+
+    /*
+     * Cuando activarServicio=true, habilitamos el
+     * secret inmediatamente dentro de esta misma
+     * solicitud de inicio.
+     */
+    const resultadoActivacion = await this.pppoeProvisionamiento.activarSecret({
+      empresaId: instalacionPersistida.empresaId,
+
+      cuentaPppoeId,
+
+      instalacionId: command.id,
+
+      /*
+       * Debe coincidir con la clave utilizada por
+       * CompletarClienteInstalacionUseCase.
+       *
+       * Así, al completar posteriormente, no se
+       * repetirá realmente la operación SSH.
+       */
+      claveIdempotencia: this.buildActivationIdempotencyKey({
+        instalacionId: command.id,
+
+        cuentaPppoeId,
+      }),
+
+      actor: {
+        origen: OrigenOperacionPppoe.OPERADOR,
+
+        iniciadoPorId: command.operadorId,
+
+        operadorNombre: command.operadorNombre ?? null,
+
+        ipOrigen: command.ipOrigen ?? null,
+
+        userAgent: command.userAgent ?? null,
+      },
+
+      motivo: `Activación inmediata del secret PPPoE al iniciar la instalación ${command.id}.`,
+    });
+
+    this.assertSuccessfulActivation(resultadoActivacion);
+
+    return instalacionPersistida;
     return instalacionPersistida;
   }
 
@@ -276,5 +328,52 @@ export class IniciarClienteInstalacionUseCase {
     if (!Number.isInteger(value) || value <= 0) {
       throw new BadRequestException(`${field} debe ser un entero positivo.`);
     }
+  }
+
+  private buildActivationIdempotencyKey(params: {
+    instalacionId: number;
+
+    cuentaPppoeId: number;
+  }): string {
+    return [
+      'cliente-instalacion',
+
+      params.instalacionId,
+
+      'cuenta-pppoe',
+
+      params.cuentaPppoeId,
+
+      'activar-secret',
+    ].join(':');
+  }
+
+  private assertSuccessfulActivation(
+    resultado: EjecutarOperacionPppoeResult,
+  ): void {
+    if (resultado.estadoOperacion === EstadoOperacionPppoe.EXITOSA) {
+      return;
+    }
+
+    if (resultado.estadoOperacion === EstadoOperacionPppoe.EJECUTANDO) {
+      throw new ConflictException(
+        `La operación de activación PPPoE ${resultado.operacionId} ya está siendo ejecutada por otra solicitud.`,
+      );
+    }
+
+    if (
+      resultado.estadoOperacion === EstadoOperacionPppoe.FALLIDA ||
+      resultado.estadoOperacion === EstadoOperacionPppoe.PARCIAL
+    ) {
+      throw new ConflictException(
+        resultado.errorMensaje
+          ? `El secret fue creado, pero falló su activación: ${resultado.errorMensaje}`
+          : `El secret fue creado, pero la operación de activación ${resultado.operacionId} terminó en estado ${resultado.estadoOperacion}.`,
+      );
+    }
+
+    throw new ConflictException(
+      `La operación de activación PPPoE ${resultado.operacionId} quedó en estado ${resultado.estadoOperacion} y no confirmó que el secret estuviera habilitado.`,
+    );
   }
 }

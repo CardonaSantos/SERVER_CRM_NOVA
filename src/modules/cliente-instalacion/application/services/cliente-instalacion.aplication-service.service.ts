@@ -167,6 +167,8 @@ export class ClienteInstalacionApplicationService {
     return this.iniciarClienteInstalacionUseCase.execute({
       id: params.instalacionId,
 
+      activarServicio: params.dto.activarServicio ?? false,
+
       fechaInicio: params.dto.fechaInicio,
 
       operadorId: params.operadorId,

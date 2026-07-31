@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsDateString,
   IsOptional,
   IsString,
@@ -14,4 +15,8 @@ export class IniciarInstalacionClienteDto {
   @IsDateString()
   @IsOptional()
   fechaInicio?: Date;
+
+  @IsOptional()
+  @IsBoolean()
+  activarServicio?: boolean;
 }
