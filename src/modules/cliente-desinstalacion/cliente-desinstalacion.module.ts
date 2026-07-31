@@ -11,6 +11,7 @@ import { ReprogramarClienteDesinstalacionUseCase } from './application/use-cases
 import { ActualizarCostosDesinstalacionUseCase } from './application/use-cases/actualizar-costos-desinstalacion.use-case';
 import {
   CLIENTE_DESINSTALACION_AUTORIZACION_REPOSITORY,
+  CLIENTE_DESINSTALACION_MEDIA_REPOSITORY,
   CLIENTE_DESINSTALACION_REPOSITORY,
   CLIENTE_DESINSTALACION_TECNICO_REPOSITORY,
 } from './infra/tokens/cliente-desinstalacion.token';
@@ -32,11 +33,30 @@ import { PpoeAccesoInternetModule } from '../pppoe-acceso-internet/ppoe-acceso-i
 
 import { ValidarAutorizacionDesinstalacionService } from './application/services/validar-autorizacion-desinstalacion.service';
 import { AuthModule } from 'src/auth/auth.module';
+import { PppoeAutomatizacionModule } from '../pppoe-automatizacion/pppoe-automatizacion.module';
+import { PppoeClienteCuentaModule } from '../pppoe-cliente-cuenta/ppoe-cliente-cuenta.module';
+import { TipoEvidenciaClienteOperacion } from '../cliente-instalacion/domain/enums/tipo-evidencia-cliente-operacion.enum';
+import { SubirEvidenciaDesinstalacionUseCase } from './application/use-cases/subir-evidencia-desinstalacion.use-case';
+import { ClienteDesinstalacionMediaPrismaRepository } from './infra/prisma/cliente-desinstalacion-media.prisma.repository';
+import { DigitalOceanMediaModule } from '../digital-ocean-media/digital-ocean-media.module';
 
 @Module({
-  imports: [PrismaModule, PpoeAccesoInternetModule, AuthModule],
+  imports: [
+    PrismaModule,
+
+    PpoeAccesoInternetModule,
+
+    PppoeClienteCuentaModule,
+
+    PppoeAutomatizacionModule,
+
+    AuthModule,
+
+    DigitalOceanMediaModule,
+  ],
   controllers: [ClienteDesinstalacionController],
   providers: [
+    SubirEvidenciaDesinstalacionUseCase,
     ValidarAutorizacionDesinstalacionService,
     ClienteDesInstalacionApplicationService,
     MarcarFallidaClienteDesinstalacionUseCase,
@@ -70,6 +90,10 @@ import { AuthModule } from 'src/auth/auth.module';
     {
       provide: CLIENTE_DESINSTALACION_TECNICO_REPOSITORY,
       useClass: ClienteDesinstalacionTecnicoPrismaRepository,
+    },
+    {
+      provide: CLIENTE_DESINSTALACION_MEDIA_REPOSITORY,
+      useClass: ClienteDesinstalacionMediaPrismaRepository,
     },
   ],
   exports: [ClienteDesInstalacionApplicationService],

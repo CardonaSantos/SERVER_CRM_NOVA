@@ -15,7 +15,7 @@ import {
 import { ELIMINAR_MEDIA_USECASE, SUBIR_MEDIA_USECASE } from '../tokens/tokens';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { SubirMediaUseCase } from '../application/use-cases/subir-media.usecase';
-import { TipoMedia } from '@prisma/client';
+import { CategoriaMedia, TipoMedia } from '@prisma/client';
 import { EliminarMediaUseCase } from '../application/use-cases/eliminar-media.usecase';
 interface DeleteMediaDto {
   id: number;
@@ -63,7 +63,7 @@ export class MediaController {
           albumId: albumId ? Number(albumId) : undefined,
           subidoPorId: subidoPorId ? Number(subidoPorId) : undefined,
           publico: publico ? publico === 'true' : true,
-          categoria: categoria!,
+          categoria: categoria as CategoriaMedia,
           tipo:
             tipo ??
             (file.mimetype.startsWith('video/')

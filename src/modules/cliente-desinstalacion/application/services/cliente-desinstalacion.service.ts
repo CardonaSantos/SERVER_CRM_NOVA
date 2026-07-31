@@ -32,6 +32,10 @@ import { EliminarTecnicoDesinstalacionUseCase } from '../use-cases/eliminar-tecn
 import { AsignarTecnicoDesinstalacionDto } from '../dto/tecnico-desinstalacion.dto';
 import { MarcarFallidaClienteDesinstalacionUseCase } from '../use-cases/marcar-fallida-cliente-desinstalacion.use-case';
 import { MarcarFallidaClienteDesinstalacionDto } from '../dto/marcar-fallida-cliente-desinstalacion.dto';
+import {
+  SubirEvidenciaDesinstalacionCommand,
+  SubirEvidenciaDesinstalacionUseCase,
+} from '../use-cases/subir-evidencia-desinstalacion.use-case';
 
 @Injectable()
 export class ClienteDesInstalacionApplicationService {
@@ -56,6 +60,8 @@ export class ClienteDesInstalacionApplicationService {
     private readonly asignarTecnicoDesinstalacionUseCase: AsignarTecnicoDesinstalacionUseCase,
     private readonly listarTecnicosDesinstalacionUseCase: ListarTecnicosDesinstalacionUseCase,
     private readonly eliminarTecnicoDesinstalacionUseCase: EliminarTecnicoDesinstalacionUseCase,
+
+    private readonly subirEvidenciaDesinstalacionUseCase: SubirEvidenciaDesinstalacionUseCase,
   ) {}
 
   crear(dto: CrearClienteDesinstalacionDto, creadoPorId: number) {
@@ -127,6 +133,10 @@ export class ClienteDesInstalacionApplicationService {
       id,
       ...dto,
     });
+  }
+
+  cargarEvidencia(command: SubirEvidenciaDesinstalacionCommand) {
+    return this.subirEvidenciaDesinstalacionUseCase.execute(command);
   }
 
   // registrarFirma(id: number, dto: RegistrarFirmaDesinstalacionDto) {

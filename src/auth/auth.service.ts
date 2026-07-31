@@ -94,12 +94,11 @@ export class AuthService {
       const usuario = await this.validarUsuario(correo, contrasena);
 
       if (!usuario) {
-        // Error genérico para el cliente (Seguridad)
         throw new UnauthorizedException('Credenciales inválidas');
       }
 
       const payload = {
-        sub: usuario.id, // Estándar JWT 'sub' es el ID
+        sub: usuario.id,
         nombre: usuario.nombre,
         correo: usuario.correo,
         rol: usuario.rol,

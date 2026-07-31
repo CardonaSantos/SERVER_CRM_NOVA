@@ -176,6 +176,8 @@ export class ClienteInstalacionApplicationService {
       ipOrigen: params.ipOrigen ?? null,
 
       userAgent: params.userAgent ?? null,
+
+      contrasenaActual: params.dto.contrasenaActual,
     });
   }
 

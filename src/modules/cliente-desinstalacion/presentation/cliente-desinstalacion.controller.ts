@@ -10,7 +10,9 @@ import {
   Query,
   Req,
   UnauthorizedException,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
@@ -37,6 +39,8 @@ import { ClienteDesinstalacionPresenter } from './cliente-desinstalacion.present
 import { ClienteDesinstalacionTecnicoPresenter } from './cliente-desinstalacion-tecnico.presenter';
 import { MarcarFallidaClienteDesinstalacionDto } from '../application/dto/marcar-fallida-cliente-desinstalacion.dto';
 import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
+import { SubirEvidenciaDesinstalacionDto } from '../application/dto/subir-evidencia-desinstalacion.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @UseGuards(JwtAuthGuard)
 @UsePipes(
@@ -221,6 +225,40 @@ export class ClienteDesinstalacionController {
   }
 
   // AUTORIZACIÓN POR DESINSTALACIÓN
+
+  // EVIDENCIAS
+
+  @Post(':id/evidencias/upload')
+  @UseInterceptors(FileInterceptor('file'))
+  async subirEvidencia(
+    @Param('id', ParseIntPipe)
+    id: number,
+
+    @UploadedFile()
+    file: Express.Multer.File,
+
+    @Body()
+    dto: SubirEvidenciaDesinstalacionDto,
+
+    @Req()
+    req: any,
+  ) {
+    const subidoPorId = this.obtenerUsuarioId(req);
+
+    return this.clienteDesinstalacionService.cargarEvidencia({
+      desinstalacionId: id,
+
+      subidoPorId,
+
+      file,
+
+      tipo: dto.tipo,
+
+      descripcion: dto.descripcion ?? null,
+
+      orden: dto.orden ?? 0,
+    });
+  }
 
   @Post(':id/autorizaciones')
   async crearAutorizacion(

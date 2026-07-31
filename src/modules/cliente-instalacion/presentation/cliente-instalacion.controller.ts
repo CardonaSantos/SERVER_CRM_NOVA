@@ -37,19 +37,6 @@ import { UseGuards } from '@nestjs/common';
 
 import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 
-type IniciarClienteInstalacionServiceParams = {
-  instalacionId: number;
-
-  dto: IniciarInstalacionClienteDto;
-
-  operadorId: number;
-
-  operadorNombre?: string | null;
-
-  ipOrigen?: string | null;
-
-  userAgent?: string | null;
-};
 type AuthenticatedRequest = Request & {
   user?: {
     id?: number | string;
@@ -61,6 +48,7 @@ type AuthenticatedRequest = Request & {
   };
 };
 
+@UseGuards(JwtAuthGuard)
 @UsePipes(
   new ValidationPipe({
     transform: true,
@@ -76,10 +64,18 @@ export class ClienteInstalacionController {
   ) {}
 
   @Post()
-  async crear(@Body() dto: CrearClienteInstalacionDto) {
+  async crear(
+    @Body()
+    dto: CrearClienteInstalacionDto,
+
+    @Req()
+    req: AuthenticatedRequest,
+  ) {
+    const actor = this.getAuthenticatedActor(req);
+
     const result = await this.clienteInstalacionService.crear(
       dto,
-      dto.creadoPorId,
+      actor.operadorId,
     );
 
     return ClienteInstalacionPresenter.crearToHttp(result);
@@ -95,7 +91,11 @@ export class ClienteInstalacionController {
 
     @Body()
     dto: ReintentarPrealtaPppoeDto,
+    @Req()
+    req: AuthenticatedRequest,
   ) {
+    const actor = this.getAuthenticatedActor(req);
+
     return this.clienteInstalacionService.reintentarPrealtaPppoe({
       instalacionId,
 
@@ -103,7 +103,7 @@ export class ClienteInstalacionController {
 
       dto,
 
-      operadorId: dto.operadorId,
+      operadorId: actor.operadorId,
 
       operadorNombre: null,
 
@@ -207,7 +207,6 @@ export class ClienteInstalacionController {
   }
 
   @Post('iniciar/:id')
-  @UseGuards(JwtAuthGuard)
   async iniciar(
     @Body()
     dto: IniciarInstalacionClienteDto,

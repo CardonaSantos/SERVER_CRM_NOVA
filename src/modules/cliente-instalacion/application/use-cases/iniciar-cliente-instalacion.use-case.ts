@@ -25,6 +25,7 @@ import {
   PPPOE_PROVISIONAMIENTO,
   PppoeProvisionamientoPort,
 } from 'src/modules/pppoe-automatizacion/domain/ports/pppoe-provisionamiento.port';
+import { AuthService } from 'src/auth/auth.service';
 
 /**
  * Usuario y contexto que originan el inicio
@@ -65,13 +66,20 @@ export class IniciarClienteInstalacionUseCase {
     private readonly clienteInstalacion: ClienteInstalacionRepositoryPort,
 
     private readonly resolverPppoe: ResolverPppoeInstalacionService,
-
+    private readonly authService: AuthService,
     @Inject(PPPOE_PROVISIONAMIENTO)
     private readonly pppoeProvisionamiento: PppoeProvisionamientoPort,
   ) {}
 
   async execute(command: IniciarInstalacionClienteCommand) {
     this.validateCommand(command);
+
+    // Validaciones de estado y relaciones existentes.
+
+    await this.authService.reautenticarUsuarioPorId(
+      command.operadorId,
+      command.contrasenaActual,
+    );
 
     const instalacion = await this.clienteInstalacion.findById({
       id: command.id,

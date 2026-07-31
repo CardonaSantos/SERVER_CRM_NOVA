@@ -1,4 +1,9 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { dayjs } from 'src/Utils/dayjs.config';
 import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entitie';
 import { ClienteDesInstalacionRepositoryPort } from '../../domain/ports/cliente-desinstalacion.repository.port';
@@ -7,6 +12,16 @@ import { IniciarClienteDesinstalacionDto } from '../dto/iniciar-cliente-desinsta
 import { ValidarAccesoDesinstalacionService } from '../services/validar-acceso-desinstalacion.service';
 
 import { ValidarAutorizacionDesinstalacionService } from '../services/validar-autorizacion-desinstalacion.service';
+import { AuthService } from 'src/auth/auth.service';
+import {
+  CLIENTE_PPPOE_CUENTA_REPOSITORY,
+  ClientePppoeCuentaRepositoryPort,
+} from 'src/modules/pppoe-cliente-cuenta/domain/ports/pppoe-cliente-cuenta.port';
+import {
+  PPPOE_PROVISIONAMIENTO,
+  PppoeProvisionamientoPort,
+} from 'src/modules/pppoe-automatizacion/domain/ports/pppoe-provisionamiento.port';
+import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
 
 export type IniciarClienteDesinstalacionCommand =
   IniciarClienteDesinstalacionDto & {
@@ -19,8 +34,18 @@ export class IniciarClienteDesinstalacionUseCase {
   constructor(
     @Inject(CLIENTE_DESINSTALACION_REPOSITORY)
     private readonly clienteDesinstalacionRepository: ClienteDesInstalacionRepositoryPort,
+
     private readonly validarAutorizacionDesinstalacionService: ValidarAutorizacionDesinstalacionService,
+
     private readonly validarAccesoDesinstalacionService: ValidarAccesoDesinstalacionService,
+
+    private readonly authService: AuthService,
+
+    @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
+    private readonly cuentaPppoeRepository: ClientePppoeCuentaRepositoryPort,
+
+    @Inject(PPPOE_PROVISIONAMIENTO)
+    private readonly pppoeProvisionamiento: PppoeProvisionamientoPort,
   ) {}
 
   async execute(
@@ -34,11 +59,23 @@ export class IniciarClienteDesinstalacionUseCase {
       throw new NotFoundException('Desinstalación no encontrada.');
     }
 
+    const esInicioNuevo = desinstalacion.isProgramada;
+
+    const esReanudacion = desinstalacion.isEnProceso;
+
+    if (!esInicioNuevo && !esReanudacion) {
+      throw new ConflictException(
+        `La desinstalación no puede iniciar ni reanudar la eliminación PPPoE desde el estado ${desinstalacion.estado}.`,
+      );
+    }
+
     await this.validarAutorizacionDesinstalacionService.exigirAprobada(
       command.id,
     );
 
     const props = desinstalacion.toPrimitives();
+
+    let cuentaPppoeId: number | null = null;
 
     if (
       props.accesoInternetId !== null &&
@@ -50,16 +87,78 @@ export class IniciarClienteDesinstalacionUseCase {
         servicioInternetId: props.servicioInternetId ?? null,
         accesoInternetId: props.accesoInternetId,
       });
+
+      const cuentaPppoe =
+        await this.cuentaPppoeRepository.findByAccesoInternetId(
+          props.accesoInternetId,
+        );
+
+      if (!cuentaPppoe) {
+        throw new ConflictException(
+          `El acceso de internet ${props.accesoInternetId} no tiene una cuenta PPPoE asociada.`,
+        );
+      }
+
+      if (cuentaPppoe.id === null) {
+        throw new ConflictException(
+          'La cuenta PPPoE asociada no contiene un identificador persistido.',
+        );
+      }
+
+      if (cuentaPppoe.empresaId !== props.empresaId) {
+        throw new ConflictException(
+          'La cuenta PPPoE no pertenece a la empresa de la desinstalación.',
+        );
+      }
+
+      cuentaPppoeId = cuentaPppoe.id;
     }
 
-    desinstalacion.iniciar({
-      ejecutadoPorId: command.ejecutadoPorId,
+    await this.authService.reautenticarUsuarioPorId(
+      command.ejecutadoPorId,
+      command.contrasenaActual,
+    );
 
-      fechaInicio: command.fechaInicio
-        ? dayjs(command.fechaInicio).toDate()
-        : undefined,
-    });
+    let desinstalacionGuardada = desinstalacion;
 
-    return this.clienteDesinstalacionRepository.save(desinstalacion);
+    if (esInicioNuevo) {
+      desinstalacion.iniciar({
+        ejecutadoPorId: command.ejecutadoPorId,
+
+        fechaInicio: command.fechaInicio
+          ? dayjs(command.fechaInicio).toDate()
+          : undefined,
+      });
+
+      desinstalacionGuardada =
+        await this.clienteDesinstalacionRepository.save(desinstalacion);
+    }
+
+    if (cuentaPppoeId !== null) {
+      await this.pppoeProvisionamiento.eliminarSecret({
+        empresaId: props.empresaId,
+
+        cuentaPppoeId,
+
+        desinstalacionId: command.id,
+
+        instalacionId: null,
+
+        claveIdempotencia: `desinstalacion:${command.id}:eliminar-secret:v1`,
+
+        motivo:
+          props.motivo !== null
+            ? `Desinstalación ${command.id} por motivo ${props.motivo}.`
+            : `Eliminación definitiva del secret PPPoE durante la desinstalación ${command.id}.`,
+
+        actor: {
+          origen: OrigenOperacionPppoe.OPERADOR,
+
+          iniciadoPorId: command.ejecutadoPorId,
+        },
+      });
+    }
+
+    return desinstalacionGuardada;
   }
 }

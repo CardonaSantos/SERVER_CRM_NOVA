@@ -38,10 +38,19 @@ export type CompletarInstalacionActor = {
 };
 
 export type CompletarClienteInstalacionCommand =
-  CompletarClienteInstalacionDto &
-    CompletarInstalacionActor & {
-      id: number;
-    };
+  CompletarClienteInstalacionDto & {
+    id: number;
+
+    completadoPorId: number;
+
+    operadorId: number;
+
+    operadorNombre?: string | null;
+
+    ipOrigen?: string | null;
+
+    userAgent?: string | null;
+  };
 
 /**
  * Completa una instalación y, cuando se solicita,

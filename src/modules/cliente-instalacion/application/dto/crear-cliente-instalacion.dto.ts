@@ -77,11 +77,6 @@ export class CrearClienteInstalacionDto {
   @Min(1)
   asesorId?: number;
 
-  @Transform(toNumber)
-  @IsInt()
-  @Min(1)
-  creadoPorId: number;
-
   /*
    * Acceso de internet
    */

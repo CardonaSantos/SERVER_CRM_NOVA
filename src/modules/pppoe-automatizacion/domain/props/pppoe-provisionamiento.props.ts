@@ -115,10 +115,10 @@ export type EliminarSecretPppoeInput =
     desinstalacionId: number;
 
     /**
-     * Instalación relacionada, cuando todavía
-     * se conserva esa referencia operativa.
+     * Instalación relacionada, cuando se conserva
+     * una referencia operativa.
      */
-    instalacionId: number;
+    instalacionId?: number | null;
   };
 
 /**

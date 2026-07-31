@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { dayjs } from 'src/Utils/dayjs.config';
 import { Dayjs } from 'dayjs';
+
+import { dayjs } from 'src/Utils/dayjs.config';
 
 import {
   CredencialesPppoeGeneradas,

@@ -15,12 +15,12 @@ export class NovaPppoeCredentialGenerator
 {
   generate({
     clienteId,
-    accesoInternetId,
+    // accesoInternetId,
     fecha = new Date(),
   }: GenerarCredencialesPppoeInput): CredencialesPppoeGeneradas {
     this.assertPositiveId(clienteId, 'clienteId');
 
-    this.assertPositiveId(accesoInternetId, 'accesoInternetId');
+    // this.assertPositiveId(accesoInternetId, 'accesoInternetId');
 
     const fechaGuatemala = dayjs(fecha);
 
@@ -33,7 +33,7 @@ export class NovaPppoeCredentialGenerator
     return {
       usuario: this.buildUsername({
         clienteId,
-        accesoInternetId,
+        // accesoInternetId,
       }),
 
       secretoPlano: this.buildSecret(fechaGuatemala),
@@ -44,9 +44,9 @@ export class NovaPppoeCredentialGenerator
 
   private buildUsername(params: {
     clienteId: number;
-    accesoInternetId: number;
+    // accesoInternetId: number;
   }): string {
-    return `${params.clienteId}-${params.accesoInternetId}`;
+    return `${params.clienteId}`;
   }
 
   private buildSecret(fecha: Dayjs): string {

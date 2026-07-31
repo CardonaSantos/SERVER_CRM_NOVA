@@ -1,11 +1,11 @@
 export type GenerarCredencialesPppoeInput = {
   clienteId: number;
 
-  /**
-   * Identifica de forma única el acceso para el cual
-   * se están generando las credenciales.
-   */
-  accesoInternetId: number;
+  // /**
+  //  * Identifica de forma única el acceso para el cual
+  //  * se están generando las credenciales.
+  //  */
+  // accesoInternetId: number;
 
   /**
    * Se permite suministrarla para pruebas.
@@ -19,10 +19,6 @@ export type CredencialesPppoeGeneradas = {
   secretoPlano: string;
   generadoEn: Date;
 };
-
-export interface PppoeCredentialGeneratorPort {
-  generate(input: GenerarCredencialesPppoeInput): CredencialesPppoeGeneradas;
-}
 
 export interface PppoeCredentialGeneratorPort {
   generate(input: GenerarCredencialesPppoeInput): CredencialesPppoeGeneradas;

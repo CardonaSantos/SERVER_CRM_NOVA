@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
 
 import { Prisma } from '@prisma/client';
 
@@ -518,6 +518,9 @@ type DetalleRecord = Prisma.ClienteDesinstalacionGetPayload<{
 export class ClienteDesInstalacionPrismaRepository
   implements ClienteDesInstalacionRepositoryPort
 {
+  private readonly logger = new Logger(
+    ClienteDesInstalacionPrismaRepository.name,
+  );
   constructor(private readonly prisma: PrismaService) {}
 
   /**
@@ -529,11 +532,15 @@ export class ClienteDesInstalacionPrismaRepository
   async create(
     entity: ClienteDesinstalacionEntity,
   ): Promise<ClienteDesinstalacionEntity> {
-    const record = await this.prisma.clienteDesinstalacion.create({
-      data: ClienteDesinstalacionPrismaMapper.toCreatePersistence(entity),
-    });
+    try {
+      const record = await this.prisma.clienteDesinstalacion.create({
+        data: ClienteDesinstalacionPrismaMapper.toCreatePersistence(entity),
+      });
 
-    return ClienteDesinstalacionPrismaMapper.toDomain(record);
+      return ClienteDesinstalacionPrismaMapper.toDomain(record);
+    } catch (error) {
+      this.lanzarErrorDesinstalacionDuplicada(error);
+    }
   }
 
   /**
@@ -641,21 +648,25 @@ export class ClienteDesInstalacionPrismaRepository
   async save(
     entity: ClienteDesinstalacionEntity,
   ): Promise<ClienteDesinstalacionEntity> {
-    const props = entity.toPrimitives();
+    try {
+      const props = entity.toPrimitives();
 
-    if (!props.id) {
-      throw new Error('No se puede guardar una desinstalación sin id.');
+      if (!props.id) {
+        throw new Error('No se puede guardar una desinstalación sin id.');
+      }
+
+      const saved = await this.prisma.clienteDesinstalacion.update({
+        where: {
+          id: props.id,
+        },
+
+        data: ClienteDesinstalacionPrismaMapper.toUpdatePersistence(entity),
+      });
+
+      return ClienteDesinstalacionPrismaMapper.toDomain(saved);
+    } catch (error) {
+      this.lanzarErrorDesinstalacionDuplicada(error);
     }
-
-    const saved = await this.prisma.clienteDesinstalacion.update({
-      where: {
-        id: props.id,
-      },
-
-      data: ClienteDesinstalacionPrismaMapper.toUpdatePersistence(entity),
-    });
-
-    return ClienteDesinstalacionPrismaMapper.toDomain(saved);
   }
 
   /**
@@ -1357,5 +1368,26 @@ export class ClienteDesInstalacionPrismaRepository
     }
 
     return where;
+  }
+
+  private lanzarErrorDesinstalacionDuplicada(error: unknown): never {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      const target = error.meta?.target;
+
+      const campos = Array.isArray(target)
+        ? target.map(String)
+        : [String(target ?? '')];
+
+      if (campos.includes('accesoInternetId')) {
+        throw new ConflictException(
+          'El acceso de internet ya tiene una desinstalación activa.',
+        );
+      }
+    }
+
+    throw error;
   }
 }
