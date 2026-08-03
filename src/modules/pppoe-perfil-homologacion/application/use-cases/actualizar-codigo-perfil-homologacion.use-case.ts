@@ -5,10 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { UpdatePpoePerfilHomologacionDto } from '../../dto/update-ppoe-perfil-homologacion.dto';
 import { PerfilHomologacionEntity } from '../../domain/entities/ppoe-perfil-homologacion.entity';
 import { PerfilHomologacionRepositoryPort } from '../../domain/ports/ppoe-perfil-homologacion.port';
 import { PPPOE_PERFIL_HOMOLOGACION_REPOSITORY } from '../../infra/tokens/ppoe-perfil-homologacion.token';
+import { UpdatePpoePerfilHomologacionDto } from '../dto/update-ppoe-perfil-homologacion.dto';
 
 export type ActualizarCodigoPerfilHomologacionCommand =
   UpdatePpoePerfilHomologacionDto & {

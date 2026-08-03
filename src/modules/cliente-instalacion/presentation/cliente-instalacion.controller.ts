@@ -71,6 +71,8 @@ export class ClienteInstalacionController {
     @Req()
     req: AuthenticatedRequest,
   ) {
+    this.logger.log(`DTO recibido:\n${JSON.stringify(dto, null, 2)}`);
+
     const actor = this.getAuthenticatedActor(req);
 
     const result = await this.clienteInstalacionService.crear(

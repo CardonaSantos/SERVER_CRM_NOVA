@@ -10,6 +10,7 @@ import { DesactivarPerfilHomologacionUseCase } from './application/use-cases/des
 import { PPPOE_PERFIL_HOMOLOGACION_REPOSITORY } from './infra/tokens/ppoe-perfil-homologacion.token';
 import { PerfilHomologacionPrismaRepository } from './infra/prisma/ppoe-perfil-homologacion.prisma.repository';
 import { ListarPerfilesHomologacionUseCase } from './application/use-cases/listar-perfiles-homologacion.use-case';
+import { ListarPerfilesHomologacionSeleccionablesUseCase } from './application/use-cases/listar-perfiles-homologacion-seleccionables.use-case';
 
 @Module({
   imports: [PrismaModule],
@@ -24,6 +25,7 @@ import { ListarPerfilesHomologacionUseCase } from './application/use-cases/lista
     ActualizarCodigoPerfilHomologacionUseCase,
     ActivarPerfilHomologacionUseCase,
     DesactivarPerfilHomologacionUseCase,
+    ListarPerfilesHomologacionSeleccionablesUseCase,
 
     {
       provide: PPPOE_PERFIL_HOMOLOGACION_REPOSITORY,

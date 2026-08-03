@@ -1,8 +1,8 @@
 import { Injectable, NotImplementedException } from '@nestjs/common';
 
-import { CreatePpoePerfilHomologacionDto } from '../../dto/create-ppoe-perfil-homologacion.dto';
+import { CreatePpoePerfilHomologacionDto } from '../dto/create-ppoe-perfil-homologacion.dto';
 
-import { UpdatePpoePerfilHomologacionDto } from '../../dto/update-ppoe-perfil-homologacion.dto';
+import { UpdatePpoePerfilHomologacionDto } from '../dto/update-ppoe-perfil-homologacion.dto';
 
 import { PerfilHomologacionEntity } from '../../domain/entities/ppoe-perfil-homologacion.entity';
 
@@ -19,6 +19,8 @@ import { CambiarEstadoPpoePerfilHomologacionDto } from '../dto/cambiar-estado-pp
 import { ListarPerfilesHomologacionUseCase } from '../use-cases/listar-perfiles-homologacion.use-case';
 import { ListarPpoePerfilesHomologacionQueryDto } from '../dto/listar-ppoe-perfiles-homologacion-query.dto';
 import { PerfilHomologacionPaginatedResult } from '../../domain/models/pppoe-perfil-homologacion.read-model';
+import { ListarPerfilesHomologacionSeleccionablesUseCase } from '../use-cases/listar-perfiles-homologacion-seleccionables.use-case';
+import { ListarPerfilesHomologacionSeleccionablesQuery } from '../dto/homologacion-query';
 
 @Injectable()
 export class PpoePerfilHomologacionService {
@@ -34,6 +36,8 @@ export class PpoePerfilHomologacionService {
     private readonly desactivarPerfilHomologacionUseCase: DesactivarPerfilHomologacionUseCase,
 
     private readonly listarPerfilesHomologacionUseCase: ListarPerfilesHomologacionUseCase,
+
+    private readonly listarPerfilesHomologacionSelect: ListarPerfilesHomologacionSeleccionablesUseCase,
   ) {}
 
   create(
@@ -104,5 +108,16 @@ export class PpoePerfilHomologacionService {
     throw new NotImplementedException(
       'Las homologaciones no se eliminan físicamente. Utilice la operación de desactivación.',
     );
+  }
+
+  /**
+   *
+   * @param query
+   * @returns
+   */
+  get_homologaciones_select(
+    query: ListarPerfilesHomologacionSeleccionablesQuery,
+  ) {
+    return this.listarPerfilesHomologacionSelect.execute(query);
   }
 }

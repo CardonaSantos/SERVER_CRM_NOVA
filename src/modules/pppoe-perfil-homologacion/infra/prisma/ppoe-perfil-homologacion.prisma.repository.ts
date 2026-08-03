@@ -14,6 +14,8 @@ import {
   PerfilHomologacionFindManyFilters,
   PerfilHomologacionListItem,
   PerfilHomologacionPaginatedResult,
+  PerfilHomologacionSeleccionable,
+  PerfilHomologacionSeleccionableFilters,
 } from '../../domain/models/pppoe-perfil-homologacion.read-model';
 
 const perfilHomologacionReadInclude = {
@@ -299,6 +301,100 @@ export class PerfilHomologacionPrismaRepository
 
       totalPages: Math.ceil(total / limit),
     };
+  }
+
+  async findSeleccionables({
+    // empresaId,
+    search,
+  }: PerfilHomologacionSeleccionableFilters): Promise<
+    PerfilHomologacionSeleccionable[]
+  > {
+    const where: Prisma.PppoePerfilHomologacionWhereInput = {
+      // empresaId,
+      activo: true,
+      mikrotikRouter: {
+        is: {
+          // empresaId,
+          activo: true,
+        },
+      },
+      servicioInternet: {
+        is: {
+          // empresaId,
+          estado: 'ACTIVO',
+        },
+      },
+    };
+
+    if (search) {
+      where.OR = [
+        {
+          codigoPerfil: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+        {
+          mikrotikRouter: {
+            is: {
+              nombre: {
+                contains: search,
+                mode: 'insensitive',
+              },
+            },
+          },
+        },
+        {
+          servicioInternet: {
+            is: {
+              nombre: {
+                contains: search,
+                mode: 'insensitive',
+              },
+            },
+          },
+        },
+      ];
+    }
+
+    return this.prisma.pppoePerfilHomologacion.findMany({
+      where,
+      orderBy: [
+        {
+          servicioInternet: {
+            nombre: 'asc',
+          },
+        },
+        {
+          mikrotikRouter: {
+            nombre: 'asc',
+          },
+        },
+        {
+          codigoPerfil: 'asc',
+        },
+      ],
+      select: {
+        id: true,
+        codigoPerfil: true,
+        mikrotikRouterId: true,
+        servicioInternetId: true,
+        mikrotikRouter: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
+        servicioInternet: {
+          select: {
+            id: true,
+            nombre: true,
+            velocidad: true,
+            precio: true,
+          },
+        },
+      },
+    });
   }
 
   private mapReadModel(

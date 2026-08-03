@@ -3,6 +3,8 @@ import {
   PerfilHomologacionDetalle,
   PerfilHomologacionFindManyFilters,
   PerfilHomologacionPaginatedResult,
+  PerfilHomologacionSeleccionable,
+  PerfilHomologacionSeleccionableFilters,
 } from '../models/pppoe-perfil-homologacion.read-model';
 
 export type BuscarPerfilPorRouterServicioParams = {
@@ -78,4 +80,12 @@ export interface PerfilHomologacionRepositoryPort {
   findMany(
     filters: PerfilHomologacionFindManyFilters,
   ): Promise<PerfilHomologacionPaginatedResult>;
+
+  // SELECCIONABLE
+  findSeleccionables({
+    // empresaId,
+    search,
+  }: PerfilHomologacionSeleccionableFilters): Promise<
+    PerfilHomologacionSeleccionable[]
+  >;
 }

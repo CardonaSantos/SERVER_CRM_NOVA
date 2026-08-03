@@ -95,3 +95,34 @@ export type PerfilHomologacionPaginatedResult = {
 
   totalPages: number;
 };
+
+/**
+ * Lectura ligera para seleccionar una homologación desde otros flujos.
+ *
+ * El frontend es responsable de convertir estos datos a label/value.
+ */
+export type PerfilHomologacionSeleccionable = {
+  id: number;
+
+  codigoPerfil: string;
+
+  mikrotikRouterId: number;
+  servicioInternetId: number;
+
+  mikrotikRouter: {
+    id: number;
+    nombre: string;
+  };
+
+  servicioInternet: {
+    id: number;
+    nombre: string;
+    velocidad: string | null;
+    precio: number;
+  };
+};
+
+export type PerfilHomologacionSeleccionableFilters = {
+  // empresaId: number;
+  search?: string | null;
+};
