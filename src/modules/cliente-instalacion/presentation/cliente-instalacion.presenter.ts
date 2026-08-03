@@ -40,6 +40,7 @@ export class ClienteInstalacionPresenter {
       fechaActivacionServicio: props.fechaActivacionServicio,
 
       motivo: props.motivo,
+      descripcion: props.descripcion,
       observaciones: props.observaciones,
       resultado: props.resultado,
 
@@ -279,6 +280,17 @@ export class ClienteInstalacionPresenter {
         evidencias: detalle.conteos.evidencias,
         equipos: detalle.conteos.equipos,
       },
+
+      ticket: detalle.ticket
+        ? {
+            id: detalle.ticket.id,
+            titulo: detalle.ticket.titulo,
+            estado: detalle.ticket.estado,
+            prioridad: detalle.ticket.prioridad,
+            fechaApertura: detalle.ticket.fechaApertura,
+            fechaCierre: detalle.ticket.fechaCierre,
+          }
+        : null,
     };
   }
 

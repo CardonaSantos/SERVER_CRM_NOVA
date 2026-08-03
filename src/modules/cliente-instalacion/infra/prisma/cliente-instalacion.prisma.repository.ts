@@ -470,6 +470,17 @@ export class ClienteInstalacionPrismaRepository
       },
 
       include: {
+        ticket: {
+          select: {
+            id: true,
+            titulo: true,
+            estado: true,
+            prioridad: true,
+            fechaApertura: true,
+            fechaCierre: true,
+          },
+        },
+
         cliente: {
           select: {
             id: true,
@@ -721,6 +732,17 @@ export class ClienteInstalacionPrismaRepository
         evidencias: record._count.evidencias,
         equipos: record._count.equipos,
       },
+
+      ticket: record.ticket
+        ? {
+            id: record.ticket.id,
+            titulo: record.ticket.titulo,
+            estado: record.ticket.estado,
+            prioridad: record.ticket.prioridad,
+            fechaApertura: record.ticket.fechaApertura,
+            fechaCierre: record.ticket.fechaCierre,
+          }
+        : null,
     };
   }
 }

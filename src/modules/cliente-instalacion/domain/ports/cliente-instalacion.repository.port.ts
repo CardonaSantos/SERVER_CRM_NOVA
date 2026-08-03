@@ -132,16 +132,15 @@ export type ClienteInstalacionDetalle = {
 
   servicioInternet: ClienteInstalacionServicioResumen | null;
 
+  ticket: ClienteInstalacionTicketResumen | null;
+
   participantes: {
     asesor: ClienteInstalacionUsuarioResumen | null;
-
     creadoPor: ClienteInstalacionUsuarioResumen | null;
-
     completadoPor: ClienteInstalacionUsuarioResumen | null;
   };
 
   tecnicos: ClienteInstalacionTecnicoDetalle[];
-
   evidencias: ClienteInstalacionEvidenciaDetalle[];
 
   conteos: {
@@ -243,6 +242,18 @@ export type ClienteInstalacionPaginatedResult = {
   limit: number;
 
   totalPages: number;
+};
+
+export type ClienteInstalacionTicketResumen = {
+  id: number;
+
+  titulo: string | null;
+
+  estado: string;
+  prioridad: string;
+
+  fechaApertura: Date;
+  fechaCierre: Date | null;
 };
 
 // ======================================================
