@@ -3,10 +3,13 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ClienteInstalacionEntity } from '../../domain/entities/cliente-instalacion.entity';
 import {
+  ClienteInstalacionAssignedFilters,
+  ClienteInstalacionAssignedPaginatedResult,
   ClienteInstalacionDetalle,
   ClienteInstalacionFindManyFilters,
   ClienteInstalacionPaginatedResult,
   ClienteInstalacionRepositoryPort,
+  ClienteInstalacionTechnicalDetail,
   CrearTecnicoInstalacionInput,
 } from '../../domain/ports/cliente-instalacion.repository.port';
 import { ClienteInstalacionPrismaMapper } from './cliente-instalacion.prisma.mapper';
@@ -743,6 +746,718 @@ export class ClienteInstalacionPrismaRepository
             fechaCierre: record.ticket.fechaCierre,
           }
         : null,
+    };
+  }
+
+  // ASIGNADOS
+  async findAssignedToTechnician(
+    filters: ClienteInstalacionAssignedFilters,
+  ): Promise<ClienteInstalacionAssignedPaginatedResult> {
+    const page = Math.max(filters.page || 1, 1);
+
+    const limit = Math.min(Math.max(filters.limit || 10, 1), 100);
+
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.ClienteInstalacionWhereInput = {
+      tecnicos: {
+        some: {
+          tecnicoId: filters.tecnicoId,
+        },
+      },
+    };
+
+    if (filters.estado) {
+      where.estado = filters.estado;
+    }
+
+    if (filters.fechaProgramadaDesde || filters.fechaProgramadaHasta) {
+      where.fechaProgramada = {
+        ...(filters.fechaProgramadaDesde
+          ? {
+              gte: filters.fechaProgramadaDesde,
+            }
+          : {}),
+
+        ...(filters.fechaProgramadaHasta
+          ? {
+              lte: filters.fechaProgramadaHasta,
+            }
+          : {}),
+      };
+    }
+
+    if (filters.search?.trim()) {
+      const search = filters.search.trim();
+
+      where.OR = [
+        {
+          direccionInstalacion: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+
+        {
+          referenciaUbicacion: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+
+        {
+          descripcion: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+
+        {
+          observaciones: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+
+        {
+          motivo: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+
+        {
+          resultado: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+
+        {
+          cliente: {
+            nombre: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+        },
+
+        {
+          cliente: {
+            apellidos: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+        },
+
+        {
+          cliente: {
+            telefono: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+        },
+
+        {
+          cliente: {
+            dpi: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+        },
+      ];
+    }
+
+    const [records, total] = await this.prisma.$transaction([
+      this.prisma.clienteInstalacion.findMany({
+        where,
+
+        skip,
+        take: limit,
+
+        orderBy: [
+          {
+            fechaProgramada: {
+              sort: 'asc',
+              nulls: 'last',
+            },
+          },
+          {
+            creadoEn: 'desc',
+          },
+        ],
+
+        include: {
+          cliente: {
+            select: {
+              id: true,
+              nombre: true,
+              apellidos: true,
+              telefono: true,
+              dpi: true,
+              direccion: true,
+            },
+          },
+
+          servicioInternet: {
+            select: {
+              id: true,
+              nombre: true,
+              velocidad: true,
+              precio: true,
+            },
+          },
+
+          asesor: {
+            select: {
+              id: true,
+              nombre: true,
+              correo: true,
+              telefono: true,
+              activo: true,
+
+              perfil: {
+                select: {
+                  avatarUrl: true,
+                },
+              },
+            },
+          },
+
+          /*
+           * Solo necesitamos:
+           *
+           * 1. La asignación del técnico autenticado.
+           * 2. La asignación marcada como responsable.
+           *
+           * Los conteos totales se obtienen mediante _count.
+           */
+          tecnicos: {
+            where: {
+              OR: [
+                {
+                  tecnicoId: filters.tecnicoId,
+                },
+                {
+                  esResponsable: true,
+                },
+              ],
+            },
+
+            orderBy: [
+              {
+                esResponsable: 'desc',
+              },
+              {
+                creadoEn: 'asc',
+              },
+            ],
+
+            include: {
+              tecnico: {
+                select: {
+                  id: true,
+                  nombre: true,
+
+                  perfil: {
+                    select: {
+                      avatarUrl: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+
+          _count: {
+            select: {
+              tecnicos: true,
+              evidencias: true,
+              equipos: true,
+            },
+          },
+        },
+      }),
+
+      this.prisma.clienteInstalacion.count({
+        where,
+      }),
+    ]);
+
+    return {
+      items: records.map((record) => {
+        const miAsignacion = record.tecnicos.find(
+          (asignacion) => asignacion.tecnicoId === filters.tecnicoId,
+        );
+
+        /*
+         * El filtro principal garantiza que existe una asignación
+         * para este técnico. Esta validación protege el contrato
+         * si los datos cambian entre la consulta y el mapeo.
+         */
+        if (!miAsignacion) {
+          throw new Error(
+            `No se encontró la asignación del técnico ${filters.tecnicoId} en la instalación ${record.id}.`,
+          );
+        }
+
+        const responsable =
+          record.tecnicos.find((asignacion) => asignacion.esResponsable) ??
+          null;
+
+        return {
+          instalacion: ClienteInstalacionPrismaMapper.toDomain(record),
+
+          cliente: {
+            id: record.cliente.id,
+
+            nombre: record.cliente.nombre,
+
+            apellidos: record.cliente.apellidos,
+
+            telefono: record.cliente.telefono,
+
+            dpi: record.cliente.dpi,
+
+            direccion: record.cliente.direccion,
+          },
+
+          servicioInternet: record.servicioInternet
+            ? {
+                id: record.servicioInternet.id,
+
+                nombre: record.servicioInternet.nombre,
+
+                velocidad: record.servicioInternet.velocidad,
+
+                precio: record.servicioInternet.precio,
+              }
+            : null,
+
+          asesor: record.asesor
+            ? {
+                id: record.asesor.id,
+
+                nombre: record.asesor.nombre,
+
+                correo: record.asesor.correo,
+
+                telefono: record.asesor.telefono,
+
+                activo: record.asesor.activo,
+
+                avatarUrl: record.asesor.perfil?.avatarUrl ?? null,
+              }
+            : null,
+
+          miAsignacion: {
+            asignacionId: miAsignacion.id,
+
+            tecnicoId: miAsignacion.tecnicoId,
+
+            rol: miAsignacion.rol,
+
+            esResponsable: miAsignacion.esResponsable,
+          },
+
+          tecnicoResponsable: responsable
+            ? {
+                asignacionId: responsable.id,
+
+                tecnicoId: responsable.tecnicoId,
+
+                nombre:
+                  responsable.tecnico?.nombre ??
+                  responsable.tecnicoNombreSnapshot ??
+                  'Técnico no disponible',
+
+                avatarUrl: responsable.tecnico?.perfil?.avatarUrl ?? null,
+              }
+            : null,
+
+          conteos: {
+            tecnicos: record._count.tecnicos,
+
+            evidencias: record._count.evidencias,
+
+            equipos: record._count.equipos,
+          },
+        };
+      }),
+
+      total,
+
+      page,
+
+      limit,
+
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async findTechnicalDetailById(
+    instalacionId: number,
+    actorId: number,
+  ): Promise<ClienteInstalacionTechnicalDetail | null> {
+    const record = await this.prisma.clienteInstalacion.findUnique({
+      where: {
+        /*
+         * La consulta no filtra por empresa, asignación,
+         * rol técnico ni esResponsable.
+         */
+        id: instalacionId,
+      },
+
+      include: {
+        cliente: {
+          select: {
+            id: true,
+            nombre: true,
+            apellidos: true,
+            telefono: true,
+            dpi: true,
+            direccion: true,
+          },
+        },
+
+        servicioInternet: {
+          select: {
+            id: true,
+            nombre: true,
+            velocidad: true,
+            precio: true,
+          },
+        },
+
+        tecnicos: {
+          orderBy: [
+            {
+              esResponsable: 'desc',
+            },
+            {
+              creadoEn: 'asc',
+            },
+          ],
+
+          include: {
+            tecnico: {
+              select: {
+                id: true,
+                nombre: true,
+
+                perfil: {
+                  select: {
+                    avatarUrl: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+
+        clienteInstalacionAccesos: {
+          orderBy: {
+            creadoEn: 'asc',
+          },
+
+          include: {
+            accesoInternet: {
+              include: {
+                configuracionTecnica: true,
+
+                cuentaPppoe: {
+                  include: {
+                    perfilHomologacion: {
+                      include: {
+                        mikrotikRouter: {
+                          select: {
+                            id: true,
+                            nombre: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+
+        evidencias: {
+          orderBy: [
+            {
+              orden: 'asc',
+            },
+            {
+              creadoEn: 'asc',
+            },
+          ],
+
+          include: {
+            media: {
+              select: {
+                id: true,
+                cdnUrl: true,
+                mimeType: true,
+                titulo: true,
+              },
+            },
+          },
+        },
+
+        equipos: {
+          orderBy: [
+            {
+              esPrincipal: 'desc',
+            },
+            {
+              creadoEn: 'asc',
+            },
+          ],
+
+          include: {
+            producto: {
+              select: {
+                id: true,
+                nombre: true,
+              },
+            },
+
+            serialProducto: {
+              select: {
+                id: true,
+                serial: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!record) {
+      return null;
+    }
+
+    /*
+     * Es únicamente contexto para la pantalla.
+     * No determina si el actor puede consultar u operar.
+     */
+    const miAsignacion =
+      record.tecnicos.find((asignacion) => asignacion.tecnicoId === actorId) ??
+      null;
+
+    return {
+      instalacion: ClienteInstalacionPrismaMapper.toDomain(record),
+
+      cliente: {
+        id: record.cliente.id,
+
+        nombre: record.cliente.nombre,
+
+        apellidos: record.cliente.apellidos,
+
+        telefono: record.cliente.telefono,
+
+        dpi: record.cliente.dpi,
+
+        direccion: record.cliente.direccion,
+      },
+
+      servicioInternet: record.servicioInternet
+        ? {
+            id: record.servicioInternet.id,
+
+            nombre: record.servicioInternet.nombre,
+
+            velocidad: record.servicioInternet.velocidad,
+
+            precio: record.servicioInternet.precio,
+          }
+        : null,
+
+      miAsignacion: miAsignacion
+        ? {
+            asignacionId: miAsignacion.id,
+
+            tecnicoId: miAsignacion.tecnicoId,
+
+            rol: miAsignacion.rol,
+
+            esResponsable: miAsignacion.esResponsable,
+          }
+        : null,
+
+      participantes: record.tecnicos.map((asignacion) => ({
+        asignacionId: asignacion.id,
+
+        tecnicoId: asignacion.tecnicoId,
+
+        nombre:
+          asignacion.tecnico?.nombre ??
+          asignacion.tecnicoNombreSnapshot ??
+          'Técnico no disponible',
+
+        avatarUrl: asignacion.tecnico?.perfil?.avatarUrl ?? null,
+
+        rol: asignacion.rol,
+
+        esResponsable: asignacion.esResponsable,
+
+        tiempoMinutos: asignacion.tiempoMinutos,
+
+        observaciones: asignacion.observaciones,
+      })),
+
+      accesos: record.clienteInstalacionAccesos.map((vinculo) => {
+        const acceso = vinculo.accesoInternet;
+
+        const configuracion = acceso.configuracionTecnica;
+
+        const cuentaPppoe = acceso.cuentaPppoe;
+
+        return {
+          vinculoId: vinculo.id,
+
+          accion: vinculo.accion,
+
+          accesoInternetId: acceso.id,
+
+          tecnologia: acceso.tecnologia,
+
+          metodoAutenticacion: acceso.metodoAutenticacion,
+
+          estado: acceso.estado,
+
+          servicioInternetId: acceso.servicioInternetId,
+
+          configuracionTecnica: configuracion
+            ? {
+                id: configuracion.id,
+
+                potenciaOpticaRxDbm:
+                  configuracion.potenciaOpticaRxDbm !== null
+                    ? Number(configuracion.potenciaOpticaRxDbm)
+                    : null,
+
+                senalInalambricaDbm:
+                  configuracion.senalInalambricaDbm !== null
+                    ? Number(configuracion.senalInalambricaDbm)
+                    : null,
+
+                ssid: configuracion.ssid,
+
+                /*
+                 * Solo informa si existe.
+                 * Nunca devuelve el valor protegido.
+                 */
+                tieneContrasenaWifi: Boolean(
+                  configuracion.contrasenaWifiProtegida,
+                ),
+
+                bandaWifi: configuracion.bandaWifi,
+
+                canal: configuracion.canal,
+
+                anchoCanalMhz: configuracion.anchoCanalMhz,
+
+                ipv4: configuracion.ipv4,
+
+                ipv6: configuracion.ipv6,
+
+                gateway: configuracion.gateway,
+
+                dnsPrimario: configuracion.dnsPrimario,
+
+                dnsSecundario: configuracion.dnsSecundario,
+
+                observaciones: configuracion.observaciones,
+              }
+            : null,
+
+          cuentaPppoe: cuentaPppoe
+            ? {
+                id: cuentaPppoe.id,
+
+                usuario: cuentaPppoe.usuario,
+
+                /*
+                 * No se mapean:
+                 *
+                 * secretoCifrado
+                 * secretoIv
+                 * secretoAuthTag
+                 */
+                estado: cuentaPppoe.estado,
+
+                perfilHomologacionId: cuentaPppoe.perfilHomologacionId,
+
+                codigoPerfil: cuentaPppoe.perfilHomologacion.codigoPerfil,
+
+                mikrotikRouterId:
+                  cuentaPppoe.perfilHomologacion.mikrotikRouter.id,
+
+                routerNombre:
+                  cuentaPppoe.perfilHomologacion.mikrotikRouter.nombre,
+
+                generadoEn: cuentaPppoe.generadoEn,
+
+                activadoEn: cuentaPppoe.activadoEn,
+
+                ultimaSincronizacionEn: cuentaPppoe.ultimaSincronizacionEn,
+
+                ultimoError: cuentaPppoe.ultimoError,
+              }
+            : null,
+        };
+      }),
+
+      evidencias: record.evidencias.map((evidencia) => ({
+        evidenciaId: evidencia.id,
+
+        mediaId: evidencia.mediaId,
+
+        tipo: evidencia.tipo,
+
+        descripcion: evidencia.descripcion,
+
+        orden: evidencia.orden,
+
+        url: evidencia.media.cdnUrl,
+
+        mimeType: evidencia.media.mimeType,
+
+        titulo: evidencia.media.titulo,
+
+        creadoEn: evidencia.creadoEn,
+      })),
+
+      equipos: record.equipos.map((equipo) => ({
+        id: equipo.id,
+
+        productoId: equipo.productoId,
+
+        productoNombre: equipo.producto?.nombre ?? null,
+
+        serialProductoId: equipo.serialProductoId,
+
+        /*
+         * Si el registro serial fue desvinculado,
+         * conservamos el snapshot.
+         */
+        serial: equipo.serialProducto?.serial ?? equipo.serialSnapshot ?? null,
+
+        descripcion: equipo.descripcion,
+
+        cantidad: Number(equipo.cantidad),
+
+        esPrincipal: equipo.esPrincipal,
+
+        notas: equipo.notas,
+      })),
     };
   }
 }

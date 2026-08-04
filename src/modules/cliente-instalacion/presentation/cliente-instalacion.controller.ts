@@ -36,6 +36,11 @@ import type { Request } from 'express';
 import { UseGuards } from '@nestjs/common';
 
 import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
+import { FiltrarMisInstalacionesAsignadasDto } from '../application/dto/instalaciones-asignadas';
+import {
+  AuthenticatedActor,
+  RequestWithAuthenticatedUser,
+} from 'src/auth/interfaces/request-with-authenticated-user.interface';
 
 type AuthenticatedRequest = Request & {
   user?: {
@@ -172,6 +177,48 @@ export class ClienteInstalacionController {
     const result = await this.clienteInstalacionService.listar(query);
     this.logger.log(`result recibido:\n${JSON.stringify(result, null, 2)}`);
     return ClienteInstalacionPresenter.paginatedToHttp(result);
+  }
+
+  /**
+   * Lista las instalaciones asignadas al técnico autenticado.
+   *
+   * Incluye instalaciones donde participa como responsable,
+   * apoyo o cualquier otro rol técnico.
+   *
+   * El tecnicoId nunca se recibe desde el frontend:
+   * se obtiene exclusivamente del JWT.
+   */
+  @Get('mis-asignadas')
+  async listarMisAsignadas(
+    @Query() query: FiltrarMisInstalacionesAsignadasDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    const actor = this.getAuthenticatedActor(req);
+
+    const result = await this.clienteInstalacionService.listarMisAsignadas({
+      ...query,
+      tecnicoId: actor.operadorId,
+    });
+
+    return ClienteInstalacionPresenter.asignadasPaginatedToHttp(result);
+  }
+
+  @Get(':id/tecnica')
+  async obtenerDetalleTecnico(
+    @Param('id', ParseIntPipe)
+    id: number,
+
+    @Req()
+    req: RequestWithAuthenticatedUser,
+  ) {
+    const actor = this.obtenerActor(req);
+
+    const result = await this.clienteInstalacionService.obtenerDetalleTecnico(
+      id,
+      actor.operadorId,
+    );
+
+    return ClienteInstalacionPresenter.tecnicaToHttp(result);
   }
 
   @Get(':id')
@@ -349,5 +396,33 @@ export class ClienteInstalacionController {
     }
 
     return req.ip?.trim() || null;
+  }
+
+  private obtenerActor(req: RequestWithAuthenticatedUser): AuthenticatedActor {
+    const rawOperadorId = req.user?.operadorId ?? req.user?.id ?? req.user?.sub;
+
+    const operadorId = Number(rawOperadorId);
+
+    if (!Number.isInteger(operadorId) || operadorId <= 0) {
+      throw new UnauthorizedException(
+        'No fue posible identificar al usuario autenticado.',
+      );
+    }
+
+    const rawEmpresaId = req.user?.empresaId;
+
+    const empresaId =
+      rawEmpresaId !== undefined && rawEmpresaId !== null
+        ? Number(rawEmpresaId)
+        : null;
+
+    return {
+      operadorId,
+
+      empresaId:
+        empresaId !== null && Number.isInteger(empresaId) && empresaId > 0
+          ? empresaId
+          : null,
+    };
   }
 }

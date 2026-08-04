@@ -1,9 +1,12 @@
 import { ClienteInstalacionEntity } from '../domain/entities/cliente-instalacion.entity';
 import {
+  ClienteInstalacionAssignedListItem,
+  ClienteInstalacionAssignedPaginatedResult,
   ClienteInstalacionDetalle,
   ClienteInstalacionEvidenciaDetalle,
   ClienteInstalacionListItem,
   ClienteInstalacionPaginatedResult,
+  ClienteInstalacionTechnicalResult,
   ClienteInstalacionTecnicoDetalle,
   ClienteInstalacionUsuarioResumen,
 } from '../domain/ports/cliente-instalacion.repository.port';
@@ -328,6 +331,402 @@ export class ClienteInstalacionPresenter {
         mensaje: result.prealtaPppoe.mensaje,
 
         reintentable: result.prealtaPppoe.reintentable,
+      },
+    };
+  }
+
+  // ASIGNADOs
+  /**
+   * Convierte el listado paginado de instalaciones
+   * asignadas al técnico autenticado.
+   */
+  static asignadasPaginatedToHttp(
+    result: ClienteInstalacionAssignedPaginatedResult,
+  ) {
+    return {
+      data: result.items.map((item) => this.assignedListItemToHttp(item)),
+
+      meta: {
+        total: result.total,
+
+        page: result.page,
+
+        limit: result.limit,
+
+        totalPages: result.totalPages ?? Math.ceil(result.total / result.limit),
+      },
+    };
+  }
+
+  /**
+   * Convierte una instalación asignada al formato operativo
+   * consumido por la bandeja del técnico.
+   */
+  private static assignedListItemToHttp(
+    item: ClienteInstalacionAssignedListItem,
+  ) {
+    const props = item.instalacion.toPrimitives();
+
+    const costoInstalacion = props.costoInstalacion.toNumber();
+
+    const montoCobradoCliente = props.montoCobradoCliente.toNumber();
+
+    const pendienteCobrar = Math.max(costoInstalacion - montoCobradoCliente, 0);
+
+    const nombreCompleto = [item.cliente.nombre, item.cliente.apellidos]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+
+    return {
+      id: props.id,
+
+      empresaId: props.empresaId,
+
+      tipo: props.tipo,
+      estado: props.estado,
+
+      agenda: {
+        creadoEn: props.creadoEn,
+
+        programadaPara: props.fechaProgramada,
+
+        inicioReal: props.fechaInicio,
+
+        finalizacionReal: props.fechaFinalizacion,
+      },
+
+      cliente: {
+        id: item.cliente.id,
+
+        nombreCompleto,
+
+        telefono: item.cliente.telefono ?? null,
+
+        direccion: item.cliente.direccion ?? null,
+      },
+
+      ubicacion: {
+        direccion: props.direccionInstalacion ?? null,
+
+        referencia: props.referenciaUbicacion ?? null,
+
+        latitud: props.latitud ?? null,
+
+        longitud: props.longitud ?? null,
+      },
+
+      servicioInternet: item.servicioInternet
+        ? {
+            id: item.servicioInternet.id,
+
+            nombre: item.servicioInternet.nombre,
+
+            velocidad: item.servicioInternet.velocidad ?? null,
+
+            precio: item.servicioInternet.precio ?? null,
+          }
+        : null,
+
+      cobro: {
+        costoInstalacion,
+
+        montoCobradoCliente,
+
+        pendienteCobrar,
+      },
+
+      miAsignacion: {
+        asignacionId: item.miAsignacion.asignacionId,
+
+        tecnicoId: item.miAsignacion.tecnicoId ?? null,
+
+        rol: item.miAsignacion.rol,
+
+        esResponsable: item.miAsignacion.esResponsable,
+      },
+
+      tecnicoResponsable: item.tecnicoResponsable
+        ? {
+            asignacionId: item.tecnicoResponsable.asignacionId,
+
+            tecnicoId: item.tecnicoResponsable.tecnicoId ?? null,
+
+            nombre: item.tecnicoResponsable.nombre,
+
+            avatarUrl: item.tecnicoResponsable.avatarUrl ?? null,
+          }
+        : null,
+
+      conteos: {
+        tecnicos: item.conteos.tecnicos,
+
+        evidencias: item.conteos.evidencias,
+
+        equipos: item.conteos.equipos,
+      },
+    };
+  }
+
+  static tecnicaToHttp(result: ClienteInstalacionTechnicalResult) {
+    const props = result.instalacion.toPrimitives();
+
+    return {
+      id: props.id,
+
+      empresaId: props.empresaId,
+
+      tipo: props.tipo,
+
+      estado: props.estado,
+
+      agenda: {
+        creadoEn: props.creadoEn,
+
+        actualizadoEn: props.actualizadoEn,
+
+        programadaPara: props.fechaProgramada,
+
+        inicioReal: props.fechaInicio,
+
+        finalizacionReal: props.fechaFinalizacion,
+
+        canceladaEn: props.fechaCancelacion,
+
+        servicioActivadoEn: props.fechaActivacionServicio,
+      },
+
+      trabajo: {
+        descripcion: props.descripcion,
+
+        motivo: props.motivo,
+
+        observaciones: props.observaciones,
+
+        resultado: props.resultado,
+      },
+
+      cliente: {
+        id: result.cliente.id,
+
+        nombreCompleto: [result.cliente.nombre, result.cliente.apellidos]
+          .filter(Boolean)
+          .join(' '),
+
+        telefono: result.cliente.telefono,
+
+        dpi: result.cliente.dpi,
+
+        direccion: result.cliente.direccion,
+      },
+
+      ubicacion: {
+        direccion: props.direccionInstalacion,
+
+        referencia: props.referenciaUbicacion,
+
+        latitud: props.latitud,
+
+        longitud: props.longitud,
+      },
+
+      servicioInternet: result.servicioInternet
+        ? {
+            id: result.servicioInternet.id,
+
+            nombre: result.servicioInternet.nombre,
+
+            velocidad: result.servicioInternet.velocidad,
+
+            precio: result.servicioInternet.precio,
+          }
+        : null,
+
+      cobro: {
+        costoInstalacion: props.costoInstalacion,
+
+        costoMateriales: props.costoMateriales,
+
+        costoManoObra: props.costoManoObra,
+
+        costoOtros: props.costoOtros,
+
+        montoCobradoCliente: props.montoCobradoCliente,
+
+        pendienteCobrar: Math.max(
+          Number(props.costoInstalacion) - Number(props.montoCobradoCliente),
+          0,
+        ),
+
+        notas: props.notasCostos,
+      },
+
+      /**
+       * Información visual, no autorización.
+       */
+      miAsignacion: result.miAsignacion
+        ? {
+            asignacionId: result.miAsignacion.asignacionId,
+
+            tecnicoId: result.miAsignacion.tecnicoId,
+
+            rol: result.miAsignacion.rol,
+
+            esResponsable: result.miAsignacion.esResponsable,
+          }
+        : null,
+
+      participantes: result.participantes.map((participante) => ({
+        asignacionId: participante.asignacionId,
+
+        tecnicoId: participante.tecnicoId,
+
+        nombre: participante.nombre,
+
+        avatarUrl: participante.avatarUrl,
+
+        rol: participante.rol,
+
+        esResponsable: participante.esResponsable,
+
+        tiempoMinutos: participante.tiempoMinutos,
+
+        observaciones: participante.observaciones,
+      })),
+
+      accesos: result.accesos.map((acceso) => ({
+        vinculoId: acceso.vinculoId,
+
+        accion: acceso.accion,
+
+        id: acceso.accesoInternetId,
+
+        tecnologia: acceso.tecnologia,
+
+        metodoAutenticacion: acceso.metodoAutenticacion,
+
+        estado: acceso.estado,
+
+        servicioInternetId: acceso.servicioInternetId,
+
+        configuracionTecnica: acceso.configuracionTecnica
+          ? {
+              id: acceso.configuracionTecnica.id,
+
+              potenciaOpticaRxDbm:
+                acceso.configuracionTecnica.potenciaOpticaRxDbm,
+
+              senalInalambricaDbm:
+                acceso.configuracionTecnica.senalInalambricaDbm,
+
+              ssid: acceso.configuracionTecnica.ssid,
+
+              tieneContrasenaWifi:
+                acceso.configuracionTecnica.tieneContrasenaWifi,
+
+              bandaWifi: acceso.configuracionTecnica.bandaWifi,
+
+              canal: acceso.configuracionTecnica.canal,
+
+              anchoCanalMhz: acceso.configuracionTecnica.anchoCanalMhz,
+
+              red: {
+                ipv4: acceso.configuracionTecnica.ipv4,
+
+                ipv6: acceso.configuracionTecnica.ipv6,
+
+                gateway: acceso.configuracionTecnica.gateway,
+
+                dnsPrimario: acceso.configuracionTecnica.dnsPrimario,
+
+                dnsSecundario: acceso.configuracionTecnica.dnsSecundario,
+              },
+
+              observaciones: acceso.configuracionTecnica.observaciones,
+            }
+          : null,
+
+        cuentaPppoe: acceso.cuentaPppoe
+          ? {
+              id: acceso.cuentaPppoe.id,
+
+              usuario: acceso.cuentaPppoe.usuario,
+
+              estado: acceso.cuentaPppoe.estado,
+
+              perfilHomologacionId: acceso.cuentaPppoe.perfilHomologacionId,
+
+              codigoPerfil: acceso.cuentaPppoe.codigoPerfil,
+
+              mikrotikRouterId: acceso.cuentaPppoe.mikrotikRouterId,
+
+              routerNombre: acceso.cuentaPppoe.routerNombre,
+
+              generadoEn: acceso.cuentaPppoe.generadoEn,
+
+              activadoEn: acceso.cuentaPppoe.activadoEn,
+
+              ultimaSincronizacionEn: acceso.cuentaPppoe.ultimaSincronizacionEn,
+
+              ultimoError: acceso.cuentaPppoe.ultimoError,
+            }
+          : null,
+      })),
+
+      evidencias: result.evidencias.map((evidencia) => ({
+        id: evidencia.evidenciaId,
+
+        mediaId: evidencia.mediaId,
+
+        tipo: evidencia.tipo,
+
+        descripcion: evidencia.descripcion,
+
+        orden: evidencia.orden,
+
+        url: evidencia.url,
+
+        mimeType: evidencia.mimeType,
+
+        titulo: evidencia.titulo,
+
+        creadoEn: evidencia.creadoEn,
+      })),
+
+      equipos: result.equipos.map((equipo) => ({
+        id: equipo.id,
+
+        productoId: equipo.productoId,
+
+        productoNombre: equipo.productoNombre,
+
+        serialProductoId: equipo.serialProductoId,
+
+        serial: equipo.serial,
+
+        descripcion: equipo.descripcion,
+
+        cantidad: equipo.cantidad,
+
+        esPrincipal: equipo.esPrincipal,
+
+        notas: equipo.notas,
+      })),
+
+      acciones: {
+        reprogramar: result.acciones.reprogramar,
+
+        iniciar: result.acciones.iniciar,
+
+        completar: result.acciones.completar,
+
+        cancelar: result.acciones.cancelar,
+
+        subirEvidencia: result.acciones.subirEvidencia,
+
+        revelarCredenciales: result.acciones.revelarCredenciales,
+
+        reintentarPrealta: result.acciones.reintentarPrealta,
       },
     };
   }

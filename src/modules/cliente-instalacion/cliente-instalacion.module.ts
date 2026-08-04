@@ -29,6 +29,8 @@ import { ReintentarPrealtaPppoeInstalacionUseCase } from './application/use-case
 import { PppoeClienteCuentaModule } from '../pppoe-cliente-cuenta/ppoe-cliente-cuenta.module';
 import { ResolverPppoeInstalacionService } from './application/services/resolver-pppoe-instalacion.service';
 import { AuthModule } from 'src/auth/auth.module';
+import { ListarMisInstalacionesAsignadasUseCase } from './application/use-cases/listar-mis-instalaciones-asignadas.use-case';
+import { ObtenerDetalleTecnicoInstalacionUseCase } from './application/use-cases/obtener-detalle-tecnico-instalacion.use-case';
 
 @Module({
   imports: [
@@ -43,6 +45,8 @@ import { AuthModule } from 'src/auth/auth.module';
   controllers: [ClienteInstalacionController],
 
   providers: [
+    ObtenerDetalleTecnicoInstalacionUseCase,
+    ListarMisInstalacionesAsignadasUseCase,
     ClienteInstalacionApplicationService,
     ResolverPppoeInstalacionService,
     CrearClienteInstalacionUseCase,

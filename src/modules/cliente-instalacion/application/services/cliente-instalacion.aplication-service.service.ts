@@ -30,6 +30,9 @@ import {
   PppoeCredencialesInstalacionPort,
 } from 'src/modules/pppoe-automatizacion/domain/ports/pppoe-credenciales-instalacion.port';
 import { ConsultarCredencialesPppoeInstalacionResult } from 'src/modules/pppoe-automatizacion/application/inputs/consultar-credenciales-pppoe-instalacion.result';
+import { FiltrarMisInstalacionesAsignadasDto } from '../dto/instalaciones-asignadas';
+import { ListarMisInstalacionesAsignadasUseCase } from '../use-cases/listar-mis-instalaciones-asignadas.use-case';
+import { ObtenerDetalleTecnicoInstalacionUseCase } from '../use-cases/obtener-detalle-tecnico-instalacion.use-case';
 
 type ReintentarPrealtaPppoeServiceParams = {
   instalacionId: number;
@@ -86,6 +89,15 @@ type CompletarClienteInstalacionServiceParams = {
   userAgent?: string | null;
 };
 
+export type ListarMisInstalacionesAsignadasServiceParams =
+  FiltrarMisInstalacionesAsignadasDto & {
+    /**
+     * Se obtiene exclusivamente del JWT.
+     * Nunca debe recibirse desde query params.
+     */
+    tecnicoId: number;
+  };
+
 @Injectable()
 export class ClienteInstalacionApplicationService {
   constructor(
@@ -110,6 +122,10 @@ export class ClienteInstalacionApplicationService {
 
     @Inject(PPPOE_CREDENCIALES_INSTALACION)
     private readonly credencialesPppoeInstalacion: PppoeCredencialesInstalacionPort,
+
+    private readonly listarMisInstalacionesAsignadasUseCase: ListarMisInstalacionesAsignadasUseCase,
+
+    private readonly obtenerDetalleTecnicoInstalacionUseCase: ObtenerDetalleTecnicoInstalacionUseCase,
   ) {}
 
   crear(
@@ -136,6 +152,33 @@ export class ClienteInstalacionApplicationService {
 
   listar(filters: FiltrarClienteInstalacionesDto) {
     return this.listarClienteInstalacionesUseCase.execute(filters);
+  }
+
+  listarMisAsignadas(params: ListarMisInstalacionesAsignadasServiceParams) {
+    return this.listarMisInstalacionesAsignadasUseCase.execute({
+      tecnicoId: params.tecnicoId,
+
+      page: params.page ?? 1,
+      limit: params.limit ?? 10,
+
+      search: params.search ?? null,
+      estado: params.estado ?? null,
+
+      fechaProgramadaDesde: params.fechaProgramadaDesde
+        ? new Date(params.fechaProgramadaDesde)
+        : null,
+
+      fechaProgramadaHasta: params.fechaProgramadaHasta
+        ? new Date(params.fechaProgramadaHasta)
+        : null,
+    });
+  }
+
+  obtenerDetalleTecnico(instalacionId: number, actorId: number) {
+    return this.obtenerDetalleTecnicoInstalacionUseCase.execute({
+      instalacionId,
+      actorId,
+    });
   }
 
   consultarCredencialesPppoe(
