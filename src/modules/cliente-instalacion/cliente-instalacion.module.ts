@@ -31,6 +31,7 @@ import { ResolverPppoeInstalacionService } from './application/services/resolver
 import { AuthModule } from 'src/auth/auth.module';
 import { ListarMisInstalacionesAsignadasUseCase } from './application/use-cases/listar-mis-instalaciones-asignadas.use-case';
 import { ObtenerDetalleTecnicoInstalacionUseCase } from './application/use-cases/obtener-detalle-tecnico-instalacion.use-case';
+import { ActivarPppoeInstalacionUseCase } from './application/use-cases/activar-pppoe-instalacion.use-case';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { ObtenerDetalleTecnicoInstalacionUseCase } from './application/use-cases
   controllers: [ClienteInstalacionController],
 
   providers: [
+    ActivarPppoeInstalacionUseCase,
     ObtenerDetalleTecnicoInstalacionUseCase,
     ListarMisInstalacionesAsignadasUseCase,
     ClienteInstalacionApplicationService,

@@ -33,6 +33,9 @@ import { ConsultarCredencialesPppoeInstalacionResult } from 'src/modules/pppoe-a
 import { FiltrarMisInstalacionesAsignadasDto } from '../dto/instalaciones-asignadas';
 import { ListarMisInstalacionesAsignadasUseCase } from '../use-cases/listar-mis-instalaciones-asignadas.use-case';
 import { ObtenerDetalleTecnicoInstalacionUseCase } from '../use-cases/obtener-detalle-tecnico-instalacion.use-case';
+import { ActivarPppoeInstalacionDto } from '../dto/activar-pppoe-instalacion.dto';
+import { ActivarPppoeInstalacionUseCase } from '../use-cases/activar-pppoe-instalacion.use-case';
+import { ActivarPppoeInstalacionResult } from '../../results/activar-pppoe-instalacion.result';
 
 type ReintentarPrealtaPppoeServiceParams = {
   instalacionId: number;
@@ -67,13 +70,11 @@ type IniciarClienteInstalacionServiceParams = {
 
   dto: IniciarInstalacionClienteDto;
 
-  operadorId: number;
+  tecnicoId: number;
 
-  operadorNombre?: string | null;
+  empresaId: number;
 
-  ipOrigen?: string | null;
-
-  userAgent?: string | null;
+  actorRol: string;
 };
 type CompletarClienteInstalacionServiceParams = {
   instalacionId: number;
@@ -97,6 +98,23 @@ export type ListarMisInstalacionesAsignadasServiceParams =
      */
     tecnicoId: number;
   };
+type ActivarPppoeInstalacionServiceParams = {
+  instalacionId: number;
+
+  dto: ActivarPppoeInstalacionDto;
+
+  empresaId: number;
+
+  operadorId: number;
+
+  operadorNombre?: string | null;
+
+  actorRol: string;
+
+  ipOrigen?: string | null;
+
+  userAgent?: string | null;
+};
 
 @Injectable()
 export class ClienteInstalacionApplicationService {
@@ -126,6 +144,8 @@ export class ClienteInstalacionApplicationService {
     private readonly listarMisInstalacionesAsignadasUseCase: ListarMisInstalacionesAsignadasUseCase,
 
     private readonly obtenerDetalleTecnicoInstalacionUseCase: ObtenerDetalleTecnicoInstalacionUseCase,
+
+    private readonly activarPppoeInstalacionUseCase: ActivarPppoeInstalacionUseCase,
   ) {}
 
   crear(
@@ -197,6 +217,28 @@ export class ClienteInstalacionApplicationService {
     });
   }
 
+  activarPppoeInstalacion(
+    params: ActivarPppoeInstalacionServiceParams,
+  ): Promise<ActivarPppoeInstalacionResult> {
+    return this.activarPppoeInstalacionUseCase.execute({
+      instalacionId: params.instalacionId,
+
+      empresaId: params.empresaId,
+
+      operadorId: params.operadorId,
+
+      operadorNombre: params.operadorNombre ?? null,
+
+      actorRol: params.actorRol,
+
+      ipOrigen: params.ipOrigen ?? null,
+
+      userAgent: params.userAgent ?? null,
+
+      contrasenaActual: params.dto.contrasenaActual,
+    });
+  }
+
   // BEHAVIORS
 
   reprogramar(dto: ReprogramarClienteInstalacionDto, id: number) {
@@ -206,23 +248,17 @@ export class ClienteInstalacionApplicationService {
     });
   }
 
-  iniciar(params: IniciarClienteInstalacionServiceParams) {
+  iniciarTrabajoTecnico(params: IniciarClienteInstalacionServiceParams) {
     return this.iniciarClienteInstalacionUseCase.execute({
       id: params.instalacionId,
 
-      activarServicio: params.dto.activarServicio ?? false,
-
       fechaInicio: params.dto.fechaInicio,
 
-      operadorId: params.operadorId,
+      tecnicoId: params.tecnicoId,
 
-      operadorNombre: params.operadorNombre ?? null,
+      empresaId: params.empresaId,
 
-      ipOrigen: params.ipOrigen ?? null,
-
-      userAgent: params.userAgent ?? null,
-
-      contrasenaActual: params.dto.contrasenaActual,
+      actorRol: params.actorRol,
     });
   }
 

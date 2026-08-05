@@ -1,5 +1,19 @@
-import { Controller, Get, Param, Delete, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Delete,
+  ParseIntPipe,
+  Req,
+  BadRequestException,
+} from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
+
+type AuthenticatedRequest = Request & {
+  user: {
+    id: number;
+  };
+};
 
 @Controller('dashboard')
 export class DashboardController {
@@ -72,5 +86,18 @@ export class DashboardController {
   @Get('/cobros')
   getTopMorososDashboard() {
     return this.dashboardService.getTopMorososDashboard();
+  }
+
+  @Get('panel-tecnico')
+  async getDashboardPanelTecnico(@Req() req: any) {
+    const tecnicoId = Number(req.id ?? req.sub);
+
+    if (!Number.isInteger(tecnicoId) || tecnicoId <= 0) {
+      throw new BadRequestException(
+        'No fue posible obtener el ID del técnico autenticado',
+      );
+    }
+
+    return this.dashboardService.get_dashboard_panel_tecnico(tecnicoId);
   }
 }

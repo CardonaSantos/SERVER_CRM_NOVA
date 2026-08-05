@@ -8,10 +8,440 @@ import { dayjs } from 'src/Utils/dayjs.config';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { TZ } from 'src/Utils/tzgt';
+import { EstadoInstalacionCliente } from 'src/modules/cliente-instalacion/domain/enums/estado-instalacion-cliente.enum';
+import { EstadoTicketSoporte, Prisma } from '@prisma/client';
+import {
+  average,
+  buildMonthlyActivity,
+  getDashboardRangesGuatemala,
+  getMaximumActivityDay,
+  getMinimumActivityDay,
+  getMinutesBetween,
+  getTicketResolutionDate,
+  isFiniteNumber,
+  round,
+} from './dashboard-tecnico.utils';
+import { isDate } from 'util/types';
+
+const TICKET_ESTADOS_TERMINALES: EstadoTicketSoporte[] = [
+  EstadoTicketSoporte.RESUELTA,
+  EstadoTicketSoporte.CERRADO,
+  EstadoTicketSoporte.CANCELADA,
+  EstadoTicketSoporte.ARCHIVADA,
+];
+
+const INSTALACION_ESTADOS_ACTIVOS: EstadoInstalacionCliente[] = [
+  EstadoInstalacionCliente.PROGRAMADA,
+  EstadoInstalacionCliente.REPROGRAMADA,
+  EstadoInstalacionCliente.EN_PROCESO,
+];
+
 @Injectable()
 export class DashboardService {
   private logger = new Logger(DashboardService.name);
   constructor(private readonly prisma: PrismaService) {}
+
+  async get_dashboard_panel_tecnico(tecnicoId: number) {
+    const ahora = new Date();
+
+    const {
+      year,
+      month,
+      day,
+      inicioMes,
+      finMes,
+      inicioHoy,
+      finHoy,
+      diasTranscurridos,
+    } = getDashboardRangesGuatemala(ahora);
+
+    const hace48Horas = new Date(ahora.getTime() - 48 * 60 * 60 * 1000);
+
+    const participacionTicketWhere = {
+      OR: [
+        {
+          tecnicoId,
+        },
+        {
+          asignaciones: {
+            some: {
+              tecnicoId,
+            },
+          },
+        },
+      ],
+    } satisfies Prisma.TicketSoporteWhereInput;
+
+    const asignacionInstalacionWhere = {
+      tecnicos: {
+        some: {
+          tecnicoId,
+        },
+      },
+    } satisfies Prisma.ClienteInstalacionWhereInput;
+
+    const ticketsActivosWhere = {
+      AND: [
+        participacionTicketWhere,
+        {
+          estado: {
+            notIn: ['CERRADO', 'RESUELTA', 'CANCELADA'],
+          },
+        },
+      ],
+    } satisfies Prisma.TicketSoporteWhereInput;
+
+    const ticketsListosWhere = {
+      AND: [
+        participacionTicketWhere,
+        {
+          estado: {
+            notIn: ['CERRADO', 'RESUELTA', 'CANCELADA', 'PENDIENTE_CLIENTE'],
+          },
+        },
+      ],
+    } satisfies Prisma.TicketSoporteWhereInput;
+
+    const instalacionesActivasWhere = {
+      AND: [
+        asignacionInstalacionWhere,
+        {
+          estado: {
+            in: ['PROGRAMADA', 'REPROGRAMADA', 'EN_PROCESO'],
+          },
+        },
+      ],
+    } satisfies Prisma.ClienteInstalacionWhereInput;
+
+    const ticketsResueltosMesWhere = {
+      AND: [
+        participacionTicketWhere,
+        {
+          estado: 'RESUELTA',
+        },
+        {
+          OR: [
+            {
+              fechaResolucionTecnico: {
+                gte: inicioMes,
+                lt: finMes,
+              },
+            },
+            {
+              fechaCierre: {
+                gte: inicioMes,
+                lt: finMes,
+              },
+            },
+            {
+              asignaciones: {
+                some: {
+                  tecnicoId,
+                  resolvioEn: {
+                    gte: inicioMes,
+                    lt: finMes,
+                  },
+                },
+              },
+            },
+          ],
+        },
+      ],
+    } satisfies Prisma.TicketSoporteWhereInput;
+
+    const instalacionesCompletadasMesWhere = {
+      AND: [
+        {
+          estado: 'COMPLETADA',
+        },
+        {
+          fechaFinalizacion: {
+            gte: inicioMes,
+            lt: finMes,
+          },
+        },
+        {
+          OR: [
+            {
+              completadoPorId: tecnicoId,
+            },
+            asignacionInstalacionWhere,
+          ],
+        },
+      ],
+    } satisfies Prisma.ClienteInstalacionWhereInput;
+
+    const [
+      tecnico,
+
+      ticketsPendientes,
+      ticketsListosParaTrabajar,
+      ticketsUrgentes,
+      ticketsConMas48Horas,
+
+      instalacionesPendientes,
+      instalacionesProgramadasHoy,
+      instalacionesAtrasadas,
+
+      ticketsResueltosMes,
+      instalacionesCompletadasMes,
+    ] = await Promise.all([
+      this.prisma.usuario.findUnique({
+        where: {
+          id: tecnicoId,
+        },
+        select: {
+          id: true,
+          nombre: true,
+          correo: true,
+          rol: true,
+          activo: true,
+        },
+      }),
+
+      this.prisma.ticketSoporte.count({
+        where: ticketsActivosWhere,
+      }),
+
+      this.prisma.ticketSoporte.count({
+        where: ticketsListosWhere,
+      }),
+
+      this.prisma.ticketSoporte.count({
+        where: {
+          AND: [
+            ticketsActivosWhere,
+            {
+              prioridad: 'URGENTE',
+            },
+          ],
+        },
+      }),
+
+      this.prisma.ticketSoporte.count({
+        where: {
+          AND: [
+            ticketsActivosWhere,
+            {
+              fechaApertura: {
+                lt: hace48Horas,
+              },
+            },
+          ],
+        },
+      }),
+
+      this.prisma.clienteInstalacion.count({
+        where: instalacionesActivasWhere,
+      }),
+
+      this.prisma.clienteInstalacion.count({
+        where: {
+          AND: [
+            instalacionesActivasWhere,
+            {
+              fechaProgramada: {
+                gte: inicioHoy,
+                lt: finHoy,
+              },
+            },
+          ],
+        },
+      }),
+
+      this.prisma.clienteInstalacion.count({
+        where: {
+          AND: [
+            instalacionesActivasWhere,
+            {
+              fechaProgramada: {
+                lt: inicioHoy,
+              },
+            },
+          ],
+        },
+      }),
+
+      /*
+       * Solo se seleccionan las fechas necesarias para:
+       * - calcular duración;
+       * - agrupar por día.
+       */
+      this.prisma.ticketSoporte.findMany({
+        where: ticketsResueltosMesWhere,
+        select: {
+          id: true,
+          fechaApertura: true,
+          fechaAsignacion: true,
+          fechaInicioAtencion: true,
+          fechaResolucionTecnico: true,
+          fechaCierre: true,
+
+          asignaciones: {
+            where: {
+              tecnicoId,
+            },
+            select: {
+              resolvioEn: true,
+              tiempoTecnicoMinutos: true,
+            },
+          },
+        },
+      }),
+
+      this.prisma.clienteInstalacion.findMany({
+        where: instalacionesCompletadasMesWhere,
+        select: {
+          id: true,
+          fechaProgramada: true,
+          fechaInicio: true,
+          fechaFinalizacion: true,
+
+          tecnicos: {
+            where: {
+              tecnicoId,
+            },
+            select: {
+              tiempoMinutos: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    if (!tecnico) {
+      throw new NotFoundException('El técnico no existe');
+    }
+
+    const tiemposResolucionTicket = ticketsResueltosMes
+      .map((ticket) => {
+        /*
+         * Inicio preferido:
+         * 1. Inicio real de atención.
+         * 2. Asignación.
+         * 3. Apertura.
+         */
+        const inicio =
+          ticket.fechaInicioAtencion ??
+          ticket.fechaAsignacion ??
+          ticket.fechaApertura;
+
+        /*
+         * Final preferido:
+         * 1. Resolución técnica.
+         * 2. Cierre.
+         * 3. Resolución registrada en su asignación.
+         */
+        const final =
+          ticket.fechaResolucionTecnico ??
+          ticket.fechaCierre ??
+          ticket.asignaciones[0]?.resolvioEn ??
+          null;
+
+        return getMinutesBetween(inicio, final);
+      })
+      .filter(isFiniteNumber);
+
+    const tiemposInstalacion = instalacionesCompletadasMes
+      .map((instalacion) => {
+        const tiempoRegistrado = instalacion.tecnicos[0]?.tiempoMinutos;
+
+        if (typeof tiempoRegistrado === 'number' && tiempoRegistrado >= 0) {
+          return tiempoRegistrado;
+        }
+
+        return getMinutesBetween(
+          instalacion.fechaInicio ?? instalacion.fechaProgramada,
+          instalacion.fechaFinalizacion,
+        );
+      })
+      .filter(isFiniteNumber);
+
+    const actividadDiaria = buildMonthlyActivity({
+      year,
+      month,
+      currentDay: day,
+
+      ticketDates: ticketsResueltosMes
+        .map(getTicketResolutionDate)
+        .filter(isDate),
+
+      installationDates: instalacionesCompletadasMes
+        .map((instalacion) => instalacion.fechaFinalizacion)
+        .filter(isDate),
+    });
+
+    const diasConActividad = actividadDiaria.filter((item) => item.total > 0);
+
+    const diaMasProductivo = getMaximumActivityDay(diasConActividad);
+
+    const diaMenosProductivoConActividad =
+      getMinimumActivityDay(diasConActividad);
+
+    const ticketsResueltos = ticketsResueltosMes.length;
+
+    const instalacionesCompletadas = instalacionesCompletadasMes.length;
+
+    const trabajosCompletados = ticketsResueltos + instalacionesCompletadas;
+
+    return {
+      tecnico,
+
+      periodo: {
+        inicioMes,
+        finMes,
+        diasTranscurridos,
+        zonaHoraria: 'America/Guatemala',
+      },
+
+      cargaActual: {
+        ticketsPendientes,
+        ticketsListosParaTrabajar,
+        ticketsUrgentes,
+        ticketsConMas48Horas,
+
+        instalacionesPendientes,
+        instalacionesProgramadasHoy,
+        instalacionesAtrasadas,
+      },
+
+      productividadMes: {
+        ticketsResueltos,
+        instalacionesCompletadas,
+        trabajosCompletados,
+        diasConActividad: diasConActividad.length,
+
+        promedioTicketsPorDia: round(ticketsResueltos / diasTranscurridos, 2),
+
+        /*
+         * Ritmo proyectado usando los días transcurridos:
+         * tickets / días * 7.
+         */
+        ritmoSemanalTickets: round(
+          (ticketsResueltos / diasTranscurridos) * 7,
+          2,
+        ),
+
+        promedioTrabajosPorDiaActivo:
+          diasConActividad.length > 0
+            ? round(trabajosCompletados / diasConActividad.length, 2)
+            : 0,
+      },
+
+      tiempos: {
+        promedioResolucionTicketMinutos: average(tiemposResolucionTicket),
+
+        promedioInstalacionMinutos: average(tiemposInstalacion),
+      },
+
+      resumenActividad: {
+        diaMasProductivo,
+        diaMenosProductivoConActividad,
+      },
+
+      actividadDiaria,
+    };
+  }
 
   async create() {}
 

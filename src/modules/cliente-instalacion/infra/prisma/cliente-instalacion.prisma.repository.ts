@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ClienteInstalacionEntity } from '../../domain/entities/cliente-instalacion.entity';
 import {
+  BuscarInstalacionAsignadaTecnicoParams,
   ClienteInstalacionAssignedFilters,
   ClienteInstalacionAssignedPaginatedResult,
   ClienteInstalacionDetalle,
@@ -1459,5 +1460,29 @@ export class ClienteInstalacionPrismaRepository
         notas: equipo.notas,
       })),
     };
+  }
+
+  async findByIdAssignedToTechnician(
+    params: BuscarInstalacionAsignadaTecnicoParams,
+  ): Promise<ClienteInstalacionEntity | null> {
+    const instalacion = await this.prisma.clienteInstalacion.findFirst({
+      where: {
+        id: params.instalacionId,
+
+        empresaId: params.empresaId,
+
+        tecnicos: {
+          some: {
+            tecnicoId: params.tecnicoId,
+          },
+        },
+      },
+    });
+
+    if (!instalacion) {
+      return null;
+    }
+
+    return ClienteInstalacionPrismaMapper.toDomain(instalacion);
   }
 }

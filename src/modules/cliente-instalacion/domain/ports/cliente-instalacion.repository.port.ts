@@ -516,6 +516,20 @@ export type ClienteInstalacionTechnicalResult =
     acciones: InstalacionTecnicaAcciones;
   };
 
+export type BuscarInstalacionAsignadaTecnicoParams = {
+  instalacionId: number;
+
+  /**
+   * Usuario autenticado obtenido del JWT.
+   */
+  tecnicoId: number;
+
+  /**
+   * Empresa obtenida del JWT.
+   */
+  empresaId: number;
+};
+
 // ======================================================
 // REPOSITORY PORT
 // ======================================================
@@ -546,6 +560,10 @@ export interface ClienteInstalacionRepositoryPort {
     instalacionId: number,
     actorId: number,
   ): Promise<ClienteInstalacionTechnicalDetail | null>;
+
+  findByIdAssignedToTechnician(
+    params: BuscarInstalacionAsignadaTecnicoParams,
+  ): Promise<ClienteInstalacionEntity | null>;
 
   deleteAll(): Promise<any>;
 }

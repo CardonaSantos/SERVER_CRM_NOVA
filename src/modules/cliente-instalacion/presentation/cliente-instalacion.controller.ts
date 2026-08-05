@@ -41,6 +41,7 @@ import {
   AuthenticatedActor,
   RequestWithAuthenticatedUser,
 } from 'src/auth/interfaces/request-with-authenticated-user.interface';
+import { ActivarPppoeInstalacionDto } from '../application/dto/activar-pppoe-instalacion.dto';
 
 type AuthenticatedRequest = Request & {
   user?: {
@@ -49,7 +50,9 @@ type AuthenticatedRequest = Request & {
 
     nombre?: string;
 
-    empresaId?: number;
+    empresaId?: number | string;
+
+    rol?: string;
   };
 };
 
@@ -255,8 +258,10 @@ export class ClienteInstalacionController {
     );
   }
 
+  // INICIO TECNICO SIN SSH
   @Post('iniciar/:id')
-  async iniciar(
+  @HttpCode(HttpStatus.OK)
+  async iniciarTrabajoTecnico(
     @Body()
     dto: IniciarInstalacionClienteDto,
 
@@ -266,25 +271,110 @@ export class ClienteInstalacionController {
     @Req()
     req: AuthenticatedRequest,
   ) {
-    const actor = this.getAuthenticatedActor(req);
+    const actor = this.getAuthenticatedTechnicianActor(req);
 
-    const instalacion = await this.clienteInstalacionService.iniciar({
-      instalacionId: id,
+    const instalacion =
+      await this.clienteInstalacionService.iniciarTrabajoTecnico({
+        instalacionId: id,
 
-      dto,
+        dto,
 
-      operadorId: actor.operadorId,
+        tecnicoId: actor.tecnicoId,
 
-      operadorNombre: actor.operadorNombre,
+        empresaId: actor.empresaId,
 
-      ipOrigen: actor.ipOrigen,
-
-      userAgent: actor.userAgent,
-    });
+        actorRol: actor.rol,
+      });
 
     return ClienteInstalacionPresenter.toHttp(instalacion);
   }
 
+  // ACTIVAR EL PPPOE
+
+  @Post(':instalacionId/pppoe/activar')
+  @HttpCode(HttpStatus.OK)
+  async activarPppoeInstalacion(
+    @Param('instalacionId', ParseIntPipe)
+    instalacionId: number,
+
+    @Body()
+    dto: ActivarPppoeInstalacionDto,
+
+    @Req()
+    req: AuthenticatedRequest,
+  ) {
+    const actor = this.getAuthenticatedOfficeActor(req);
+
+    const result = await this.clienteInstalacionService.activarPppoeInstalacion(
+      {
+        instalacionId,
+
+        dto,
+
+        empresaId: actor.empresaId,
+
+        operadorId: actor.operadorId,
+
+        operadorNombre: actor.operadorNombre,
+
+        actorRol: actor.rol,
+
+        ipOrigen: actor.ipOrigen,
+
+        userAgent: actor.userAgent,
+      },
+    );
+
+    return {
+      instalacion: ClienteInstalacionPresenter.toHttp(result.instalacion),
+
+      pppoe: {
+        accesoInternetId: result.accesoInternetId,
+
+        cuentaPppoeId: result.cuentaPppoeId,
+
+        activadoEn: result.activadoEn.toISOString(),
+
+        creacion: {
+          operacionId: result.creacion.operacionId,
+
+          tipo: result.creacion.tipo,
+
+          estadoOperacion: result.creacion.estadoOperacion,
+
+          estadoCuenta: result.creacion.estadoCuenta,
+
+          numeroIntento: result.creacion.numeroIntento,
+
+          reintentable: result.creacion.reintentable,
+
+          errorCodigo: result.creacion.errorCodigo,
+
+          errorMensaje: result.creacion.errorMensaje,
+        },
+
+        activacion: {
+          operacionId: result.activacion.operacionId,
+
+          tipo: result.activacion.tipo,
+
+          estadoOperacion: result.activacion.estadoOperacion,
+
+          estadoCuenta: result.activacion.estadoCuenta,
+
+          numeroIntento: result.activacion.numeroIntento,
+
+          reintentable: result.activacion.reintentable,
+
+          errorCodigo: result.activacion.errorCodigo,
+
+          errorMensaje: result.activacion.errorMensaje,
+        },
+      },
+    };
+  }
+
+  // TECNICO COMPLETAR INSTALACION
   @Post('completar/:id')
   @UseGuards(JwtAuthGuard)
   async completar(
@@ -423,6 +513,92 @@ export class ClienteInstalacionController {
         empresaId !== null && Number.isInteger(empresaId) && empresaId > 0
           ? empresaId
           : null,
+    };
+  }
+
+  private getAuthenticatedTechnicianActor(req: AuthenticatedRequest): {
+    tecnicoId: number;
+
+    empresaId: number;
+
+    rol: string;
+  } {
+    const rawTecnicoId = req.user?.id ?? req.user?.sub;
+
+    const tecnicoId = Number(rawTecnicoId);
+
+    if (!Number.isInteger(tecnicoId) || tecnicoId <= 0) {
+      throw new UnauthorizedException(
+        'No fue posible identificar al técnico autenticado.',
+      );
+    }
+
+    const empresaId = Number(req.user?.empresaId);
+
+    if (!Number.isInteger(empresaId) || empresaId <= 0) {
+      throw new UnauthorizedException(
+        'No fue posible identificar la empresa del técnico autenticado.',
+      );
+    }
+
+    const rol = req.user?.rol?.trim().toUpperCase();
+
+    if (!rol) {
+      throw new UnauthorizedException(
+        'No fue posible identificar el rol del usuario autenticado.',
+      );
+    }
+
+    return {
+      tecnicoId,
+      empresaId,
+      rol,
+    };
+  }
+
+  private getAuthenticatedOfficeActor(req: AuthenticatedRequest): {
+    operadorId: number;
+
+    empresaId: number;
+
+    operadorNombre: string | null;
+
+    rol: string;
+
+    ipOrigen: string | null;
+
+    userAgent: string | null;
+  } {
+    const actor = this.getAuthenticatedActor(req);
+
+    const empresaId = Number(req.user?.empresaId);
+
+    if (!Number.isInteger(empresaId) || empresaId <= 0) {
+      throw new UnauthorizedException(
+        'No fue posible identificar la empresa del operador.',
+      );
+    }
+
+    const rol = req.user?.rol?.trim().toUpperCase();
+
+    if (!rol) {
+      throw new UnauthorizedException(
+        'No fue posible identificar el rol del operador.',
+      );
+    }
+
+    return {
+      operadorId: actor.operadorId,
+
+      empresaId,
+
+      operadorNombre: actor.operadorNombre,
+
+      rol,
+
+      ipOrigen: actor.ipOrigen,
+
+      userAgent: actor.userAgent,
     };
   }
 }

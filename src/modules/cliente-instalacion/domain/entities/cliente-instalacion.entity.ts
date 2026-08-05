@@ -266,15 +266,34 @@ export class ClienteInstalacionEntity {
    * Confirma que el servicio fue activado después
    * de una operación remota exitosa.
    *
-   * Este método no ejecuta SSH.
+   * La activación puede realizarse mientras la
+   * instalación está EN_PROCESO o después de
+   * haber quedado COMPLETADA.
+   *
+   * Este método no ejecuta SSH ni cambia el
+   * estado general de la instalación.
    */
   marcarServicioActivado(fecha: Date = new Date()): void {
     this.ensurePersisted('marcar el servicio como activado');
 
-    if (this.props.estado !== EstadoInstalacionCliente.COMPLETADA) {
+    const estadosPermitidos: EstadoInstalacionCliente[] = [
+      EstadoInstalacionCliente.EN_PROCESO,
+      EstadoInstalacionCliente.COMPLETADA,
+    ];
+
+    if (!estadosPermitidos.includes(this.props.estado)) {
       throw new Error(
-        'Solo una instalación completada puede confirmar la activación del servicio.',
+        'Solo una instalación en proceso o completada puede confirmar la activación del servicio.',
       );
+    }
+
+    /*
+     * La primera activación confirmada se conserva.
+     * Una repetición de la misma solicitud es
+     * idempotente.
+     */
+    if (this.props.fechaActivacionServicio) {
+      return;
     }
 
     const fechaActivacion = new Date(fecha);
@@ -283,23 +302,17 @@ export class ClienteInstalacionEntity {
       throw new Error('La fecha de activación del servicio no es válida.');
     }
 
+    /*
+     * La activación no debería registrarse antes
+     * del inicio físico de la instalación.
+     */
     if (
-      this.props.fechaFinalizacion &&
-      fechaActivacion.getTime() < this.props.fechaFinalizacion.getTime()
+      this.props.fechaInicio &&
+      fechaActivacion.getTime() < this.props.fechaInicio.getTime()
     ) {
       throw new Error(
-        'La activación del servicio no puede ser anterior a la finalización de la instalación.',
+        'La activación del servicio no puede ser anterior al inicio de la instalación.',
       );
-    }
-
-    /**
-     * La primera activación confirmada se conserva.
-     *
-     * Una repetición de la misma solicitud es
-     * idempotente.
-     */
-    if (this.props.fechaActivacionServicio) {
-      return;
     }
 
     this.props.fechaActivacionServicio = fechaActivacion;
