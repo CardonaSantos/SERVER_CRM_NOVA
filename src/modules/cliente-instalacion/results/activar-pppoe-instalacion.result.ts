@@ -13,7 +13,8 @@ export type ActivarPppoeInstalacionResult = {
    * Operación que crea o confirma la existencia
    * del secret en MikroTik.
    */
-  creacion: EjecutarOperacionPppoeResult;
+  // creacion: EjecutarOperacionPppoeResult;
+  creacion: EjecutarOperacionPppoeResult | null;
 
   /**
    * Operación que habilita o confirma habilitado

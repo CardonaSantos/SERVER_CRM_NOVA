@@ -60,6 +60,7 @@ export type ActorActivacionPppoeInput = {
   origen: OrigenOperacionPppoe;
 
   iniciadoPorId: number | null;
+  operadorNombre?: string | null;
 
   ipOrigen?: string | null;
 

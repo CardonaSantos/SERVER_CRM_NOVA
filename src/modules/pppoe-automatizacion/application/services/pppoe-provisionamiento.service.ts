@@ -139,6 +139,8 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
 
         iniciadoPorId: input.actor.iniciadoPorId,
 
+        operadorNombre: input.actor.operadorNombre ?? null,
+
         ipOrigen: input.actor.ipOrigen ?? null,
 
         userAgent: input.actor.userAgent ?? null,

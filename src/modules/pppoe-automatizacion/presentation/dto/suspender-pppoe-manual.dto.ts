@@ -1,4 +1,4 @@
-import { IsString, MaxLength, MinLength } from 'class-validator';
+import { IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class SuspenderPppoeManualDto {
   /**
@@ -11,6 +11,11 @@ export class SuspenderPppoeManualDto {
   @MinLength(8)
   @MaxLength(200)
   claveIdempotencia: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(512)
+  contrasenaActual: string;
 
   /**
    * Razón administrativa de la suspensión.

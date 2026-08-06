@@ -348,6 +348,11 @@ type TimelineKey = {
   date: Date;
 };
 
+type InstallationPppoeContext = {
+  accesoInternetIds: number[];
+  cuentaPppoeIds: number[];
+};
+
 @Injectable()
 export class PppoeAuditoriaInstalacionPrismaQuery
   implements PppoeAuditoriaInstalacionQueryPort
@@ -372,15 +377,26 @@ export class PppoeAuditoriaInstalacionPrismaQuery
     if (!installation) {
       return null;
     }
+    const installationContext =
+      this.buildInstallationPppoeContext(installation);
+    // const operationContextWhere = this.buildOperationContextWhere(filters);
 
-    const operationContextWhere = this.buildOperationContextWhere(filters);
+    const operationContextWhere = this.buildOperationContextWhere(
+      filters,
+      installationContext,
+    );
 
     const operationWhere = this.buildOperationWhere(
       filters,
       operationContextWhere,
     );
 
-    const independentAuditWhere = this.buildIndependentAuditWhere(filters);
+    // const independentAuditWhere = this.buildIndependentAuditWhere(filters);
+
+    const independentAuditWhere = this.buildIndependentAuditWhere(
+      filters,
+      installationContext,
+    );
 
     const [operationKeys, auditKeys] = await this.prisma.$transaction([
       this.prisma.pppoeOperacion.findMany({
@@ -471,7 +487,12 @@ export class PppoeAuditoriaInstalacionPrismaQuery
           })
         : Promise.resolve([] as IndependentAuditTimelineRecord[]),
 
-      this.buildSummary(installation, filters, operationContextWhere),
+      this.buildSummary(
+        installation,
+        filters,
+        operationContextWhere,
+        installationContext,
+      ),
     ]);
 
     const operationMap = new Map(
@@ -519,25 +540,62 @@ export class PppoeAuditoriaInstalacionPrismaQuery
     };
   }
 
+  private buildInstallationPppoeContext(
+    installation: InstallationSummaryRecord,
+  ): InstallationPppoeContext {
+    const accesoInternetIds: number[] = [];
+    const cuentaPppoeIds: number[] = [];
+
+    for (const link of installation.clienteInstalacionAccesos) {
+      const access = link.accesoInternet;
+
+      accesoInternetIds.push(access.id);
+
+      if (access.cuentaPppoe) {
+        cuentaPppoeIds.push(access.cuentaPppoe.id);
+      }
+    }
+
+    return {
+      accesoInternetIds: [...new Set(accesoInternetIds)],
+      cuentaPppoeIds: [...new Set(cuentaPppoeIds)],
+    };
+  }
+
   private buildOperationContextWhere(
     filters: PppoeAuditoriaInstalacionFindFilters,
+    context: InstallationPppoeContext,
   ): Prisma.PppoeOperacionWhereInput {
-    return {
-      empresaId: filters.empresaId,
+    const or: Prisma.PppoeOperacionWhereInput[] = [
+      {
+        instalacionId: filters.instalacionId,
+      },
 
-      OR: [
-        {
-          instalacionId: filters.instalacionId,
-        },
-
-        {
-          auditorias: {
-            some: {
-              instalacionId: filters.instalacionId,
-            },
+      {
+        auditorias: {
+          some: {
+            instalacionId: filters.instalacionId,
           },
         },
-      ],
+      },
+    ];
+
+    /*
+     * Incluye suspensión, reactivación y demás
+     * acciones posteriores realizadas directamente
+     * sobre las cuentas originadas por la instalación.
+     */
+    if (context.cuentaPppoeIds.length > 0) {
+      or.push({
+        cuentaPppoeId: {
+          in: context.cuentaPppoeIds,
+        },
+      });
+    }
+
+    return {
+      empresaId: filters.empresaId,
+      OR: or,
     };
   }
 
@@ -715,7 +773,30 @@ export class PppoeAuditoriaInstalacionPrismaQuery
 
   private buildIndependentAuditWhere(
     filters: PppoeAuditoriaInstalacionFindFilters,
+    context: InstallationPppoeContext,
   ): Prisma.PppoeAuditoriaWhereInput {
+    const contextOr: Prisma.PppoeAuditoriaWhereInput[] = [
+      {
+        instalacionId: filters.instalacionId,
+      },
+    ];
+
+    if (context.cuentaPppoeIds.length > 0) {
+      contextOr.push({
+        cuentaPppoeId: {
+          in: context.cuentaPppoeIds,
+        },
+      });
+    }
+
+    if (context.accesoInternetIds.length > 0) {
+      contextOr.push({
+        accesoInternetId: {
+          in: context.accesoInternetIds,
+        },
+      });
+    }
+
     /*
      * Cuando se filtra por campos propios de una operación,
      * los eventos independientes no participan.
@@ -729,8 +810,14 @@ export class PppoeAuditoriaInstalacionPrismaQuery
     const and: Prisma.PppoeAuditoriaWhereInput[] = [
       {
         empresaId: filters.empresaId,
-        instalacionId: filters.instalacionId,
+
+        /*
+         * Los eventos relacionados con una operación
+         * se mostrarán dentro de la tarjeta de esa operación.
+         */
         operacionId: null,
+
+        OR: contextOr,
       },
     ];
 
@@ -845,21 +932,39 @@ export class PppoeAuditoriaInstalacionPrismaQuery
     installation: InstallationSummaryRecord,
     filters: PppoeAuditoriaInstalacionFindFilters,
     operationContextWhere: Prisma.PppoeOperacionWhereInput,
+    context: InstallationPppoeContext,
   ): Promise<PppoeAuditoriaInstalacionSummary> {
+    const auditOr: Prisma.PppoeAuditoriaWhereInput[] = [
+      {
+        instalacionId: filters.instalacionId,
+      },
+
+      {
+        operacion: {
+          is: operationContextWhere,
+        },
+      },
+    ];
+
+    if (context.cuentaPppoeIds.length > 0) {
+      auditOr.push({
+        cuentaPppoeId: {
+          in: context.cuentaPppoeIds,
+        },
+      });
+    }
+
+    if (context.accesoInternetIds.length > 0) {
+      auditOr.push({
+        accesoInternetId: {
+          in: context.accesoInternetIds,
+        },
+      });
+    }
+
     const auditContextWhere: Prisma.PppoeAuditoriaWhereInput = {
       empresaId: filters.empresaId,
-
-      OR: [
-        {
-          instalacionId: filters.instalacionId,
-        },
-
-        {
-          operacion: {
-            is: operationContextWhere,
-          },
-        },
-      ],
+      OR: auditOr,
     };
 
     const [

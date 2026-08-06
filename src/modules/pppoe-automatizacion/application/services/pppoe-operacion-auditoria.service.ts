@@ -2,7 +2,10 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { PppoeAuditoriaEntity } from 'src/modules/pppoe-auditoria/domain/entities/pppoe-auditoria.entity';
 
-import { AccionAuditoriaPppoe } from 'src/modules/pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
+import {
+  AccionAuditoriaPppoe,
+  OrigenOperacionPppoe,
+} from 'src/modules/pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
 
 import {
   PPPOE_AUDITORIA_REPOSITORY,
@@ -13,7 +16,10 @@ import { DatosAuditoriaPppoe } from 'src/modules/pppoe-auditoria/domain/props/au
 
 import { PppoeOperacionEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion.entity';
 
-import { EstadoOperacionPppoe } from 'src/modules/pppoe-operacion/domain/enums/pppoe-operacion-operacion-paso.enums';
+import {
+  EstadoOperacionPppoe,
+  TipoOperacionPppoe,
+} from 'src/modules/pppoe-operacion/domain/enums/pppoe-operacion-operacion-paso.enums';
 
 import {
   PppoeOperacionAuditoriaPort,
@@ -21,6 +27,7 @@ import {
   RegistrarAuditoriaRecuperacionPppoeParams,
   RegistrarAuditoriaReintentoPppoeParams,
 } from '../../domain/ports/pppoe-operacion-auditoria.port';
+import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
 
 /**
  * Registra la bitácora principal de las operaciones PPPoE.
@@ -98,15 +105,24 @@ export class PppoeOperacionAuditoriaService
       reintentable: params.operacion.puedeReintentarse(),
     };
 
+    /*
+     * Evento técnico general:
+     * OPERACION_EXITOSA, OPERACION_FALLIDA, etc.
+     */
     await this.persistSafely({
       params,
-
       accion,
-
       descripcion: this.buildFinalDescription(params.operacion),
-
       datos,
     });
+
+    await this.registrarActivacionInstalacionConfirmada(params);
+
+    /*
+     * Evento funcional adicional:
+     * SERVICIO_SUSPENDIDO.
+     */
+    await this.registrarSuspensionManualConfirmada(params);
   }
 
   async registrarReintentada(
@@ -215,6 +231,8 @@ export class PppoeOperacionAuditoriaService
 
         perfilCodigoSnapshot: primitives.codigoPerfilSnapshot,
 
+        operadorNombreSnapshot: input.params.actor?.operadorNombre ?? null,
+
         datos: input.datos,
 
         ipOrigen: input.params.actor?.ipOrigen ?? null,
@@ -223,16 +241,23 @@ export class PppoeOperacionAuditoriaService
 
         creadoEn: input.params.fecha,
       });
+
       await this.repository.create(entity);
-    } catch {
-      /*
-       * No se incluye el error original para evitar que
-       * mensajes de infraestructura expongan información
-       * sensible en los logs.
-       */
-      this.logger.error(
-        `No pudo persistirse la auditoría ${input.accion} de la operación PPPoE ${operacionId}.`,
-      );
+    } catch (error: unknown) {
+      const baseMessage =
+        `No pudo persistirse la auditoría ${input.accion} ` +
+        `de la operación PPPoE ${operacionId}.`;
+
+      if (process.env.NODE_ENV !== 'production' && error instanceof Error) {
+        this.logger.error(
+          `${baseMessage} ${error.name}: ${error.message}`,
+          error.stack,
+        );
+
+        return;
+      }
+
+      this.logger.error(baseMessage);
     }
   }
 
@@ -263,6 +288,104 @@ export class PppoeOperacionAuditoriaService
 
       motivo: primitives.motivo,
     };
+  }
+
+  private async registrarSuspensionManualConfirmada(
+    params: RegistrarAuditoriaOperacionPppoeParams,
+  ): Promise<void> {
+    const { operacion, estadoCuentaAnterior, estadoCuentaNuevo } = params;
+
+    /*
+     * En esta primera implementación solo auditamos
+     * suspensiones manuales de operador.
+     */
+    if (
+      operacion.tipo !== TipoOperacionPppoe.SUSPENDER_SERVICIO ||
+      operacion.origen !== OrigenOperacionPppoe.OPERADOR ||
+      operacion.estado !== EstadoOperacionPppoe.EXITOSA
+    ) {
+      return;
+    }
+
+    /*
+     * La operación técnica debe haber terminado con la
+     * cuenta realmente suspendida.
+     */
+    if (estadoCuentaNuevo !== EstadoCuentaPppoe.SUSPENDIDA) {
+      this.logger.warn(
+        `La operación ${operacion.id} terminó EXITOSA, pero la cuenta no quedó SUSPENDIDA.`,
+      );
+
+      return;
+    }
+
+    /*
+     * No registramos una transición falsa:
+     *
+     * SUSPENDIDA -> SUSPENDIDA
+     *
+     * En ese caso basta con OPERACION_EXITOSA, porque la
+     * solicitud únicamente confirmó el estado ya existente.
+     */
+    if (estadoCuentaAnterior === estadoCuentaNuevo) {
+      return;
+    }
+
+    const primitives = operacion.toPrimitives();
+
+    const resultado = this.asPlainObject(primitives.resultado);
+
+    const operadorId = params.actor?.operadorId ?? operacion.iniciadoPorId;
+
+    const motivo = primitives.motivo?.trim() || 'Sin motivo registrado';
+
+    const datos: DatosAuditoriaPppoe = {
+      ...this.buildCommonData(operacion),
+
+      motivo,
+
+      operacionExitosa: true,
+
+      secretEncontrado: this.readBoolean(resultado, 'secretEncontrado'),
+
+      deshabilitacionOmitida: this.readBoolean(
+        resultado,
+        'deshabilitacionOmitida',
+      ),
+
+      comandoDeshabilitarEjecutado: this.readBoolean(
+        resultado,
+        'comandoDeshabilitarEjecutado',
+      ),
+
+      /*
+       * Esto significa que se ejecutó el comando remoto.
+       * No significa necesariamente que existiera una
+       * sesión activa para eliminar.
+       */
+      comandoRemocionSesionEjecutado: this.readBoolean(
+        resultado,
+        'remocionSesionEjecutada',
+      ),
+
+      secretConfirmado: this.readBoolean(resultado, 'secretConfirmado'),
+
+      deshabilitadoConfirmado: this.readBoolean(resultado, 'deshabilitado'),
+
+      perfilCoincide: this.readBoolean(resultado, 'perfilCoincide'),
+    };
+
+    await this.persistSafely({
+      params,
+
+      accion: AccionAuditoriaPppoe.SERVICIO_SUSPENDIDO,
+
+      descripcion: operadorId
+        ? `El operador ${operadorId} suspendió manualmente el servicio PPPoE. Motivo: ${motivo}.`
+        : `El servicio PPPoE fue suspendido manualmente. Motivo: ${motivo}.`,
+
+      datos,
+    });
   }
 
   private resolveFinalAction(
@@ -303,5 +426,83 @@ export class PppoeOperacionAuditoriaService
       default:
         return `La operación PPPoE ${operacion.tipo} cambió al estado ${operacion.estado}.`;
     }
+  }
+
+  private async registrarActivacionInstalacionConfirmada(
+    params: RegistrarAuditoriaOperacionPppoeParams,
+  ): Promise<void> {
+    const { operacion, estadoCuentaAnterior, estadoCuentaNuevo } = params;
+
+    if (
+      operacion.tipo !== TipoOperacionPppoe.ACTIVAR_SECRET ||
+      operacion.instalacionId === null ||
+      operacion.estado !== EstadoOperacionPppoe.EXITOSA
+    ) {
+      return;
+    }
+
+    if (estadoCuentaNuevo !== EstadoCuentaPppoe.ACTIVA) {
+      this.logger.warn(
+        `La operación ${operacion.id} terminó EXITOSA, ` +
+          'pero la cuenta no quedó ACTIVA.',
+      );
+
+      return;
+    }
+
+    /*
+     * Evita registrar una transición falsa:
+     * ACTIVA → ACTIVA.
+     */
+    if (estadoCuentaAnterior === EstadoCuentaPppoe.ACTIVA) {
+      return;
+    }
+
+    const primitives = operacion.toPrimitives();
+
+    const motivo =
+      primitives.motivo?.trim() || 'Activación autorizada desde oficina';
+
+    await this.persistSafely({
+      params,
+
+      accion: AccionAuditoriaPppoe.SERVICIO_ACTIVADO,
+
+      descripcion:
+        `Se activó el servicio PPPoE desde la ` +
+        `instalación ${operacion.instalacionId}. ` +
+        `Motivo: ${motivo}.`,
+
+      datos: {
+        ...this.buildCommonData(operacion),
+
+        motivo,
+
+        activacionConfirmada: true,
+
+        instalacionPuestaEnProceso: true,
+      },
+    });
+  }
+
+  private asPlainObject(value: unknown): Record<string, unknown> | null {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+      return null;
+    }
+
+    return value as Record<string, unknown>;
+  }
+
+  private readBoolean(
+    source: Record<string, unknown> | null,
+    key: string,
+  ): boolean | null {
+    if (!source) {
+      return null;
+    }
+
+    const value = source[key];
+
+    return typeof value === 'boolean' ? value : null;
   }
 }

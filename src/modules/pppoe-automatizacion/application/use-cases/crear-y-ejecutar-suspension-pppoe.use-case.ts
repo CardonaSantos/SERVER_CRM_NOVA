@@ -50,6 +50,8 @@ export type ActorSuspensionPppoeInput = {
 
   iniciadoPorId: number | null;
 
+  operadorNombre?: string | null;
+
   ipOrigen?: string | null;
 
   userAgent?: string | null;
@@ -300,6 +302,8 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
 
         actor: {
           operadorId: input.actor.iniciadoPorId,
+
+          operadorNombre: input.actor.operadorNombre ?? null,
 
           ipOrigen: input.actor.ipOrigen ?? null,
 

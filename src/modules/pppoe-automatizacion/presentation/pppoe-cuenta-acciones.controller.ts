@@ -29,11 +29,15 @@ type AuthenticatedRequest = Request & {
     userId?: number | string;
 
     empresaId?: number | string;
+
+    nombre?: string;
   };
 };
 
 type ActorAdministrativoHttp = {
   operadorId: number;
+
+  operadorNombre: string | null;
 
   ipOrigen: string | null;
 
@@ -99,9 +103,11 @@ export class PppoeCuentaAccionesController {
       claveIdempotencia: dto.claveIdempotencia.trim(),
 
       motivo: dto.motivo.trim(),
-
+      contrasenaActual: dto.contrasenaActual,
       actor: {
         operadorId: contexto.actor.operadorId,
+
+        operadorNombre: contexto.actor.operadorNombre,
 
         ipOrigen: contexto.actor.ipOrigen,
 
@@ -150,6 +156,7 @@ export class PppoeCuentaAccionesController {
       claveIdempotencia: dto.claveIdempotencia,
 
       motivo: dto.motivo,
+      contrasenaActual: dto.contrasenaActual,
 
       actor: {
         operadorId: contexto.actor.operadorId,
@@ -191,6 +198,8 @@ export class PppoeCuentaAccionesController {
 
       actor: {
         operadorId,
+
+        operadorNombre: req.user?.nombre?.trim() || null,
 
         ipOrigen: this.getClientIp(req),
 

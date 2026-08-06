@@ -71,7 +71,7 @@ export class IniciarClienteInstalacionUseCase {
       });
 
     /*
-     * Retornamos 404 en lugar de revelar si existe
+     *  404 en lugar de revelar si existe
      * una instalación perteneciente a otro técnico
      * o a otra empresa.
      */

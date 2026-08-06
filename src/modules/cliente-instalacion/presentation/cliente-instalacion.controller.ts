@@ -335,23 +335,32 @@ export class ClienteInstalacionController {
 
         activadoEn: result.activadoEn.toISOString(),
 
-        creacion: {
-          operacionId: result.creacion.operacionId,
+        creacion: result.creacion
+          ? {
+              omitida: false,
 
-          tipo: result.creacion.tipo,
+              operacionId: result.creacion.operacionId,
 
-          estadoOperacion: result.creacion.estadoOperacion,
+              tipo: result.creacion.tipo,
 
-          estadoCuenta: result.creacion.estadoCuenta,
+              estadoOperacion: result.creacion.estadoOperacion,
 
-          numeroIntento: result.creacion.numeroIntento,
+              estadoCuenta: result.creacion.estadoCuenta,
 
-          reintentable: result.creacion.reintentable,
+              numeroIntento: result.creacion.numeroIntento,
 
-          errorCodigo: result.creacion.errorCodigo,
+              reintentable: result.creacion.reintentable,
 
-          errorMensaje: result.creacion.errorMensaje,
-        },
+              errorCodigo: result.creacion.errorCodigo,
+
+              errorMensaje: result.creacion.errorMensaje,
+            }
+          : {
+              omitida: true,
+
+              motivo:
+                'El secret ya había sido creado y confirmado anteriormente.',
+            },
 
         activacion: {
           operacionId: result.activacion.operacionId,

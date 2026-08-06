@@ -1,4 +1,4 @@
-import { IsString, MaxLength, MinLength } from 'class-validator';
+import { IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
 
 /**
  * Datos administrativos necesarios para reactivar
@@ -12,6 +12,11 @@ export class ReactivarPppoeManualDto {
   @MinLength(1)
   @MaxLength(200)
   claveIdempotencia: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(512)
+  contrasenaActual: string;
 
   @IsString()
   @MinLength(5)

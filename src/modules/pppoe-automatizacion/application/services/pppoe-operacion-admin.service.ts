@@ -20,9 +20,12 @@ import {
 import { EjecutarOperacionPppoeResult } from '../../domain/props/pppoe-provisionamiento.props';
 import { EjecutarPppoeOperacionUseCase } from '../use-cases/ejecutar-pppoe-operacion.use-case';
 import { RecuperarPppoeOperacionInterrumpidaUseCase } from '../use-cases/recuperar-pppoe-operacion-interrumpida.use-case';
+import { AuthService } from 'src/auth/auth.service';
 
 export type ActorAdministrativoPppoe = {
   operadorId: number;
+
+  operadorNombre?: string | null;
 
   ipOrigen?: string | null;
 
@@ -82,6 +85,8 @@ export type SuspenderPppoeManualParams = {
 
   motivo: string;
 
+  contrasenaActual: string;
+
   actor: ActorAdministrativoPppoe;
 };
 
@@ -91,6 +96,8 @@ export type ReactivarPppoeManualParams = {
   cuentaPppoeId: number;
 
   claveIdempotencia: string;
+
+  contrasenaActual: string;
 
   motivo: string;
 
@@ -129,6 +136,8 @@ export class PppoeOperacionAdminService {
     private readonly ejecutarOperacionUseCase: EjecutarPppoeOperacionUseCase,
 
     private readonly recuperarOperacionUseCase: RecuperarPppoeOperacionInterrumpidaUseCase,
+
+    private readonly authService: AuthService,
 
     @Inject(PPPOE_PROVISIONAMIENTO)
     private readonly provisionamiento: PppoeProvisionamientoPort,
@@ -271,12 +280,16 @@ export class PppoeOperacionAdminService {
    * La acción no depende de instalación, cobranza
    * ni facturación.
    */
-  suspenderManual(
+  async suspenderManual(
     params: SuspenderPppoeManualParams,
   ): Promise<EjecutarOperacionPppoeResult> {
     this.validateActor(params.actor);
 
     this.validateManualAccountAction(params, 'suspensión');
+    await this.authService.reautenticarUsuarioPorId(
+      params.actor.operadorId,
+      params.contrasenaActual,
+    );
 
     return this.provisionamiento.suspenderServicio({
       empresaId: params.empresaId,
@@ -292,6 +305,8 @@ export class PppoeOperacionAdminService {
 
         iniciadoPorId: params.actor.operadorId,
 
+        operadorNombre: params.actor.operadorNombre ?? null,
+
         ipOrigen: params.actor.ipOrigen ?? null,
 
         userAgent: params.actor.userAgent ?? null,
@@ -304,12 +319,17 @@ export class PppoeOperacionAdminService {
    *
    * No pertenece al flujo de instalación.
    */
-  reactivarManual(
+  async reactivarManual(
     params: ReactivarPppoeManualParams,
   ): Promise<EjecutarOperacionPppoeResult> {
     this.validateActor(params.actor);
 
     this.validateManualAccountAction(params, 'reactivación');
+
+    await this.authService.reautenticarUsuarioPorId(
+      params.actor.operadorId,
+      params.contrasenaActual,
+    );
 
     return this.provisionamiento.reactivarServicio({
       empresaId: params.empresaId,

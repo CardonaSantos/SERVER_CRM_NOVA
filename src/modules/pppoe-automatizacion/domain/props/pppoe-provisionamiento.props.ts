@@ -25,6 +25,8 @@ export type ActorProvisionamientoPppoeInput = {
 
   iniciadoPorId: number | null;
 
+  operadorNombre?: string | null;
+
   ipOrigen?: string | null;
 
   userAgent?: string | null;
@@ -94,7 +96,7 @@ export type SuspenderServicioPppoeInput = {
   cuentaPppoeId: number;
 
   claveIdempotencia: string;
-
+  operadorNombre?: string | null;
   /**
    * Obligatorio para conservar la razón administrativa
    * de la suspensión.
