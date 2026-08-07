@@ -371,20 +371,48 @@ export class ClienteInstalacionEntity {
     this.ensurePersisted('actualizar datos generales');
     this.ensureEditable();
 
-    if (params.asesorId !== undefined) {
-      this.props.asesorId = params.asesorId;
+    if (params.tipo !== undefined) {
+      this.ensurePlanningEditable('cambiar el tipo de instalación');
+
+      this.props.tipo = params.tipo;
     }
 
-    if (params.servicioInternetId !== undefined) {
-      this.props.servicioInternetId = params.servicioInternetId;
+    if (params.asesorId !== undefined) {
+      this.props.asesorId = params.asesorId;
     }
 
     if (params.ticketId !== undefined) {
       this.props.ticketId = params.ticketId;
     }
 
+    if (params.descripcion !== undefined) {
+      this.props.descripcion = this.normalizeOptionalText(params.descripcion);
+    }
+
+    if (params.motivo !== undefined) {
+      this.props.motivo = this.normalizeOptionalText(params.motivo);
+    }
+
+    if (params.observaciones !== undefined) {
+      this.props.observaciones = this.normalizeOptionalText(
+        params.observaciones,
+      );
+    }
+
     if (params.fechaProgramada !== undefined) {
-      this.props.fechaProgramada = params.fechaProgramada;
+      this.ensurePlanningEditable('cambiar la fecha programada');
+
+      if (
+        params.fechaProgramada !== null &&
+        Number.isNaN(params.fechaProgramada.getTime())
+      ) {
+        throw new Error('fechaProgramada debe contener una fecha válida.');
+      }
+
+      this.props.fechaProgramada =
+        params.fechaProgramada !== null
+          ? new Date(params.fechaProgramada)
+          : null;
     }
 
     if (params.direccionInstalacion !== undefined) {
@@ -407,17 +435,13 @@ export class ClienteInstalacionEntity {
       this.props.longitud = params.longitud;
     }
 
-    if (params.observaciones !== undefined) {
-      this.props.observaciones = this.normalizeOptionalText(
-        params.observaciones,
-      );
-    }
-
     this.ensureValidBaseProps();
   }
 
   actualizarCostos(params: ActualizarCostosInstalacionParams): void {
     this.ensurePersisted('actualizar costos');
+
+    this.ensureEditable();
 
     if (params.costoInstalacion !== undefined) {
       this.props.costoInstalacion = params.costoInstalacion;
@@ -492,6 +516,19 @@ export class ClienteInstalacionEntity {
 
     this.ensureLocationPair();
     this.ensureNonNegativeMoney();
+  }
+
+  private ensurePlanningEditable(action: string): void {
+    const estadosPermitidos: EstadoInstalacionCliente[] = [
+      EstadoInstalacionCliente.PROGRAMADA,
+      EstadoInstalacionCliente.REPROGRAMADA,
+    ];
+
+    if (!estadosPermitidos.includes(this.props.estado)) {
+      throw new Error(
+        `No se puede ${action} cuando la instalación se encuentra en estado ${this.props.estado}.`,
+      );
+    }
   }
 
   private ensurePositiveId(value: number, field: string): void {

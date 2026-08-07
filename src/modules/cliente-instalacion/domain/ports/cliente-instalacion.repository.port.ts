@@ -63,6 +63,18 @@ export type CrearTecnicoInstalacionInput = {
   observaciones?: string | null;
 };
 
+export type ActualizarTecnicoInstalacionInput = {
+  tecnicoId: number;
+
+  rol: RolTecnicoOperacionCliente;
+
+  esResponsable: boolean;
+
+  tiempoMinutos?: number | null;
+
+  observaciones?: string | null;
+};
+
 export type ClienteInstalacionTecnicoDetalle = {
   id: number;
   instalacionId: number;
@@ -550,7 +562,10 @@ export interface ClienteInstalacionRepositoryPort {
     filters: ClienteInstalacionFindManyFilters,
   ): Promise<ClienteInstalacionPaginatedResult>;
 
-  save(entity: ClienteInstalacionEntity): Promise<ClienteInstalacionEntity>;
+  save(
+    entity: ClienteInstalacionEntity,
+    tecnicos?: ActualizarTecnicoInstalacionInput[],
+  ): Promise<ClienteInstalacionEntity>;
 
   findAssignedToTechnician(
     filters: ClienteInstalacionAssignedFilters,

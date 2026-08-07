@@ -135,17 +135,28 @@ export type MarcarFallidaClienteInstalacionParams = {
 };
 
 export type ActualizarDatosGeneralesInstalacionParams = {
-  asesorId?: number | null;
-  servicioInternetId?: number | null;
-  ticketId?: number | null;
-  fechaProgramada?: Date | null;
-  direccionInstalacion?: string | null;
-  referenciaUbicacion?: string | null;
-  latitud?: number | null;
-  longitud?: number | null;
-  observaciones?: string | null;
-};
+  tipo?: TipoInstalacionCliente;
 
+  asesorId?: number | null;
+
+  ticketId?: number | null;
+
+  descripcion?: string | null;
+
+  motivo?: string | null;
+
+  observaciones?: string | null;
+
+  fechaProgramada?: Date | null;
+
+  direccionInstalacion?: string | null;
+
+  referenciaUbicacion?: string | null;
+
+  latitud?: number | null;
+
+  longitud?: number | null;
+};
 export type ActualizarCostosInstalacionParams = {
   costoInstalacion?: Money;
   costoMateriales?: Money;

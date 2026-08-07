@@ -22,7 +22,7 @@ import { CrearClienteInstalacionDto } from '../application/dto/crear-cliente-ins
 import { ClienteInstalacionPresenter } from './cliente-instalacion.presenter';
 import { ClienteInstalacionApplicationService } from '../application/services/cliente-instalacion.aplication-service.service';
 import { FiltrarClienteInstalacionesDto } from '../application/dto/filtrar-cliente-instalaciones.dto';
-import { ActualizarClienteInstalacionDto } from '../application/dto/actualizar-cliente-instalacion.dto';
+// import { ActualizarClienteInstalacionDto } from '../application/dto/actualizar-cliente-instalacion.dto';
 import { ReprogramarClienteInstalacionDto } from '../application/dto/reprogramar-cliente-instalacion.dto';
 import { IniciarInstalacionClienteDto } from '../application/dto/iniciar-instalacion.dto';
 import { CompletarClienteInstalacionDto } from '../application/dto/completar-cliente-instalacion.dto';
@@ -42,6 +42,7 @@ import {
   RequestWithAuthenticatedUser,
 } from 'src/auth/interfaces/request-with-authenticated-user.interface';
 import { ActivarPppoeInstalacionDto } from '../application/dto/activar-pppoe-instalacion.dto';
+import { ActualizarClienteInstalacionDto } from '../application/dto/update-instalacion.dto';
 
 type AuthenticatedRequest = Request & {
   user?: {
@@ -234,12 +235,10 @@ export class ClienteInstalacionController {
   @Patch(':id')
   async actualizar(
     @Param('id', ParseIntPipe) id: number,
-    @Query('empresaId', ParseIntPipe) empresaId: number,
     @Body() dto: ActualizarClienteInstalacionDto,
   ) {
     const instalacion = await this.clienteInstalacionService.actualizar(
       id,
-      empresaId,
       dto,
     );
 

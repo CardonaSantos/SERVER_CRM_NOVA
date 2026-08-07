@@ -12,13 +12,47 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { Transform, Type } from 'class-transformer';
+import { Type } from 'class-transformer';
 import { TipoInstalacionCliente } from '../../domain/enums/tipo-instalacion-cliente.enum';
+import { RolTecnicoOperacionCliente } from '../../domain/enums/rol-tecnico-operacion-cliente.enum';
 
 const toNumber = ({ value }: { value: unknown }) => {
   if (value === undefined || value === null || value === '') return undefined;
   return Number(value);
 };
+
+export class ActualizarCostosInstalacionDto {
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  costoInstalacion?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  costoMateriales?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  costoManoObra?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  costoOtros?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  montoCobradoCliente?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2_000)
+  notasCostos?: string | null;
+}
+
 export class ActualizarClienteInstalacionDto {
   @IsOptional()
   @IsEnum(TipoInstalacionCliente)
@@ -87,44 +121,14 @@ export class ActualizarClienteInstalacionDto {
   @Type(() => ActualizarTecnicoInstalacionDto)
   tecnicos?: ActualizarTecnicoInstalacionDto[];
 }
-export class ActualizarCostosInstalacionDto {
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  costoInstalacion?: number;
 
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  costoMateriales?: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  costoManoObra?: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  costoOtros?: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  montoCobradoCliente?: number;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(2_000)
-  notasCostos?: string | null;
-}
 export class ActualizarTecnicoInstalacionDto {
   @IsInt()
   @Min(1)
   tecnicoId: number;
 
   @IsString()
-  rol: string;
+  rol: RolTecnicoOperacionCliente;
 
   @IsBoolean()
   esResponsable: boolean;

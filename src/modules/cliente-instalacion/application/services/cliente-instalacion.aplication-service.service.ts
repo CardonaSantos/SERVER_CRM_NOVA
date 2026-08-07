@@ -158,14 +158,9 @@ export class ClienteInstalacionApplicationService {
     });
   }
 
-  actualizar(
-    id: number,
-    empresaId: number,
-    dto: ActualizarClienteInstalacionDto,
-  ) {
+  actualizar(id: number, dto: ActualizarClienteInstalacionDto) {
     return this.actualizarClienteInstalacionUseCase.execute({
       id,
-      empresaId,
       ...dto,
     });
   }

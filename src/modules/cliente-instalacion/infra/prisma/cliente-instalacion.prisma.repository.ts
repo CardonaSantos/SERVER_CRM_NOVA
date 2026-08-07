@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ClienteInstalacionEntity } from '../../domain/entities/cliente-instalacion.entity';
 import {
+  ActualizarTecnicoInstalacionInput,
   BuscarInstalacionAsignadaTecnicoParams,
   ClienteInstalacionAssignedFilters,
   ClienteInstalacionAssignedPaginatedResult,
@@ -436,6 +437,7 @@ export class ClienteInstalacionPrismaRepository
 
   async save(
     entity: ClienteInstalacionEntity,
+    tecnicos?: ActualizarTecnicoInstalacionInput[],
   ): Promise<ClienteInstalacionEntity> {
     const props = entity.toPrimitives();
 
@@ -445,14 +447,113 @@ export class ClienteInstalacionPrismaRepository
 
     const data = ClienteInstalacionPrismaMapper.toUpdatePersistence(entity);
 
-    const record = await this.prisma.clienteInstalacion.update({
-      where: {
-        id: props.id,
-      },
-      data,
-    });
+    /*
+     * Si el PATCH no incluye técnicos, únicamente
+     * actualizamos ClienteInstalacion.
+     */
+    if (tecnicos === undefined) {
+      const record = await this.prisma.clienteInstalacion.update({
+        where: {
+          id: props.id,
+        },
 
-    return ClienteInstalacionPrismaMapper.toDomain(record);
+        data,
+      });
+
+      return ClienteInstalacionPrismaMapper.toDomain(record);
+    }
+
+    /*
+     * El PATCH sí solicitó sincronizar técnicos.
+     */
+    const tecnicoIds = tecnicos.map((tecnico) => tecnico.tecnicoId);
+
+    return this.prisma.$transaction(async (tx) => {
+      /*
+       * Validamos primero.
+       *
+       * Nunca eliminamos las asignaciones existentes
+       * antes de saber que las nuevas son válidas.
+       */
+      const usuarios =
+        tecnicoIds.length > 0
+          ? await tx.usuario.findMany({
+              where: {
+                id: {
+                  in: tecnicoIds,
+                },
+
+                empresaId: entity.empresaId,
+
+                activo: true,
+              },
+
+              select: {
+                id: true,
+                nombre: true,
+              },
+            })
+          : [];
+
+      if (usuarios.length !== tecnicoIds.length) {
+        throw new Error(
+          'Uno o más técnicos no existen, están inactivos o pertenecen a otra empresa.',
+        );
+      }
+
+      const usuariosMap = new Map(
+        usuarios.map((usuario) => [usuario.id, usuario]),
+      );
+
+      /*
+       * 1. Actualizamos la instalación.
+       */
+      const record = await tx.clienteInstalacion.update({
+        where: {
+          id: props.id,
+        },
+
+        data,
+      });
+
+      /*
+       * 2. Eliminamos las asignaciones anteriores.
+       *
+       * Si tecnicos = [], la operación termina
+       * aquí y la instalación queda sin técnicos.
+       */
+      await tx.clienteInstalacionTecnico.deleteMany({
+        where: {
+          instalacionId: props.id,
+        },
+      });
+
+      /*
+       * 3. Creamos el nuevo conjunto de asignaciones.
+       */
+      if (tecnicos.length > 0) {
+        await tx.clienteInstalacionTecnico.createMany({
+          data: tecnicos.map((tecnico) => ({
+            instalacionId: props.id!,
+
+            tecnicoId: tecnico.tecnicoId,
+
+            rol: tecnico.rol,
+
+            esResponsable: tecnico.esResponsable,
+
+            tiempoMinutos: tecnico.tiempoMinutos ?? null,
+
+            observaciones: tecnico.observaciones ?? null,
+
+            tecnicoNombreSnapshot:
+              usuariosMap.get(tecnico.tecnicoId)?.nombre ?? null,
+          })),
+        });
+      }
+
+      return ClienteInstalacionPrismaMapper.toDomain(record);
+    });
   }
 
   async deleteAll(): Promise<any> {
