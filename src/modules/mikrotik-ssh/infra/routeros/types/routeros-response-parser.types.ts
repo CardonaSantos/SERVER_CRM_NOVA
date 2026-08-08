@@ -4,7 +4,16 @@ import {
 } from '../../../domain/results/mikrotik-ssh-common.result';
 
 /**
- * Resultado interno de buscar sesiones activas.
+ * Resultado interno de consultar las sesiones PPPoE
+ * activas asociadas a un usuario.
+ *
+ * Esta información se utiliza antes y después de ejecutar:
+ *
+ * /ppp active remove [find name="..."]
+ *
+ * De esa forma la capa de sesión puede comprobar
+ * el efecto remoto sin depender de contadores artificiales
+ * impresos por un script RouterOS.
  */
 export type BuscarSesionesActivasRouterOsResult = ResultadoBaseMikrotikSsh & {
   usuarioPppoe: string;
@@ -13,13 +22,20 @@ export type BuscarSesionesActivasRouterOsResult = ResultadoBaseMikrotikSsh & {
 };
 
 /**
- * Resultado interno del comando de remoción.
+ * Resultado interno de enviar el comando:
  *
- * La sesión SSH realizará otra consulta después
- * para confirmar cuántas sesiones permanecen.
+ * /ppp active remove [find name="..."]
+ *
+ * comandoEjecutado indica únicamente que RouterOS aceptó
+ * el comando SSH sin reportar un error técnico.
+ *
+ * NO significa que la remoción haya sido confirmada.
+ *
+ * La confirmación se realiza posteriormente mediante
+ * una nueva consulta de sesiones activas.
  */
 export type RemoverSesionesActivasRouterOsResult = ResultadoBaseMikrotikSsh & {
   usuarioPppoe: string;
 
-  sesionesRemovidasReportadas: number;
+  comandoEjecutado: true;
 };
