@@ -2,15 +2,70 @@ import { ClienteDesinstalacionAutorizacionEntity } from '../entities/cliente-des
 
 export type AutorizacionDesinstalacionPendiente = {
   autorizacion: ClienteDesinstalacionAutorizacionEntity;
+
+  solicitadoPor: {
+    id: number;
+    nombre: string;
+  } | null;
+
   desinstalacion: {
     id: number;
+
     clienteId: number;
-    servicioInternetId?: number | null;
+
+    servicioInternetId: number | null;
+
     tipo: string;
-    motivo?: string | null;
+
+    motivo: string | null;
+
     estado: string;
-    fechaProgramada?: Date | null;
-    observaciones?: string | null;
+
+    fechaProgramada: Date | null;
+
+    observaciones: string | null;
+
+    cliente: {
+      id: number;
+
+      nombre: string;
+
+      apellidos: string | null;
+
+      telefono: string | null;
+
+      direccion: string | null;
+    };
+
+    servicioInternet: {
+      id: number;
+
+      nombre: string;
+
+      velocidad: string | null;
+
+      precio: number;
+    } | null;
+  };
+};
+
+export type BuscarAutorizacionesPendientesParams = {
+  page: number;
+
+  limit: number;
+};
+
+export type AutorizacionesPendientesPaginatedResult = {
+  data: AutorizacionDesinstalacionPendiente[];
+
+  meta: {
+    total: number;
+
+    page: number;
+
+    limit: number;
+
+    totalPages: number;
   };
 };
 
@@ -25,7 +80,9 @@ export interface ClienteDesinstalacionAutorizacionRepositoryPort {
     desinstalacionId: number,
   ): Promise<ClienteDesinstalacionAutorizacionEntity | null>;
 
-  findPendientes(): Promise<AutorizacionDesinstalacionPendiente[]>;
+  findPendientes(
+    params: BuscarAutorizacionesPendientesParams,
+  ): Promise<AutorizacionesPendientesPaginatedResult>;
 
   save(
     entity: ClienteDesinstalacionAutorizacionEntity,

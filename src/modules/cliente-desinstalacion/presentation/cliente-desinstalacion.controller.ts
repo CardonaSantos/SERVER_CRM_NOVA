@@ -41,6 +41,7 @@ import { MarcarFallidaClienteDesinstalacionDto } from '../application/dto/marcar
 import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 import { SubirEvidenciaDesinstalacionDto } from '../application/dto/subir-evidencia-desinstalacion.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { FiltrarAutorizacionesPendientesDto } from '../application/dto/filtrar-autorizaciones-pendientes.dto';
 
 @UseGuards(JwtAuthGuard)
 @UsePipes(
@@ -59,9 +60,14 @@ export class ClienteDesinstalacionController {
   // AUTORIZACIONES
 
   @Get('autorizaciones/pendientes')
-  async listarAutorizacionesPendientes() {
+  async listarAutorizacionesPendientes(
+    @Query()
+    query: FiltrarAutorizacionesPendientesDto,
+  ) {
     const result =
-      await this.clienteDesinstalacionService.listarAutorizacionesPendientes();
+      await this.clienteDesinstalacionService.listarAutorizacionesPendientes(
+        query,
+      );
 
     return ClienteDesinstalacionAutorizacionPresenter.pendientesToHttp(result);
   }

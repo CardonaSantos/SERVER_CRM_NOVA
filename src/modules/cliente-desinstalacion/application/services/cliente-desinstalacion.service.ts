@@ -37,6 +37,7 @@ import {
   SubirEvidenciaDesinstalacionUseCase,
 } from '../use-cases/subir-evidencia-desinstalacion.use-case';
 import { ObtenerContextoCreacionDesinstalacionUseCase } from '../use-cases/obtener-contexto-creacion-desinstalacion.use-case';
+import { FiltrarAutorizacionesPendientesDto } from '../dto/filtrar-autorizaciones-pendientes.dto';
 
 @Injectable()
 export class ClienteDesInstalacionApplicationService {
@@ -165,8 +166,8 @@ export class ClienteDesInstalacionApplicationService {
     });
   }
 
-  listarAutorizacionesPendientes() {
-    return this.listarAutorizacionesPendientesUseCase.execute();
+  listarAutorizacionesPendientes(filters: FiltrarAutorizacionesPendientesDto) {
+    return this.listarAutorizacionesPendientesUseCase.execute(filters);
   }
 
   aprobarAutorizacion(
