@@ -4,16 +4,17 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+
+import { EstadoAccesoInternet } from 'src/modules/pppoe-acceso-internet/domain/enums/ppoe-acceso-internet.enum';
+
 import { ClienteAccesoInternetEntity } from 'src/modules/pppoe-acceso-internet/domain/entities/ppoe-acceso-internet.entity';
+
 import { ClienteAccesoInternetRepositoryPort } from 'src/modules/pppoe-acceso-internet/domain/ports/ppoe-acceso-internet.port';
+
 import { CLIENTE_ACCESO_INTERNET_REPOSITORY } from 'src/modules/pppoe-acceso-internet/infra/tokens/token-ppoe-acceso-internet.token';
 
 export type ValidarAccesoDesinstalacionParams = {
-  empresaId: number;
-
   clienteId: number;
-
-  servicioInternetId: number | null;
 
   accesoInternetId: number;
 };
@@ -28,61 +29,30 @@ export class ValidarAccesoDesinstalacionService {
   async validar(
     params: ValidarAccesoDesinstalacionParams,
   ): Promise<ClienteAccesoInternetEntity> {
-    const acceso = await this.accesoInternetRepository.findById({
-      empresaId: params.empresaId,
+    const acceso = await this.accesoInternetRepository.findByIdForClient({
+      clienteId: params.clienteId,
 
       accesoInternetId: params.accesoInternetId,
     });
 
     if (!acceso) {
       throw new NotFoundException(
-        `El acceso de internet ${params.accesoInternetId} no existe.`,
+        `No existe el acceso ${params.accesoInternetId} para el cliente ${params.clienteId}.`,
       );
     }
 
-    if (acceso.empresaId !== params.empresaId) {
+    if (acceso.estado === EstadoAccesoInternet.BAJA) {
       throw new ConflictException(
-        `El acceso de internet ${params.accesoInternetId} no pertenece a la empresa indicada.`,
+        'El acceso seleccionado ya se encuentra dado de baja.',
       );
     }
 
-    if (acceso.clienteId !== params.clienteId) {
+    if (acceso.servicioInternetId === null) {
       throw new ConflictException(
-        `El acceso de internet ${params.accesoInternetId} pertenece al cliente ${acceso.clienteId}, no al cliente ${params.clienteId}.`,
-      );
-    }
-
-    if (acceso.servicioInternetId !== params.servicioInternetId) {
-      throw new ConflictException(
-        this.buildServicioMismatchMessage({
-          accesoInternetId: params.accesoInternetId,
-
-          servicioAccesoId: acceso.servicioInternetId,
-
-          servicioDesinstalacionId: params.servicioInternetId,
-        }),
+        'El acceso seleccionado no tiene un servicio de internet asociado.',
       );
     }
 
     return acceso;
-  }
-
-  private buildServicioMismatchMessage(params: {
-    accesoInternetId: number;
-
-    servicioAccesoId: number | null;
-
-    servicioDesinstalacionId: number | null;
-  }): string {
-    const servicioAcceso = params.servicioAccesoId ?? 'sin servicio';
-
-    const servicioDesinstalacion =
-      params.servicioDesinstalacionId ?? 'sin servicio';
-
-    return (
-      `El acceso de internet ${params.accesoInternetId} está vinculado al servicio ` +
-      `${servicioAcceso}, pero la desinstalación indica el servicio ` +
-      `${servicioDesinstalacion}.`
-    );
   }
 }

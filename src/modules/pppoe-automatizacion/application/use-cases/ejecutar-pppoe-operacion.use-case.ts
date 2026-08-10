@@ -69,6 +69,16 @@ import { ClienteAccesoInternetEntity } from 'src/modules/pppoe-acceso-internet/d
  * - ACTIVAR_SECRET;
  * - SUSPENDER_SERVICIO.
  */
+/**
+ * Ejecuta una operación PPPoE previamente creada.
+ *
+ * Operaciones admitidas:
+ *
+ * - CREAR_SECRET;
+ * - ACTIVAR_SECRET;
+ * - SUSPENDER_SERVICIO;
+ * - ELIMINAR_SECRET.
+ */
 export type EjecutarPppoeOperacionUseCaseInput = {
   empresaId: number;
 
@@ -446,24 +456,63 @@ export class EjecutarPppoeOperacionUseCase {
     switch (params.operacion.tipo) {
       case TipoOperacionPppoe.CREAR_SECRET:
         /*
-         * Continúa CONFIGURANDO.
+         * Estado 2 — EN INSTALACIÓN.
          *
-         * El secret existe, pero todavía está
-         * deshabilitado.
+         * El Secret ya fue creado físicamente en RouterOS
+         * y quedó habilitado según el requerimiento PPPoE v3.
+         *
+         * Sin embargo, el acceso continúa CONFIGURANDO porque
+         * la instalación todavía no ha sido formalmente
+         * confirmada como servicio ACTIVO dentro del CRM.
+         *
+         * La condición técnica del Secret en RouterOS y el
+         * estado de negocio del acceso son conceptos distintos:
+         *
+         * RouterOS:
+         *   Secret existente + habilitado.
+         *
+         * CRM:
+         *   Acceso CONFIGURANDO.
+         *
+         * La transición a ACTIVO corresponde posteriormente
+         * a ACTIVAR_SECRET / Estado 3.
          */
         return params.acceso;
 
       case TipoOperacionPppoe.ACTIVAR_SECRET:
+        /*
+         * Estado 3 — ACTIVO.
+         *
+         * El comando enable ya fue ejecutado y confirmado
+         * remotamente. Ahora sincronizamos el estado formal
+         * del acceso en el CRM.
+         */
         params.acceso.activar(params.fecha);
 
         break;
 
       case TipoOperacionPppoe.SUSPENDER_SERVICIO:
+        /*
+         * Estado 4 — SUSPENDIDO.
+         *
+         * RouterOS ya confirmó:
+         *
+         * - Secret deshabilitado;
+         * - ausencia de sesiones PPPoE activas.
+         */
         params.acceso.suspender(params.fecha);
 
         break;
 
       case TipoOperacionPppoe.ELIMINAR_SECRET:
+        /*
+         * Estado 5 — BAJA DEFINITIVA.
+         *
+         * RouterOS ya confirmó:
+         *
+         * - Secret eliminado;
+         * - ausencia de sesiones PPPoE activas.
+         */
         params.acceso.darDeBaja(params.fecha);
 
         break;
@@ -709,6 +758,29 @@ export class EjecutarPppoeOperacionUseCase {
    *
    * ERROR -> EN_ACTIVACION
    */
+  /**
+   * Prepara la cuenta para la activación formal del servicio.
+   *
+   * Estado 3 vuelve a ejecutar explícitamente:
+   *
+   * /ppp secret enable [find name="..."]
+   *
+   * aunque el Secret creado durante Estado 2 haya quedado
+   * habilitado. Esto corresponde al comando definido por
+   * la transición formal a ACTIVO en el requerimiento v3.
+   *
+   * Primera activación:
+   *
+   * EN_INSTALACION -> EN_ACTIVACION
+   *
+   * Reactivación:
+   *
+   * SUSPENDIDA -> EN_ACTIVACION
+   *
+   * Reintento:
+   *
+   * ERROR -> EN_ACTIVACION
+   */
   private async prepareAccountForActivation(
     cuenta: ClientePppoeCuentaEntity,
   ): Promise<ClientePppoeCuentaEntity> {
@@ -787,30 +859,24 @@ export class EjecutarPppoeOperacionUseCase {
    */
   private async applySuccessfulAccountResult(params: {
     operacion: PppoeOperacionEntity;
-
     cuenta: ClientePppoeCuentaEntity;
-
     fecha: Date;
   }): Promise<ClientePppoeCuentaEntity> {
     switch (params.operacion.tipo) {
       case TipoOperacionPppoe.CREAR_SECRET:
         params.cuenta.marcarSecretCreado(params.fecha);
-
         break;
 
       case TipoOperacionPppoe.ACTIVAR_SECRET:
         params.cuenta.marcarActiva(params.fecha);
-
         break;
 
       case TipoOperacionPppoe.SUSPENDER_SERVICIO:
         params.cuenta.marcarSuspendida(params.fecha);
-
         break;
 
       case TipoOperacionPppoe.ELIMINAR_SECRET:
         params.cuenta.marcarEliminada(params.fecha);
-
         break;
 
       default:

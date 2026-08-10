@@ -11,6 +11,7 @@ import { ReprogramarClienteDesinstalacionUseCase } from './application/use-cases
 import { ActualizarCostosDesinstalacionUseCase } from './application/use-cases/actualizar-costos-desinstalacion.use-case';
 import {
   CLIENTE_DESINSTALACION_AUTORIZACION_REPOSITORY,
+  CLIENTE_DESINSTALACION_CONTEXTO_REPOSITORY,
   CLIENTE_DESINSTALACION_MEDIA_REPOSITORY,
   CLIENTE_DESINSTALACION_REPOSITORY,
   CLIENTE_DESINSTALACION_TECNICO_REPOSITORY,
@@ -39,6 +40,8 @@ import { TipoEvidenciaClienteOperacion } from '../cliente-instalacion/domain/enu
 import { SubirEvidenciaDesinstalacionUseCase } from './application/use-cases/subir-evidencia-desinstalacion.use-case';
 import { ClienteDesinstalacionMediaPrismaRepository } from './infra/prisma/cliente-desinstalacion-media.prisma.repository';
 import { DigitalOceanMediaModule } from '../digital-ocean-media/digital-ocean-media.module';
+import { ObtenerContextoCreacionDesinstalacionUseCase } from './application/use-cases/obtener-contexto-creacion-desinstalacion.use-case';
+import { ClienteDesinstalacionContextoPrismaRepository } from './infra/prisma/cliente-desinstalacion-contexto.prisma.repository';
 
 @Module({
   imports: [
@@ -79,6 +82,8 @@ import { DigitalOceanMediaModule } from '../digital-ocean-media/digital-ocean-me
     ListarTecnicosDesinstalacionUseCase,
     EliminarTecnicoDesinstalacionUseCase,
     ValidarAccesoDesinstalacionService,
+    ObtenerContextoCreacionDesinstalacionUseCase,
+
     {
       provide: CLIENTE_DESINSTALACION_REPOSITORY,
       useClass: ClienteDesInstalacionPrismaRepository,
@@ -94,6 +99,11 @@ import { DigitalOceanMediaModule } from '../digital-ocean-media/digital-ocean-me
     {
       provide: CLIENTE_DESINSTALACION_MEDIA_REPOSITORY,
       useClass: ClienteDesinstalacionMediaPrismaRepository,
+    },
+
+    {
+      provide: CLIENTE_DESINSTALACION_CONTEXTO_REPOSITORY,
+      useClass: ClienteDesinstalacionContextoPrismaRepository,
     },
   ],
   exports: [ClienteDesInstalacionApplicationService],

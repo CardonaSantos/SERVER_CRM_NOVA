@@ -45,9 +45,8 @@ export class ActualizarClienteDesinstalacionUseCase {
 
     if (accesoInternetIdFinal !== null) {
       await this.validarAccesoDesinstalacionService.validar({
-        empresaId: propsActuales.empresaId,
         clienteId: propsActuales.clienteId,
-        servicioInternetId: servicioInternetIdFinal,
+
         accesoInternetId: accesoInternetIdFinal,
       });
     }

@@ -120,6 +120,13 @@ export class ClienteDesinstalacionController {
     return ClienteDesinstalacionPresenter.paginatedToHttp(result);
   }
 
+  @Get('contexto-creacion/:clienteId')
+  async obtenerContextoCreacion(
+    @Param('clienteId', ParseIntPipe) clienteId: number,
+  ) {
+    return this.clienteDesinstalacionService.obtenerContextoCreacion(clienteId);
+  }
+
   // DETALLE
 
   @Get(':id')

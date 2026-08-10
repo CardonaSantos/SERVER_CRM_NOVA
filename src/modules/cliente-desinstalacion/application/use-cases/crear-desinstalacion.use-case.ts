@@ -1,16 +1,26 @@
 import { ConflictException, Inject, Injectable } from '@nestjs/common';
+
+import { dayjs } from 'src/Utils/dayjs.config';
 import { Money } from 'src/shared/domain/value-objects/money.vo';
+
 import {
+  CLIENTE_DESINSTALACION_CONTEXTO_REPOSITORY,
   CLIENTE_DESINSTALACION_REPOSITORY,
   CLIENTE_DESINSTALACION_TECNICO_REPOSITORY,
 } from '../../infra/tokens/cliente-desinstalacion.token';
+
 import { ClienteDesInstalacionRepositoryPort } from '../../domain/ports/cliente-desinstalacion.repository.port';
-import { CrearClienteDesinstalacionDto } from '../dto/create-desinstalacion-cliente.dto';
-import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entitie';
-import { dayjs } from 'src/Utils/dayjs.config';
-import { TipoDesinstalacionCliente } from '../../domain/enums/tipo-desinstalacion-cliente.enum';
+
 import { ClienteDesinstalacionTecnicoRepositoryPort } from '../../domain/ports/cliente-desinstalacion-tecnico.repository.port';
+
+import { ClienteDesinstalacionContextoRepositoryPort } from '../../domain/ports/cliente-desinstalacion-contexto.repository.port';
+
+import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entitie';
+
 import { ClienteDesinstalacionTecnicoEntity } from '../../domain/entities/cliente-desinstalacion-tecnico.entity';
+
+import { CrearClienteDesinstalacionDto } from '../dto/create-desinstalacion-cliente.dto';
+
 import { ValidarAccesoDesinstalacionService } from '../services/validar-acceso-desinstalacion.service';
 
 export type CrearClienteDesInstalacionCommand =
@@ -20,12 +30,16 @@ export type CrearClienteDesInstalacionCommand =
 
 export type CrearClienteDesinstalacionResult = {
   desinstalacion: ClienteDesinstalacionEntity;
+
   tecnicos: ClienteDesinstalacionTecnicoEntity[];
 };
 
 @Injectable()
 export class CrearDesinstalacionUseCase {
   constructor(
+    @Inject(CLIENTE_DESINSTALACION_CONTEXTO_REPOSITORY)
+    private readonly contextoRepository: ClienteDesinstalacionContextoRepositoryPort,
+
     private readonly validarAccesoDesinstalacionService: ValidarAccesoDesinstalacionService,
 
     @Inject(CLIENTE_DESINSTALACION_REPOSITORY)
@@ -38,62 +52,100 @@ export class CrearDesinstalacionUseCase {
   async execute(
     command: CrearClienteDesInstalacionCommand,
   ): Promise<CrearClienteDesinstalacionResult> {
-    const responsableCount =
-      command.tecnicos?.filter((tecnico) => tecnico.esResponsable).length ?? 0;
+    this.validarTecnicoResponsable(command);
 
-    if (responsableCount > 1) {
+    /**
+     * El frontend únicamente indica:
+     *
+     * clienteId + accesoInternetId
+     *
+     * La empresa y el servicio asociados al acceso son datos
+     * canónicos del backend y no deben confiarse al cliente HTTP.
+     */
+    const acceso = await this.validarAccesoDesinstalacionService.validar({
+      clienteId: command.clienteId,
+
+      accesoInternetId: command.accesoInternetId,
+    });
+
+    const empresaId = acceso.empresaId;
+
+    const servicioInternetId = acceso.servicioInternetId;
+
+    /**
+     * Aunque ValidarAccesoDesinstalacionService también protege esta
+     * condición, aquí necesitamos estrechar el tipo a number para crear
+     * correctamente la desinstalación.
+     */
+    if (servicioInternetId === null) {
       throw new ConflictException(
-        'Solo puede haber un técnico responsable por desinstalación.',
+        'El acceso seleccionado no tiene un servicio de internet asociado.',
       );
     }
 
-    if (command.accesoInternetId !== undefined) {
-      await this.validarAccesoDesinstalacionService.validar({
-        empresaId: command.empresaId,
-        clienteId: command.clienteId,
-        servicioInternetId: command.servicioInternetId ?? null,
-        accesoInternetId: command.accesoInternetId,
-      });
-    }
+    await this.validarTicket(command.ticketId, command.clienteId);
 
     const desinstalacion = ClienteDesinstalacionEntity.create({
-      clienteId: command.clienteId,
-      empresaId: command.empresaId,
+      /**
+       * Relaciones principales.
+       */
+      empresaId,
 
-      servicioInternetId: command.servicioInternetId ?? null,
+      clienteId: command.clienteId,
+
+      servicioInternetId,
+
+      accesoInternetId: command.accesoInternetId,
 
       ticketId: command.ticketId ?? null,
-      accesoInternetId: command.accesoInternetId ?? null,
-      solicitadoPorId: command.solicitadoPorId ?? command.creadoPorId ?? null,
-      creadoPorId: command.creadoPorId ?? null,
-      ejecutadoPorId: command.ejecutadoPorId ?? null,
 
-      direccionServicio: command.direccionServicio ?? null,
-      referenciaUbicacion: command.referenciaUbicacion ?? null,
+      /**
+       * Auditoría.
+       *
+       * Al crear la solicitud, quien la registra también queda como
+       * solicitante. El ejecutor se conocerá únicamente al iniciar.
+       */
+      solicitadoPorId: command.creadoPorId,
 
-      fechaProgramada: command.fechaProgramada
-        ? dayjs(command.fechaProgramada).toDate()
-        : null,
+      creadoPorId: command.creadoPorId,
 
-      fechaSolicitud: command.fechaSolicitud
-        ? dayjs(command.fechaSolicitud).toDate()
-        : null,
+      ejecutadoPorId: null,
 
-      latitud: command.latitud ?? null,
-      longitud: command.longitud ?? null,
+      /**
+       * Datos administrativos.
+       */
+      tipo: command.tipo,
 
-      motivo: command.motivo ?? null,
-      observaciones: command.observaciones ?? null,
+      motivo: command.motivo,
 
-      tipo: command.tipo ?? TipoDesinstalacionCliente.COMPLETA,
+      fechaSolicitud: new Date(),
+
+      fechaProgramada: dayjs(command.fechaProgramada).toDate(),
 
       requiereRetiroEquipo: command.requiereRetiroEquipo ?? true,
 
-      saldoClienteAlMomento:
-        command.saldoClienteAlMomento !== undefined &&
-        command.saldoClienteAlMomento !== null
-          ? Money.fromNumber(command.saldoClienteAlMomento)
-          : Money.zero(),
+      observaciones: command.observaciones ?? null,
+
+      /**
+       * No se capturan nuevamente desde el formulario.
+       *
+       * La ubicación pertenece al servicio/instalación existente.
+       */
+      direccionServicio: null,
+
+      referenciaUbicacion: null,
+
+      latitud: null,
+
+      longitud: null,
+
+      /**
+       * No confiamos en un saldo proporcionado por el frontend.
+       *
+       * Si posteriormente necesitamos un snapshot financiero real,
+       * deberá calcularse desde el backend.
+       */
+      saldoClienteAlMomento: Money.zero(),
     });
 
     const savedDesinstalacion =
@@ -107,11 +159,17 @@ export class CrearDesinstalacionUseCase {
       const tecnicos = command.tecnicos.map((tecnico) =>
         ClienteDesinstalacionTecnicoEntity.create({
           desinstalacionId: savedProps.id!,
+
           tecnicoId: tecnico.tecnicoId ?? null,
+
           rol: tecnico.rol,
+
           esResponsable: tecnico.esResponsable ?? false,
+
           tiempoMinutos: tecnico.tiempoMinutos ?? null,
+
           observaciones: tecnico.observaciones ?? null,
+
           tecnicoNombreSnapshot: tecnico.tecnicoNombreSnapshot ?? null,
         }),
       );
@@ -121,7 +179,39 @@ export class CrearDesinstalacionUseCase {
 
     return {
       desinstalacion: savedDesinstalacion,
+
       tecnicos: savedTecnicos,
     };
+  }
+
+  private validarTecnicoResponsable(
+    command: CrearClienteDesInstalacionCommand,
+  ): void {
+    const responsableCount =
+      command.tecnicos?.filter((tecnico) => tecnico.esResponsable).length ?? 0;
+
+    if (responsableCount > 1) {
+      throw new ConflictException(
+        'Solo puede haber un técnico responsable por desinstalación.',
+      );
+    }
+  }
+
+  private async validarTicket(
+    ticketId: number | null | undefined,
+    clienteId: number,
+  ): Promise<void> {
+    if (ticketId === undefined || ticketId === null) {
+      return;
+    }
+
+    const perteneceAlCliente =
+      await this.contextoRepository.existsTicketForClient(ticketId, clienteId);
+
+    if (!perteneceAlCliente) {
+      throw new ConflictException(
+        `El ticket ${ticketId} no pertenece al cliente ${clienteId}.`,
+      );
+    }
   }
 }

@@ -36,6 +36,7 @@ import {
   SubirEvidenciaDesinstalacionCommand,
   SubirEvidenciaDesinstalacionUseCase,
 } from '../use-cases/subir-evidencia-desinstalacion.use-case';
+import { ObtenerContextoCreacionDesinstalacionUseCase } from '../use-cases/obtener-contexto-creacion-desinstalacion.use-case';
 
 @Injectable()
 export class ClienteDesInstalacionApplicationService {
@@ -62,6 +63,8 @@ export class ClienteDesInstalacionApplicationService {
     private readonly eliminarTecnicoDesinstalacionUseCase: EliminarTecnicoDesinstalacionUseCase,
 
     private readonly subirEvidenciaDesinstalacionUseCase: SubirEvidenciaDesinstalacionUseCase,
+
+    private readonly obtenerContextoCreacionDesinstalacionUseCase: ObtenerContextoCreacionDesinstalacionUseCase,
   ) {}
 
   crear(dto: CrearClienteDesinstalacionDto, creadoPorId: number) {
@@ -137,6 +140,10 @@ export class ClienteDesInstalacionApplicationService {
 
   cargarEvidencia(command: SubirEvidenciaDesinstalacionCommand) {
     return this.subirEvidenciaDesinstalacionUseCase.execute(command);
+  }
+
+  obtenerContextoCreacion(clienteId: number) {
+    return this.obtenerContextoCreacionDesinstalacionUseCase.execute(clienteId);
   }
 
   // registrarFirma(id: number, dto: RegistrarFirmaDesinstalacionDto) {

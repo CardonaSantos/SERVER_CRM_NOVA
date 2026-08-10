@@ -1,8 +1,14 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class AprobarDesinstalacionAutorizacionDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(255)
+  contrasenaActual: string;
+
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   comentarioAutorizador?: string | null;
 }
 

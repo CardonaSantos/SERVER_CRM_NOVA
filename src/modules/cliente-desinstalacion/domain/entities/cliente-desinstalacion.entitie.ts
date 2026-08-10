@@ -458,12 +458,18 @@ export class ClienteDesinstalacionEntity {
   }
 
   /**
-   * La autorización administrativa pertenece a otro
-   * agregado.
+   * Valida que la desinstalación se encuentre en un estado
+   * administrativo válido para aprobar su autorización.
    *
-   * Aprobarla no cambia el estado PROGRAMADA; solamente
-   * confirma que el registro continúa habilitado para
-   * iniciar el flujo posteriormente.
+   * La aprobación pertenece al agregado
+   * ClienteDesinstalacionAutorizacion.
+   *
+   * La baja definitiva de red asociada a la aprobación
+   * es un efecto de aplicación y se ejecuta fuera de esta
+   * entidad mediante el módulo de provisionamiento PPPoE.
+   *
+   * Autorizar NO inicia el trabajo físico y por ello
+   * mantiene la desinstalación en PROGRAMADA.
    */
   autorizar(): void {
     this.ensurePersisted('autorizar');
