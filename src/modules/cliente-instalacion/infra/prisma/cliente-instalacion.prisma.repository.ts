@@ -982,12 +982,6 @@ export class ClienteInstalacionPrismaRepository
 
         orderBy: [
           {
-            fechaProgramada: {
-              sort: 'asc',
-              nulls: 'last',
-            },
-          },
-          {
             creadoEn: 'desc',
           },
         ],
@@ -1206,10 +1200,6 @@ export class ClienteInstalacionPrismaRepository
   ): Promise<ClienteInstalacionTechnicalDetail | null> {
     const record = await this.prisma.clienteInstalacion.findUnique({
       where: {
-        /*
-         * La consulta no filtra por empresa, asignación,
-         * rol técnico ni esResponsable.
-         */
         id: instalacionId,
       },
 
@@ -1222,6 +1212,24 @@ export class ClienteInstalacionPrismaRepository
             telefono: true,
             dpi: true,
             direccion: true,
+            contactoReferenciaTelefono: true,
+            observaciones: true,
+
+            municipio: {
+              select: {
+                nombre: true,
+              },
+            },
+            departamento: {
+              select: {
+                nombre: true,
+              },
+            },
+            sector: {
+              select: {
+                nombre: true,
+              },
+            },
           },
         },
 
@@ -1364,9 +1372,18 @@ export class ClienteInstalacionPrismaRepository
 
         telefono: record.cliente.telefono,
 
+        telefonoReferencia: record.cliente.contactoReferenciaTelefono,
+
         dpi: record.cliente.dpi,
 
         direccion: record.cliente.direccion,
+
+        observaciones: record.cliente.observaciones,
+
+        municipio: record.cliente.municipio.nombre,
+        departamento: record.cliente.departamento.nombre,
+
+        sector: record.cliente.sector.nombre,
       },
 
       servicioInternet: record.servicioInternet

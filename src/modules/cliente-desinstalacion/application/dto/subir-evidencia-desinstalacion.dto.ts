@@ -19,8 +19,9 @@ const toNumber = ({ value }: { value: unknown }) => {
 };
 
 export class SubirEvidenciaDesinstalacionDto {
+  @IsOptional()
   @IsEnum(TipoEvidenciaClienteOperacion)
-  tipo: TipoEvidenciaClienteOperacion;
+  tipo?: TipoEvidenciaClienteOperacion;
 
   @IsOptional()
   @IsString()

@@ -31,7 +31,7 @@ export type SubirEvidenciaDesinstalacionCommand = {
 
   file: Express.Multer.File;
 
-  tipo: TipoEvidenciaClienteOperacion;
+  tipo?: TipoEvidenciaClienteOperacion | null;
 
   descripcion?: string | null;
 

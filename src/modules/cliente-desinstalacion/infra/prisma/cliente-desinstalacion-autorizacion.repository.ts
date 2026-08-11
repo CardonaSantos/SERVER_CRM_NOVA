@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { EstadoAutorizacionDesinstalacion as PrismaEstadoAutorizacion } from '@prisma/client';
+import {
+  Prisma,
+  EstadoAutorizacionDesinstalacion as PrismaEstadoAutorizacion,
+} from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
   AutorizacionDesinstalacionPendiente,
@@ -69,9 +72,7 @@ export class ClienteDesinstalacionAutorizacionPrismaRepository
 
     const skip = (page - 1) * limit;
 
-    const where = {
-      estado: PrismaEstadoAutorizacion.PENDIENTE,
-    };
+    const where: Prisma.ClienteDesinstalacionAutorizacionWhereInput = {};
 
     const [total, records] = await this.prisma.$transaction([
       this.prisma.clienteDesinstalacionAutorizacion.count({
@@ -143,7 +144,7 @@ export class ClienteDesinstalacionAutorizacionPrismaRepository
 
         orderBy: [
           {
-            fechaSolicitud: 'asc',
+            fechaSolicitud: 'desc',
           },
 
           {

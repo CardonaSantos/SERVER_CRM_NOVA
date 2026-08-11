@@ -515,9 +515,18 @@ export class ClienteInstalacionPresenter {
 
         telefono: result.cliente.telefono,
 
+        telefonoReferencia: result.cliente.telefonoReferencia,
+
         dpi: result.cliente.dpi,
 
         direccion: result.cliente.direccion,
+
+        observaciones: result.cliente.observaciones,
+
+        municipio: result.cliente.municipio,
+        departamento: result.cliente.departamento,
+
+        sector: result.cliente.sector,
       },
 
       ubicacion: {

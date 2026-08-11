@@ -38,7 +38,6 @@ export class ObtenerDetalleTecnicoInstalacionUseCase {
       );
     }
 
-    // const props = detalle.instalacion.getProps();
     const props = detalle.instalacion.toPrimitives();
 
     const puedeIniciar = ['PROGRAMADA', 'REPROGRAMADA'].includes(props.estado);
