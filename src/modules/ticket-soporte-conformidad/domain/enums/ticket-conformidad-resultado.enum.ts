@@ -1,0 +1,5 @@
+export enum TicketConformidadResultado {
+  PENDIENTE = 'PENDIENTE',
+  CONFORME = 'CONFORME',
+  REQUIERE_RETRABAJO = 'REQUIERE_RETRABAJO',
+}

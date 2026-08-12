@@ -167,6 +167,14 @@ model Usuario {
   operacionesPppoeReautenticadas PppoeOperacion[] @relation("PppoeOperacionReautenticadaPor")
 
   auditoriasPppoeOperadas PppoeAuditoria[] @relation("PppoeAuditoriaOperador")
+
+  conformidadesTicketCreadas TicketConformidad[] @relation("TicketConformidadCreadaPor")
+
+  conformidadesTicketComoTecnico TicketConformidad[] @relation("TicketConformidadTecnicoAsignado")
+
+  firmasTicketComoUsuario TicketFirma[] @relation("TicketFirmaUsuario")
+
+  enlacesConformidadTicketCreados TicketConformidadEnlace[] @relation("TicketConformidadEnlaceCreadoPor")
 }
 
 model UbicacionTecnico {
@@ -523,6 +531,8 @@ model ClienteInternet {
   whatsappDesactivadoPor    Usuario?  @relation("ClienteWhatsappDesactivadoPor", fields: [whatsappDesactivadoPorId], references: [id], onDelete: SetNull)
 
   auditoriasPppoe PppoeAuditoria[]
+
+  conformidadesTicket TicketConformidad[]
 
   @@index([empresaId, isEliminado])
   @@index([empresaId, estadoCliente])
@@ -1103,6 +1113,8 @@ model Media {
   evidenciasDesinstalacion ClienteDesinstalacionMedia[]
   gastoOperativos          GastoOperativo[]             @relation("EvidenciaGastoOperativo")
 
+  firmaTicket TicketFirma? @relation("TicketFirmaMedia")
+
   @@unique([bucket, key])
   @@index([clienteId, albumId, creadoEn(sort: Desc)])
   @@index([empresaId, categoria, tipo])
@@ -1377,6 +1389,8 @@ model TicketSoporte {
 
   instalacionesCliente    ClienteInstalacion[]
   desinstalacionesCliente ClienteDesinstalacion[]
+
+  ticketsConformidad TicketConformidad[]
 }
 
 model TicketTimeLog {
@@ -2749,6 +2763,135 @@ model ClienteDesinstalacionAutorizacion {
   @@index([desinstalacionId])
   @@index([estado])
   @@index([autorizadoPorId])
+}
+
+// CONFORMIDAD DE TICKET
+
+enum TicketConformidadResultado {
+  PENDIENTE
+  CONFORME
+  REQUIERE_RETRABAJO
+}
+
+model TicketConformidad {
+  id Int @id @default(autoincrement())
+
+  ticketId          Int
+  tecnicoAsignadoId Int?
+  creadoPorId       Int?
+
+  resultado TicketConformidadResultado @default(PENDIENTE)
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  respondidoEn DateTime?
+
+  ticket TicketSoporte @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  clienteId Int?
+
+  cliente ClienteInternet? @relation(fields: [clienteId], references: [id])
+
+  tecnicoAsignado Usuario? @relation("TicketConformidadTecnicoAsignado", fields: [tecnicoAsignadoId], references: [id])
+
+  creadoPor Usuario? @relation("TicketConformidadCreadaPor", fields: [creadoPorId], references: [id])
+
+  firmas  TicketFirma[]
+  enlaces TicketConformidadEnlace[]
+
+  @@index([ticketId])
+  @@index([clienteId])
+  @@index([tecnicoAsignadoId])
+  @@index([creadoPorId])
+  @@index([resultado])
+  @@index([resultado, creadoEn])
+  @@index([ticketId, creadoEn])
+}
+
+model TicketFirma {
+  id Int @id @default(autoincrement())
+
+  conformidadId Int
+
+  tipo TicketFirmaTipo
+
+  usuarioFirmanteId Int?
+
+  nombreFirmante   String
+  telefonoFirmante String?
+
+  origen TicketFirmaOrigen
+
+  ipOrigen  String?
+  userAgent String?
+
+  firmadoEn DateTime @default(now())
+
+  conformidad TicketConformidad @relation(fields: [conformidadId], references: [id], onDelete: Cascade)
+
+  usuarioFirmante Usuario? @relation("TicketFirmaUsuario", fields: [usuarioFirmanteId], references: [id])
+
+  mediaId Int @unique
+
+  media Media @relation("TicketFirmaMedia", fields: [mediaId], references: [id])
+
+  //
+  // Relación Media pendiente de adecuar
+  // al modelo Media real.
+  //
+
+  @@unique([conformidadId, tipo])
+  @@index([conformidadId])
+  @@index([usuarioFirmanteId])
+  @@index([tipo, firmadoEn])
+}
+
+model TicketConformidadEnlace {
+  id Int @id @default(autoincrement())
+
+  conformidadId Int
+
+  tokenHash String @unique
+
+  canal TicketConformidadCanal
+
+  telefonoDestino String?
+
+  expiraEn DateTime
+
+  usadoEn    DateTime?
+  revocadoEn DateTime?
+
+  creadoPorId Int?
+
+  creadoEn DateTime @default(now())
+
+  conformidad TicketConformidad @relation(fields: [conformidadId], references: [id], onDelete: Cascade)
+
+  creadoPor Usuario? @relation("TicketConformidadEnlaceCreadoPor", fields: [creadoPorId], references: [id])
+
+  @@index([conformidadId])
+  @@index([creadoPorId])
+  @@index([expiraEn])
+  @@index([conformidadId, creadoEn])
+}
+
+// TICKET FIRMAS ENUMS
+enum TicketConformidadCanal {
+  QR
+  WHATSAPP
+  LINK
+}
+
+enum TicketFirmaTipo {
+  CLIENTE
+  TECNICO
+}
+
+enum TicketFirmaOrigen {
+  CRM
+  PUBLICO
 }
 
 // ============================================================

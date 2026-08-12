@@ -69,6 +69,7 @@ import { PppoeAutomatizacionModule } from './modules/pppoe-automatizacion/pppoe-
 import { PppoeOperacionModule } from './modules/pppoe-operacion/pppoe-operacion.module';
 import { MikrotikSshModule } from './modules/mikrotik-ssh/mikrotik-ssh.module';
 import { MikrotikRouterCredentialsModule } from './modules/mikrotik-router-credentials/mikrotik-router-credentials.module';
+import { TicketSoporteConformidadModule } from './modules/ticket-soporte-conformidad/ticket-soporte-conformidad.module';
 
 @Module({
   imports: [
@@ -146,6 +147,7 @@ import { MikrotikRouterCredentialsModule } from './modules/mikrotik-router-crede
     PppoeOperacionModule,
     MikrotikSshModule,
     MikrotikRouterCredentialsModule,
+    TicketSoporteConformidadModule,
   ],
   controllers: [AppController],
   providers: [AppService],
