@@ -299,6 +299,10 @@ export class ClienteInstalacionPresenter {
 
   static crearToHttp(result: CrearClienteInstalacionResult) {
     return {
+      instalacion: {
+        id: result.detalle.instalacion.id,
+      },
+
       detalle: ClienteInstalacionPresenter.detalleToHttp(result.detalle),
 
       acceso: {

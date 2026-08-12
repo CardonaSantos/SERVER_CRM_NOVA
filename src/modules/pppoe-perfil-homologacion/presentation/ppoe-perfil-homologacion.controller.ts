@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Logger,
   Param,
   ParseIntPipe,
   Patch,
@@ -34,6 +35,7 @@ import { ListarPerfilesHomologacionSeleccionablesQuery } from '../application/dt
 )
 @Controller('ppoe-perfil-homologacion')
 export class PpoePerfilHomologacionController {
+  private readonly logger = new Logger(PpoePerfilHomologacionController.name);
   constructor(
     private readonly ppoePerfilHomologacionService: PpoePerfilHomologacionService,
   ) {}

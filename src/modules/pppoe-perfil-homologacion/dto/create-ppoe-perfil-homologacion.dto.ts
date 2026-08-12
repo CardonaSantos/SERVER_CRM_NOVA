@@ -1,7 +1,15 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsNotEmpty, IsString, MaxLength, Min } from 'class-validator';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class CreatePpoePerfilHomologacionDto {
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
@@ -25,5 +33,6 @@ export class CreatePpoePerfilHomologacionDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  @IsOptional()
   creadoPorId: number;
 }

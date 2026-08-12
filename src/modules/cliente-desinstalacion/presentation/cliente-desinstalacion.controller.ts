@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Logger,
   Param,
   ParseIntPipe,
   Patch,
@@ -53,6 +54,7 @@ import { FiltrarAutorizacionesPendientesDto } from '../application/dto/filtrar-a
 )
 @Controller('cliente-desinstalaciones')
 export class ClienteDesinstalacionController {
+  private readonly logger = new Logger(ClienteDesinstalacionController.name);
   constructor(
     private readonly clienteDesinstalacionService: ClienteDesInstalacionApplicationService,
   ) {}
@@ -115,6 +117,8 @@ export class ClienteDesinstalacionController {
       dto,
       creadoPorId,
     );
+
+    this.logger.log(`DTO recibido:\n${JSON.stringify(dto, null, 2)}`);
 
     return ClienteDesinstalacionPresenter.crearToHttp(result);
   }

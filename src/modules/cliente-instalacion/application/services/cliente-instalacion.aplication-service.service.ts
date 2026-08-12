@@ -270,12 +270,6 @@ export class ClienteInstalacionApplicationService {
       completadoPorId: params.operadorId,
 
       operadorId: params.operadorId,
-
-      operadorNombre: params.operadorNombre ?? null,
-
-      ipOrigen: params.ipOrigen ?? null,
-
-      userAgent: params.userAgent ?? null,
     });
   }
 
