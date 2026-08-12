@@ -28,6 +28,17 @@ export type SubirMediaCommand = {
   etiqueta?: string;
 
   basePrefix?: string;
+
+  /**
+   * Ruta semántica opcional dentro del recurso.
+   *
+   * Ejemplo:
+   * firmas/tickets/62/conformidades/2
+   *
+   * Si no se especifica, Media conserva exactamente
+   * su estructura actual basada en `tipo`.
+   */
+  subfolder?: string;
 };
 
 export type SubirMediaResult = {

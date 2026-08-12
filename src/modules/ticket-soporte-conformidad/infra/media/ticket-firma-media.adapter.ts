@@ -33,16 +33,8 @@ export class TicketFirmaMediaAdapter implements TicketFirmaMediaPort {
 
       subidoPorId: input.subidoPorId ?? undefined,
 
-      /*
-       * Las firmas NO deben quedar expuestas
-       * mediante CDN público.
-       */
       publico: false,
 
-      /*
-       * Debemos revisar CategoriaMedia antes de fijar
-       * definitivamente esta categoría.
-       */
       categoria: CategoriaMedia.CLIENTE_GENERAL,
 
       tipo: TipoMedia.IMAGEN,
@@ -56,6 +48,12 @@ export class TicketFirmaMediaAdapter implements TicketFirmaMediaPort {
       titulo: input.titulo ?? undefined,
 
       descripcion: input.descripcion ?? undefined,
+
+      basePrefix: 'crm',
+
+      subfolder:
+        `firmas/tickets/${input.ticketId}` +
+        `/conformidades/${input.conformidadId}`,
     });
 
     return {

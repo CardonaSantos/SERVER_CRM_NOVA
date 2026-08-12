@@ -1,56 +1,182 @@
 import {
+  Body,
   Controller,
   Get,
-  Post,
-  Body,
-  Patch,
   Param,
-  Delete,
+  Post,
+  Req,
+  UnauthorizedException,
+  UseGuards,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
-import { CreateTicketSoporteConformidadDto } from '../application/dto/create-ticket-soporte-conformidad.dto';
-import { TicketSoporteConformidadService } from '../application/services/ticket-soporte-conformidad.service';
-import { UpdateTicketSoporteConformidadDto } from '../application/dto/update-ticket-soporte-conformidad.dto';
+import type { Request } from 'express';
+import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
+import { TicketConformidadApplicationService } from '../application/services/ticket-soporte-conformidad.service';
+import { TicketIdParamDto } from '../application/dto/ticket-id-param.dto';
+import { GenerarEnlaceTicketConformidadDto } from '../application/dto/generar-enlace-ticket-conformidad.dto';
+import { TicketConformidadIdParamDto } from '../application/dto/ticket-conformidad-id-param.dto';
 
+type AuthenticatedRequest = Request & {
+  user?: {
+    id?: number | string;
+
+    sub?: number | string;
+
+    nombre?: string;
+
+    empresaId?: number | string;
+
+    rol?: string;
+  };
+};
+
+@UseGuards(JwtAuthGuard)
+@UsePipes(
+  new ValidationPipe({
+    transform: true,
+
+    whitelist: true,
+
+    forbidNonWhitelisted: true,
+  }),
+)
 @Controller('ticket-soporte-conformidad')
-export class TicketSoporteConformidadController {
-  constructor(
-    private readonly ticketSoporteConformidadService: TicketSoporteConformidadService,
-  ) {}
+export class TicketConformidadController {
+  constructor(private readonly service: TicketConformidadApplicationService) {}
 
-  @Post()
-  create(
-    @Body()
-    createTicketSoporteConformidadDto: CreateTicketSoporteConformidadDto,
+  /* =======================================================
+   * CREAR CICLO
+   * ===================================================== */
+
+  @Post('tickets/:ticketId')
+  async crear(
+    @Param()
+    params: TicketIdParamDto,
+
+    @Req()
+    req: AuthenticatedRequest,
   ) {
-    return this.ticketSoporteConformidadService.create(
-      createTicketSoporteConformidadDto,
-    );
+    const actor = this.getAuthenticatedActor(req);
+
+    return this.service.crear({
+      ticketId: params.ticketId,
+
+      creadoPorId: actor.operadorId,
+    });
   }
 
-  @Get()
-  findAll() {
-    return this.ticketSoporteConformidadService.findAll();
-  }
+  /* =======================================================
+   * GENERAR ENLACE
+   * ===================================================== */
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.ticketSoporteConformidadService.findOne(+id);
-  }
+  @Post(':conformidadId/enlaces')
+  async generarEnlace(
+    @Param()
+    params: TicketConformidadIdParamDto,
 
-  @Patch(':id')
-  update(
-    @Param('id') id: string,
     @Body()
-    updateTicketSoporteConformidadDto: UpdateTicketSoporteConformidadDto,
+    dto: GenerarEnlaceTicketConformidadDto,
+
+    @Req()
+    req: AuthenticatedRequest,
   ) {
-    return this.ticketSoporteConformidadService.update(
-      +id,
-      updateTicketSoporteConformidadDto,
-    );
+    const actor = this.getAuthenticatedActor(req);
+
+    return this.service.generarEnlace({
+      conformidadId: params.conformidadId,
+
+      canal: dto.canal,
+
+      telefonoDestino: dto.telefonoDestino ?? null,
+
+      creadoPorId: actor.operadorId,
+    });
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.ticketSoporteConformidadService.remove(+id);
+  /* =======================================================
+   * DETALLE DE UNA CONFORMIDAD
+   * ===================================================== */
+
+  @Get(':conformidadId')
+  async obtenerDetalle(
+    @Param()
+    params: TicketConformidadIdParamDto,
+  ) {
+    return this.service.obtenerDetalle(params.conformidadId);
+  }
+
+  /* =======================================================
+   * ÚLTIMO CICLO DEL TICKET
+   * ===================================================== */
+
+  @Get('tickets/:ticketId/actual')
+  async obtenerActualPorTicket(
+    @Param()
+    params: TicketIdParamDto,
+  ) {
+    return this.service.obtenerActualPorTicket(params.ticketId);
+  }
+
+  /* =======================================================
+   * HISTORIAL COMPLETO
+   * ===================================================== */
+
+  @Get('tickets/:ticketId/historial')
+  async obtenerHistorialPorTicket(
+    @Param()
+    params: TicketIdParamDto,
+  ) {
+    return this.service.obtenerHistorialPorTicket(params.ticketId);
+  }
+
+  /* =======================================================
+   * ACTOR
+   * ===================================================== */
+
+  private getAuthenticatedActor(req: AuthenticatedRequest): {
+    operadorId: number;
+
+    operadorNombre: string | null;
+
+    ipOrigen: string | null;
+
+    userAgent: string | null;
+  } {
+    const rawOperadorId = req.user?.id ?? req.user?.sub;
+
+    const operadorId = Number(rawOperadorId);
+
+    if (!Number.isInteger(operadorId) || operadorId <= 0) {
+      throw new UnauthorizedException(
+        'No fue posible identificar al operador autenticado.',
+      );
+    }
+
+    return {
+      operadorId,
+
+      operadorNombre: req.user?.nombre?.trim() || null,
+
+      ipOrigen: this.getClientIp(req),
+
+      userAgent: req.headers['user-agent']?.trim() || null,
+    };
+  }
+
+  private getClientIp(req: AuthenticatedRequest): string | null {
+    const forwardedFor = req.headers['x-forwarded-for'];
+
+    if (typeof forwardedFor === 'string') {
+      const firstIp = forwardedFor.split(',')[0]?.trim();
+
+      return firstIp || null;
+    }
+
+    if (Array.isArray(forwardedFor) && forwardedFor.length > 0) {
+      return forwardedFor[0]?.split(',')[0]?.trim() || null;
+    }
+
+    return req.ip?.trim() || null;
   }
 }

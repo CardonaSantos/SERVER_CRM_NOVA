@@ -67,6 +67,8 @@ export class SubirMediaUseCase {
       extension: ext,
 
       basePrefix: cmd.basePrefix ?? process.env.MEDIA_BASE_PREFIX ?? 'crm',
+
+      subfolder: cmd.subfolder,
     });
 
     const put = await this.storage.upload({

@@ -5,13 +5,10 @@ export interface GuardarTicketFirmaMediaInput {
 
   clienteId: number;
 
-  /**
-   * Firma pública del cliente:
-   * null.
-   *
-   * Firma del técnico:
-   * usuario autenticado.
-   */
+  ticketId: number;
+
+  conformidadId: number;
+
   subidoPorId?: number | null;
 
   bytes: Buffer;

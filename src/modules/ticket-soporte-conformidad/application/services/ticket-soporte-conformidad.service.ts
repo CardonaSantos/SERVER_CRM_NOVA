@@ -1,29 +1,155 @@
-import { Injectable } from '@nestjs/common';
-import { CreateTicketSoporteConformidadDto } from '../dto/create-ticket-soporte-conformidad.dto';
-import { UpdateTicketSoporteConformidadDto } from '../dto/update-ticket-soporte-conformidad.dto';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+
+import { TicketConformidadCanal } from '../../domain/enums/ticket-conformidad-canal.enum';
+
+import { GenerarEnlaceTicketConformidadUseCase } from '../use-cases/generar-enlace-ticket-conformidad.use-case';
+import { ObtenerTicketConformidadPublicaUseCase } from '../use-cases/obtener-ticket-conformidad-publica.use-case';
+import { RequerirRetrabajoTicketConformidadUseCase } from '../use-cases/requerir-retrabajo-ticket-conformidad.use-case';
+import { RegistrarFirmaClienteTicketConformidadUseCase } from '../use-cases/registrar-firma-cliente-ticket-conformidad.use-case';
+import {
+  TICKET_CONFORMIDAD_QUERY_PORT,
+  TicketConformidadQueryPort,
+} from '../port/ticket-conformidad-query.port';
+import { CrearTicketConformidadUseCase } from '../use-cases/crear-conformidad.use-case';
+
+export interface CrearTicketConformidadCommand {
+  ticketId: number;
+
+  creadoPorId: number;
+}
+
+export interface GenerarEnlaceTicketConformidadCommand {
+  conformidadId: number;
+
+  canal: TicketConformidadCanal;
+
+  telefonoDestino?: string | null;
+
+  creadoPorId: number;
+}
+
+export interface RegistrarFirmaClienteCommand {
+  token: string;
+
+  nombreFirmante: string;
+
+  telefonoFirmante: string;
+
+  firma: {
+    bytes: Buffer;
+
+    mimeType: string;
+
+    nombreArchivo: string;
+  };
+
+  ipOrigen?: string | null;
+
+  userAgent?: string | null;
+}
 
 @Injectable()
-export class TicketSoporteConformidadService {
-  create(createTicketSoporteConformidadDto: CreateTicketSoporteConformidadDto) {
-    return 'This action adds a new ticketSoporteConformidad';
+export class TicketConformidadApplicationService {
+  constructor(
+    private readonly crearConformidadUseCase: CrearTicketConformidadUseCase,
+
+    private readonly generarEnlaceUseCase: GenerarEnlaceTicketConformidadUseCase,
+
+    private readonly obtenerPublicaUseCase: ObtenerTicketConformidadPublicaUseCase,
+
+    private readonly requerirRetrabajoUseCase: RequerirRetrabajoTicketConformidadUseCase,
+
+    private readonly registrarFirmaClienteUseCase: RegistrarFirmaClienteTicketConformidadUseCase,
+
+    @Inject(TICKET_CONFORMIDAD_QUERY_PORT)
+    private readonly queryPort: TicketConformidadQueryPort,
+  ) {}
+
+  /* =======================================================
+   * CRM
+   * ===================================================== */
+
+  async crear(command: CrearTicketConformidadCommand) {
+    return this.crearConformidadUseCase.execute({
+      ticketId: command.ticketId,
+
+      creadoPorId: command.creadoPorId,
+    });
   }
 
-  findAll() {
-    return `This action returns all ticketSoporteConformidad`;
+  async generarEnlace(command: GenerarEnlaceTicketConformidadCommand) {
+    return this.generarEnlaceUseCase.execute({
+      conformidadId: command.conformidadId,
+
+      canal: command.canal,
+
+      telefonoDestino: command.telefonoDestino ?? null,
+
+      creadoPorId: command.creadoPorId,
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} ticketSoporteConformidad`;
+  async obtenerDetalle(conformidadId: number) {
+    const result = await this.queryPort.findDetalleById(conformidadId);
+
+    if (!result) {
+      throw new NotFoundException(`No existe la conformidad ${conformidadId}.`);
+    }
+
+    return result;
   }
 
-  update(
-    id: number,
-    updateTicketSoporteConformidadDto: UpdateTicketSoporteConformidadDto,
-  ) {
-    return `This action updates a #${id} ticketSoporteConformidad`;
+  async obtenerActualPorTicket(ticketId: number) {
+    const result = await this.queryPort.findLatestDetalleByTicketId(ticketId);
+
+    if (!result) {
+      throw new NotFoundException(
+        `El ticket ${ticketId} no posee solicitudes de conformidad.`,
+      );
+    }
+
+    return result;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} ticketSoporteConformidad`;
+  async obtenerHistorialPorTicket(ticketId: number) {
+    const result = await this.queryPort.findHistorialByTicketId(ticketId);
+
+    if (!result) {
+      throw new NotFoundException(`No existe el ticket ${ticketId}.`);
+    }
+
+    return result;
+  }
+
+  /* =======================================================
+   * PÚBLICO
+   * ===================================================== */
+
+  async obtenerPublica(token: string) {
+    return this.obtenerPublicaUseCase.execute({
+      token,
+    });
+  }
+
+  async requerirRetrabajo(token: string) {
+    return this.requerirRetrabajoUseCase.execute({
+      token,
+    });
+  }
+
+  async registrarFirmaCliente(command: RegistrarFirmaClienteCommand) {
+    return this.registrarFirmaClienteUseCase.execute({
+      token: command.token,
+
+      nombreFirmante: command.nombreFirmante,
+
+      telefonoFirmante: command.telefonoFirmante,
+
+      firma: command.firma,
+
+      ipOrigen: command.ipOrigen ?? null,
+
+      userAgent: command.userAgent ?? null,
+    });
   }
 }
