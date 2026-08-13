@@ -102,11 +102,11 @@ export class TicketConformidadApplicationService {
   async obtenerActualPorTicket(ticketId: number) {
     const result = await this.queryPort.findLatestDetalleByTicketId(ticketId);
 
-    if (!result) {
-      throw new NotFoundException(
-        `El ticket ${ticketId} no posee solicitudes de conformidad.`,
-      );
-    }
+    // if (!result) {
+    //   throw new NotFoundException(
+    //     `El ticket ${ticketId} no posee solicitudes de conformidad.`,
+    //   );
+    // }
 
     return result;
   }

@@ -16,6 +16,7 @@ const publicConformidadSelect = {
     select: {
       nombre: true,
       apellidos: true,
+      telefono: true,
     },
   },
 
@@ -89,6 +90,8 @@ export class TicketConformidadPublicPrismaQuery
               record.cliente.nombre,
               record.cliente.apellidos,
             ),
+
+            telefono: record.cliente.telefono ?? null,
           }
         : null,
 

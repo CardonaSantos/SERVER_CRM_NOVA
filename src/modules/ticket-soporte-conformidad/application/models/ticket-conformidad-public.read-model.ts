@@ -11,6 +11,7 @@ export interface TicketConformidadPublicReadModel {
 
   cliente: {
     nombreCompleto: string;
+    telefono: string | null;
   } | null;
 
   tecnico: {
