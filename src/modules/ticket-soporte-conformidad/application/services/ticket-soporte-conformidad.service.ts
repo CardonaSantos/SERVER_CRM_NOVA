@@ -11,6 +11,7 @@ import {
   TicketConformidadQueryPort,
 } from '../port/ticket-conformidad-query.port';
 import { CrearTicketConformidadUseCase } from '../use-cases/crear-conformidad.use-case';
+import { RegistrarFirmaTecnicoTicketConformidadUseCase } from '../use-cases/registrar-firma-tecnico.use-case';
 
 export interface CrearTicketConformidadCommand {
   ticketId: number;
@@ -48,6 +49,26 @@ export interface RegistrarFirmaClienteCommand {
   userAgent?: string | null;
 }
 
+export interface RegistrarFirmaTecnicoCommand {
+  conformidadId: number;
+
+  usuarioFirmanteId: number;
+
+  nombreFirmante: string;
+
+  firma: {
+    bytes: Buffer;
+
+    mimeType: string;
+
+    nombreArchivo: string;
+  };
+
+  ipOrigen?: string | null;
+
+  userAgent?: string | null;
+}
+
 @Injectable()
 export class TicketConformidadApplicationService {
   constructor(
@@ -60,6 +81,8 @@ export class TicketConformidadApplicationService {
     private readonly requerirRetrabajoUseCase: RequerirRetrabajoTicketConformidadUseCase,
 
     private readonly registrarFirmaClienteUseCase: RegistrarFirmaClienteTicketConformidadUseCase,
+
+    private readonly registrarFirmaTecnicoUseCase: RegistrarFirmaTecnicoTicketConformidadUseCase,
 
     @Inject(TICKET_CONFORMIDAD_QUERY_PORT)
     private readonly queryPort: TicketConformidadQueryPort,
@@ -144,6 +167,22 @@ export class TicketConformidadApplicationService {
       nombreFirmante: command.nombreFirmante,
 
       telefonoFirmante: command.telefonoFirmante,
+
+      firma: command.firma,
+
+      ipOrigen: command.ipOrigen ?? null,
+
+      userAgent: command.userAgent ?? null,
+    });
+  }
+
+  async registrarFirmaTecnico(command: RegistrarFirmaTecnicoCommand) {
+    return this.registrarFirmaTecnicoUseCase.execute({
+      conformidadId: command.conformidadId,
+
+      usuarioFirmanteId: command.usuarioFirmanteId,
+
+      nombreFirmante: command.nombreFirmante,
 
       firma: command.firma,
 

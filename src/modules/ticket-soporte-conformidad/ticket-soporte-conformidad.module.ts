@@ -30,6 +30,7 @@ import { TICKET_FIRMA_MEDIA_PORT } from './application/port/ticket-firma-media.p
 import { TicketFirmaMediaAdapter } from './infra/media/ticket-firma-media.adapter';
 import { CrearTicketConformidadUseCase } from './application/use-cases/crear-conformidad.use-case';
 import { TicketConformidadApplicationService } from './application/services/ticket-soporte-conformidad.service';
+import { RegistrarFirmaTecnicoTicketConformidadUseCase } from './application/use-cases/registrar-firma-tecnico.use-case';
 
 @Module({
   imports: [ConfigModule, DigitalOceanMediaModule],
@@ -127,6 +128,8 @@ import { TicketConformidadApplicationService } from './application/services/tick
     RegistrarFirmaClienteTicketConformidadUseCase,
 
     TicketConformidadApplicationService,
+
+    RegistrarFirmaTecnicoTicketConformidadUseCase,
   ],
 
   exports: [TicketConformidadApplicationService, TICKET_CONFORMIDAD_QUERY_PORT],

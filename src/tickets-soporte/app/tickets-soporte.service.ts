@@ -34,6 +34,7 @@ import { CreateTicketResumenDto } from 'src/ticket-resumen/dto/create-ticket-res
 import { QuerySearchTickets } from '../dto/querySearch';
 import { query } from 'express';
 import { TZ } from 'src/Utils/tzgt';
+import { TicketFirmaTipo } from 'src/modules/ticket-soporte-conformidad/domain/enums/ticket-firma-tipo.enum';
 // import { dayjs } from '';
 
 @Injectable()
@@ -207,7 +208,10 @@ export class TicketsSoporteService {
   async getTicketToBoleta(ticketId: number) {
     try {
       const ticketInfo = await this.prisma.ticketSoporte.findUnique({
-        where: { id: ticketId },
+        where: {
+          id: ticketId,
+        },
+
         include: {
           cliente: {
             select: {
@@ -218,6 +222,7 @@ export class TicketsSoporteService {
               direccion: true,
             },
           },
+
           empresa: {
             select: {
               id: true,
@@ -228,10 +233,58 @@ export class TicketsSoporteService {
               pbx: true,
             },
           },
+
           tecnico: {
             select: {
               id: true,
               nombre: true,
+            },
+          },
+
+          /*
+           * Nos interesa el ciclo de conformidad
+           * más reciente del ticket.
+           */
+          ticketsConformidad: {
+            orderBy: [
+              {
+                creadoEn: 'desc',
+              },
+              {
+                id: 'desc',
+              },
+            ],
+
+            take: 1,
+
+            select: {
+              id: true,
+              resultado: true,
+              creadoEn: true,
+              respondidoEn: true,
+
+              firmas: {
+                select: {
+                  id: true,
+                  tipo: true,
+
+                  nombreFirmante: true,
+                  telefonoFirmante: true,
+
+                  usuarioFirmanteId: true,
+
+                  firmadoEn: true,
+
+                  media: {
+                    select: {
+                      id: true,
+                      cdnUrl: true,
+                      mimeType: true,
+                      tamanioBytes: true,
+                    },
+                  },
+                },
+              },
             },
           },
         },
@@ -241,54 +294,137 @@ export class TicketsSoporteService {
         throw new NotFoundException('Ticket no encontrado');
       }
 
+      const conformidadActual = ticketInfo.ticketsConformidad[0] ?? null;
+
+      const firmaCliente =
+        conformidadActual?.firmas.find(
+          (firma) => firma.tipo === TicketFirmaTipo.CLIENTE,
+        ) ?? null;
+
+      const firmaTecnico =
+        conformidadActual?.firmas.find(
+          (firma) => firma.tipo === TicketFirmaTipo.TECNICO,
+        ) ?? null;
+
       const boletaData = {
         ticketId: ticketInfo.id,
-        // Manejo de título y descripción nulos
+
         titulo: ticketInfo.titulo ?? 'Sin título',
+
         descripcion: ticketInfo.descripcion ?? 'Sin descripción',
+
         estado: ticketInfo.estado,
+
         prioridad: ticketInfo.prioridad,
+
         fechaApertura: ticketInfo.fechaApertura,
+
         fechaCierre: ticketInfo.fechaCierre ?? null,
 
-        // Manejo de cliente nulo
         cliente: ticketInfo.cliente
           ? {
               id: ticketInfo.cliente.id,
+
               nombreCompleto:
-                `${ticketInfo.cliente.nombre ?? ''} ${ticketInfo.cliente.apellidos ?? ''}`.trim() ||
-                'Cliente sin nombre',
+                `${ticketInfo.cliente.nombre ?? ''} ${
+                  ticketInfo.cliente.apellidos ?? ''
+                }`.trim() || 'Cliente sin nombre',
+
               telefono: ticketInfo.cliente.telefono ?? 'N/A',
+
               direccion: ticketInfo.cliente.direccion ?? 'N/A',
             }
           : null,
 
-        // El técnico ya tiene manejo de nulos, se mantiene consistente
         tecnico: ticketInfo.tecnico
           ? {
               id: ticketInfo.tecnico.id,
+
               nombre: ticketInfo.tecnico.nombre,
             }
           : null,
 
-        // Manejo preventivo para empresa (aunque usualmente es obligatoria)
         empresa: {
           id: ticketInfo.empresa?.id,
+
           nombre: ticketInfo.empresa?.nombre ?? 'Empresa no asignada',
+
           direccion: ticketInfo.empresa?.direccion ?? 'N/A',
+
           correo: ticketInfo.empresa?.correo ?? 'N/A',
+
           telefono: ticketInfo.empresa?.telefono ?? 'N/A',
+
           pbx: ticketInfo.empresa?.pbx ?? 'N/A',
         },
+
+        /*
+         * Información del ciclo utilizado
+         * para construir la boleta.
+         */
+        conformidad: conformidadActual
+          ? {
+              id: conformidadActual.id,
+
+              resultado: conformidadActual.resultado,
+
+              creadoEn: conformidadActual.creadoEn,
+
+              respondidoEn: conformidadActual.respondidoEn,
+            }
+          : null,
+
+        firmaCliente: firmaCliente
+          ? {
+              id: firmaCliente.id,
+
+              nombreFirmante: firmaCliente.nombreFirmante,
+
+              telefonoFirmante: firmaCliente.telefonoFirmante,
+
+              firmadoEn: firmaCliente.firmadoEn,
+
+              mediaId: firmaCliente.media.id,
+
+              url: firmaCliente.media.cdnUrl,
+
+              mimeType: firmaCliente.media.mimeType,
+
+              tamanioBytes: firmaCliente.media.tamanioBytes.toString(),
+            }
+          : null,
+
+        firmaTecnico: firmaTecnico
+          ? {
+              id: firmaTecnico.id,
+
+              usuarioFirmanteId: firmaTecnico.usuarioFirmanteId,
+
+              nombreFirmante: firmaTecnico.nombreFirmante,
+
+              firmadoEn: firmaTecnico.firmadoEn,
+
+              mediaId: firmaTecnico.media.id,
+
+              url: firmaTecnico.media.cdnUrl,
+
+              mimeType: firmaTecnico.media.mimeType,
+
+              tamanioBytes: firmaTecnico.media.tamanioBytes.toString(),
+            }
+          : null,
 
         fechaGeneracionBoleta: new Date().toISOString(),
       };
 
       return boletaData;
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
 
       this.logger.error('Error al generar boleta de ticket:', error);
+
       throw new InternalServerErrorException('Error al generar boleta');
     }
   }

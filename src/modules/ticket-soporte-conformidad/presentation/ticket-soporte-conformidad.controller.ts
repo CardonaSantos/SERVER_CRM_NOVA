@@ -1,12 +1,17 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Post,
   Req,
   UnauthorizedException,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
@@ -16,6 +21,7 @@ import { TicketConformidadApplicationService } from '../application/services/tic
 import { TicketIdParamDto } from '../application/dto/ticket-id-param.dto';
 import { GenerarEnlaceTicketConformidadDto } from '../application/dto/generar-enlace-ticket-conformidad.dto';
 import { TicketConformidadIdParamDto } from '../application/dto/ticket-conformidad-id-param.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 type AuthenticatedRequest = Request & {
   user?: {
@@ -91,6 +97,56 @@ export class TicketConformidadController {
       telefonoDestino: dto.telefonoDestino ?? null,
 
       creadoPorId: actor.operadorId,
+    });
+  }
+
+  /* =======================================================
+   * FIRMA DEL TÉCNICO
+   * ===================================================== */
+
+  @Post(':conformidadId/firma-tecnico')
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(FileInterceptor('firma'))
+  async registrarFirmaTecnico(
+    @Param()
+    params: TicketConformidadIdParamDto,
+
+    @UploadedFile()
+    file: Express.Multer.File,
+
+    @Req()
+    req: AuthenticatedRequest,
+  ) {
+    if (!file) {
+      throw new BadRequestException('La firma es requerida.');
+    }
+
+    const actor = this.getAuthenticatedActor(req);
+
+    if (!actor.operadorNombre) {
+      throw new UnauthorizedException(
+        'No fue posible identificar el nombre del técnico autenticado.',
+      );
+    }
+
+    return this.service.registrarFirmaTecnico({
+      conformidadId: params.conformidadId,
+
+      usuarioFirmanteId: actor.operadorId,
+
+      nombreFirmante: actor.operadorNombre,
+
+      firma: {
+        bytes: file.buffer,
+
+        mimeType: file.mimetype,
+
+        nombreArchivo: file.originalname || 'firma-tecnico.png',
+      },
+
+      ipOrigen: actor.ipOrigen,
+
+      userAgent: actor.userAgent,
     });
   }
 
