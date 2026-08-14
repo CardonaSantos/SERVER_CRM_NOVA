@@ -35,7 +35,7 @@ export class TicketFirmaMediaAdapter implements TicketFirmaMediaPort {
 
       publico: false,
 
-      categoria: CategoriaMedia.CLIENTE_GENERAL,
+      categoria: CategoriaMedia.SOPORTE_TICKET,
 
       tipo: TipoMedia.IMAGEN,
 

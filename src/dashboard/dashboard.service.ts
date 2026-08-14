@@ -569,6 +569,11 @@ export class DashboardService {
               contactoReferenciaTelefono: true,
               ubicacion: { select: { latitud: true, longitud: true } },
               medias: {
+                where: {
+                  categoria: {
+                    notIn: ['SOPORTE_TICKET'],
+                  },
+                },
                 select: {
                   id: true,
                   cdnUrl: true,
@@ -669,6 +674,11 @@ export class DashboardService {
               observaciones: true,
 
               medias: {
+                where: {
+                  categoria: {
+                    notIn: ['SOPORTE_TICKET'],
+                  },
+                },
                 select: {
                   id: true,
                   cdnUrl: true,
