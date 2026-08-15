@@ -3330,11 +3330,24 @@ enum EstadoServicioMikrotik {
   ERROR
 }
 
+// enum RolUsuario {
+//   TECNICO
+//   OFICINA
+//   ADMIN
+//   SUPER_ADMIN
+//   COBRADOR
+// }
+
 enum RolUsuario {
-  TECNICO
-  OFICINA
-  ADMIN
   SUPER_ADMIN
+  ADMIN
+
+  COORDINADOR_OPERACIONES
+
+  OFICINA
+  TIENDA
+
+  TECNICO
   COBRADOR
 }
 

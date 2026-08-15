@@ -78,7 +78,11 @@ export class ListarAuditoriaPppoeInstalacionUseCase {
   private assertAllowedRole(actorRol: string): void {
     const role = actorRol?.trim().toUpperCase();
 
-    if (['OFICINA', 'ADMIN', 'SUPER_ADMIN'].includes(role)) {
+    if (
+      ['ADMIN', 'COORDINADOR_OPERACIONES', 'OFICINA', 'SUPER_ADMIN'].includes(
+        role,
+      )
+    ) {
       return;
     }
 
