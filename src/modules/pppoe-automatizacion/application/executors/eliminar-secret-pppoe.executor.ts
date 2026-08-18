@@ -323,14 +323,25 @@ export class EliminarSecretPppoeExecutor {
        *
        * Debe ejecutarse DESPUÉS de eliminar el Secret.
        *
+      /**
        * MikrotikSshSession realizará internamente:
        *
        * - consulta de sesiones antes;
-       * - comando remove exacto;
-       * - consulta de sesiones después;
-       * - confirmación de cero sesiones restantes.
+       * - ejecución EXACTAMENTE UNA VEZ del comando remove;
+       * - confirmación posterior mediante polling acotado;
+       * - backoff entre comprobaciones cuando RouterOS todavía
+       *   reporte una sesión activa;
+       * - confirmación final de cero sesiones restantes.
+       *
+       * IMPORTANTE:
+       *
+       * Los reintentos posteriores al remove son únicamente
+       * consultas de lectura.
+       *
+       * /ppp active remove [find name="..."]
+       *
+       * no se vuelve a ejecutar durante la misma operación.
        */
-
       const removeSessionResult = await this.stepRunner.ejecutar({
         empresaId,
 
@@ -357,13 +368,18 @@ export class EliminarSecretPppoeExecutor {
        * ======================================================
        * 5. CONFIRMAR AUSENCIA DEL SECRET
        * ======================================================
-       *
        * El Estado 5 únicamente se considera confirmado cuando
        * una consulta posterior demuestra que el Secret ya no
        * existe.
        *
        * La ausencia de sesiones activas ya fue confirmada por
-       * removerSesionActiva().
+       * removerSesionActiva(), incluyendo su ventana acotada
+       * de convergencia.
+       *
+       * Por tanto este paso no vuelve a consultar ni remover
+       * sesiones; únicamente confirma:
+       *
+       * debeExistir = false
        */
 
       const confirmationResult = await this.stepRunner.ejecutar({
@@ -394,18 +410,18 @@ export class EliminarSecretPppoeExecutor {
       return {
         secretEncontrado,
 
-        /*
+        /**
          * Propiedad conservada por compatibilidad con
          * resultados históricos.
          *
-         * En v3 la deshabilitación no se omite:
-         * simplemente ya no forma parte del Estado 5.
+         * En v3 no existe un paso DESHABILITAR_SECRET
+         * dentro del Estado 5.
          */
         deshabilitacionOmitida: true,
 
-        /*
-         * Los dos comandos definidos por Estado 5
-         * fueron efectivamente ejecutados.
+        /**
+         * Los dos comandos modificadores definidos por
+         * Estado 5 fueron ejecutados.
          */
         eliminacionOmitida: false,
 
@@ -413,6 +429,11 @@ export class EliminarSecretPppoeExecutor {
 
         comandoEliminarEjecutado: deleteResult.comandoEjecutado,
 
+        /**
+         * Si removerSesionActiva() retornó satisfactoriamente,
+         * RouterOS aceptó el comando de remoción y posteriormente
+         * se confirmó que ya no permanecen sesiones activas.
+         */
         remocionSesionEjecutada: true,
 
         sesionesEncontradas: removeSessionResult.sesionesEncontradas,
@@ -420,6 +441,18 @@ export class EliminarSecretPppoeExecutor {
         sesionesRemovidas: removeSessionResult.sesionesRemovidas,
 
         sesionesRestantes: removeSessionResult.sesionesRestantes,
+
+        /**
+         * Telemetría de convergencia de /ppp active.
+         *
+         * Permite conocer cuántas comprobaciones fueron necesarias
+         * después del comando remove y cuánto tardó RouterOS en
+         * reflejar el estado final.
+         */
+        confirmacionSesionIntentos: removeSessionResult.confirmacionIntentos,
+
+        confirmacionSesionDuracionMs:
+          removeSessionResult.confirmacionDuracionMs,
 
         secretEliminado: confirmationResult.confirmado,
 
@@ -516,7 +549,7 @@ export class EliminarSecretPppoeExecutor {
     try {
       await session.cerrar();
     } catch {
-      /*
+      /**
        * El módulo SSH ya realizó su intento de cierre.
        *
        * El posible efecto remoto de la operación se controla

@@ -54,19 +54,70 @@ export type GestionarSecretMikrotikResult = ResultadoBaseMikrotikSsh & {
 /**
  * Resultado de remover sesiones PPPoE activas.
  *
- * Este método comprobará internamente cuántas sesiones
- * permanecen después de ejecutar la eliminación.
+ * El comando modificador:
+ *
+ * /ppp active remove [find name="..."]
+ *
+ * se ejecuta una sola vez.
+ *
+ * Después se realizan exclusivamente consultas de lectura
+ * hasta confirmar que RouterOS ya no reporta sesiones activas
+ * para el usuario o hasta agotar la ventana de confirmación.
  */
 export type RemoverSesionActivaMikrotikResult = ResultadoBaseMikrotikSsh & {
   usuarioPppoe: string;
 
+  /**
+   * Cantidad de sesiones observadas antes de ejecutar
+   * el comando de remoción.
+   */
   sesionesEncontradas: number;
 
+  /**
+   * Diferencia entre las sesiones observadas inicialmente
+   * y las que permanecieron al finalizar la confirmación.
+   */
   sesionesRemovidas: number;
 
+  /**
+   * Cantidad final observada.
+   *
+   * Un resultado satisfactorio de este método siempre
+   * devuelve cero.
+   */
   sesionesRestantes: number;
 
+  /**
+   * Snapshot de las sesiones que existían antes de ejecutar
+   * la remoción.
+   *
+   * Se conserva para diagnóstico y auditoría.
+   */
   sesiones: SesionActivaMikrotikSnapshot[];
+
+  /**
+   * Número total de consultas realizadas después del
+   * comando remove para confirmar la desaparición.
+   *
+   * Incluye la primera consulta inmediata.
+   *
+   * Ejemplo:
+   *
+   * 1 = RouterOS reflejó el cambio inmediatamente.
+   * 3 = fueron necesarias tres comprobaciones.
+   */
+  confirmacionIntentos: number;
+
+  /**
+   * Tiempo total dedicado a la fase de confirmación,
+   * incluyendo:
+   *
+   * - consultas SSH;
+   * - esperas de backoff.
+   *
+   * No incluye la consulta anterior a la remoción.
+   */
+  confirmacionDuracionMs: number;
 };
 
 /**

@@ -368,6 +368,38 @@ export class PppoeOperacionAuditoriaService
         'remocionSesionEjecutada',
       ),
 
+      /**
+       * Estado observado alrededor de la remoción.
+       *
+       * Estos contadores permiten distinguir entre:
+       *
+       * - una suspensión donde había una conexión activa;
+       * - una suspensión donde el usuario ya no tenía sesión;
+       * - un comportamiento anómalo del router.
+       */
+      sesionesEncontradas: this.readNumber(resultado, 'sesionesEncontradas'),
+
+      sesionesRemovidas: this.readNumber(resultado, 'sesionesRemovidas'),
+
+      sesionesRestantes: this.readNumber(resultado, 'sesionesRestantes'),
+
+      /**
+       * Telemetría de convergencia de RouterOS.
+       *
+       * La primera comprobación es inmediata y las siguientes
+       * corresponden al polling acotado implementado en
+       * MikrotikSshSession.
+       */
+      confirmacionSesionIntentos: this.readNumber(
+        resultado,
+        'confirmacionSesionIntentos',
+      ),
+
+      confirmacionSesionDuracionMs: this.readNumber(
+        resultado,
+        'confirmacionSesionDuracionMs',
+      ),
+
       secretConfirmado: this.readBoolean(resultado, 'secretConfirmado'),
 
       deshabilitadoConfirmado: this.readBoolean(resultado, 'deshabilitado'),
@@ -504,5 +536,34 @@ export class PppoeOperacionAuditoriaService
     const value = source[key];
 
     return typeof value === 'boolean' ? value : null;
+  }
+
+  /**
+   * Lee de forma defensiva un valor numérico del resultado
+   * técnico persistido.
+   *
+   * No realizamos coerción de strings a number:
+   *
+   * "123" !== 123
+   *
+   * Si el contrato técnico se rompe, preferimos almacenar null
+   * en auditoría en vez de ocultar el problema mediante una
+   * conversión implícita.
+   */
+  private readNumber(
+    source: Record<string, unknown> | null,
+    key: string,
+  ): number | null {
+    if (!source) {
+      return null;
+    }
+
+    const value = source[key];
+
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      return null;
+    }
+
+    return value;
   }
 }

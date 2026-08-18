@@ -37,13 +37,29 @@ import { MikrotikPppoeCommandBuilder } from '../routeros/mikrotik-pppoe-command.
 import { MikrotikPppoeResponseParser } from '../routeros/mikrotik-pppoe-response.parser';
 
 import { ComandoRouterOsConstruido } from '../routeros/types/routeros-command.types';
-
+import { BuscarSesionesActivasRouterOsResult } from '../routeros/types/routeros-response-parser.types';
 import { MikrotikSshCommandExecutor } from './mikrotik-ssh-command.executor';
 
 import {
   FaseComandoMikrotikSsh,
   ResultadoEjecucionComandoMikrotikSsh,
 } from './types/mikrotik-ssh-command.types';
+
+type ConfirmacionRemocionSesionesActivasResult = {
+  estadoFinal: BuscarSesionesActivasRouterOsResult;
+
+  intentos: number;
+
+  duracionMs: number;
+};
+
+type ConfiguracionConfirmacionSesionActiva = {
+  maxAttempts: number;
+
+  initialDelayMs: number;
+
+  maxDelayMs: number;
+};
 
 /**
  * Sesión SSH individual contra un router MikroTik.
@@ -318,13 +334,21 @@ export class MikrotikSshSession implements MikrotikSshSessionPort {
    *
    * IMPORTANTE:
    *
-   * El comando remove se ejecuta incluso cuando la
-   * consulta previa devuelve cero sesiones.
-   *
-   * Esto mantiene el comportamiento alineado con
-   * el comando auditado del requerimiento:
+   * El comando modificador:
    *
    * /ppp active remove [find name="..."]
+   *
+   * se ejecuta exactamente una vez.
+   *
+   * RouterOS puede aceptar el comando antes de que la sesión
+   * PPPoE haya desaparecido completamente de /ppp active.
+   *
+   * Por ese motivo la confirmación posterior utiliza polling
+   * acotado con backoff.
+   *
+   * Los reintentos pertenecen exclusivamente a consultas de
+   * lectura. Nunca se repite el comando remove dentro de esta
+   * operación.
    */
   private async removerSesionActivaInternal(
     params: RemoverSesionActivaMikrotikParams,
@@ -335,6 +359,14 @@ export class MikrotikSshSession implements MikrotikSshSessionPort {
      * ========================================================
      * 1. ESTADO ANTERIOR
      * ========================================================
+     *
+     * Capturamos las sesiones existentes antes de la mutación.
+     *
+     * Esta consulta sirve para:
+     *
+     * - auditoría;
+     * - diagnóstico;
+     * - calcular cuántas sesiones desaparecieron.
      */
     const before = await this.buscarSesionesActivasInternal(
       params,
@@ -351,10 +383,13 @@ export class MikrotikSshSession implements MikrotikSshSessionPort {
      * 2. REMOVER SESIONES
      * ========================================================
      *
-     * El comando siempre se envía.
+     * Este comando se ejecuta UNA SOLA VEZ:
      *
-     * No construimos scripts condicionales y tampoco
-     * dependemos de un CRM_REMOVED generado por RouterOS.
+     * /ppp active remove [find name="..."]
+     *
+     * El hecho de que RouterOS acepte el comando no implica
+     * necesariamente que /ppp active haya convergido todavía
+     * al estado final esperado.
      */
     const removeCommand =
       this.commandBuilder.construirRemoverSesionesActivas(params);
@@ -374,19 +409,19 @@ export class MikrotikSshSession implements MikrotikSshSessionPort {
 
     /**
      * ========================================================
-     * 3. ESTADO POSTERIOR
+     * 3. CONFIRMAR CONVERGENCIA DEL ESTADO REMOTO
      * ========================================================
      *
-     * Esta consulta constituye la confirmación real
-     * del efecto remoto.
+     * A partir de este punto NO volvemos a ejecutar remove.
+     *
+     * Únicamente consultamos /ppp active hasta que:
+     *
+     * - no existan sesiones para el usuario; o
+     * - agotemos el número máximo de comprobaciones.
      */
-    const after = await this.buscarSesionesActivasInternal(
-      params,
+    const confirmation = await this.confirmarRemocionSesionesActivas(params);
 
-      FaseFalloMikrotikSsh.CONFIRMACION,
-
-      EfectoRemotoMikrotik.POSIBLE,
-    );
+    const after = confirmation.estadoFinal;
 
     const sesionesRestantes = after.sesiones.length;
 
@@ -395,18 +430,30 @@ export class MikrotikSshSession implements MikrotikSshSessionPort {
       sesionesEncontradas - sesionesRestantes,
     );
 
+    /**
+     * La duración total de la operación compuesta incluye:
+     *
+     * - consulta previa;
+     * - comando remove;
+     * - consultas posteriores;
+     * - esperas de backoff.
+     */
     const totalDuration =
-      before.duracionMs + removeExecution.duracionMs + after.duracionMs;
+      before.duracionMs + removeExecution.duracionMs + confirmation.duracionMs;
 
     /**
-     * El estado final requerido es cero sesiones.
+     * ========================================================
+     * 4. VALIDAR ESTADO FINAL
+     * ========================================================
      *
-     * Si todavía existe alguna, no podemos confirmar
-     * satisfactoriamente la suspensión/desconexión.
+     * Solo declaramos SESION_NO_CONFIRMADA después de haber
+     * agotado toda la ventana de confirmación.
      */
     if (sesionesRestantes > 0) {
       throw new MikrotikSshError(
-        `Permanecen ${sesionesRestantes} sesiones PPPoE activas después de solicitar su remoción.`,
+        `Permanecen ${sesionesRestantes} sesiones PPPoE activas después de ` +
+          `${confirmation.intentos} comprobaciones de confirmación ` +
+          `durante ${confirmation.duracionMs} ms.`,
         {
           codigo: CodigoErrorMikrotikSsh.SESION_NO_CONFIRMADA,
 
@@ -421,6 +468,11 @@ export class MikrotikSshSession implements MikrotikSshSessionPort {
       );
     }
 
+    /**
+     * ========================================================
+     * 5. RESULTADO CONFIRMADO
+     * ========================================================
+     */
     return {
       usuarioPppoe: params.usuarioPppoe,
 
@@ -431,15 +483,26 @@ export class MikrotikSshSession implements MikrotikSshSessionPort {
       sesionesRestantes: 0,
 
       /**
-       * Conservamos los snapshots existentes antes
-       * de ejecutar la remoción.
-       *
-       * Son útiles para auditoría y diagnóstico.
+       * Conservamos el snapshot anterior a la mutación.
        */
       sesiones: before.sesiones,
 
+      confirmacionIntentos: confirmation.intentos,
+
+      confirmacionDuracionMs: confirmation.duracionMs,
+
       duracionMs: totalDuration,
 
+      /**
+       * No repetimos cada comando de consulta utilizado durante
+       * polling para evitar inflar innecesariamente la trazabilidad.
+       *
+       * Conservamos:
+       *
+       * - consulta inicial;
+       * - mutación;
+       * - consulta final confirmada.
+       */
       comandoSanitizado: this.joinSanitizedCommands([
         before.comandoSanitizado,
 
@@ -450,9 +513,262 @@ export class MikrotikSshSession implements MikrotikSshSessionPort {
 
       respuestaSanitizada:
         sesionesEncontradas === 0
-          ? 'No existían sesiones PPPoE activas y se confirmó que el usuario continúa sin sesiones.'
-          : `Se removieron y confirmaron ${sesionesRemovidas} sesiones PPPoE activas.`,
+          ? `No existían sesiones PPPoE activas. Se confirmó ausencia de sesiones ` +
+            `en ${confirmation.intentos} comprobación(es) y ` +
+            `${confirmation.duracionMs} ms.`
+          : `Se removieron y confirmaron ${sesionesRemovidas} sesiones PPPoE activas. ` +
+            `La convergencia se confirmó en ${confirmation.intentos} comprobación(es) ` +
+            `y ${confirmation.duracionMs} ms.`,
     };
+  }
+
+  // nuevos helpers por tiempo
+  /**
+   * Confirma eventualmente que RouterOS dejó de reportar
+   * sesiones PPPoE activas para el usuario.
+   *
+   * La primera consulta se realiza inmediatamente.
+   *
+   * Si todavía existen sesiones, las siguientes consultas
+   * utilizan backoff exponencial acotado:
+   *
+   * 100 ms
+   * 200 ms
+   * 400 ms
+   * 800 ms
+   * 800 ms
+   * ...
+   *
+   * según la configuración activa.
+   *
+   * Este método es exclusivamente de lectura.
+   * Nunca vuelve a ejecutar /ppp active remove.
+   */
+  private async confirmarRemocionSesionesActivas(
+    params: RemoverSesionActivaMikrotikParams,
+  ): Promise<ConfirmacionRemocionSesionesActivasResult> {
+    const config = this.resolveActiveSessionConfirmationConfig();
+
+    const startedAt = Date.now();
+
+    let estadoFinal: BuscarSesionesActivasRouterOsResult | null = null;
+
+    for (let attempt = 1; attempt <= config.maxAttempts; attempt += 1) {
+      /**
+       * La primera comprobación es inmediata.
+       *
+       * Antes de cada intento posterior esperamos utilizando
+       * backoff exponencial acotado.
+       */
+      if (attempt > 1) {
+        const delayMs = this.calculateConfirmationDelay({
+          attempt,
+          initialDelayMs: config.initialDelayMs,
+          maxDelayMs: config.maxDelayMs,
+        });
+
+        await this.delay(delayMs);
+      }
+
+      /**
+       * Antes de cada nueva consulta comprobamos que la sesión
+       * SSH siga disponible.
+       */
+      this.assertOpen();
+
+      estadoFinal = await this.buscarSesionesActivasInternal(
+        params,
+
+        FaseFalloMikrotikSsh.CONFIRMACION,
+
+        EfectoRemotoMikrotik.POSIBLE,
+      );
+
+      /**
+       * RouterOS ya convergió al estado esperado.
+       *
+       * Terminamos inmediatamente y no consumimos los intentos
+       * restantes.
+       */
+      if (estadoFinal.sesiones.length === 0) {
+        return {
+          estadoFinal,
+
+          intentos: attempt,
+
+          duracionMs: Math.max(0, Date.now() - startedAt),
+        };
+      }
+    }
+
+    /**
+     * maxAttempts siempre debe ser >= 1, por lo que llegar aquí
+     * sin haber realizado ninguna consulta indicaría una
+     * configuración o flujo interno inválido.
+     */
+    if (!estadoFinal) {
+      throw new MikrotikSshError(
+        'No pudo iniciarse la confirmación de sesiones PPPoE activas.',
+        {
+          codigo: CodigoErrorMikrotikSsh.CONFIGURACION_INVALIDA,
+
+          fase: FaseFalloMikrotikSsh.CONFIGURACION,
+
+          efectoRemoto: EfectoRemotoMikrotik.POSIBLE,
+
+          reintentable: false,
+
+          duracionMs: Math.max(0, Date.now() - startedAt),
+        },
+      );
+    }
+
+    /**
+     * Devolvemos el último estado observado.
+     *
+     * removerSesionActivaInternal() es quien transforma este
+     * resultado agotado en SESION_NO_CONFIRMADA.
+     */
+    return {
+      estadoFinal,
+
+      intentos: config.maxAttempts,
+
+      duracionMs: Math.max(0, Date.now() - startedAt),
+    };
+  }
+
+  /**
+   * Resuelve la configuración del polling.
+   *
+   * Los defaults internos preservan compatibilidad con tests,
+   * fixtures o consumidores que construyan manualmente
+   * ConfiguracionMikrotikSsh sin los nuevos campos.
+   *
+   * El provider oficial debe entregar estos valores
+   * explícitamente en ejecución normal.
+   */
+  private resolveActiveSessionConfirmationConfig(): ConfiguracionConfirmacionSesionActiva {
+    const maxAttempts = this.config.activeSessionConfirmationMaxAttempts ?? 6;
+
+    const initialDelayMs =
+      this.config.activeSessionConfirmationInitialDelayMs ?? 100;
+
+    const maxDelayMs = this.config.activeSessionConfirmationMaxDelayMs ?? 800;
+
+    if (!Number.isInteger(maxAttempts) || maxAttempts < 1) {
+      throw new MikrotikSshError(
+        'La cantidad máxima de intentos para confirmar sesiones PPPoE no es válida.',
+        {
+          codigo: CodigoErrorMikrotikSsh.CONFIGURACION_INVALIDA,
+
+          fase: FaseFalloMikrotikSsh.CONFIGURACION,
+
+          efectoRemoto: EfectoRemotoMikrotik.NO_INICIADO,
+
+          reintentable: false,
+        },
+      );
+    }
+
+    if (!Number.isInteger(initialDelayMs) || initialDelayMs < 0) {
+      throw new MikrotikSshError(
+        'La espera inicial para confirmar sesiones PPPoE no es válida.',
+        {
+          codigo: CodigoErrorMikrotikSsh.CONFIGURACION_INVALIDA,
+
+          fase: FaseFalloMikrotikSsh.CONFIGURACION,
+
+          efectoRemoto: EfectoRemotoMikrotik.NO_INICIADO,
+
+          reintentable: false,
+        },
+      );
+    }
+
+    if (!Number.isInteger(maxDelayMs) || maxDelayMs < 0) {
+      throw new MikrotikSshError(
+        'La espera máxima para confirmar sesiones PPPoE no es válida.',
+        {
+          codigo: CodigoErrorMikrotikSsh.CONFIGURACION_INVALIDA,
+
+          fase: FaseFalloMikrotikSsh.CONFIGURACION,
+
+          efectoRemoto: EfectoRemotoMikrotik.NO_INICIADO,
+
+          reintentable: false,
+        },
+      );
+    }
+
+    if (maxDelayMs < initialDelayMs) {
+      throw new MikrotikSshError(
+        'La espera máxima para confirmar sesiones PPPoE no puede ser menor que la espera inicial.',
+        {
+          codigo: CodigoErrorMikrotikSsh.CONFIGURACION_INVALIDA,
+
+          fase: FaseFalloMikrotikSsh.CONFIGURACION,
+
+          efectoRemoto: EfectoRemotoMikrotik.NO_INICIADO,
+
+          reintentable: false,
+        },
+      );
+    }
+
+    return {
+      maxAttempts,
+
+      initialDelayMs,
+
+      maxDelayMs,
+    };
+  }
+
+  /**
+   * Espera no bloqueante utilizada exclusivamente entre
+   * consultas de confirmación.
+   *
+   * No bloquea el event loop de Node.js.
+   */
+  private delay(ms: number): Promise<void> {
+    if (ms <= 0) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
+  }
+
+  /**
+   * Calcula el backoff utilizado antes de una comprobación
+   * posterior a la primera.
+   *
+   * attempt:
+   *
+   * 2 -> initialDelay
+   * 3 -> initialDelay * 2
+   * 4 -> initialDelay * 4
+   *
+   * El crecimiento queda limitado por maxDelayMs.
+   */
+  private calculateConfirmationDelay(params: {
+    attempt: number;
+
+    initialDelayMs: number;
+
+    maxDelayMs: number;
+  }): number {
+    if (params.initialDelayMs === 0) {
+      return 0;
+    }
+
+    const exponent = Math.max(0, params.attempt - 2);
+
+    const calculatedDelay = params.initialDelayMs * 2 ** exponent;
+
+    return Math.min(calculatedDelay, params.maxDelayMs);
   }
 
   /**

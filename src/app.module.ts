@@ -70,6 +70,7 @@ import { PppoeOperacionModule } from './modules/pppoe-operacion/pppoe-operacion.
 import { MikrotikSshModule } from './modules/mikrotik-ssh/mikrotik-ssh.module';
 import { MikrotikRouterCredentialsModule } from './modules/mikrotik-router-credentials/mikrotik-router-credentials.module';
 import { TicketSoporteConformidadModule } from './modules/ticket-soporte-conformidad/ticket-soporte-conformidad.module';
+import { ExcelReportsModule } from './modules/excel-reports/excel-reports.module';
 
 @Module({
   imports: [
@@ -148,6 +149,7 @@ import { TicketSoporteConformidadModule } from './modules/ticket-soporte-conform
     MikrotikSshModule,
     MikrotikRouterCredentialsModule,
     TicketSoporteConformidadModule,
+    ExcelReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

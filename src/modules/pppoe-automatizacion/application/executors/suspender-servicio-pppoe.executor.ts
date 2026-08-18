@@ -301,25 +301,20 @@ export class SuspenderServicioPppoeExecutor {
         },
       });
 
-      /*
-       * ======================================================
-       * 4. REMOVER SESIÓN ACTIVA
-       * ======================================================
-       *
-       * Segundo comando del Estado 4:
-       *
-       * /ppp active remove [find name="{id_cliente}"]
-       *
-       * Este paso se ejecuta siempre después de disable.
-       *
+      /**
        * MikrotikSshSession se encarga internamente de:
        *
        * - consultar sesiones antes;
-       * - ejecutar el comando exacto;
-       * - consultar sesiones después;
-       * - confirmar que no quedan conexiones activas.
+       * - ejecutar exactamente una vez el comando de remoción;
+       * - realizar confirmaciones posteriores mediante polling
+       *   acotado con backoff;
+       * - devolver únicamente cuando no quedan sesiones activas
+       *   o lanzar SESION_NO_CONFIRMADA después de agotar la
+       *   ventana de confirmación.
+       *
+       * Las comprobaciones posteriores son exclusivamente
+       * consultas de lectura. El comando remove no se reenvía.
        */
-
       const removeSessionResult = await this.stepRunner.ejecutar({
         empresaId,
 
@@ -352,14 +347,16 @@ export class SuspenderServicioPppoeExecutor {
        * - el Secret continúa existiendo;
        * - disabled=true.
        *
+      /**
        * La ausencia de sesiones activas ya fue confirmada
-       * dentro de removerSesionActiva().
+       * dentro de removerSesionActiva(), incluyendo su ventana
+       * acotada de convergencia.
        *
-       * No exigimos que el Profile coincida para permitir
-       * el corte de un servicio cuya configuración remota
-       * pudiera tener una inconsistencia de homologación.
+       * Este paso únicamente confirma ahora el estado final
+       * del Secret:
        *
-       * El Profile observado se conserva en el resultado.
+       * - debe continuar existiendo;
+       * - debe encontrarse disabled=true.
        */
 
       const confirmationResult = await this.stepRunner.ejecutar({
@@ -394,24 +391,24 @@ export class SuspenderServicioPppoeExecutor {
       return {
         secretEncontrado: true,
 
-        /*
-         * Se conserva para compatibilidad con resultados
-         * históricos.
+        /**
+         * Se conserva para compatibilidad con resultados históricos.
          *
-         * En el flujo v3 siempre será false porque el
-         * comando disable ya no se omite.
+         * En el flujo v3 la deshabilitación nunca se omite:
+         * el comando /ppp secret disable se ejecuta explícitamente.
          */
         deshabilitacionOmitida: false,
 
         comandoDeshabilitarEjecutado: disableResult.comandoEjecutado,
 
-        /*
-         * removerSesionActiva() no retorna simplemente
-         * "comando ejecutado": retorna el estado confirmado
-         * antes/después.
+        /**
+         * Si llegamos hasta este punto significa que
+         * removerSesionActiva() terminó satisfactoriamente.
          *
-         * Si llegamos aquí, el paso fue ejecutado y
-         * confirmado satisfactoriamente.
+         * Es decir:
+         *
+         * - RouterOS aceptó el comando remove;
+         * - la confirmación posterior terminó con cero sesiones.
          */
         remocionSesionEjecutada: true,
 
@@ -420,6 +417,24 @@ export class SuspenderServicioPppoeExecutor {
         sesionesRemovidas: removeSessionResult.sesionesRemovidas,
 
         sesionesRestantes: removeSessionResult.sesionesRestantes,
+
+        /**
+         * Telemetría de convergencia.
+         *
+         * Permite conocer cuántas consultas posteriores al remove
+         * fueron necesarias antes de que RouterOS dejara de reportar
+         * la sesión PPPoE.
+         */
+        confirmacionSesionIntentos: removeSessionResult.confirmacionIntentos,
+
+        /**
+         * Tiempo total dedicado a la confirmación de desaparición
+         * de sesiones.
+         *
+         * Incluye consultas SSH y esperas de backoff.
+         */
+        confirmacionSesionDuracionMs:
+          removeSessionResult.confirmacionDuracionMs,
 
         secretConfirmado: confirmationResult.confirmado,
 

@@ -21,7 +21,9 @@
     "prisma:seed": "npx prisma db seed",
     "test:mikrotik:ssh": "ts-node -r tsconfig-paths/register scripts/test-mikrotik-ssh.ts",
     "test:mikrotik:ssh:write": "ts-node -r tsconfig-paths/register scripts/test-mikrotik-ssh-write.ts",
-    "smoke:pppoe": "ts-node -r tsconfig-paths/register scripts/smoke-core-pppoe.ts"
+    "smoke:pppoe": "ts-node -r tsconfig-paths/register scripts/smoke-core-pppoe.ts",
+    "smoke:pppoe:convergence": "ts-node -r tsconfig-paths/register scripts/smoke-pppoe-session-convergence.ts",
+    "smoke:pppoe:race": "ts-node -r tsconfig-paths/register scripts/smoke-pppoe-session-race.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
