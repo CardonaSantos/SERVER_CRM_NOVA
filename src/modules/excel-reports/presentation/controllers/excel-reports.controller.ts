@@ -2,12 +2,9 @@ import {
   Controller,
   Get,
   Query,
-  Req,
   StreamableFile,
   UseGuards,
 } from '@nestjs/common';
-
-import { Request } from 'express';
 
 import { ClienteReporteFilters } from '../../domain/filters/clientes-query-filters';
 import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
@@ -25,24 +22,23 @@ export class ExcelReportsController {
   async exportarClientes(
     @Query()
     dto: ExportarClientesReporteDto,
-
-    @Req()
-    req: Request,
   ): Promise<StreamableFile> {
-    /**
-     * Sustituye esto por tu helper/actor
-     * autenticado real.
-     */
-
     const filters = this.toClienteFilters(dto);
 
     const file = await this.exportarClientesXlsx.execute(filters);
 
     return new StreamableFile(file.buffer, {
       type: file.mimeType,
-
-      disposition: `attachment; filename="${file.filename}"`,
+      disposition: `attachment; filename="${this.buildFilename()}"`,
     });
+  }
+
+  private buildFilename(): string {
+    const now = new Date();
+
+    const timestamp = now.toISOString().replace(/[:.]/g, '-').replace('Z', '');
+
+    return `reporte-clientes-${timestamp}.xlsx`;
   }
 
   private toClienteFilters(

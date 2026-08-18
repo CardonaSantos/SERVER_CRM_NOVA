@@ -8,6 +8,15 @@ export class ClienteReportePrismaMapper {
       .join(' ')
       .trim();
 
+    const latitud = cliente.ubicacion?.latitud ?? null;
+
+    const longitud = cliente.ubicacion?.longitud ?? null;
+
+    const ubicacionMapsUrl =
+      latitud !== null && longitud !== null
+        ? `https://www.google.com/maps/search/?api=1&query=${latitud},${longitud}`
+        : null;
+
     return {
       id: cliente.id,
 
@@ -17,11 +26,13 @@ export class ClienteReportePrismaMapper {
 
       dpi: cliente.dpi,
 
-      telefono: cliente.telefono,
+      telefono: this.normalizePhone(cliente.telefono),
+
+      contactoReferenciaTelefono: this.normalizePhone(
+        cliente.contactoReferenciaTelefono,
+      ),
 
       contactoReferenciaNombre: cliente.contactoReferenciaNombre,
-
-      contactoReferenciaTelefono: cliente.contactoReferenciaTelefono,
 
       estadoCliente: cliente.estadoCliente,
 
@@ -38,6 +49,10 @@ export class ClienteReportePrismaMapper {
       departamento: cliente.departamento?.nombre ?? null,
 
       direccion: cliente.direccion,
+
+      latitud,
+      longitud,
+      ubicacionMapsUrl,
 
       observaciones: cliente.observaciones,
 
@@ -57,5 +72,27 @@ export class ClienteReportePrismaMapper {
 
       actualizadoEn: cliente.actualizadoEn,
     };
+  }
+
+  private static normalizePhone(value: string | null): string | null {
+    const normalized = value?.trim();
+
+    if (!normalized) {
+      return null;
+    }
+
+    /**
+     * Corrige únicamente valores legacy como:
+     * "30817715.0" -> "30817715"
+     *
+     * No modifica:
+     * "+502 3081-7715"
+     * "030817715"
+     */
+    if (/^\d+\.0$/.test(normalized)) {
+      return normalized.slice(0, -2);
+    }
+
+    return normalized;
   }
 }

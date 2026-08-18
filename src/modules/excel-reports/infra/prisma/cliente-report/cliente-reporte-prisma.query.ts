@@ -1,17 +1,24 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+
+import {
+  EstadoCliente as PrismaEstadoCliente,
+  EstadoDesinstalacionCliente,
+  EstadoInstalacionCliente,
+  Prisma,
+} from '@prisma/client';
 
 import { PrismaService } from 'src/prisma/prisma.service';
+
 import { ClienteReporteQueryPort } from '../../../domain/ports/cliente-reportes/cliente-reporte-query.port';
 import { ClienteReporteFilters } from '../../../domain/filters/clientes-query-filters';
 import { ClienteReporteRow } from '../../../domain/read-models/cliente-reportes/cliente-reporte-row';
-import {
-  ClienteReportePrismaResult,
-  selectClienteInternetReport,
-} from './cliente-reporte-selects.query';
+import { ClienteReporteResumen } from '../../../domain/read-models/cliente-reportes/cliente-reporte-resumen';
+import { ClienteReportePeriodoResumen } from '../../../domain/read-models/cliente-reportes/cliente-reporte-periodo';
+import { ClienteReporteEvolucionMes } from '../../../domain/read-models/cliente-reportes/cliente-reporte-evolucion-mes';
+
+import { selectClienteInternetReport } from './cliente-reporte-selects.query';
 import { ClienteReportePrismaMapper } from './cliente-reporte-prisma.mapper';
-import { ClienteReporteResumen } from 'src/modules/excel-reports/domain/read-models/cliente-reportes/cliente-reporte-resumen';
-import { EstadoCliente as PrismaEstadoCliente } from '@prisma/client';
+
 const ESTADOS_CARTERA_ACTUAL: PrismaEstadoCliente[] = [
   PrismaEstadoCliente.ACTIVO,
   PrismaEstadoCliente.SUSPENDIDO,
@@ -21,6 +28,8 @@ const ESTADOS_CARTERA_ACTUAL: PrismaEstadoCliente[] = [
 
 @Injectable()
 export class ClienteReportePrismaQuery implements ClienteReporteQueryPort {
+  private static readonly GT_OFFSET_MS = 6 * 60 * 60 * 1000;
+
   constructor(private readonly prisma: PrismaService) {}
 
   async findRows(filters: ClienteReporteFilters): Promise<ClienteReporteRow[]> {
@@ -41,13 +50,13 @@ export class ClienteReportePrismaQuery implements ClienteReporteQueryPort {
       ],
     });
 
-    return clientes.map(ClienteReportePrismaMapper.toRow);
+    return clientes.map((cliente) => ClienteReportePrismaMapper.toRow(cliente));
   }
 
   async getResumen(
     filters: ClienteReporteFilters,
   ): Promise<ClienteReporteResumen> {
-    const clienteWhere = this.buildClienteWhere(filters);
+    const clienteWhere = this.buildClienteResumenGlobalWhere(filters);
 
     const [
       totalClientes,
@@ -211,10 +220,6 @@ export class ClienteReportePrismaQuery implements ClienteReporteQueryPort {
   ): Prisma.ClienteInternetWhereInput {
     const where: Prisma.ClienteInternetWhereInput = {};
 
-    /**
-     * Por defecto un reporte administrativo
-     * no incluye registros eliminados.
-     */
     if (!filters.incluirEliminados) {
       where.isEliminado = false;
     }
@@ -269,6 +274,94 @@ export class ClienteReportePrismaQuery implements ClienteReporteQueryPort {
             mode: 'insensitive',
           },
         },
+        {
+          apellidos: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+        {
+          searchNombre: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+        {
+          telefono: {
+            contains: search,
+          },
+        },
+        {
+          dpi: {
+            contains: search,
+          },
+        },
+      ];
+    }
+
+    return where;
+  }
+
+  private buildClienteResumenGlobalWhere(
+    filters: ClienteReporteFilters,
+  ): Prisma.ClienteInternetWhereInput {
+    const where: Prisma.ClienteInternetWhereInput = {};
+
+    if (!filters.incluirEliminados) {
+      where.isEliminado = false;
+    }
+
+    return where;
+  }
+
+  /**
+   * CONSTRUCTOR DE OPERACIONES
+   * @param filters
+   * @returns
+   */
+  private buildClienteOperacionWhere(
+    filters: ClienteReporteFilters,
+  ): Prisma.ClienteInternetWhereInput {
+    const where: Prisma.ClienteInternetWhereInput = {};
+
+    /**
+     * Solamente dimensiones relativamente
+     * estables.
+     *
+     * NO :
+     * - estadoCliente
+     * - estadoCobranza
+     * - fechas de creación del cliente
+     * - isEliminado
+     *
+     */
+
+    if (filters.servicioInternetId) {
+      where.servicioInternetId = filters.servicioInternetId;
+    }
+
+    if (filters.sectorId) {
+      where.sectorId = filters.sectorId;
+    }
+
+    if (filters.municipioId) {
+      where.municipioId = filters.municipioId;
+    }
+
+    if (filters.departamentoId) {
+      where.departamentoId = filters.departamentoId;
+    }
+
+    const search = filters.search?.trim();
+
+    if (search) {
+      where.OR = [
+        {
+          nombre: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
 
         {
           apellidos: {
@@ -299,5 +392,328 @@ export class ClienteReportePrismaQuery implements ClienteReporteQueryPort {
     }
 
     return where;
+  }
+
+  /**
+   * CONSTRUCTOR DE RESUMEN PERIODOS
+   * @param filters
+   * @param desde
+   * @param hastaExclusivo
+   * @param etiqueta
+   * @returns
+   */
+  async getResumenPeriodo(
+    filters: ClienteReporteFilters,
+    desde: Date,
+    hastaExclusivo: Date,
+    etiqueta: string,
+  ): Promise<ClienteReportePeriodoResumen> {
+    const clienteWhere = this.buildClienteOperacionWhere(filters);
+
+    const [instalacionesPorEstado, desinstalacionesPorEstado, altas, bajas] =
+      await Promise.all([
+        this.prisma.clienteInstalacion.groupBy({
+          by: ['estado'],
+
+          where: {
+            creadoEn: {
+              gte: desde,
+              lt: hastaExclusivo,
+            },
+
+            cliente: {
+              is: clienteWhere,
+            },
+          },
+
+          _count: {
+            _all: true,
+          },
+        }),
+
+        this.prisma.clienteDesinstalacion.groupBy({
+          by: ['estado'],
+
+          where: {
+            creadoEn: {
+              gte: desde,
+              lt: hastaExclusivo,
+            },
+
+            cliente: {
+              is: clienteWhere,
+            },
+          },
+
+          _count: {
+            _all: true,
+          },
+        }),
+
+        /**
+         * ALTA:
+         * instalación COMPLETADA cuya activación
+         * ocurrió dentro del período.
+         *
+         * Para registros legacy sin
+         * fechaActivacionServicio usamos
+         * fechaFinalizacion como fallback.
+         */
+        this.prisma.clienteInstalacion.count({
+          where: {
+            estado: EstadoInstalacionCliente.COMPLETADA,
+
+            cliente: {
+              is: clienteWhere,
+            },
+
+            OR: [
+              {
+                fechaActivacionServicio: {
+                  gte: desde,
+                  lt: hastaExclusivo,
+                },
+              },
+              {
+                fechaActivacionServicio: null,
+
+                fechaFinalizacion: {
+                  gte: desde,
+                  lt: hastaExclusivo,
+                },
+              },
+            ],
+          },
+        }),
+
+        /**
+         * BAJA:
+         * desinstalación completada dentro
+         * del período.
+         */
+        this.prisma.clienteDesinstalacion.count({
+          where: {
+            estado: EstadoDesinstalacionCliente.COMPLETADA,
+
+            fechaFinalizacion: {
+              gte: desde,
+              lt: hastaExclusivo,
+            },
+
+            cliente: {
+              is: clienteWhere,
+            },
+          },
+        }),
+      ]);
+
+    const instalaciones = instalacionesPorEstado.map((item) => ({
+      categoria: item.estado,
+      total: item._count._all,
+    }));
+
+    const desinstalaciones = desinstalacionesPorEstado.map((item) => ({
+      categoria: item.estado,
+      total: item._count._all,
+    }));
+
+    return {
+      etiqueta,
+
+      desde,
+      hastaExclusivo,
+
+      altas,
+
+      bajas,
+
+      crecimientoNeto: altas - bajas,
+
+      instalaciones: {
+        registradas: this.sumTotals(instalaciones),
+
+        porEstadoActual: instalaciones,
+      },
+
+      desinstalaciones: {
+        registradas: this.sumTotals(desinstalaciones),
+
+        porEstadoActual: desinstalaciones,
+      },
+    };
+  }
+
+  private monthKey(date: Date): string {
+    const gtDate = new Date(
+      date.getTime() - ClienteReportePrismaQuery.GT_OFFSET_MS,
+    );
+
+    const year = gtDate.getUTCFullYear();
+
+    const month = gtDate.getUTCMonth() + 1;
+
+    return `${year}-${String(month).padStart(2, '0')}`;
+  }
+
+  /**
+   *
+   *
+   * @param desde
+   * @param hastaExclusivo
+   * @returns
+   */
+  private createMonthBuckets(
+    desde: Date,
+    hastaExclusivo: Date,
+  ): Map<string, ClienteReporteEvolucionMes> {
+    const result = new Map<string, ClienteReporteEvolucionMes>();
+
+    const desdeGt = new Date(
+      desde.getTime() - ClienteReportePrismaQuery.GT_OFFSET_MS,
+    );
+
+    const hastaGt = new Date(
+      hastaExclusivo.getTime() - ClienteReportePrismaQuery.GT_OFFSET_MS,
+    );
+
+    const cursor = new Date(
+      Date.UTC(desdeGt.getUTCFullYear(), desdeGt.getUTCMonth(), 1),
+    );
+
+    const limit = new Date(
+      Date.UTC(hastaGt.getUTCFullYear(), hastaGt.getUTCMonth(), 1),
+    );
+
+    while (cursor < limit) {
+      const anio = cursor.getUTCFullYear();
+
+      const mes = cursor.getUTCMonth() + 1;
+
+      const key = `${anio}-${String(mes).padStart(2, '0')}`;
+
+      const etiqueta = new Intl.DateTimeFormat('es-GT', {
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'UTC',
+      }).format(cursor);
+
+      result.set(key, {
+        anio,
+        mes,
+
+        etiqueta: etiqueta.charAt(0).toUpperCase() + etiqueta.slice(1),
+
+        altas: 0,
+        bajas: 0,
+        crecimientoNeto: 0,
+      });
+
+      cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+    }
+
+    return result;
+  }
+
+  async getEvolucionMensual(
+    filters: ClienteReporteFilters,
+    desde: Date,
+    hastaExclusivo: Date,
+  ): Promise<ClienteReporteEvolucionMes[]> {
+    const clienteWhere = this.buildClienteOperacionWhere(filters);
+
+    const [instalaciones, desinstalaciones] = await Promise.all([
+      this.prisma.clienteInstalacion.findMany({
+        where: {
+          estado: EstadoInstalacionCliente.COMPLETADA,
+
+          cliente: {
+            is: clienteWhere,
+          },
+
+          OR: [
+            {
+              fechaActivacionServicio: {
+                gte: desde,
+                lt: hastaExclusivo,
+              },
+            },
+
+            {
+              fechaActivacionServicio: null,
+
+              fechaFinalizacion: {
+                gte: desde,
+                lt: hastaExclusivo,
+              },
+            },
+          ],
+        },
+
+        select: {
+          fechaActivacionServicio: true,
+          fechaFinalizacion: true,
+        },
+      }),
+
+      this.prisma.clienteDesinstalacion.findMany({
+        where: {
+          estado: EstadoDesinstalacionCliente.COMPLETADA,
+
+          fechaFinalizacion: {
+            gte: desde,
+            lt: hastaExclusivo,
+          },
+
+          cliente: {
+            is: clienteWhere,
+          },
+        },
+
+        select: {
+          fechaFinalizacion: true,
+        },
+      }),
+    ]);
+
+    const meses = this.createMonthBuckets(desde, hastaExclusivo);
+
+    for (const instalacion of instalaciones) {
+      const fecha =
+        instalacion.fechaActivacionServicio ?? instalacion.fechaFinalizacion;
+
+      if (!fecha) {
+        continue;
+      }
+
+      const key = this.monthKey(fecha);
+
+      const mes = meses.get(key);
+
+      if (mes) {
+        mes.altas += 1;
+      }
+    }
+
+    for (const desinstalacion of desinstalaciones) {
+      const fecha = desinstalacion.fechaFinalizacion;
+
+      if (!fecha) {
+        continue;
+      }
+
+      const key = this.monthKey(fecha);
+
+      const mes = meses.get(key);
+
+      if (mes) {
+        mes.bajas += 1;
+      }
+    }
+
+    return Array.from(meses.values()).map((mes) => ({
+      ...mes,
+
+      crecimientoNeto: mes.altas - mes.bajas,
+    }));
   }
 }

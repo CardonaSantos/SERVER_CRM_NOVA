@@ -29,6 +29,10 @@ export interface ClienteReporteRow {
   departamento: string | null;
   direccion: string | null;
 
+  latitud: number | null;
+  longitud: number | null;
+  ubicacionMapsUrl: string | null;
+
   // Información administrativa
   observaciones: string | null;
   nota: string | null;

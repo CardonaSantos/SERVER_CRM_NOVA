@@ -17,6 +17,13 @@ export const selectClienteInternetReport: Prisma.ClienteInternetSelect = {
 
   servicioInternetId: true,
 
+  ubicacion: {
+    select: {
+      latitud: true,
+      longitud: true,
+    },
+  },
+
   servicioInternet: {
     select: {
       nombre: true,

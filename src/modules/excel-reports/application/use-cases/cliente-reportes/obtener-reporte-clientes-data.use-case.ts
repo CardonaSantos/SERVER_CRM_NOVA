@@ -1,10 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { ClienteReporteFilters } from 'src/modules/excel-reports/domain/filters/clientes-query-filters';
+
 import {
   CLIENTE_REPORTE_QUERY_PORT,
   ClienteReporteQueryPort,
-} from 'src/modules/excel-reports/domain/ports/cliente-reportes/cliente-reporte-query.port';
-import { ClienteReporteData } from 'src/modules/excel-reports/domain/read-models/cliente-reportes/cliente-reporte-data';
+} from '../../../domain/ports/cliente-reportes/cliente-reporte-query.port';
+
+import { ClienteReporteFilters } from '../../../domain/filters/clientes-query-filters';
+
+import { ClienteReporteData } from '../../../domain/read-models/cliente-reportes/cliente-reporte-data';
+
+import { ClienteReporteDistribucionesBuilder } from '../../builders/cliente-reporte-distribuciones.builder';
+import { ClienteReportePeriodosFactory } from '../../factory/cliente-reporte-periodos.factory';
 
 @Injectable()
 export class ObtenerReporteClientesDataUseCase {
@@ -14,14 +20,57 @@ export class ObtenerReporteClientesDataUseCase {
   ) {}
 
   async execute(filters: ClienteReporteFilters): Promise<ClienteReporteData> {
-    const [clientes, resumen] = await Promise.all([
-      this.clienteReporteQuery.findRows(filters),
+    const generadoEn = new Date();
 
-      this.clienteReporteQuery.getResumen(filters),
-    ]);
+    const mesActual = ClienteReportePeriodosFactory.mesActual(generadoEn);
+
+    const anioActual = ClienteReportePeriodosFactory.anioActual(generadoEn);
+
+    const ultimosDoceMeses =
+      ClienteReportePeriodosFactory.ultimosDoceMeses(generadoEn);
+
+    const [clientes, resumen, resumenMes, resumenAnio, evolucionMensual] =
+      await Promise.all([
+        this.clienteReporteQuery.findRows(filters),
+
+        this.clienteReporteQuery.getResumen(filters),
+
+        this.clienteReporteQuery.getResumenPeriodo(
+          filters,
+          mesActual.desde,
+          mesActual.hastaExclusivo,
+          mesActual.etiqueta,
+        ),
+
+        this.clienteReporteQuery.getResumenPeriodo(
+          filters,
+          anioActual.desde,
+          anioActual.hastaExclusivo,
+          anioActual.etiqueta,
+        ),
+
+        this.clienteReporteQuery.getEvolucionMensual(
+          filters,
+          ultimosDoceMeses.desde,
+          ultimosDoceMeses.hastaExclusivo,
+        ),
+      ]);
+
+    const distribuciones = ClienteReporteDistribucionesBuilder.build(clientes);
 
     return {
+      generadoEn,
+
       resumen,
+
+      mesActual: resumenMes,
+
+      anioActual: resumenAnio,
+
+      evolucionMensual,
+
+      distribuciones,
+
       clientes,
     };
   }
