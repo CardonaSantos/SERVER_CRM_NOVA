@@ -83,9 +83,7 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
     this.validateInput(input);
 
     /*
-     * ========================================================
-     * 1. CUENTA PPPoE
-     * ========================================================
+     * CUENTA PPPoE
      */
 
     const cuenta = await this.cuentaRepository.findById(input.cuentaPppoeId);

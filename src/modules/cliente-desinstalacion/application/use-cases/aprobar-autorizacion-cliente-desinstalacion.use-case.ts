@@ -25,6 +25,7 @@ import {
 } from '../../infra/tokens/cliente-desinstalacion.token';
 import { AprobarDesinstalacionAutorizacionDto } from '../dto/autorizacion-desinstalacion.dto';
 import { ValidarAccesoDesinstalacionService } from '../services/validar-acceso-desinstalacion.service';
+import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
 
 export type AprobarAutorizacionDesinstalacionCommand =
   AprobarDesinstalacionAutorizacionDto & {
@@ -185,14 +186,10 @@ export class AprobarAutorizacionDesinstalacionUseCase {
 
       command.contrasenaActual,
     );
-
     /**
      * ========================================================
      * 6. APROBACIÓN ADMINISTRATIVA
      * ========================================================
-     *
-     * Una vez confirmada la identidad del operador podemos
-     * persistir quién autorizó la baja y cuándo.
      */
 
     try {
@@ -203,11 +200,10 @@ export class AprobarAutorizacionDesinstalacionUseCase {
       });
 
       /**
-       * Actualmente autorizar() valida la transición de
-       * negocio pero mantiene la desinstalación PROGRAMADA.
+       * Valida que la desinstalación pueda
+       * ser autorizada.
        *
-       * El estado EN_PROCESO queda reservado para cuando
-       * el técnico inicie el retiro físico.
+       * No cambia todavía su estado.
        */
       desinstalacion.autorizar();
     } catch (error) {
@@ -236,18 +232,40 @@ export class AprobarAutorizacionDesinstalacionUseCase {
 
     /**
      * ========================================================
-     * 7. ESTADO 5 - BAJA DEFINITIVA PPPoE
+     * 7. INICIO DE LA DESINSTALACIÓN
      * ========================================================
      *
-     * El módulo PPPoE es responsable de:
+     * La autorización aprobada comienza la ejecución
+     * efectiva de la baja.
      *
-     * /ppp secret remove [find name="..."]
-     * /ppp active remove [find name="..."]
-     *
-     * además de operación, pasos, idempotencia y auditoría.
+     * Si la operación PPPoE falla posteriormente,
+     * la desinstalación permanece EN_PROCESO y nunca
+     * se registra como completada incorrectamente.
      */
 
-    await this.pppoeProvisionamiento.eliminarSecret({
+    try {
+      desinstalacion.iniciar({
+        ejecutadoPorId: command.autorizadoPorId,
+
+        fechaInicio: new Date(),
+      });
+    } catch (error) {
+      throw new ConflictException(
+        error instanceof Error
+          ? error.message
+          : 'No se pudo iniciar la desinstalación.',
+      );
+    }
+
+    await this.desinstalacionRepository.save(desinstalacion);
+
+    /**
+     * ========================================================
+     * 8. BAJA DEFINITIVA PPPoE
+     * ========================================================
+     */
+
+    const resultadoPppoe = await this.pppoeProvisionamiento.eliminarSecret({
       empresaId: acceso.empresaId,
 
       cuentaPppoeId: cuentaPppoe.id,
@@ -270,10 +288,61 @@ export class AprobarAutorizacionDesinstalacionUseCase {
       },
     });
 
+    /**
+     * ========================================================
+     * 9. CONFIRMACIÓN DEL RESULTADO PPPoE
+     * ========================================================
+     *
+     * No se completa la desinstalación si la cuenta
+     * no terminó efectivamente en ELIMINADA.
+     */
+
+    if (resultadoPppoe.estadoCuenta !== EstadoCuentaPppoe.ELIMINADA) {
+      throw new ConflictException(
+        `La baja PPPoE no terminó con la cuenta ELIMINADA. Estado resultante: ${resultadoPppoe.estadoCuenta}.`,
+      );
+    }
+
+    /**
+     * ========================================================
+     * 10. COMPLETAR DESINSTALACIÓN
+     * ========================================================
+     *
+     * La baja PPPoE ya fue confirmada.
+     */
+
+    try {
+      desinstalacion.completar({
+        ejecutadoPorId: command.autorizadoPorId,
+
+        fechaFinalizacion: new Date(),
+
+        resultado: `Baja PPPoE confirmada. Operación PPPoE ${resultadoPppoe.operacionId}.`,
+
+        /**
+         * No afirmamos recuperación física
+         * de equipo solamente por haber eliminado
+         * el acceso PPPoE.
+         */
+        equipoRecuperado: false,
+
+        conforme: null,
+      });
+    } catch (error) {
+      throw new ConflictException(
+        error instanceof Error
+          ? error.message
+          : 'La baja PPPoE fue realizada, pero no pudo completarse la desinstalación.',
+      );
+    }
+
+    const savedDesinstalacion =
+      await this.desinstalacionRepository.save(desinstalacion);
+
     return {
       autorizacion: savedAutorizacion,
 
-      desinstalacion,
+      desinstalacion: savedDesinstalacion,
     };
   }
 }

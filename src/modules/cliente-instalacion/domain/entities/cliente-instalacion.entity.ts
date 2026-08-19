@@ -524,11 +524,11 @@ export class ClienteInstalacionEntity {
       EstadoInstalacionCliente.REPROGRAMADA,
     ];
 
-    if (!estadosPermitidos.includes(this.props.estado)) {
-      throw new Error(
-        `No se puede ${action} cuando la instalación se encuentra en estado ${this.props.estado}.`,
-      );
-    }
+    // if (!estadosPermitidos.includes(this.props.estado)) {
+    //   throw new Error(
+    //     `No se puede ${action} cuando la instalación se encuentra en estado ${this.props.estado}.`,
+    //   );
+    // }
   }
 
   private ensurePositiveId(value: number, field: string): void {
