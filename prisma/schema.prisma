@@ -1346,7 +1346,7 @@ model CobroRuta {
 /// [09] Soporte y Tickets
 model TicketSoporte {
   id                     Int                    @id @default(autoincrement())
-  clienteId              Int? // <--- Agrega el signo de interrogación
+  clienteId              Int? 
   empresaId              Int?
   tecnicoId              Int?
   creadoPorId            Int?
@@ -1379,12 +1379,9 @@ model TicketSoporte {
   logsTiempo        TicketTimeLog[]
 
   ticketReasignacions TicketReasignacion[]
-
   ticketGastos          TicketGasto[]
   movimientosInventario MovimientoInventario[]
-
   serialProductos SerialProducto[]
-
   herramientasUsadas TicketHerramientaUso[]
 
   instalacionesCliente    ClienteInstalacion[]

@@ -29,13 +29,15 @@ export interface TicketSoporteProps {
   actualizadoEn: Date;
 
   fijado: boolean;
-  tiempoTotalMinutos?: number
+
+  tiempoTotalMinutos?: number;
 }
 
 export class TicketSoporte {
   private constructor(private props: TicketSoporteProps) {}
 
-  // ========= FACTORÍA DE DOMINIO (para crear nuevos tickets) =========
+  // ========= FACTORÍA DE DOMINIO =========
+
   static create(params: {
     clienteId: number;
     empresaId: number;
@@ -54,6 +56,7 @@ export class TicketSoporte {
     id?: number;
     creadoEn?: Date;
     actualizadoEn?: Date;
+
     tiempoTotalMinutos?: number | null;
   }): TicketSoporte {
     const {
@@ -70,46 +73,79 @@ export class TicketSoporte {
       id,
       creadoEn,
       actualizadoEn,
-      tiempoTotalMinutos
+      tiempoTotalMinutos,
     } = params;
 
-    if (!clienteId) throw new Error('clienteId es requerido');
-    if (!empresaId) throw new Error('empresaId es requerido');
+    if (!clienteId) {
+      throw new Error('clienteId es requerido');
+    }
+
+    if (!empresaId) {
+      throw new Error('empresaId es requerido');
+    }
 
     const now = new Date();
 
+    const tecnicoPrincipalId = tecnicoId ?? null;
+
     const props: TicketSoporteProps = {
       id,
+
       clienteId,
       empresaId,
-      tecnicoId: tecnicoId ?? null,
+
+      tecnicoId: tecnicoPrincipalId,
       creadoPorId: creadoPorId ?? null,
+
       estado: estado ?? EstadoTicketSoporte.ABIERTA,
       prioridad: prioridad ?? PrioridadTicketSoporte.MEDIA,
+
       titulo: titulo?.trim() || null,
       descripcion: descripcion?.trim() || null,
-      fechaCierre: null,
-      fechaApertura: fechaApertura ?? now,
-      fechaAsignacion: null,
+
+      fechaApertura: fechaApertura
+        ? TicketSoporte.cloneValidDate(fechaApertura, 'fechaApertura')
+        : now,
+
+      /*
+       * Si el ticket nace con un técnico principal,
+       * ya existe una primera asignación.
+       *
+       * Los técnicos adicionales se gestionan fuera
+       * de esta entidad y el service completará este
+       * mismo dato cuando corresponda.
+       */
+      fechaAsignacion: tecnicoPrincipalId ? now : null,
+
       fechaInicioAtencion: null,
       fechaResolucionTecnico: null,
-      creadoEn: creadoEn ?? now,
-      actualizadoEn: actualizadoEn ?? now,
+      fechaCierre: null,
+
+      creadoEn: creadoEn
+        ? TicketSoporte.cloneValidDate(creadoEn, 'creadoEn')
+        : now,
+
+      actualizadoEn: actualizadoEn
+        ? TicketSoporte.cloneValidDate(actualizadoEn, 'actualizadoEn')
+        : now,
+
       fijado: fijado ?? false,
-      tiempoTotalMinutos: tiempoTotalMinutos
-      
+
+      tiempoTotalMinutos: tiempoTotalMinutos ?? undefined,
     };
 
     return new TicketSoporte(props);
   }
 
   // ========= REHIDRATAR DESDE PRISMA =========
-  //  mapea 1:1 el row de Prisma
+
   static fromPrisma(row: TicketSoporteRow): TicketSoporte {
     return new TicketSoporte({
       id: row.id,
+
       clienteId: row.clienteId,
       empresaId: row.empresaId,
+
       tecnicoId: row.tecnicoId ?? null,
       creadoPorId: row.creadoPorId ?? null,
 
@@ -202,29 +238,118 @@ export class TicketSoporte {
     return this.props.fijado;
   }
 
-  // ==================
+  // ========= CICLO DEL TICKET =========
 
-  marcarEnProceso() {
-    if (this.props.estado === EstadoTicketSoporte.EN_PROCESO) return;
+  /**
+   * Registra la primera vez que el ticket recibió
+   * al menos un técnico.
+   *
+   * Una reasignación posterior NO modifica esta fecha.
+   */
+  registrarPrimeraAsignacion(fecha: Date = new Date()): void {
+    if (this.props.fechaAsignacion) {
+      return;
+    }
+
+    const fechaAsignacion = TicketSoporte.cloneValidDate(
+      fecha,
+      'fechaAsignacion',
+    );
+
+    this.props.fechaAsignacion = fechaAsignacion;
+
+    this.touch(fechaAsignacion);
+  }
+
+  /**
+   * Inicia o reanuda el trabajo técnico.
+   *
+   * fechaInicioAtencion representa exclusivamente
+   * la PRIMERA atención del ticket, por lo que una
+   * reanudación posterior no debe sobrescribirla.
+   *
+   * Los distintos ciclos activos se conservan en
+   * TicketTimeLog.
+   */
+  marcarEnProceso(fecha: Date = new Date()): void {
+    if (this.props.estado === EstadoTicketSoporte.EN_PROCESO) {
+      return;
+    }
+
+    const fechaInicio = TicketSoporte.cloneValidDate(
+      fecha,
+      'fechaInicioAtencion',
+    );
+
     this.props.estado = EstadoTicketSoporte.EN_PROCESO;
-    this.touch();
+
+    if (!this.props.fechaInicioAtencion) {
+      this.props.fechaInicioAtencion = fechaInicio;
+    }
+
+    this.touch(fechaInicio);
   }
 
-  marcarEnRevision() {
-    if (this.props.estado === EstadoTicketSoporte.PENDIENTE_REVISION) return;
+  /**
+   * Finaliza el ciclo técnico actual y deja el ticket
+   * pendiente de revisión.
+   *
+   * A diferencia de fechaInicioAtencion, esta fecha sí
+   * se actualiza si el ticket vuelve a trabajo técnico
+   * y posteriormente se entrega nuevamente a revisión.
+   *
+   * De esta forma representa la resolución técnica
+   * más reciente.
+   */
+  marcarEnRevision(fecha: Date = new Date()): void {
+    if (this.props.estado === EstadoTicketSoporte.PENDIENTE_REVISION) {
+      return;
+    }
+
+    const fechaResolucion = TicketSoporte.cloneValidDate(
+      fecha,
+      'fechaResolucionTecnico',
+    );
+
     this.props.estado = EstadoTicketSoporte.PENDIENTE_REVISION;
-    this.touch();
+    this.props.fechaResolucionTecnico = fechaResolucion;
+
+    this.touch(fechaResolucion);
   }
 
-  cerrar() {
-    if (this.props.fechaCierre) return;
+  /**
+   * Cierra el ticket.
+   *
+   * fechaCierre representa exclusivamente el cierre
+   * final y nunca debe modificar fechaResolucionTecnico.
+   */
+  cerrar(fecha: Date = new Date()): void {
+    if (this.props.fechaCierre) {
+      return;
+    }
+
+    const fechaCierre = TicketSoporte.cloneValidDate(fecha, 'fechaCierre');
+
     this.props.estado = EstadoTicketSoporte.RESUELTA;
-    this.props.fechaCierre = new Date();
-    this.touch();
+    this.props.fechaCierre = fechaCierre;
+
+    this.touch(fechaCierre);
   }
 
-  private touch() {
-    this.props.actualizadoEn = new Date();
+  // ========= HELPERS =========
+
+  private touch(fecha: Date = new Date()): void {
+    this.props.actualizadoEn = new Date(fecha);
+  }
+
+  private static cloneValidDate(fecha: Date, field: string): Date {
+    const value = new Date(fecha);
+
+    if (Number.isNaN(value.getTime())) {
+      throw new Error(`${field} debe contener una fecha válida`);
+    }
+
+    return value;
   }
 
   // ========= PARA PERSISTENCIA =========
