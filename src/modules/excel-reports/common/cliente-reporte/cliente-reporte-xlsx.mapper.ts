@@ -2,9 +2,9 @@ import {
   XlsxCellValue,
   XlsxDocument,
   XlsxTable,
-} from '../domain/ports/xlsx-writer.port';
+} from '../../domain/ports/xlsx-writer.port';
 
-import { ClienteReporteData } from '../domain/read-models/cliente-reportes/cliente-reporte-data';
+import { ClienteReporteData } from '../../domain/read-models/cliente-reportes/cliente-reporte-data';
 
 export class ClienteReporteXlsxMapper {
   static toDocument(data: ClienteReporteData): XlsxDocument {

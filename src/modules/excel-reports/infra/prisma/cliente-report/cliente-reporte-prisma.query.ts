@@ -10,7 +10,7 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 
 import { ClienteReporteQueryPort } from '../../../domain/ports/cliente-reportes/cliente-reporte-query.port';
-import { ClienteReporteFilters } from '../../../domain/filters/clientes-query-filters';
+import { ClienteReporteFilters } from '../../../domain/filters/cliente-reporte/clientes-query-filters';
 import { ClienteReporteRow } from '../../../domain/read-models/cliente-reportes/cliente-reporte-row';
 import { ClienteReporteResumen } from '../../../domain/read-models/cliente-reportes/cliente-reporte-resumen';
 import { ClienteReportePeriodoResumen } from '../../../domain/read-models/cliente-reportes/cliente-reporte-periodo';

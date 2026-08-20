@@ -10,9 +10,9 @@ import {
 
 import { Transform, Type } from 'class-transformer';
 
-import { EstadoCliente } from '../../domain/enums/estado-clientes-actualizado.enum';
+import { EstadoCliente } from '../../../domain/enums/cliente-report/estado-clientes-actualizado.enum';
 
-import { EstadoCobranzaCliente } from '../../domain/enums/estado-cobranza-clientes.enum';
+import { EstadoCobranzaCliente } from '../../../domain/enums/cliente-report/estado-cobranza-clientes.enum';
 
 export class ExportarClientesReporteDto {
   @IsOptional()

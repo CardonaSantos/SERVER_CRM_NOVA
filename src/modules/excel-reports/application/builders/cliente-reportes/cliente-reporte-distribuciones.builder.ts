@@ -1,6 +1,6 @@
-import { ClienteReporteDistribuciones } from '../../domain/read-models/cliente-reportes/cliente-reporte-distribuciones';
-import { ClienteReporteRow } from '../../domain/read-models/cliente-reportes/cliente-reporte-row';
-import { ReporteCantidadPorCategoria } from '../../domain/read-models/cliente-reportes/cliente-reporte-resumen';
+import { ClienteReporteDistribuciones } from '../../../domain/read-models/cliente-reportes/cliente-reporte-distribuciones';
+import { ClienteReporteRow } from '../../../domain/read-models/cliente-reportes/cliente-reporte-row';
+import { ReporteCantidadPorCategoria } from '../../../domain/read-models/cliente-reportes/cliente-reporte-resumen';
 
 export class ClienteReporteDistribucionesBuilder {
   static build(clientes: ClienteReporteRow[]): ClienteReporteDistribuciones {

@@ -6,8 +6,8 @@ import {
   XLSX_WRITER_PORT,
   XlsxWriterPort,
 } from 'src/modules/excel-reports/domain/ports/xlsx-writer.port';
-import { ClienteReporteFilters } from 'src/modules/excel-reports/domain/filters/clientes-query-filters';
-import { ClienteReporteXlsxMapper } from 'src/modules/excel-reports/common/cliente-reporte-xlsx.mapper';
+import { ClienteReporteFilters } from 'src/modules/excel-reports/domain/filters/cliente-reporte/clientes-query-filters';
+import { ClienteReporteXlsxMapper } from 'src/modules/excel-reports/common/cliente-reporte/cliente-reporte-xlsx.mapper';
 
 @Injectable()
 export class ExportarClientesXlsxUseCase {

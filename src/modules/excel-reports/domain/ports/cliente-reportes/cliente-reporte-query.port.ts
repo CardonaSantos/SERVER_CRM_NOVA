@@ -1,4 +1,4 @@
-import { ClienteReporteFilters } from '../../filters/clientes-query-filters';
+import { ClienteReporteFilters } from '../../filters/cliente-reporte/clientes-query-filters';
 import { ClienteReporteEvolucionMes } from '../../read-models/cliente-reportes/cliente-reporte-evolucion-mes';
 import { ClienteReportePeriodoResumen } from '../../read-models/cliente-reportes/cliente-reporte-periodo';
 import { ClienteReporteResumen } from '../../read-models/cliente-reportes/cliente-reporte-resumen';

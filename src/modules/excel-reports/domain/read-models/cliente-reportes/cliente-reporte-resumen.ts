@@ -1,5 +1,5 @@
-import { EstadoCliente } from '../../enums/estado-clientes-actualizado.enum';
-import { EstadoCobranzaCliente } from '../../enums/estado-cobranza-clientes.enum';
+import { EstadoCliente } from '../../enums/cliente-report/estado-clientes-actualizado.enum';
+import { EstadoCobranzaCliente } from '../../enums/cliente-report/estado-cobranza-clientes.enum';
 
 export interface ReporteCantidadPorCategoria<T extends string> {
   categoria: T;

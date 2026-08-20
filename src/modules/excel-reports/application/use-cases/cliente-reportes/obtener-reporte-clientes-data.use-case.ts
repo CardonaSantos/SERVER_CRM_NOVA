@@ -5,12 +5,12 @@ import {
   ClienteReporteQueryPort,
 } from '../../../domain/ports/cliente-reportes/cliente-reporte-query.port';
 
-import { ClienteReporteFilters } from '../../../domain/filters/clientes-query-filters';
+import { ClienteReporteFilters } from '../../../domain/filters/cliente-reporte/clientes-query-filters';
 
 import { ClienteReporteData } from '../../../domain/read-models/cliente-reportes/cliente-reporte-data';
 
-import { ClienteReporteDistribucionesBuilder } from '../../builders/cliente-reporte-distribuciones.builder';
-import { ClienteReportePeriodosFactory } from '../../factory/cliente-reporte-periodos.factory';
+import { ClienteReporteDistribucionesBuilder } from '../../builders/cliente-reportes/cliente-reporte-distribuciones.builder';
+import { ClienteReportePeriodosFactory } from '../../factory/cliente-report/cliente-reporte-periodos.factory';
 
 @Injectable()
 export class ObtenerReporteClientesDataUseCase {
