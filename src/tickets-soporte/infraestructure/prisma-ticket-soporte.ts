@@ -1,4 +1,3 @@
-// src/tickets/infra/prisma-ticket-soporte.repository.ts
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { TicketSoporteRepository } from '../domain/ticket-soporte-repository';
@@ -161,16 +160,6 @@ export class PrismaTicketSoporteRepository implements TicketSoporteRepository {
         'PrismaTicketSoporteRepository -findByEmpresa',
       );
     }
-  }
-
-  async obtenerTiempoTotalTrabajado(ticketId: number): Promise<number> {
-    const result = await this.prisma.ticketTimeLog.aggregate({
-      where: { ticketId },
-      _sum: {
-        duracionMinutos: true,
-      },
-    });
-    return result._sum.duracionMinutos || 0;
   }
 
   async obtenerTiempoTecnicoTrabajado(ticketId: number): Promise<number> {
