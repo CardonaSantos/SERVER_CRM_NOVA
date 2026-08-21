@@ -540,6 +540,9 @@ model ClienteInternet {
   @@index([whatsappDesactivadoPorId])
 }
 
+
+
+
 model ClienteAccesoInternet {
   id Int @id @default(autoincrement())
 

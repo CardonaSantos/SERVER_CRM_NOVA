@@ -15,11 +15,20 @@ export class ClienteReporteXlsxMapper {
         {
           name: 'Resumen',
           title: 'Panorama general de clientes',
-
           tables: [
             this.buildReporteInfoTable(data),
 
             this.buildCarteraTable(data),
+
+            this.buildCarteraFinancieraTable(data),
+
+            this.buildFacturacionMesTable(data),
+
+            this.buildControlGeneracionTable(data),
+
+            this.buildCobranzaFinancieraTable(data),
+
+            this.buildTopDeudoresTable(data),
 
             this.buildMovimientoActualTable(data),
 
@@ -62,6 +71,8 @@ export class ClienteReporteXlsxMapper {
           title: 'Distribución de la cartera',
 
           tables: [
+            this.buildCarteraFinancieraPlanesTable(data),
+
             this.buildPlanesTable(data),
 
             this.buildDepartamentosTable(data),
@@ -101,7 +112,9 @@ export class ClienteReporteXlsxMapper {
 
         ['Generado', data.generadoEn],
 
-        ['Período mensual', data.mesActual.etiqueta],
+        ['Ciclo financiero analizado', data.financiero.periodo.etiqueta],
+
+        ['Período operativo mensual', data.mesActual.etiqueta],
 
         ['Período anual', data.anioActual.etiqueta],
       ],
@@ -121,6 +134,169 @@ export class ClienteReporteXlsxMapper {
 
         ['Cartera operativa actual', data.resumen.carteraActual],
       ],
+    };
+  }
+
+  private static buildCarteraFinancieraTable(
+    data: ClienteReporteData,
+  ): XlsxTable {
+    const financiero = data.financiero;
+
+    return {
+      title: 'Cartera financiera actual',
+
+      headers: ['Indicador', 'Valor'],
+
+      widths: [46, 22],
+
+      rows: [
+        [
+          'Clientes facturables actuales',
+          financiero.clientesFacturablesActuales,
+        ],
+
+        [
+          'Potencial mensual de clientes facturables',
+          this.formatMoney(financiero.potencialMensualActual),
+        ],
+
+        [
+          'Promedio mensual por cliente facturable',
+          this.formatMoney(financiero.ingresoPotencialPromedioCliente),
+        ],
+
+        [
+          'Potencial mensual de clientes suspendidos',
+          this.formatMoney(financiero.potencialMensualSuspendido),
+        ],
+      ],
+    };
+  }
+
+  private static buildFacturacionMesTable(data: ClienteReporteData): XlsxTable {
+    const financiero = data.financiero;
+
+    return {
+      title: `Facturación del ciclo - ${financiero.periodo.etiqueta}`,
+
+      headers: ['Indicador', 'Cantidad', 'Monto'],
+
+      widths: [50, 18, 22],
+
+      rows: [
+        [
+          'Facturas emitidas del ciclo',
+
+          financiero.facturasEmitidasMes,
+
+          this.formatMoney(financiero.facturacionEmitidaMes),
+        ],
+
+        [
+          'Clientes pendientes de generación programada',
+
+          financiero.clientesPendientesGenerarProgramadaMes,
+
+          this.formatMoney(financiero.facturacionPendienteGenerarProgramadaMes),
+        ],
+
+        [
+          'Facturación esperada identificada',
+
+          null,
+
+          this.formatMoney(financiero.facturacionEsperadaMes),
+        ],
+      ],
+    };
+  }
+
+  private static buildCobranzaFinancieraTable(
+    data: ClienteReporteData,
+  ): XlsxTable {
+    const financiero = data.financiero;
+
+    return {
+      title: `Cobranza y cuentas por cobrar - ${financiero.periodo.etiqueta}`,
+
+      headers: ['Indicador', 'Valor'],
+
+      widths: [52, 24],
+
+      rows: [
+        [
+          'Monto cubierto de facturas emitidas del ciclo',
+
+          this.formatMoney(financiero.aplicadoFacturasMes),
+        ],
+
+        [
+          'Saldo pendiente de facturas emitidas del ciclo',
+
+          this.formatMoney(financiero.saldoPendienteFacturasMes),
+        ],
+
+        [
+          '% cubierto de facturas emitidas del ciclo',
+
+          this.formatPercentageValue(financiero.porcentajeCobranzaFacturasMes),
+        ],
+
+        [
+          'Saldo pendiente de períodos anteriores',
+
+          this.formatMoney(financiero.deudaAnterior),
+        ],
+
+        [
+          'Cuentas por cobrar al corte',
+
+          this.formatMoney(financiero.cuentasPorCobrarAlCorte),
+        ],
+
+        [
+          'Pagos registrados durante el mes',
+
+          this.formatMoney(financiero.recaudadoDuranteMes),
+        ],
+      ],
+    };
+  }
+
+  private static buildTopDeudoresTable(data: ClienteReporteData): XlsxTable {
+    return {
+      title: 'Top 10 clientes por saldo pendiente',
+
+      headers: [
+        'Posición',
+        'Cliente ID',
+        'Cliente',
+        'Estado operativo',
+        'Cobranza registrada',
+        'Plan',
+        'Facturas pendientes',
+        'Total pendiente',
+      ],
+
+      widths: [12, 14, 38, 22, 22, 30, 20, 20],
+
+      rows: data.financiero.topClientesSaldoPendiente.map((cliente, index) => [
+        index + 1,
+
+        cliente.clienteId,
+
+        cliente.cliente,
+
+        this.formatLabel(cliente.estadoCliente),
+
+        this.formatLabel(cliente.estadoCobranza),
+
+        cliente.plan ?? '—',
+
+        cliente.facturasPendientes,
+
+        this.formatMoney(cliente.totalPendiente),
+      ]),
     };
   }
 
@@ -311,6 +487,35 @@ export class ClienteReporteXlsxMapper {
   // =========================================================
   // DISTRIBUCIÓN
   // =========================================================
+  private static buildCarteraFinancieraPlanesTable(
+    data: ClienteReporteData,
+  ): XlsxTable {
+    return {
+      title: 'Cartera monetaria por plan',
+
+      headers: [
+        'Plan',
+        'Precio',
+        'Clientes facturables',
+        'Potencial mensual',
+        '% del potencial mensual',
+      ],
+
+      widths: [38, 18, 22, 24, 24],
+
+      rows: data.financiero.carteraPorPlan.map((item) => [
+        item.plan,
+
+        this.formatMoney(item.precio),
+
+        item.clientesFacturables,
+
+        this.formatMoney(item.potencialMensual),
+
+        this.formatPercentageValue(item.porcentajePotencial),
+      ]),
+    };
+  }
 
   private static buildPlanesTable(data: ClienteReporteData): XlsxTable {
     return {
@@ -556,6 +761,27 @@ export class ClienteReporteXlsxMapper {
   // HELPERS
   // =========================================================
 
+  private static formatMoney(value: number): string {
+    if (!Number.isFinite(value)) {
+      return '—';
+    }
+
+    const formatted = new Intl.NumberFormat('es-GT', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+
+    return `Q ${formatted}`;
+  }
+
+  private static formatPercentageValue(value: number): string {
+    if (!Number.isFinite(value)) {
+      return '—';
+    }
+
+    return `${value.toFixed(1)}%`;
+  }
+
   private static formatPercentage(value: number, total: number): string {
     if (total <= 0) {
       return '0.0%';
@@ -577,5 +803,29 @@ export class ClienteReporteXlsxMapper {
     const date = new Date().toISOString().slice(0, 10);
 
     return `reporte-clientes-${date}.xlsx`;
+  }
+
+  private static buildControlGeneracionTable(
+    data: ClienteReporteData,
+  ): XlsxTable {
+    const financiero = data.financiero;
+
+    return {
+      title: 'Control de generación de facturas',
+
+      headers: ['Control', 'Clientes', 'Monto potencial'],
+
+      widths: [50, 18, 22],
+
+      rows: [
+        [
+          'Sin factura tras fecha programada',
+
+          financiero.clientesSinFacturaRevisarMes,
+
+          this.formatMoney(financiero.facturacionSinFacturaRevisarMes),
+        ],
+      ],
+    };
   }
 }

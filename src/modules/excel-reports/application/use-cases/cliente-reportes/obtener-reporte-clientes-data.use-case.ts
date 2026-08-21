@@ -29,32 +29,48 @@ export class ObtenerReporteClientesDataUseCase {
     const ultimosDoceMeses =
       ClienteReportePeriodosFactory.ultimosDoceMeses(generadoEn);
 
-    const [clientes, resumen, resumenMes, resumenAnio, evolucionMensual] =
-      await Promise.all([
-        this.clienteReporteQuery.findRows(filters),
+    const [
+      clientes,
+      resumen,
+      resumenMes,
+      resumenAnio,
+      evolucionMensual,
+      financiero,
+    ] = await Promise.all([
+      this.clienteReporteQuery.findRows(filters),
 
-        this.clienteReporteQuery.getResumen(filters),
+      this.clienteReporteQuery.getResumen(filters),
 
-        this.clienteReporteQuery.getResumenPeriodo(
-          filters,
-          mesActual.desde,
-          mesActual.hastaExclusivo,
-          mesActual.etiqueta,
-        ),
+      this.clienteReporteQuery.getResumenPeriodo(
+        filters,
+        mesActual.desde,
+        mesActual.hastaExclusivo,
+        mesActual.etiqueta,
+      ),
 
-        this.clienteReporteQuery.getResumenPeriodo(
-          filters,
-          anioActual.desde,
-          anioActual.hastaExclusivo,
-          anioActual.etiqueta,
-        ),
+      this.clienteReporteQuery.getResumenPeriodo(
+        filters,
+        anioActual.desde,
+        anioActual.hastaExclusivo,
+        anioActual.etiqueta,
+      ),
 
-        this.clienteReporteQuery.getEvolucionMensual(
-          filters,
-          ultimosDoceMeses.desde,
-          ultimosDoceMeses.hastaExclusivo,
-        ),
-      ]);
+      this.clienteReporteQuery.getEvolucionMensual(
+        filters,
+        ultimosDoceMeses.desde,
+        ultimosDoceMeses.hastaExclusivo,
+      ),
+
+      this.clienteReporteQuery.getResumenFinanciero(
+        filters,
+
+        mesActual.desde,
+        mesActual.hastaExclusivo,
+        mesActual.etiqueta,
+
+        generadoEn,
+      ),
+    ]);
 
     const distribuciones = ClienteReporteDistribucionesBuilder.build(clientes);
 
@@ -70,6 +86,8 @@ export class ObtenerReporteClientesDataUseCase {
       evolucionMensual,
 
       distribuciones,
+
+      financiero,
 
       clientes,
     };
