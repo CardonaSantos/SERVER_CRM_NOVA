@@ -1,9 +1,4 @@
-import {
-  XlsxCellValue,
-  XlsxDocument,
-  XlsxTable,
-} from '../../domain/ports/xlsx-writer.port';
-
+import { XlsxDocument, XlsxTable } from '../../domain/ports/xlsx-writer.port';
 import { ClienteReporteData } from '../../domain/read-models/cliente-reportes/cliente-reporte-data';
 
 export class ClienteReporteXlsxMapper {
@@ -145,29 +140,35 @@ export class ClienteReporteXlsxMapper {
     return {
       title: 'Cartera financiera actual',
 
-      headers: ['Indicador', 'Valor'],
+      headers: ['Indicador', 'Clientes', 'Monto'],
 
-      widths: [46, 22],
+      widths: [46, 18, 22],
+
+      columnFormats: [null, 'integer', 'currency_gtq'],
 
       rows: [
         [
           'Clientes facturables actuales',
           financiero.clientesFacturablesActuales,
+          null,
         ],
 
         [
           'Potencial mensual de clientes facturables',
-          this.formatMoney(financiero.potencialMensualActual),
+          null,
+          financiero.potencialMensualActual,
         ],
 
         [
           'Promedio mensual por cliente facturable',
-          this.formatMoney(financiero.ingresoPotencialPromedioCliente),
+          null,
+          financiero.ingresoPotencialPromedioCliente,
         ],
 
         [
           'Potencial mensual de clientes suspendidos',
-          this.formatMoney(financiero.potencialMensualSuspendido),
+          null,
+          financiero.potencialMensualSuspendido,
         ],
       ],
     };
@@ -183,13 +184,15 @@ export class ClienteReporteXlsxMapper {
 
       widths: [50, 18, 22],
 
+      columnFormats: [null, 'integer', 'currency_gtq'],
+
       rows: [
         [
           'Facturas emitidas del ciclo',
 
           financiero.facturasEmitidasMes,
 
-          this.formatMoney(financiero.facturacionEmitidaMes),
+          financiero.facturacionEmitidaMes,
         ],
 
         [
@@ -197,7 +200,7 @@ export class ClienteReporteXlsxMapper {
 
           financiero.clientesPendientesGenerarProgramadaMes,
 
-          this.formatMoney(financiero.facturacionPendienteGenerarProgramadaMes),
+          financiero.facturacionPendienteGenerarProgramadaMes,
         ],
 
         [
@@ -205,7 +208,7 @@ export class ClienteReporteXlsxMapper {
 
           null,
 
-          this.formatMoney(financiero.facturacionEsperadaMes),
+          financiero.facturacionEsperadaMes,
         ],
       ],
     };
@@ -219,45 +222,47 @@ export class ClienteReporteXlsxMapper {
     return {
       title: `Cobranza y cuentas por cobrar - ${financiero.periodo.etiqueta}`,
 
-      headers: ['Indicador', 'Valor'],
+      headers: ['Indicador', 'Monto', 'Porcentaje'],
 
-      widths: [52, 24],
+      widths: [52, 24, 18],
+
+      columnFormats: [null, 'currency_gtq', 'percentage'],
 
       rows: [
         [
           'Monto cubierto de facturas emitidas del ciclo',
-
-          this.formatMoney(financiero.aplicadoFacturasMes),
+          financiero.aplicadoFacturasMes,
+          null,
         ],
 
         [
           'Saldo pendiente de facturas emitidas del ciclo',
-
-          this.formatMoney(financiero.saldoPendienteFacturasMes),
+          financiero.saldoPendienteFacturasMes,
+          null,
         ],
 
         [
           '% cubierto de facturas emitidas del ciclo',
-
-          this.formatPercentageValue(financiero.porcentajeCobranzaFacturasMes),
+          null,
+          this.toExcelPercentageValue(financiero.porcentajeCobranzaFacturasMes),
         ],
 
         [
           'Saldo pendiente de períodos anteriores',
-
-          this.formatMoney(financiero.deudaAnterior),
+          financiero.deudaAnterior,
+          null,
         ],
 
         [
           'Cuentas por cobrar al corte',
-
-          this.formatMoney(financiero.cuentasPorCobrarAlCorte),
+          financiero.cuentasPorCobrarAlCorte,
+          null,
         ],
 
         [
           'Pagos registrados durante el mes',
-
-          this.formatMoney(financiero.recaudadoDuranteMes),
+          financiero.recaudadoDuranteMes,
+          null,
         ],
       ],
     };
@@ -280,6 +285,17 @@ export class ClienteReporteXlsxMapper {
 
       widths: [12, 14, 38, 22, 22, 30, 20, 20],
 
+      columnFormats: [
+        'integer',
+        'integer',
+        null,
+        null,
+        null,
+        null,
+        'integer',
+        'currency_gtq',
+      ],
+
       rows: data.financiero.topClientesSaldoPendiente.map((cliente, index) => [
         index + 1,
 
@@ -295,7 +311,7 @@ export class ClienteReporteXlsxMapper {
 
         cliente.facturasPendientes,
 
-        this.formatMoney(cliente.totalPendiente),
+        cliente.totalPendiente,
       ]),
     };
   }
@@ -335,13 +351,14 @@ export class ClienteReporteXlsxMapper {
       headers: ['Estado', 'Clientes', '% del total'],
 
       widths: [30, 15, 18],
+      columnFormats: [null, 'integer', 'percentage'],
 
       rows: data.resumen.porEstadoCliente.map((item) => [
         this.formatLabel(item.categoria),
 
         item.total,
 
-        this.formatPercentage(item.total, data.resumen.totalClientes),
+        this.toExcelPercentage(item.total, data.resumen.totalClientes),
       ]),
     };
   }
@@ -349,7 +366,7 @@ export class ClienteReporteXlsxMapper {
   private static buildCobranzaTable(data: ClienteReporteData): XlsxTable {
     return {
       title: 'Estado actual de cobranza',
-
+      columnFormats: [null, 'integer', 'percentage'],
       headers: ['Estado', 'Clientes', '% del total'],
 
       widths: [30, 15, 18],
@@ -359,7 +376,7 @@ export class ClienteReporteXlsxMapper {
 
         item.total,
 
-        this.formatPercentage(item.total, data.resumen.totalClientes),
+        this.toExcelPercentage(item.total, data.resumen.totalClientes),
       ]),
     };
   }
@@ -503,16 +520,24 @@ export class ClienteReporteXlsxMapper {
 
       widths: [38, 18, 22, 24, 24],
 
+      columnFormats: [
+        null,
+        'currency_gtq',
+        'integer',
+        'currency_gtq',
+        'percentage',
+      ],
+
       rows: data.financiero.carteraPorPlan.map((item) => [
         item.plan,
 
-        this.formatMoney(item.precio),
+        item.precio,
 
         item.clientesFacturables,
 
-        this.formatMoney(item.potencialMensual),
+        item.potencialMensual,
 
-        this.formatPercentageValue(item.porcentajePotencial),
+        this.toExcelPercentageValue(item.porcentajePotencial),
       ]),
     };
   }
@@ -520,7 +545,7 @@ export class ClienteReporteXlsxMapper {
   private static buildPlanesTable(data: ClienteReporteData): XlsxTable {
     return {
       title: 'Clientes por plan',
-
+      columnFormats: [null, 'integer', 'percentage'],
       headers: ['Plan', 'Clientes', '%'],
 
       widths: [40, 15, 15],
@@ -530,7 +555,7 @@ export class ClienteReporteXlsxMapper {
 
         item.total,
 
-        this.formatPercentage(
+        this.toExcelPercentage(
           item.total,
           data.distribuciones.calidadDatos.total,
         ),
@@ -541,7 +566,7 @@ export class ClienteReporteXlsxMapper {
   private static buildDepartamentosTable(data: ClienteReporteData): XlsxTable {
     return {
       title: 'Clientes por departamento',
-
+      columnFormats: [null, 'integer', 'percentage'],
       headers: ['Departamento', 'Clientes', '%'],
 
       widths: [35, 15, 15],
@@ -551,7 +576,7 @@ export class ClienteReporteXlsxMapper {
 
         item.total,
 
-        this.formatPercentage(
+        this.toExcelPercentage(
           item.total,
           data.distribuciones.calidadDatos.total,
         ),
@@ -562,7 +587,7 @@ export class ClienteReporteXlsxMapper {
   private static buildMunicipiosTable(data: ClienteReporteData): XlsxTable {
     return {
       title: 'Clientes por municipio',
-
+      columnFormats: [null, 'integer', 'percentage'],
       headers: ['Municipio', 'Clientes', '%'],
 
       widths: [35, 15, 15],
@@ -572,7 +597,7 @@ export class ClienteReporteXlsxMapper {
 
         item.total,
 
-        this.formatPercentage(
+        this.toExcelPercentage(
           item.total,
           data.distribuciones.calidadDatos.total,
         ),
@@ -583,7 +608,7 @@ export class ClienteReporteXlsxMapper {
   private static buildSectoresTable(data: ClienteReporteData): XlsxTable {
     return {
       title: 'Clientes por sector',
-
+      columnFormats: [null, 'integer', 'percentage'],
       headers: ['Sector', 'Clientes', '%'],
 
       widths: [35, 15, 15],
@@ -593,7 +618,7 @@ export class ClienteReporteXlsxMapper {
 
         item.total,
 
-        this.formatPercentage(
+        this.toExcelPercentage(
           item.total,
           data.distribuciones.calidadDatos.total,
         ),
@@ -606,7 +631,7 @@ export class ClienteReporteXlsxMapper {
 
     return {
       title: 'Calidad y completitud de datos',
-
+      columnFormats: [null, 'integer', 'integer', 'percentage'],
       headers: ['Dato', 'Con información', 'Sin información', 'Cobertura'],
 
       widths: [30, 20, 20, 18],
@@ -616,35 +641,35 @@ export class ClienteReporteXlsxMapper {
           'Teléfono',
           calidad.conTelefono,
           calidad.sinTelefono,
-          this.formatPercentage(calidad.conTelefono, calidad.total),
+          this.toExcelPercentage(calidad.conTelefono, calidad.total),
         ],
 
         [
           'DPI',
           calidad.conDpi,
           calidad.sinDpi,
-          this.formatPercentage(calidad.conDpi, calidad.total),
+          this.toExcelPercentage(calidad.conDpi, calidad.total),
         ],
 
         [
           'Plan',
           calidad.conPlan,
           calidad.sinPlan,
-          this.formatPercentage(calidad.conPlan, calidad.total),
+          this.toExcelPercentage(calidad.conPlan, calidad.total),
         ],
 
         [
           'Ubicación',
           calidad.conUbicacion,
           calidad.sinUbicacion,
-          this.formatPercentage(calidad.conUbicacion, calidad.total),
+          this.toExcelPercentage(calidad.conUbicacion, calidad.total),
         ],
 
         [
           'Contacto de referencia',
           calidad.conContactoReferencia,
           calidad.sinContactoReferencia,
-          this.formatPercentage(calidad.conContactoReferencia, calidad.total),
+          this.toExcelPercentage(calidad.conContactoReferencia, calidad.total),
         ],
       ],
     };
@@ -761,37 +786,6 @@ export class ClienteReporteXlsxMapper {
   // HELPERS
   // =========================================================
 
-  private static formatMoney(value: number): string {
-    if (!Number.isFinite(value)) {
-      return '—';
-    }
-
-    const formatted = new Intl.NumberFormat('es-GT', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-
-    return `Q ${formatted}`;
-  }
-
-  private static formatPercentageValue(value: number): string {
-    if (!Number.isFinite(value)) {
-      return '—';
-    }
-
-    return `${value.toFixed(1)}%`;
-  }
-
-  private static formatPercentage(value: number, total: number): string {
-    if (total <= 0) {
-      return '0.0%';
-    }
-
-    const percentage = (value / total) * 100;
-
-    return `${percentage.toFixed(1)}%`;
-  }
-
   private static formatLabel(value: string): string {
     return value
       .replaceAll('_', ' ')
@@ -817,15 +811,42 @@ export class ClienteReporteXlsxMapper {
 
       widths: [50, 18, 22],
 
+      columnFormats: [null, 'integer', 'currency_gtq'],
+
       rows: [
         [
           'Sin factura tras fecha programada',
 
           financiero.clientesSinFacturaRevisarMes,
 
-          this.formatMoney(financiero.facturacionSinFacturaRevisarMes),
+          financiero.facturacionSinFacturaRevisarMes,
         ],
       ],
     };
+  }
+
+  private static toExcelPercentageValue(value: number): number {
+    if (!Number.isFinite(value)) {
+      return 0;
+    }
+
+    /**
+     * El dominio expresa:
+     *
+     * 75 = 75%
+     *
+     * Excel espera:
+     *
+     * 0.75 = 75%
+     */
+    return value / 100;
+  }
+
+  private static toExcelPercentage(value: number, total: number): number {
+    if (!Number.isFinite(value) || !Number.isFinite(total) || total <= 0) {
+      return 0;
+    }
+
+    return value / total;
   }
 }

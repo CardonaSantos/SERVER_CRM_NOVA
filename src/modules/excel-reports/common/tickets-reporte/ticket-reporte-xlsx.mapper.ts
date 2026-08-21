@@ -240,12 +240,14 @@ export class TicketReporteXlsxMapper {
 
       widths: [30, 15, 18],
 
+      columnFormats: [null, 'integer', 'percentage'],
+
       rows: data.dashboard.porEstado.map((item) => [
         this.formatLabel(item.categoria),
 
         item.total,
 
-        this.formatPercentage(item.total, data.dashboard.totalTickets),
+        this.toExcelPercentage(item.total, data.dashboard.totalTickets),
       ]),
     };
   }
@@ -262,12 +264,14 @@ export class TicketReporteXlsxMapper {
 
       widths: [30, 15, 18],
 
+      columnFormats: [null, 'integer', 'percentage'],
+
       rows: data.dashboard.porPrioridad.map((item) => [
         this.formatLabel(item.categoria),
 
         item.total,
 
-        this.formatPercentage(item.total, data.dashboard.totalTickets),
+        this.toExcelPercentage(item.total, data.dashboard.totalTickets),
       ]),
     };
   }
@@ -284,6 +288,8 @@ export class TicketReporteXlsxMapper {
 
       widths: [10, 35, 15, 18],
 
+      columnFormats: ['integer', null, 'integer', 'percentage'],
+
       rows: data.dashboard.topEtiquetas.map((item) => [
         item.etiquetaId,
 
@@ -291,7 +297,7 @@ export class TicketReporteXlsxMapper {
 
         item.totalTickets,
 
-        this.formatPercentage(item.totalTickets, data.dashboard.totalTickets),
+        this.toExcelPercentage(item.totalTickets, data.dashboard.totalTickets),
       ]),
     };
   }
@@ -311,6 +317,8 @@ export class TicketReporteXlsxMapper {
 
       widths: [12, 14, 40, 15, 18],
 
+      columnFormats: ['integer', 'integer', null, 'integer', 'percentage'],
+
       rows: data.dashboard.topClientes.map((cliente, index) => [
         index + 1,
 
@@ -320,7 +328,7 @@ export class TicketReporteXlsxMapper {
 
         cliente.totalTickets,
 
-        this.formatPercentage(
+        this.toExcelPercentage(
           cliente.totalTickets,
           data.dashboard.totalTickets,
         ),
@@ -624,12 +632,19 @@ export class TicketReporteXlsxMapper {
   // HELPERS
   // ==========================================================================
 
-  private static formatPercentage(value: number, total: number): string {
-    if (total <= 0) {
-      return '0.0%';
+  private static toExcelPercentage(value: number, total: number): number {
+    if (!Number.isFinite(value) || !Number.isFinite(total) || total <= 0) {
+      return 0;
     }
 
-    return `${((value / total) * 100).toFixed(1)}%`;
+    /**
+     * Excel representa porcentajes como decimales:
+     *
+     * 0.25 = 25%
+     * 0.50 = 50%
+     * 1.00 = 100%
+     */
+    return value / total;
   }
 
   private static formatLabel(value: string): string {
