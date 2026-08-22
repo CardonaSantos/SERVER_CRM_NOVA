@@ -34,6 +34,7 @@ import { RealTimeLocationController } from './presentation/controllers/real-time
 import { TecnicoTrackingExpirationScheduler } from './infra/scheduler/tecnico-tracking-expiration.scheduler';
 import { GatewayModule } from 'src/web-sockets/websocket.module';
 import { TecnicoTrackingWebSocketAdapter } from './infra/realtime/tecnico-tracking.websocket.adapter';
+import { ObtenerEstadoTrackingTecnicoUseCase } from './application/use-cases/obtener-estado-tracking-tecnico.use-case';
 
 @Module({
   imports: [PrismaModule, AuthModule, GatewayModule],
@@ -54,6 +55,8 @@ import { TecnicoTrackingWebSocketAdapter } from './infra/realtime/tecnico-tracki
     ObtenerDetalleAsistenciaTrackingUseCase,
 
     ListarUbicacionesAsistenciaTrackingUseCase,
+
+    ObtenerEstadoTrackingTecnicoUseCase,
 
     // SCHEDULER
     TecnicoTrackingExpirationScheduler,

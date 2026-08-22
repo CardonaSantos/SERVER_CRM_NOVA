@@ -33,6 +33,7 @@ import { TrackingAuthUser } from '../types/tracking-auth-user.type';
 import { RegistrarUbicacionTecnicoDto } from '../../application/dto/registrar-ubicacion-tecnico.dto';
 import { ListarHistorialTrackingQueryDto } from '../../application/dto/listar-historial-tracking.query.dto';
 import { ListarUbicacionesTrackingQueryDto } from '../../application/dto/listar-ubicaciones-tracking.query.dto';
+import { ObtenerEstadoTrackingTecnicoUseCase } from '../../application/use-cases/obtener-estado-tracking-tecnico.use-case';
 
 @Controller('real-time-location')
 @UseGuards(JwtAuthGuard)
@@ -48,6 +49,8 @@ import { ListarUbicacionesTrackingQueryDto } from '../../application/dto/listar-
 export class RealTimeLocationController {
   constructor(
     private readonly iniciarTracking: IniciarTecnicoTrackingUseCase,
+
+    private readonly obtenerEstadoTracking: ObtenerEstadoTrackingTecnicoUseCase,
 
     private readonly registrarUbicacion: RegistrarUbicacionTecnicoUseCase,
 
@@ -70,6 +73,22 @@ export class RealTimeLocationController {
     auth: TrackingAuthUser,
   ) {
     return this.iniciarTracking.execute({
+      tecnicoId: auth.id,
+
+      actorRol: auth.rol,
+    });
+  }
+
+  // =====================================================
+  // TECNICO - ESTADO ACTUAL DEL TRACKING
+  // =====================================================
+
+  @Get('tracking/me')
+  async getMyTrackingState(
+    @GetUserAuthToken()
+    auth: TrackingAuthUser,
+  ) {
+    return this.obtenerEstadoTracking.execute({
       tecnicoId: auth.id,
 
       actorRol: auth.rol,

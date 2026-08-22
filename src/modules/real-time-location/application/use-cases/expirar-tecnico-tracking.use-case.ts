@@ -1,7 +1,11 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 
 import { TecnicoTrackingRepositoryPort } from '../../domain/ports/tecnico-tracking.repository.port';
-import { TECNICO_TRACKING_REPOSITORY } from '../../infra/tokens/tokens';
+import {
+  TECNICO_TRACKING_REALTIME,
+  TECNICO_TRACKING_REPOSITORY,
+} from '../../infra/tokens/tokens';
+import { TecnicoTrackingRealtimePort } from '../../domain/ports/tecnico-tracking-realtime.port';
 
 export type ExpirarTecnicoTrackingCommand = {
   /**
@@ -47,6 +51,9 @@ export class ExpirarTecnicoTrackingUseCase {
   constructor(
     @Inject(TECNICO_TRACKING_REPOSITORY)
     private readonly trackingRepository: TecnicoTrackingRepositoryPort,
+
+    @Inject(TECNICO_TRACKING_REALTIME)
+    private readonly trackingRealtime: TecnicoTrackingRealtimePort,
   ) {}
 
   async execute(
@@ -134,16 +141,28 @@ export class ExpirarTecnicoTrackingUseCase {
         !persistedSession.id ||
         !persistedSession.finalizadoEn
       ) {
-        /*
-         * Si applied=true, infraestructura debe
-         * devolver la entidad persistida completa.
-         *
-         * Si no lo hace, es una violación contractual.
-         */
         throw new Error(
           'La expiración fue aplicada sin devolver una sesión persistida válida.',
         );
       }
+
+      // SOCKET - SESIÓN EXPIRADA
+
+      await this.trackingRealtime.emitTrackingStateChanged({
+        tecnicoId: persistedSession.tecnicoId,
+
+        sesionTrackingId: persistedSession.id,
+
+        asistenciaId,
+
+        estado: persistedSession.estado,
+
+        iniciadoEn: persistedSession.iniciadoEn,
+
+        finalizadoEn: persistedSession.finalizadoEn,
+
+        ultimoHeartbeatEn: persistedSession.ultimoHeartbeatEn,
+      });
 
       sesionesExpiradas.push({
         sesionTrackingId: persistedSession.id,

@@ -4,13 +4,20 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 
 import { UbicacionTecnicoEntity } from '../../domain/entities/ubicacion-tecnico.entity';
 
 import { TecnicoTrackingRepositoryPort } from '../../domain/ports/tecnico-tracking.repository.port';
-import { TECNICO_TRACKING_REPOSITORY } from '../../infra/tokens/tokens';
+import {
+  TECNICO_TRACKING_QUERY,
+  TECNICO_TRACKING_REALTIME,
+  TECNICO_TRACKING_REPOSITORY,
+} from '../../infra/tokens/tokens';
+import { TecnicoTrackingQueryPort } from '../../domain/ports/TecnicoTrackingQueryPort.port';
+import { TecnicoTrackingRealtimePort } from '../../domain/ports/tecnico-tracking-realtime.port';
 
 export type RegistrarUbicacionTecnicoCommand = {
   tecnicoId: number;
@@ -45,9 +52,17 @@ export type RegistrarUbicacionTecnicoResult = {
 
 @Injectable()
 export class RegistrarUbicacionTecnicoUseCase {
+  private readonly logger = new Logger(RegistrarUbicacionTecnicoUseCase.name);
+
   constructor(
     @Inject(TECNICO_TRACKING_REPOSITORY)
     private readonly trackingRepository: TecnicoTrackingRepositoryPort,
+
+    @Inject(TECNICO_TRACKING_QUERY)
+    private readonly trackingQuery: TecnicoTrackingQueryPort,
+
+    @Inject(TECNICO_TRACKING_REALTIME)
+    private readonly trackingRealtime: TecnicoTrackingRealtimePort,
   ) {}
 
   async execute(
@@ -130,6 +145,12 @@ export class RegistrarUbicacionTecnicoUseCase {
       );
     }
 
+    // =====================================================
+    // SOCKET - ACTUALIZAR VISTA REALTIME
+    // =====================================================
+
+    await this.emitRealtimeLocationSafely(command.tecnicoId);
+
     return {
       ubicacionId,
 
@@ -184,6 +205,49 @@ export class RegistrarUbicacionTecnicoUseCase {
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
       throw new BadRequestException(`${field} debe ser un entero positivo.`);
+    }
+  }
+
+  private async emitRealtimeLocationSafely(tecnicoId: number): Promise<void> {
+    try {
+      /*
+       * La ubicación ya fue persistida antes de llegar aquí.
+       *
+       * Construimos ahora la vista enriquecida que consume
+       * el mapa administrativo.
+       */
+      const realtimeView =
+        await this.trackingQuery.findRealtimeViewByTechnician(tecnicoId);
+
+      /*
+       * Puede ocurrir que un OFF gane la carrera justo
+       * después del INSERT del GPS.
+       *
+       * En ese caso ya no existe una sesión ACTIVA
+       * para construir la vista realtime.
+       *
+       * No es un error de persistencia.
+       */
+      if (!realtimeView) {
+        return;
+      }
+
+      await this.trackingRealtime.emitLocationUpdated(realtimeView);
+    } catch (error) {
+      /*
+       * Socket/realtime es un efecto secundario.
+       *
+       * Nunca convertimos un GPS correctamente persistido
+       * en un HTTP 500 solamente porque falló la consulta
+       * enriquecida o la emisión Socket.
+       *
+       * Esto también evita que la APK reintente y pueda
+       * insertar innecesariamente el mismo punto otra vez.
+       */
+      this.logger.error(
+        'La ubicación fue persistida, pero no pudo emitirse la actualización realtime.',
+        error instanceof Error ? error.stack : String(error),
+      );
     }
   }
 }

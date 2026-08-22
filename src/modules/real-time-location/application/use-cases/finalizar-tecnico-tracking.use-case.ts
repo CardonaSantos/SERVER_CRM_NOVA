@@ -12,10 +12,12 @@ import { EstadoTrackingTecnico } from '../../domain/enums/estado-tracking-tecnic
 import { TecnicoTrackingRepositoryPort } from '../../domain/ports/tecnico-tracking.repository.port';
 import {
   ASISTENCIA_TRACKING_PORT,
+  TECNICO_TRACKING_REALTIME,
   TECNICO_TRACKING_REPOSITORY,
 } from '../../infra/tokens/tokens';
 import { AsistenciaTrackingPort } from '../../domain/ports/asistencia-tracking.port';
 import { TecnicoTrackingSesionEntity } from '../../domain/entities/real-time-location.entity';
+import { TecnicoTrackingRealtimePort } from '../../domain/ports/tecnico-tracking-realtime.port';
 
 export type FinalizarTecnicoTrackingCommand = {
   /**
@@ -66,6 +68,9 @@ export class FinalizarTecnicoTrackingUseCase {
 
     @Inject(ASISTENCIA_TRACKING_PORT)
     private readonly asistenciaTracking: AsistenciaTrackingPort,
+
+    @Inject(TECNICO_TRACKING_REALTIME)
+    private readonly trackingRealtime: TecnicoTrackingRealtimePort,
   ) {}
 
   async execute(
@@ -157,6 +162,24 @@ export class FinalizarTecnicoTrackingUseCase {
         'La asistencia no registró correctamente la hora de salida.',
       );
     }
+
+    // SOCKET - SESIÓN FINALIZADA
+
+    await this.trackingRealtime.emitTrackingStateChanged({
+      tecnicoId: command.tecnicoId,
+
+      sesionTrackingId: command.sesionTrackingId,
+
+      asistenciaId: persisted.asistencia.id,
+
+      estado: persisted.sesion.estado,
+
+      iniciadoEn: persisted.sesion.iniciadoEn,
+
+      finalizadoEn: persistedFinishedAt,
+
+      ultimoHeartbeatEn: persisted.sesion.ultimoHeartbeatEn,
+    });
 
     return {
       sesionTrackingId: command.sesionTrackingId,
