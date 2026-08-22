@@ -71,6 +71,7 @@ import { MikrotikSshModule } from './modules/mikrotik-ssh/mikrotik-ssh.module';
 import { MikrotikRouterCredentialsModule } from './modules/mikrotik-router-credentials/mikrotik-router-credentials.module';
 import { TicketSoporteConformidadModule } from './modules/ticket-soporte-conformidad/ticket-soporte-conformidad.module';
 import { ExcelReportsModule } from './modules/excel-reports/excel-reports.module';
+import { RealTimeLocationModule } from './modules/real-time-location/real-time-location.module';
 
 @Module({
   imports: [
@@ -150,6 +151,7 @@ import { ExcelReportsModule } from './modules/excel-reports/excel-reports.module
     MikrotikRouterCredentialsModule,
     TicketSoporteConformidadModule,
     ExcelReportsModule,
+    RealTimeLocationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

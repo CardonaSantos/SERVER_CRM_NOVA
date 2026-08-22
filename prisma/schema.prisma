@@ -175,37 +175,39 @@ model Usuario {
   firmasTicketComoUsuario TicketFirma[] @relation("TicketFirmaUsuario")
 
   enlacesConformidadTicketCreados TicketConformidadEnlace[] @relation("TicketConformidadEnlaceCreadoPor")
+
+  sesionesTrackingTecnico TecnicoTrackingSesion[] @relation("TecnicoTrackingSesiones")
 }
 
-model UbicacionTecnico {
-  id            Int      @id @default(autoincrement())
-  usuarioId     Int
-  latitud       Float
-  longitud      Float
-  precision     Float?
-  velocidad     Float?
-  bateria       Int?
-  creadoEn      DateTime @default(now())
-  actualizadoEn DateTime @default(now())
+// model UbicacionTecnico {
+//   id            Int      @id @default(autoincrement())
+//   usuarioId     Int
+//   latitud       Float
+//   longitud      Float
+//   precision     Float?
+//   velocidad     Float?
+//   bateria       Int?
+//   creadoEn      DateTime @default(now())
+//   actualizadoEn DateTime @default(now())
 
-  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+//   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
-  @@index([usuarioId])
-  @@index([creadoEn])
-  @@index([usuarioId, creadoEn])
-}
+//   @@index([usuarioId])
+//   @@index([creadoEn])
+//   @@index([usuarioId, creadoEn])
+// }
 
-model UbicacionActual {
-  usuarioId     Int      @id
-  latitud       Float
-  longitud      Float
-  precision     Float?
-  velocidad     Float?
-  bateria       Int?
-  actualizadoEn DateTime @updatedAt
+// model UbicacionActual {
+//   usuarioId     Int      @id
+//   latitud       Float
+//   longitud      Float
+//   precision     Float?
+//   velocidad     Float?
+//   bateria       Int?
+//   actualizadoEn DateTime @updatedAt
 
-  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-}
+//   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+// }
 
 model PerfilUsuario {
   id        Int @id @default(autoincrement())
@@ -540,8 +542,194 @@ model ClienteInternet {
   @@index([whatsappDesactivadoPorId])
 }
 
+// UBICACION Y ASISTENCIA
 
+/// ======================================================================
+/// PROPUESTA CORE - ASISTENCIA + TRACKING TECNICO
+/// SERVER_CRM_NOVA / rama refinaciones-agosto
+///
+/// IMPORTANTE:
+/// - Este archivo NO reemplaza schema.prisma.
+/// - Contiene únicamente los cambios/adiciones propuestos.
+/// - Se conserva la estructura actual de Asistencia, UbicacionTecnico
+///   y UbicacionActual para evitar romper contratos existentes.
+/// ======================================================================
 
+/// ----------------------------------------------------------------------
+/// 1) ENUM NUEVO
+/// ----------------------------------------------------------------------
+
+enum EstadoTrackingTecnico {
+  ACTIVA
+  FINALIZADA
+  EXPIRADA
+}
+
+/// ----------------------------------------------------------------------
+/// 2) MODELO NUEVO: UNA FILA POR CADA ENCENDIDO DEL TRACKER
+/// ----------------------------------------------------------------------
+
+model TecnicoTrackingSesion {
+  id Int @id @default(autoincrement())
+
+  tecnicoId    Int
+  asistenciaId Int?
+
+  iniciadoEn        DateTime  @default(now())
+  finalizadoEn      DateTime?
+  ultimoHeartbeatEn DateTime  @default(now())
+
+  estado EstadoTrackingTecnico @default(ACTIVA)
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  tecnico Usuario @relation("TecnicoTrackingSesiones", fields: [tecnicoId], references: [id], onDelete: Cascade)
+
+  asistencia Asistencia? @relation(fields: [asistenciaId], references: [id], onDelete: SetNull)
+
+  ubicaciones UbicacionTecnico[]
+
+  // Buscar rápidamente sesiones de un técnico y reconstruir su jornada.
+  @@index([tecnicoId, iniciadoEn])
+  // Buscar la sesión activa de un técnico.
+  @@index([tecnicoId, estado])
+  // Detectar sesiones ACTIVA cuyo heartbeat dejó de llegar.
+  @@index([estado, ultimoHeartbeatEn])
+  // Reportería por asistencia/día.
+  @@index([asistenciaId, iniciadoEn])
+}
+
+/// ----------------------------------------------------------------------
+/// 3) USUARIO EXISTENTE
+///
+/// AGREGAR solamente esta relación dentro de model Usuario.
+/// No modificar las relaciones actuales.
+/// ----------------------------------------------------------------------
+
+/// ----------------------------------------------------------------------
+/// 4) ASISTENCIA EXISTENTE
+///
+/// CONSERVAR los campos actuales.
+//  AGREGAR la relación y el índice por fecha.
+//  No se crea una segunda tabla AsistenciaLaboralTecnico.
+/// ----------------------------------------------------------------------
+
+model Asistencia {
+  id              Int       @id @default(autoincrement())
+  usuarioId       Int
+  fecha           DateTime
+  horaEntrada     DateTime
+  horaSalida      DateTime?
+  minutosTarde    Int?
+  trabajoCompleto Boolean   @default(false)
+  creadoEn        DateTime? @default(now())
+  actualizadoEn   DateTime  @updatedAt
+
+  usuario Usuario @relation("UsuarioAsistencias", fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  // NUEVO
+  sesionesTracking TecnicoTrackingSesion[]
+
+  @@unique([usuarioId, fecha])
+  // Se conserva el índice actual aunque el unique ya cubra el prefijo.
+  @@index([usuarioId, fecha])
+  // NUEVO: útil para reportes diarios/rangos sobre todos los técnicos.
+  @@index([fecha])
+}
+
+/// ----------------------------------------------------------------------
+/// 5) UBICACIONTECNICO EXISTENTE
+///
+/// Esta tabla pasa a ser el historial/breadcrumb GPS.
+/// Se conservan TODOS los campos actuales para no romper consumidores.
+///
+/// AGREGAR:
+//  - sesionTrackingId Int?
+//  - capturadoEn DateTime?
+//  - sesionTracking relation
+//  - index [sesionTrackingId, capturadoEn]
+///
+/// capturadoEn se deja nullable inicialmente para que registros históricos
+/// existentes sigan siendo válidos. En nuevas escrituras debe poblarse.
+/// Para registros legacy, la reportería puede usar creadoEn como fallback.
+/// ----------------------------------------------------------------------
+
+model UbicacionTecnico {
+  id        Int @id @default(autoincrement())
+  usuarioId Int
+
+  // NUEVO
+  sesionTrackingId Int?
+
+  latitud   Float
+  longitud  Float
+  precision Float?
+  velocidad Float?
+  bateria   Int?
+
+  // NUEVO:
+  // momento lógico en que el teléfono capturó la posición.
+  capturadoEn DateTime?
+
+  // EXISTENTES:
+  // creadoEn continúa representando el momento de persistencia en servidor.
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  // NUEVO
+  sesionTracking TecnicoTrackingSesion? @relation(fields: [sesionTrackingId], references: [id], onDelete: SetNull)
+
+  @@index([usuarioId])
+  @@index([creadoEn])
+  @@index([usuarioId, creadoEn])
+  // NUEVO
+  @@index([sesionTrackingId, capturadoEn])
+}
+
+/// ----------------------------------------------------------------------
+/// 6) UBICACIONACTUAL EXISTENTE
+///
+/// NO CAMBIAR.
+/// Continúa siendo el snapshot operacional de la última ubicación conocida.
+/// ----------------------------------------------------------------------
+
+model UbicacionActual {
+  usuarioId     Int      @id
+  latitud       Float
+  longitud      Float
+  precision     Float?
+  velocidad     Float?
+  bateria       Int?
+  actualizadoEn DateTime @updatedAt
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+}
+
+/// ======================================================================
+/// REGLAS DE DATOS PARA LA IMPLEMENTACION
+/// ======================================================================
+///
+/// 1. Un encendido del tracker => una TecnicoTrackingSesion nueva.
+/// 2. Apagar el tracker NO elimina/reabre sesiones anteriores.
+/// 3. Cada ubicación recibida:
+///      - INSERT en UbicacionTecnico
+///      - UPSERT en UbicacionActual
+///      - UPDATE TecnicoTrackingSesion.ultimoHeartbeatEn
+/// 4. FINALIZADA:
+///      cierre explícito del tracker.
+/// 5. EXPIRADA:
+///      el backend detectó ausencia prolongada de heartbeat.
+///      finalizadoEn debe usar el último instante confiable, no el momento
+///      en que un cron descubrió la expiración.
+/// 6. NO_INICIADO no se persiste:
+///      se deriva cuando el técnico no posee sesión en el período esperado.
+/// 7. Métricas como duración, cantidad de sesiones, cobertura, interrupciones,
+///    puntos GPS y porcentajes se CALCULAN en reportería; no se duplican
+///    como columnas persistidas.
+/// ======================================================================
 
 model ClienteAccesoInternet {
   id Int @id @default(autoincrement())
@@ -1349,7 +1537,7 @@ model CobroRuta {
 /// [09] Soporte y Tickets
 model TicketSoporte {
   id                     Int                    @id @default(autoincrement())
-  clienteId              Int? 
+  clienteId              Int?
   empresaId              Int?
   tecnicoId              Int?
   creadoPorId            Int?
@@ -1381,11 +1569,11 @@ model TicketSoporte {
   asignaciones      TicketSoporteTecnico[]
   logsTiempo        TicketTimeLog[]
 
-  ticketReasignacions TicketReasignacion[]
+  ticketReasignacions   TicketReasignacion[]
   ticketGastos          TicketGasto[]
   movimientosInventario MovimientoInventario[]
-  serialProductos SerialProducto[]
-  herramientasUsadas TicketHerramientaUso[]
+  serialProductos       SerialProducto[]
+  herramientasUsadas    TicketHerramientaUso[]
 
   instalacionesCliente    ClienteInstalacion[]
   desinstalacionesCliente ClienteDesinstalacion[]
@@ -1543,23 +1731,6 @@ model SolucionTicket {
   isEliminado   Boolean         @default(false)
   creadoEn      DateTime        @default(now())
   actualizadoEn DateTime        @default(now()) @updatedAt
-}
-
-/// [10] Asistencia / RRHH
-model Asistencia {
-  id              Int       @id @default(autoincrement())
-  usuarioId       Int
-  fecha           DateTime
-  horaEntrada     DateTime
-  horaSalida      DateTime?
-  minutosTarde    Int?
-  trabajoCompleto Boolean   @default(false)
-  creadoEn        DateTime? @default(now())
-  actualizadoEn   DateTime  @updatedAt
-  usuario         Usuario   @relation("UsuarioAsistencias", fields: [usuarioId], references: [id], onDelete: Cascade)
-
-  @@unique([usuarioId, fecha])
-  @@index([usuarioId, fecha])
 }
 
 /// [11] Modelos de Prueba
