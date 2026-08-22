@@ -2,14 +2,16 @@ import { Injectable, Logger } from '@nestjs/common';
 import { CrmGateway } from './websocket.gateway';
 import { BroadCastNewMessage } from './websocket.controller';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
-import { RealTimeLocation } from 'src/real-time-location/entities/real-time.entity';
 import { RealTimeLocationMapDto } from 'src/real-time-location/dto/dto-shape';
+import type { TecnicoTrackingRealtimeView } from 'src/modules/real-time-location/domain/ports/tecnico-tracking-query.port';
+
+import type { TecnicoTrackingStateChangedPayload } from 'src/modules/real-time-location/domain/ports/tecnico-tracking-realtime.port';
 
 @Injectable()
 export class WebSocketServices {
   private readonly logger = new Logger(WebSocketServices.name);
   constructor(private readonly gateway: CrmGateway) {}
-
+  private static readonly TRACKING_EMPRESA_ID = 1;
   async emitSystemNotification(empresaId: number, notification: any) {
     return await this.gateway.emitToEmpresa(
       empresaId,
@@ -81,5 +83,30 @@ export class WebSocketServices {
     } catch (error) {
       throwFatalError(error, this.logger, 'emitRealTimeLocation');
     }
+  }
+
+  // NUEVOS METODOS DE ENVIO DE UBICACION REFACTORIZADOS
+  async emitTecnicoTrackingLocation(
+    payload: TecnicoTrackingRealtimeView,
+  ): Promise<void> {
+    this.gateway.emitToEmpresa(
+      WebSocketServices.TRACKING_EMPRESA_ID,
+
+      'tracking:location-updated',
+
+      payload,
+    );
+  }
+
+  async emitTecnicoTrackingStateChanged(
+    payload: TecnicoTrackingStateChangedPayload,
+  ): Promise<void> {
+    this.gateway.emitToEmpresa(
+      WebSocketServices.TRACKING_EMPRESA_ID,
+
+      'tracking:state-changed',
+
+      payload,
+    );
   }
 }

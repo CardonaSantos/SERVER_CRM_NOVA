@@ -11,6 +11,10 @@ import { TecnicoTrackingRepositoryPort } from '../../domain/ports/tecnico-tracki
 import { getTrackingBusinessDate } from '../helpers/tracking-date.helper';
 import { TECNICO_TRACKING_REPOSITORY } from '../../infra/tokens/tokens';
 
+import { TecnicoTrackingRealtimePort } from '../../domain/ports/tecnico-tracking-realtime.port';
+
+import { TECNICO_TRACKING_REALTIME } from '../../infra/tokens/tokens';
+
 export type IniciarTecnicoTrackingCommand = {
   /**
    * Identidad obtenida exclusivamente del JWT.
@@ -42,6 +46,9 @@ export class IniciarTecnicoTrackingUseCase {
   constructor(
     @Inject(TECNICO_TRACKING_REPOSITORY)
     private readonly trackingRepository: TecnicoTrackingRepositoryPort,
+
+    @Inject(TECNICO_TRACKING_REALTIME)
+    private readonly trackingRealtime: TecnicoTrackingRealtimePort,
   ) {}
 
   async execute(
@@ -79,26 +86,46 @@ export class IniciarTecnicoTrackingUseCase {
         );
       }
 
+      // ============================================
+      // SOCKET - SESIÓN ACTIVA EXISTENTE
+      // ============================================
+
+      await this.trackingRealtime.emitTrackingStateChanged({
+        tecnicoId: command.tecnicoId,
+
+        sesionTrackingId: activeSession.id,
+
+        asistenciaId,
+
+        estado: activeSession.estado,
+
+        iniciadoEn: activeSession.iniciadoEn,
+
+        finalizadoEn: activeSession.finalizadoEn,
+
+        ultimoHeartbeatEn: activeSession.ultimoHeartbeatEn,
+      });
+
       return {
         sesionTrackingId: activeSession.id,
+
         asistenciaId,
+
         estado: activeSession.estado,
+
         iniciadoEn: activeSession.iniciadoEn,
+
         ultimoHeartbeatEn: activeSession.ultimoHeartbeatEn,
       };
     }
 
     const fecha = getTrackingBusinessDate(iniciadoEn);
 
-    /*
-     * Infraestructura ejecutará de manera atómica:
-     *
-     * 1. crear/reabrir asistencia del día;
-     * 2. crear una nueva sesión ACTIVA.
-     */
     const result = await this.trackingRepository.startTracking({
       tecnicoId: command.tecnicoId,
+
       fecha,
+
       iniciadoEn,
     });
 
@@ -109,6 +136,26 @@ export class IniciarTecnicoTrackingUseCase {
         'La sesión de tracking fue creada sin identificador.',
       );
     }
+
+    // ============================================
+    // SOCKET - NUEVA SESIÓN ACTIVA
+    // ============================================
+
+    await this.trackingRealtime.emitTrackingStateChanged({
+      tecnicoId: command.tecnicoId,
+
+      sesionTrackingId: sesionId,
+
+      asistenciaId: result.asistencia.id,
+
+      estado: result.sesion.estado,
+
+      iniciadoEn: result.sesion.iniciadoEn,
+
+      finalizadoEn: result.sesion.finalizadoEn,
+
+      ultimoHeartbeatEn: result.sesion.ultimoHeartbeatEn,
+    });
 
     return {
       sesionTrackingId: sesionId,

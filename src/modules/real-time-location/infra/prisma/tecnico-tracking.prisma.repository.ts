@@ -233,106 +233,187 @@ export class TecnicoTrackingPrismaRepository
 
     return this.prisma.$transaction(async (tx) => {
       /*
-       * PRIMERA operación:
+       * Puede haber varios GPS legítimos procesándose
+       * al mismo tiempo.
        *
-       * confirmar que la sesión continúa ACTIVA.
-       *
-       * Si un OFF o expiración ganó la carrera,
-       * count será 0 y no persistiremos ningún GPS.
+       * Utilizamos optimistic concurrency sobre
+       * ultimoHeartbeatEn.
        */
-      const heartbeatUpdate = await tx.tecnicoTrackingSesion.updateMany({
-        where: {
-          id: sesionProps.id,
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const currentSession = await tx.tecnicoTrackingSesion.findFirst({
+          where: {
+            id: sesionProps.id,
 
-          tecnicoId: sesionProps.tecnicoId,
-
-          estado: PrismaEstadoTrackingTecnico.ACTIVA,
-
-          /*
-           * Nunca hacemos retroceder heartbeat.
-           */
-          ultimoHeartbeatEn: {
-            lte: sesionProps.ultimoHeartbeatEn,
+            tecnicoId: sesionProps.tecnicoId,
           },
-        },
+        });
 
-        data: {
-          ultimoHeartbeatEn: sesionProps.ultimoHeartbeatEn,
-        },
-      });
+        /*
+         * La sesión desapareció o no pertenece
+         * al técnico esperado.
+         */
+        if (!currentSession) {
+          return {
+            applied: false,
+            sesion: null,
+            ubicacion: null,
+          };
+        }
 
-      if (heartbeatUpdate.count !== 1) {
+        /*
+         * OFF o expiración ganaron la carrera.
+         *
+         * En este caso el GPS ya no debe
+         * incorporarse a la sesión.
+         */
+        if (currentSession.estado !== PrismaEstadoTrackingTecnico.ACTIVA) {
+          return {
+            applied: false,
+            sesion: null,
+            ubicacion: null,
+          };
+        }
+
+        /*
+         * Nunca hacemos retroceder el heartbeat.
+         *
+         * Si este GPS es más antiguo que otro
+         * procesado concurrentemente, conservamos
+         * el heartbeat más reciente.
+         */
+        const incomingHeartbeat = sesionProps.ultimoHeartbeatEn;
+
+        const currentHeartbeat = currentSession.ultimoHeartbeatEn;
+
+        const shouldAdvanceHeartbeat =
+          incomingHeartbeat.getTime() > currentHeartbeat.getTime();
+
+        const heartbeatToPersist = shouldAdvanceHeartbeat
+          ? incomingHeartbeat
+          : currentHeartbeat;
+
+        /*
+         * Compare-and-swap.
+         *
+         * Incluso cuando este GPS es más antiguo
+         * hacemos un UPDATE sin retroceder el valor.
+         *
+         * Esto es deliberado:
+         * el UPDATE obtiene el lock de la fila hasta
+         * que termine esta transacción.
+         *
+         * Así un OFF no puede cerrar la sesión entre
+         * esta comprobación y el INSERT histórico.
+         */
+        const lockResult = await tx.tecnicoTrackingSesion.updateMany({
+          where: {
+            id: currentSession.id,
+
+            tecnicoId: sesionProps.tecnicoId,
+
+            estado: PrismaEstadoTrackingTecnico.ACTIVA,
+
+            ultimoHeartbeatEn: currentHeartbeat,
+          },
+
+          data: {
+            ultimoHeartbeatEn: heartbeatToPersist,
+          },
+        });
+
+        /*
+         * Otro GPS cambió el heartbeat exactamente
+         * entre nuestra lectura y el UPDATE.
+         *
+         * Volvemos a leer y reintentamos.
+         */
+        if (lockResult.count !== 1) {
+          continue;
+        }
+
+        /*
+         * A partir de aquí poseemos el lock de la
+         * sesión hasta COMMIT.
+         *
+         * La sesión no puede cerrarse concurrentemente
+         * antes de que terminemos de registrar el punto.
+         */
+
+        const locationRecord = await tx.ubicacionTecnico.create({
+          data: ubicacionData,
+        });
+
+        /*
+         * UbicacionTecnico SIEMPRE conserva el punto
+         * histórico válido.
+         *
+         * UbicacionActual solamente debe avanzar.
+         *
+         * Si este request es más antiguo que otro GPS
+         * ya confirmado, NO debe sobrescribir el
+         * snapshot operacional.
+         */
+        if (
+          shouldAdvanceHeartbeat ||
+          incomingHeartbeat.getTime() === currentHeartbeat.getTime()
+        ) {
+          await tx.ubicacionActual.upsert({
+            where: {
+              usuarioId: ubicacionProps.tecnicoId,
+            },
+
+            create: {
+              usuarioId: ubicacionProps.tecnicoId,
+
+              latitud: ubicacionProps.latitud,
+
+              longitud: ubicacionProps.longitud,
+
+              precision: ubicacionProps.precision ?? null,
+
+              velocidad: ubicacionProps.velocidad ?? null,
+
+              bateria: ubicacionProps.bateria ?? null,
+            },
+
+            update: {
+              latitud: ubicacionProps.latitud,
+
+              longitud: ubicacionProps.longitud,
+
+              precision: ubicacionProps.precision ?? null,
+
+              velocidad: ubicacionProps.velocidad ?? null,
+
+              bateria: ubicacionProps.bateria ?? null,
+            },
+          });
+        }
+
+        const persistedSession = await tx.tecnicoTrackingSesion.findUnique({
+          where: {
+            id: currentSession.id,
+          },
+        });
+
+        if (!persistedSession) {
+          throw new Error(
+            'La sesión desapareció durante el registro de ubicación.',
+          );
+        }
+
         return {
-          applied: false,
-          sesion: null,
-          ubicacion: null,
+          applied: true,
+
+          sesion: TecnicoTrackingSesionPrismaMapper.toDomain(persistedSession),
+
+          ubicacion: UbicacionTecnicoPrismaMapper.toDomain(locationRecord),
         };
       }
 
-      /*
-       * Evidencia histórica.
-       */
-      const locationRecord = await tx.ubicacionTecnico.create({
-        data: ubicacionData,
-      });
-
-      /*
-       * Snapshot operacional.
-       *
-       * UbicacionActual sigue siendo una proyección,
-       * no una entidad de dominio.
-       */
-      await tx.ubicacionActual.upsert({
-        where: {
-          usuarioId: ubicacionProps.tecnicoId,
-        },
-
-        create: {
-          usuarioId: ubicacionProps.tecnicoId,
-
-          latitud: ubicacionProps.latitud,
-
-          longitud: ubicacionProps.longitud,
-
-          precision: ubicacionProps.precision ?? null,
-
-          velocidad: ubicacionProps.velocidad ?? null,
-
-          bateria: ubicacionProps.bateria ?? null,
-        },
-
-        update: {
-          latitud: ubicacionProps.latitud,
-
-          longitud: ubicacionProps.longitud,
-
-          precision: ubicacionProps.precision ?? null,
-
-          velocidad: ubicacionProps.velocidad ?? null,
-
-          bateria: ubicacionProps.bateria ?? null,
-        },
-      });
-
-      const sessionRecord = await tx.tecnicoTrackingSesion.findUnique({
-        where: {
-          id: sesionProps.id,
-        },
-      });
-
-      if (!sessionRecord) {
-        throw new Error(
-          'La sesión desapareció durante el registro de ubicación.',
-        );
-      }
-
-      return {
-        applied: true,
-
-        sesion: TecnicoTrackingSesionPrismaMapper.toDomain(sessionRecord),
-
-        ubicacion: UbicacionTecnicoPrismaMapper.toDomain(locationRecord),
-      };
+      throw new Error(
+        'La sesión cambió concurrentemente demasiadas veces durante el registro de ubicación.',
+      );
     });
   }
 
