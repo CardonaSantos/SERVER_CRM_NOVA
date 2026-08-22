@@ -22,8 +22,6 @@ import { TecnicoTrackingRealtimePort } from '../../domain/ports/tecnico-tracking
 export type RegistrarUbicacionTecnicoCommand = {
   tecnicoId: number;
 
-  actorRol: string;
-
   sesionTrackingId: number;
 
   latitud: number;
@@ -70,7 +68,7 @@ export class RegistrarUbicacionTecnicoUseCase {
   ): Promise<RegistrarUbicacionTecnicoResult> {
     this.validateCommand(command);
 
-    this.assertTechnicianRole(command.actorRol);
+    // this.assertTechnicianRole(command.actorRol);
 
     const sesion = await this.trackingRepository.findSessionForTechnician({
       tecnicoId: command.tecnicoId,
@@ -178,28 +176,28 @@ export class RegistrarUbicacionTecnicoUseCase {
     return date;
   }
 
-  private assertTechnicianRole(actorRol: string): void {
-    const normalizedRole = actorRol.trim().toUpperCase();
+  //   private assertTechnicianRole(actorRol: string): void {
+  //     const normalizedRole = actorRol.trim().toUpperCase();
 
-    if (normalizedRole === 'TECNICO') {
-      return;
-    }
+  //     if (normalizedRole === 'TECNICO') {
+  //       return;
+  //     }
 
-    throw new ForbiddenException(
-      'Solo un técnico puede registrar su ubicación.',
-    );
-  }
+  //     throw new ForbiddenException(
+  //       'Solo un técnico puede registrar su ubicación.',
+  //     );
+  //   }
 
   private validateCommand(command: RegistrarUbicacionTecnicoCommand): void {
     this.assertPositiveInteger(command.tecnicoId, 'tecnicoId');
 
     this.assertPositiveInteger(command.sesionTrackingId, 'sesionTrackingId');
 
-    if (typeof command.actorRol !== 'string' || !command.actorRol.trim()) {
-      throw new ForbiddenException(
-        'No fue posible determinar el rol del usuario autenticado.',
-      );
-    }
+    // if (typeof command.actorRol !== 'string' || !command.actorRol.trim()) {
+    //   throw new ForbiddenException(
+    //     'No fue posible determinar el rol del usuario autenticado.',
+    //   );
+    // }
   }
 
   private assertPositiveInteger(value: number, field: string): void {

@@ -21,7 +21,7 @@ export type ObtenerEstadoTrackingTecnicoCommand = {
   /**
    * Rol obtenido exclusivamente del JWT.
    */
-  actorRol: string;
+  //   actorRol: string;
 };
 
 export type ObtenerEstadoTrackingTecnicoResult =
@@ -60,7 +60,7 @@ export class ObtenerEstadoTrackingTecnicoUseCase {
   ): Promise<ObtenerEstadoTrackingTecnicoResult> {
     this.validateCommand(command);
 
-    this.assertTechnicianRole(command.actorRol);
+    // this.assertTechnicianRole(command.actorRol);
 
     const activeSession =
       await this.trackingRepository.findActiveSessionByTechnician(
@@ -111,27 +111,27 @@ export class ObtenerEstadoTrackingTecnicoUseCase {
     };
   }
 
-  private assertTechnicianRole(actorRol: string): void {
-    const normalizedRole = actorRol.trim().toUpperCase();
+  //   private assertTechnicianRole(actorRol: string): void {
+  //     const normalizedRole = actorRol.trim().toUpperCase();
 
-    if (normalizedRole === 'TECNICO') {
-      return;
-    }
+  //     if (normalizedRole === 'TECNICO') {
+  //       return;
+  //     }
 
-    throw new ForbiddenException(
-      'Solo un técnico puede consultar su estado de tracking.',
-    );
-  }
+  //     throw new ForbiddenException(
+  //       'Solo un técnico puede consultar su estado de tracking.',
+  //     );
+  //   }
 
   private validateCommand(command: ObtenerEstadoTrackingTecnicoCommand): void {
     if (!Number.isInteger(command.tecnicoId) || command.tecnicoId <= 0) {
       throw new BadRequestException('tecnicoId debe ser un entero positivo.');
     }
 
-    if (typeof command.actorRol !== 'string' || !command.actorRol.trim()) {
-      throw new ForbiddenException(
-        'No fue posible determinar el rol del usuario autenticado.',
-      );
-    }
+    // if (typeof command.actorRol !== 'string' || !command.actorRol.trim()) {
+    //   throw new ForbiddenException(
+    //     'No fue posible determinar el rol del usuario autenticado.',
+    //   );
+    // }
   }
 }

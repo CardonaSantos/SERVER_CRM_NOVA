@@ -21,11 +21,6 @@ export type IniciarTecnicoTrackingCommand = {
    */
   tecnicoId: number;
 
-  /**
-   * Rol obtenido exclusivamente del JWT.
-   */
-  actorRol: string;
-
   iniciadoEn?: Date;
 };
 
@@ -56,7 +51,7 @@ export class IniciarTecnicoTrackingUseCase {
   ): Promise<IniciarTecnicoTrackingResult> {
     this.validateCommand(command);
 
-    this.assertTechnicianRole(command.actorRol);
+    // this.assertTechnicianRole(command.actorRol);
 
     const iniciadoEn = this.resolveStartedAt(command.iniciadoEn);
 
@@ -186,24 +181,24 @@ export class IniciarTecnicoTrackingUseCase {
     return date;
   }
 
-  private assertTechnicianRole(actorRol: string): void {
-    const normalizedRole = actorRol.trim().toUpperCase();
+  //   private assertTechnicianRole(actorRol: string): void {
+  //     const normalizedRole = actorRol.trim().toUpperCase();
 
-    if (normalizedRole === 'TECNICO') {
-      return;
-    }
+  //     if (normalizedRole === 'TECNICO') {
+  //       return;
+  //     }
 
-    throw new ForbiddenException('Solo un técnico puede iniciar el tracking.');
-  }
+  //     throw new ForbiddenException('Solo un técnico puede iniciar el tracking.');
+  //   }
 
   private validateCommand(command: IniciarTecnicoTrackingCommand): void {
     this.assertPositiveInteger(command.tecnicoId, 'tecnicoId');
 
-    if (typeof command.actorRol !== 'string' || !command.actorRol.trim()) {
-      throw new ForbiddenException(
-        'No fue posible determinar el rol del usuario autenticado.',
-      );
-    }
+    // if (typeof command.actorRol !== 'string' || !command.actorRol.trim()) {
+    //   throw new ForbiddenException(
+    //     'No fue posible determinar el rol del usuario autenticado.',
+    //   );
+    // }
   }
 
   private assertPositiveInteger(value: number, field: string): void {

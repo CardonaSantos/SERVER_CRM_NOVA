@@ -74,8 +74,6 @@ export class RealTimeLocationController {
   ) {
     return this.iniciarTracking.execute({
       tecnicoId: auth.id,
-
-      actorRol: auth.rol,
     });
   }
 
@@ -90,8 +88,6 @@ export class RealTimeLocationController {
   ) {
     return this.obtenerEstadoTracking.execute({
       tecnicoId: auth.id,
-
-      actorRol: auth.rol,
     });
   }
 
@@ -109,8 +105,6 @@ export class RealTimeLocationController {
   ) {
     return this.registrarUbicacion.execute({
       tecnicoId: auth.id,
-
-      actorRol: auth.rol,
 
       sesionTrackingId: body.sesionTrackingId,
 
@@ -141,8 +135,6 @@ export class RealTimeLocationController {
   ) {
     return this.finalizarTracking.execute({
       tecnicoId: auth.id,
-
-      actorRol: auth.rol,
 
       sesionTrackingId,
     });

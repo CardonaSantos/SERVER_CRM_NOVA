@@ -28,7 +28,7 @@ export type FinalizarTecnicoTrackingCommand = {
   /**
    * Rol obtenido exclusivamente del JWT.
    */
-  actorRol: string;
+  //   actorRol: string;
 
   /**
    * Sesión que la APK recibió al encender
@@ -78,7 +78,7 @@ export class FinalizarTecnicoTrackingUseCase {
   ): Promise<FinalizarTecnicoTrackingResult> {
     this.validateCommand(command);
 
-    this.assertTechnicianRole(command.actorRol);
+    // this.assertTechnicianRole(command.actorRol);
 
     const sesion = await this.trackingRepository.findSessionForTechnician({
       tecnicoId: command.tecnicoId,
@@ -285,11 +285,11 @@ export class FinalizarTecnicoTrackingUseCase {
 
     this.assertPositiveInteger(command.sesionTrackingId, 'sesionTrackingId');
 
-    if (typeof command.actorRol !== 'string' || !command.actorRol.trim()) {
-      throw new ForbiddenException(
-        'No fue posible determinar el rol del usuario autenticado.',
-      );
-    }
+    // if (typeof command.actorRol !== 'string' || !command.actorRol.trim()) {
+    //   throw new ForbiddenException(
+    //     'No fue posible determinar el rol del usuario autenticado.',
+    //   );
+    // }
   }
 
   private assertPositiveInteger(value: number, field: string): void {
