@@ -916,6 +916,167 @@ export class TecnicoTrackingPrismaQuery implements TecnicoTrackingQueryPort {
   }
 
   // =====================================================
+  // SNAPSHOT REALTIME - TECNICOS ACTIVOS
+  // =====================================================
+
+  async findActiveRealtimeViews(): Promise<TecnicoTrackingRealtimeView[]> {
+    const sessions = await this.prisma.tecnicoTrackingSesion.findMany({
+      where: {
+        estado: PrismaEstadoTrackingTecnico.ACTIVA,
+      },
+
+      orderBy: {
+        iniciadoEn: 'desc',
+      },
+
+      select: {
+        id: true,
+
+        asistenciaId: true,
+
+        estado: true,
+
+        iniciadoEn: true,
+
+        ultimoHeartbeatEn: true,
+
+        tecnico: {
+          select: {
+            id: true,
+
+            nombre: true,
+
+            telefono: true,
+
+            rol: true,
+
+            perfil: {
+              select: {
+                avatarUrl: true,
+              },
+            },
+
+            ticketsAsignados: {
+              where: {
+                estado: 'EN_PROCESO',
+              },
+
+              select: {
+                id: true,
+
+                titulo: true,
+
+                estado: true,
+
+                prioridad: true,
+              },
+            },
+          },
+        },
+
+        /**
+         * Solo necesitamos la última ubicación
+         * registrada dentro de esta sesión activa.
+         */
+        ubicaciones: {
+          take: 1,
+
+          orderBy: [
+            {
+              capturadoEn: 'desc',
+            },
+            {
+              id: 'desc',
+            },
+          ],
+
+          select: {
+            latitud: true,
+            longitud: true,
+
+            precision: true,
+            velocidad: true,
+
+            bateria: true,
+
+            capturadoEn: true,
+
+            creadoEn: true,
+          },
+        },
+      },
+    });
+
+    return sessions.map((session) => {
+      if (!session.asistenciaId) {
+        throw new Error(
+          `La sesión realtime activa ${session.id} no posee una asistencia asociada.`,
+        );
+      }
+
+      const ubicacion = session.ubicaciones[0] ?? null;
+
+      return {
+        tecnico: {
+          id: session.tecnico.id,
+
+          nombre: session.tecnico.nombre,
+
+          telefono: session.tecnico.telefono,
+
+          rol: session.tecnico.rol,
+
+          avatarUrl: session.tecnico.perfil?.avatarUrl ?? null,
+        },
+
+        tracking: {
+          sesionId: session.id,
+
+          asistenciaId: session.asistenciaId,
+
+          estado: TecnicoTrackingSesionPrismaMapper.toDomainEstado(
+            session.estado,
+          ),
+
+          iniciadoEn: session.iniciadoEn,
+
+          ultimoHeartbeatEn: session.ultimoHeartbeatEn,
+        },
+
+        ubicacion: ubicacion
+          ? {
+              latitud: ubicacion.latitud,
+
+              longitud: ubicacion.longitud,
+
+              precision: ubicacion.precision,
+
+              velocidad: ubicacion.velocidad,
+
+              bateria: ubicacion.bateria,
+
+              capturadoEn: ubicacion.capturadoEn,
+
+              recibidoEn: ubicacion.creadoEn,
+            }
+          : null,
+
+        actividad: {
+          ticketsEnProceso: session.tecnico.ticketsAsignados.map((ticket) => ({
+            id: ticket.id,
+
+            titulo: ticket.titulo,
+
+            estado: ticket.estado,
+
+            prioridad: ticket.prioridad,
+          })),
+        },
+      };
+    });
+  }
+
+  // =====================================================
   // HELPERS
   // =====================================================
 

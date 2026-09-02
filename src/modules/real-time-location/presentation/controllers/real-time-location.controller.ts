@@ -23,6 +23,8 @@ import { IniciarTecnicoTrackingUseCase } from '../../application/use-cases/inici
 
 import { ListarHistorialTecnicoTrackingUseCase } from '../../application/use-cases/listar-historial-tecnico-tracking.use-case';
 
+import { ListarTecnicosTrackingRealtimeUseCase } from '../../application/use-cases/listar-tecnicos-tracking-realtime.use-case';
+
 import { ListarUbicacionesAsistenciaTrackingUseCase } from '../../application/use-cases/listar-ubicaciones-asistencia-tracking.use-case';
 
 import { ObtenerDetalleAsistenciaTrackingUseCase } from '../../application/use-cases/obtener-detalle-asistencia-tracking.use-case';
@@ -30,9 +32,13 @@ import { ObtenerDetalleAsistenciaTrackingUseCase } from '../../application/use-c
 import { RegistrarUbicacionTecnicoUseCase } from '../../application/use-cases/registrar-ubicacion-tecnico.use-case';
 
 import { TrackingAuthUser } from '../types/tracking-auth-user.type';
+
 import { RegistrarUbicacionTecnicoDto } from '../../application/dto/registrar-ubicacion-tecnico.dto';
+
 import { ListarHistorialTrackingQueryDto } from '../../application/dto/listar-historial-tracking.query.dto';
+
 import { ListarUbicacionesTrackingQueryDto } from '../../application/dto/listar-ubicaciones-tracking.query.dto';
+
 import { ObtenerEstadoTrackingTecnicoUseCase } from '../../application/use-cases/obtener-estado-tracking-tecnico.use-case';
 
 @Controller('real-time-location')
@@ -57,6 +63,8 @@ export class RealTimeLocationController {
     private readonly finalizarTracking: FinalizarTecnicoTrackingUseCase,
 
     private readonly listarHistorial: ListarHistorialTecnicoTrackingUseCase,
+
+    private readonly listarRealtime: ListarTecnicosTrackingRealtimeUseCase,
 
     private readonly obtenerDetalle: ObtenerDetalleAsistenciaTrackingUseCase,
 
@@ -122,7 +130,9 @@ export class RealTimeLocationController {
     });
   }
 
+  // =====================================================
   // TECNICO - APAGAR TRACKING
+  // =====================================================
 
   @Post('tracking/:sesionTrackingId/finish')
   @HttpCode(HttpStatus.OK)
@@ -138,6 +148,15 @@ export class RealTimeLocationController {
 
       sesionTrackingId,
     });
+  }
+
+  // =====================================================
+  // ADMINISTRACION - SNAPSHOT REALTIME
+  // =====================================================
+
+  @Get('tracking/realtime')
+  async getRealtimeTracking() {
+    return this.listarRealtime.execute();
   }
 
   // =====================================================
@@ -165,7 +184,10 @@ export class RealTimeLocationController {
       estadoSesion: query.estadoSesion,
     });
   }
+
+  // =====================================================
   // ADMINISTRACION - DETALLE DE JORNADA
+  // =====================================================
 
   @Get('tracking/attendance/:asistenciaId')
   async getAttendanceDetail(
@@ -177,7 +199,9 @@ export class RealTimeLocationController {
     });
   }
 
+  // =====================================================
   // ADMINISTRACION - RECORRIDO GPS
+  // =====================================================
 
   @Get('tracking/attendance/:asistenciaId/locations')
   async getAttendanceLocations(

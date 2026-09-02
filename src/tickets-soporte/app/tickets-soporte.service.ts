@@ -63,6 +63,203 @@ export class TicketsSoporteService {
     }
   }
 
+  // NUEVOS HELPERS
+  // =========================================================
+  // ASIGNACIONES DE TICKETS
+  // =========================================================
+
+  /**
+   * Normaliza IDs de usuarios destinados a una asignación.
+   *
+   * - elimina null / undefined;
+   * - elimina IDs inválidos;
+   * - elimina duplicados.
+   *
+   * El nombre habla de "usuarios" deliberadamente.
+   *
+   * Aunque históricamente el dominio utiliza tecnicoId,
+   * TicketSoporte.tecnico realmente relaciona Usuario, por
+   * lo que el destinatario no tiene que poseer necesariamente
+   * el rol TECNICO.
+   */
+  private normalizarUsuariosAsignados(
+    userIds: readonly (number | null | undefined)[],
+  ): number[] {
+    return [
+      ...new Set(
+        userIds
+          .map((userId) => Number(userId))
+          .filter((userId) => Number.isInteger(userId) && userId > 0),
+      ),
+    ];
+  }
+
+  /**
+   * Compara quién tenía acceso al ticket antes y quién
+   * queda asignado después de la operación.
+   *
+   * Importante:
+   *
+   * No nos interesa si el usuario cambió de:
+   *
+   * principal -> acompañante
+   * acompañante -> principal
+   *
+   * mientras continúe asignado al ticket.
+   *
+   * Solamente nos interesan altas y bajas reales.
+   */
+  private calcularCambiosAsignacion(
+    anteriores: readonly number[],
+    resultantes: readonly number[],
+  ): {
+    agregados: number[];
+    removidos: number[];
+  } {
+    const anterioresSet = new Set(this.normalizarUsuariosAsignados(anteriores));
+
+    const resultantesSet = new Set(
+      this.normalizarUsuariosAsignados(resultantes),
+    );
+
+    const agregados = [...resultantesSet].filter(
+      (userId) => !anterioresSet.has(userId),
+    );
+
+    const removidos = [...anterioresSet].filter(
+      (userId) => !resultantesSet.has(userId),
+    );
+
+    return {
+      agregados,
+      removidos,
+    };
+  }
+
+  /**
+   * Efecto secundario posterior al COMMIT.
+   *
+   * Nunca debe ejecutarse dentro de una transacción Prisma.
+   *
+   * De esta forma:
+   *
+   * 1. la DB confirma el cambio;
+   * 2. Socket.IO informa del cambio;
+   * 3. el cliente puede consultar inmediatamente por HTTP
+   *    y observar el nuevo estado.
+   */
+  private async handleTicketAssignmentChanges(params: {
+    ticket: {
+      id: number;
+      empresaId: number | null;
+      titulo: string;
+      estado: EstadoTicketSoporte;
+      prioridad: string;
+    };
+
+    addedUserIds: readonly number[];
+    removedUserIds: readonly number[];
+
+    reason: 'CREATED' | 'REASSIGNED';
+  }): Promise<void> {
+    const addedUserIds = this.normalizarUsuariosAsignados(params.addedUserIds);
+
+    const removedUserIds = this.normalizarUsuariosAsignados(
+      params.removedUserIds,
+    );
+
+    if (addedUserIds.length === 0 && removedUserIds.length === 0) {
+      return;
+    }
+
+    /*
+     * Los tickets históricos permiten empresaId nullable.
+     *
+     * Para eventos operativos del CRM exigimos contexto
+     * empresarial válido antes de propagarlos.
+     */
+    if (!params.ticket.empresaId || params.ticket.empresaId <= 0) {
+      this.logger.warn(
+        [
+          'Cambio de asignación sin evento realtime',
+          `ticketId=${params.ticket.id}`,
+          'motivo=empresaId ausente',
+        ].join(' | '),
+      );
+
+      return;
+    }
+
+    const occurredAt = new Date().toISOString();
+
+    /*
+     * Podemos emitir ambas ramas concurrentemente.
+     *
+     * WebSocketServices ya aísla sus errores para impedir
+     * que una falla Socket.IO afecte una operación de ticket
+     * que ya fue persistida correctamente.
+     */
+    await Promise.all([
+      this.ws.emitTicketAssignmentChanged({
+        userIds: addedUserIds,
+
+        payload: {
+          version: 1,
+
+          ticketId: params.ticket.id,
+
+          empresaId: params.ticket.empresaId,
+
+          change: 'ASSIGNED',
+
+          reason: params.reason,
+
+          title: params.ticket.titulo,
+
+          status: params.ticket.estado,
+
+          priority: params.ticket.prioridad,
+
+          occurredAt,
+        },
+      }),
+
+      this.ws.emitTicketAssignmentChanged({
+        userIds: removedUserIds,
+
+        payload: {
+          version: 1,
+
+          ticketId: params.ticket.id,
+
+          empresaId: params.ticket.empresaId,
+
+          change: 'UNASSIGNED',
+
+          reason: params.reason,
+
+          title: params.ticket.titulo,
+
+          status: params.ticket.estado,
+
+          priority: params.ticket.prioridad,
+
+          occurredAt,
+        },
+      }),
+    ]);
+
+    this.logger.log(
+      [
+        'Cambios de asignación procesados',
+        `ticketId=${params.ticket.id}`,
+        `added=[${addedUserIds.join(',')}]`,
+        `removed=[${removedUserIds.join(',')}]`,
+      ].join(' | '),
+    );
+  }
+
+  // NUEVOS HELPERS
   constructor(
     @Inject(TICKET_SOPORTE_REPOSITORY)
     private readonly ticketsRepo: TicketSoporteRepository,
@@ -103,6 +300,11 @@ export class TicketsSoporteService {
     const tieneAsignacionInicial =
       Boolean(createTicketsSoporteDto.tecnicoId) ||
       tecnicosAdicionales.length > 0;
+
+    const usuariosAsignadosInicialmente = this.normalizarUsuariosAsignados([
+      tecnicoPrincipalId,
+      ...tecnicosAdicionales,
+    ]);
 
     const ticketCreated = await this.prisma.$transaction(async (tx) => {
       const newTicketSoporte = await tx.ticketSoporte.create({
@@ -155,6 +357,26 @@ export class TicketsSoporteService {
       });
 
       return newTicketSoporte;
+    });
+
+    // =====================================================
+    // REALTIME - ASIGNACIÓN INICIAL
+    // =====================================================
+    //
+    // A estas alturas Prisma ya confirmó la transacción.
+    //
+    // Si el ticket se creó sin usuarios asignados, el
+    // handler simplemente retorna sin emitir nada.
+    // =====================================================
+
+    await this.handleTicketAssignmentChanges({
+      ticket: ticketCreated,
+
+      addedUserIds: usuariosAsignadosInicialmente,
+
+      removedUserIds: [],
+
+      reason: 'CREATED',
     });
 
     let customer;
@@ -464,7 +686,6 @@ export class TicketsSoporteService {
     }
   }
 
-  // Obtener todos los tickets con sus detalles y comentarios
   // Obtener todos los tickets con sus detalles y comentarios
   async getTickets(query: QuerySearchTickets) {
     try {
@@ -1061,6 +1282,7 @@ export class TicketsSoporteService {
 
   // ===================== UPDATE GENERAL =====================
   // ===================== UPDATE GENERAL =====================
+
   async update(id: number, updateTicketsSoporteDto: UpdateTicketsSoporteDto) {
     this.logger.debug('ID Actualización: ', id);
 
@@ -1072,19 +1294,41 @@ export class TicketsSoporteService {
       )}`,
     );
 
-    return this.prisma.$transaction(async (tx) => {
+    /*
+     * =======================================================
+     * TRANSACTION
+     * =======================================================
+     *
+     * Aquí únicamente hacemos trabajo persistente.
+     *
+     * Socket.IO se ejecutará después del COMMIT.
+     * =======================================================
+     */
+
+    const transactionResult = await this.prisma.$transaction(async (tx) => {
       const ticketActual = await tx.ticketSoporte.findUnique({
-        where: { id },
+        where: {
+          id,
+        },
+
         select: {
           id: true,
+
           estado: true,
+
           tecnicoId: true,
+
           clienteId: true,
+
           fechaAsignacion: true,
 
-          _count: {
+          /*
+           * Necesitamos conocer los IDs, no solamente
+           * cuántas asignaciones existen.
+           */
+          asignaciones: {
             select: {
-              asignaciones: true,
+              tecnicoId: true,
             },
           },
         },
@@ -1094,21 +1338,39 @@ export class TicketsSoporteService {
         throw new NotFoundException(`Ticket con id ${id} no encontrado`);
       }
 
-      // =====================================================
+      // ===================================================
       // ESTADO
-      // Los estados instrumentados deben utilizar
-      // sus endpoints especializados.
-      // =====================================================
+      // ===================================================
 
       this.validarCambioEstadoGeneral(
         ticketActual.estado,
         updateTicketsSoporteDto.status,
       );
 
-      // =====================================================
-      // TÉCNICO PRINCIPAL
-      // Compatibilidad tanto con tecnicoId como con assignee.
-      // =====================================================
+      // ===================================================
+      // ASIGNACIONES ANTERIORES
+      // ===================================================
+
+      const adicionalesAnteriores = this.normalizarUsuariosAsignados(
+        ticketActual.asignaciones.map((asignacion) => asignacion.tecnicoId),
+      );
+
+      const usuariosAsignadosAntes = this.normalizarUsuariosAsignados([
+        ticketActual.tecnicoId,
+        ...adicionalesAnteriores,
+      ]);
+
+      // ===================================================
+      // USUARIO PRINCIPAL RESULTANTE
+      // ===================================================
+      //
+      // Compatibilidad:
+      //
+      // tecnicoId
+      // assignee
+      //
+      // Si ninguno fue enviado, conservamos el actual.
+      // ===================================================
 
       const tecnicoPrincipalFueEnviado =
         updateTicketsSoporteDto.tecnicoId !== undefined ||
@@ -1123,13 +1385,15 @@ export class TicketsSoporteService {
         ? tecnicoPrincipalId
         : ticketActual.tecnicoId;
 
-      // =====================================================
-      // TÉCNICOS ADICIONALES
+      // ===================================================
+      // USUARIOS ADICIONALES RESULTANTES
+      // ===================================================
       //
-      // El DTO contiene "companios", mientras el flujo
-      // histórico también utiliza "tecnicosAdicionales".
-      // Aceptamos ambos sin duplicar técnicos.
-      // =====================================================
+      // Compatibilidad:
+      //
+      // tecnicosAdicionales
+      // companios
+      // ===================================================
 
       const adicionalesFueronEnviados =
         updateTicketsSoporteDto.tecnicosAdicionales !== undefined ||
@@ -1140,50 +1404,71 @@ export class TicketsSoporteService {
         updateTicketsSoporteDto.companios ??
         [];
 
-      const tecnicosAdicionales = [
-        ...new Set(
-          adicionalesRaw
-            .map(Number)
-            .filter(
-              (tecnicoId) =>
-                Number.isInteger(tecnicoId) &&
-                tecnicoId > 0 &&
-                tecnicoId !== tecnicoPrincipalResultante,
-            ),
-        ),
-      ];
+      const adicionalesSolicitados = this.normalizarUsuariosAsignados(
+        adicionalesRaw,
+      ).filter((userId) => userId !== tecnicoPrincipalResultante);
 
-      const tieneAdicionalesResultantes = adicionalesFueronEnviados
-        ? tecnicosAdicionales.length > 0
-        : ticketActual._count.asignaciones > 0;
+      /*
+       * Si no enviaron compañeros, conservamos los
+       * anteriores.
+       *
+       * Sin embargo quitamos al nuevo principal de la
+       * colección secundaria para mantener el invariante:
+       *
+       * un usuario no puede ser principal y adicional
+       * simultáneamente.
+       */
+      const adicionalesResultantes = adicionalesFueronEnviados
+        ? adicionalesSolicitados
+        : adicionalesAnteriores.filter(
+            (userId) => userId !== tecnicoPrincipalResultante,
+          );
 
-      // =====================================================
+      const usuariosAsignadosDespues = this.normalizarUsuariosAsignados([
+        tecnicoPrincipalResultante,
+        ...adicionalesResultantes,
+      ]);
+
+      const assignmentChanges = this.calcularCambiosAsignacion(
+        usuariosAsignadosAntes,
+        usuariosAsignadosDespues,
+      );
+
+      // ===================================================
       // PRIMERA ASIGNACIÓN
+      // ===================================================
       //
-      // Solo se escribe cuando antes nunca hubo asignación.
-      // Una edición o reasignación posterior no la cambia.
-      // =====================================================
+      // fechaAsignacion conserva semántica histórica:
+      //
+      // primera vez en la vida del ticket que tuvo
+      // cualquier usuario asignado.
+      // ===================================================
 
-      const tieneTecnicoResultante =
-        Boolean(tecnicoPrincipalResultante) || tieneAdicionalesResultantes;
+      const tieneTecnicoResultante = usuariosAsignadosDespues.length > 0;
 
       const fechaPrimeraAsignacion =
         !ticketActual.fechaAsignacion && tieneTecnicoResultante
           ? dayjs().toDate()
           : undefined;
 
-      // =====================================================
-      // UPDATE DEL TICKET
-      // =====================================================
+      // ===================================================
+      // UPDATE PRINCIPAL DEL TICKET
+      // ===================================================
 
       const updatedTicket = await tx.ticketSoporte.update({
-        where: { id },
+        where: {
+          id,
+        },
 
         data: {
           titulo: updateTicketsSoporteDto.title,
+
           descripcion: updateTicketsSoporteDto.description,
+
           estado: updateTicketsSoporteDto.status,
+
           prioridad: updateTicketsSoporteDto.priority,
+
           fijado: updateTicketsSoporteDto.fixed,
 
           fechaAsignacion: fechaPrimeraAsignacion,
@@ -1215,12 +1500,9 @@ export class TicketsSoporteService {
         },
       });
 
-      // =====================================================
+      // ===================================================
       // ETIQUETAS
-      //
-      // Solo sincronizamos si "tags" realmente vino
-      // en el PATCH.
-      // =====================================================
+      // ===================================================
 
       if (updateTicketsSoporteDto.tags !== undefined) {
         const tagIds = updateTicketsSoporteDto.tags.map((tag) =>
@@ -1257,23 +1539,26 @@ export class TicketsSoporteService {
         }
       }
 
-      // =====================================================
-      // TÉCNICOS ADICIONALES
-      //
-      // Tampoco borramos relaciones si el campo ni siquiera
-      // fue enviado.
-      // =====================================================
+      // ===================================================
+      // USUARIOS ADICIONALES
+      // ===================================================
 
       if (adicionalesFueronEnviados) {
+        /*
+         * Lista explícitamente enviada:
+         *
+         * reemplazamos la colección completa.
+         */
+
         await tx.ticketSoporteTecnico.deleteMany({
           where: {
             ticketId: id,
           },
         });
 
-        if (tecnicosAdicionales.length > 0) {
+        if (adicionalesResultantes.length > 0) {
           await tx.ticketSoporteTecnico.createMany({
-            data: tecnicosAdicionales.map((tecnicoId) => ({
+            data: adicionalesResultantes.map((tecnicoId) => ({
               ticketId: id,
               tecnicoId,
             })),
@@ -1281,10 +1566,57 @@ export class TicketsSoporteService {
             skipDuplicates: true,
           });
         }
+      } else if (tecnicoPrincipalFueEnviado && tecnicoPrincipalResultante) {
+        /*
+         * No modificaron explícitamente compañeros,
+         * pero sí cambiaron el principal.
+         *
+         * Si el nuevo principal anteriormente estaba
+         * como acompañante, eliminamos únicamente esa
+         * relación duplicada.
+         *
+         * Los demás acompañantes permanecen intactos.
+         */
+
+        await tx.ticketSoporteTecnico.deleteMany({
+          where: {
+            ticketId: id,
+
+            tecnicoId: tecnicoPrincipalResultante,
+          },
+        });
       }
 
-      return updatedTicket;
+      /*
+       * No emitimos todavía.
+       *
+       * Estos datos salen de la transacción y se utilizan
+       * únicamente cuando Prisma haya completado COMMIT.
+       */
+      return {
+        updatedTicket,
+
+        addedUserIds: assignmentChanges.agregados,
+
+        removedUserIds: assignmentChanges.removidos,
+      };
     });
+
+    // =======================================================
+    // POST-COMMIT REALTIME
+    // =======================================================
+
+    await this.handleTicketAssignmentChanges({
+      ticket: transactionResult.updatedTicket,
+
+      addedUserIds: transactionResult.addedUserIds,
+
+      removedUserIds: transactionResult.removedUserIds,
+
+      reason: 'REASSIGNED',
+    });
+
+    return transactionResult.updatedTicket;
   }
 
   // ===================== CLOSE =====================

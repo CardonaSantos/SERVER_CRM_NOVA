@@ -11,6 +11,8 @@ import { IniciarTecnicoTrackingUseCase } from './application/use-cases/iniciar-t
 
 import { ListarHistorialTecnicoTrackingUseCase } from './application/use-cases/listar-historial-tecnico-tracking.use-case';
 
+import { ListarTecnicosTrackingRealtimeUseCase } from './application/use-cases/listar-tecnicos-tracking-realtime.use-case';
+
 import { ListarUbicacionesAsistenciaTrackingUseCase } from './application/use-cases/listar-ubicaciones-asistencia-tracking.use-case';
 
 import { ObtenerDetalleAsistenciaTrackingUseCase } from './application/use-cases/obtener-detalle-asistencia-tracking.use-case';
@@ -31,9 +33,13 @@ import {
 } from './infra/tokens/tokens';
 
 import { RealTimeLocationController } from './presentation/controllers/real-time-location.controller';
+
 import { TecnicoTrackingExpirationScheduler } from './infra/scheduler/tecnico-tracking-expiration.scheduler';
+
 import { GatewayModule } from 'src/web-sockets/websocket.module';
+
 import { TecnicoTrackingWebSocketAdapter } from './infra/realtime/tecnico-tracking.websocket.adapter';
+
 import { ObtenerEstadoTrackingTecnicoUseCase } from './application/use-cases/obtener-estado-tracking-tecnico.use-case';
 
 @Module({
@@ -51,6 +57,8 @@ import { ObtenerEstadoTrackingTecnicoUseCase } from './application/use-cases/obt
     ExpirarTecnicoTrackingUseCase,
 
     ListarHistorialTecnicoTrackingUseCase,
+
+    ListarTecnicosTrackingRealtimeUseCase,
 
     ObtenerDetalleAsistenciaTrackingUseCase,
 

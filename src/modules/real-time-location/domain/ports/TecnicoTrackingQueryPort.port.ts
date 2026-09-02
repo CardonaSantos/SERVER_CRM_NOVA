@@ -22,10 +22,22 @@ export interface TecnicoTrackingQueryPort {
 
   /**
    * Construye la vista operacional enriquecida
-   * utilizada por Socket y eventualmente por
-   * consultas del mapa actual.
+   * de un técnico con tracking activo.
+   *
+   * Utilizada principalmente por los eventos realtime
+   * posteriores a un heartbeat/GPS.
    */
   findRealtimeViewByTechnician(
     tecnicoId: number,
   ): Promise<TecnicoTrackingRealtimeView | null>;
+
+  /**
+   * Snapshot operacional de todos los técnicos
+   * que actualmente poseen una sesión de tracking ACTIVA.
+   *
+   * Es la fuente HTTP inicial para los mapas realtime.
+   * Después de este snapshot, Socket.IO mantiene
+   * la información actualizada incrementalmente.
+   */
+  findActiveRealtimeViews(): Promise<TecnicoTrackingRealtimeView[]>;
 }

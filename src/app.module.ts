@@ -72,6 +72,7 @@ import { MikrotikRouterCredentialsModule } from './modules/mikrotik-router-crede
 import { TicketSoporteConformidadModule } from './modules/ticket-soporte-conformidad/ticket-soporte-conformidad.module';
 import { ExcelReportsModule } from './modules/excel-reports/excel-reports.module';
 import { RealTimeLocationModule } from './modules/real-time-location/real-time-location.module';
+import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.module';
 
 @Module({
   imports: [
@@ -152,6 +153,7 @@ import { RealTimeLocationModule } from './modules/real-time-location/real-time-l
     TicketSoporteConformidadModule,
     ExcelReportsModule,
     RealTimeLocationModule,
+    PushDispositivosModule,
   ],
   controllers: [AppController],
   providers: [AppService],

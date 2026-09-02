@@ -177,6 +177,48 @@ model Usuario {
   enlacesConformidadTicketCreados TicketConformidadEnlace[] @relation("TicketConformidadEnlaceCreadoPor")
 
   sesionesTrackingTecnico TecnicoTrackingSesion[] @relation("TecnicoTrackingSesiones")
+
+  pushDispositivos UsuarioPushDispositivo[]
+}
+
+model UsuarioPushDispositivo {
+  id Int @id @default(autoincrement())
+
+  usuarioId Int
+
+  /// Identificador generado por NOVA para esta instalación
+  /// de la aplicación. Permanece estable aunque FCM rote
+  /// el token.
+  instalacionId String @unique
+
+  /// Token nativo entregado por FCM/APNs.
+  /// No debe imprimirse en logs.
+  token String @unique
+
+  /// FCM por ahora. Dejamos String para no crear enums
+  /// innecesarios mientras Android es el único target.
+  proveedor String @default("FCM")
+
+  /// ANDROID actualmente; preparado para IOS posteriormente.
+  plataforma String @default("ANDROID")
+
+  /// Metadatos informativos, nunca usados como identidad.
+  nombreDispositivo String?
+  modeloDispositivo String?
+  versionApp        String?
+
+  activo Boolean @default(true)
+
+  ultimoRegistroEn DateTime  @default(now())
+  revocadoEn       DateTime?
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, activo])
+  @@index([activo])
 }
 
 // model UbicacionTecnico {

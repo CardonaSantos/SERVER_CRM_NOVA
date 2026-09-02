@@ -97,27 +97,84 @@ export class AuthService {
         throw new UnauthorizedException('Credenciales inválidas');
       }
 
+      /*
+       * El login y GET /auth/profile deben
+       * compartir el mismo contrato público.
+       */
+      const publicUser = await this.getAuthenticatedProfile(usuario.id);
+
       const payload = {
-        sub: usuario.id,
-        nombre: usuario.nombre,
-        correo: usuario.correo,
-        rol: usuario.rol,
-        activo: usuario.activo,
-        empresaId: usuario.empresaId,
-        id: usuario.id,
-        avatar: usuario?.perfil?.avatarUrl,
-        portadaUrl: usuario?.perfil?.portadaUrl,
+        sub: publicUser.id,
+
+        id: publicUser.id,
+
+        nombre: publicUser.nombre,
+
+        correo: publicUser.correo,
+
+        rol: publicUser.rol,
+
+        activo: publicUser.activo,
+
+        empresaId: publicUser.empresaId,
       };
 
       return {
         access_token: this.jwtService.sign(payload),
-        user: usuario, // Opcional: devolver info del usuario (sin pass)
+
+        user: publicUser,
       };
     } catch (error) {
-      // Si ya es una excepción controlada, la lanzamos
-      if (error instanceof UnauthorizedException) throw error;
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+
       throwFatalError(error, this.logger, 'auth-login');
     }
+  }
+
+  async getAuthenticatedProfile(usuarioId: number) {
+    if (!Number.isInteger(usuarioId) || usuarioId <= 0) {
+      throw new UnauthorizedException(
+        'No fue posible identificar al usuario autenticado.',
+      );
+    }
+
+    const usuario = await this.userService.findUserInfo(usuarioId);
+
+    if (!usuario) {
+      throw new UnauthorizedException('El usuario autenticado ya no existe.');
+    }
+
+    if (!usuario.activo) {
+      throw new UnauthorizedException('El usuario se encuentra inactivo.');
+    }
+
+    /*
+     * Exponer únicamente el contrato
+     * público requerido por los clientes.
+     *
+     * No devolver contraseña, perfil
+     * completo ni otras propiedades
+     * internas de Usuario.
+     */
+    return {
+      id: usuario.id,
+
+      nombre: usuario.nombre,
+
+      correo: usuario.correo,
+
+      rol: usuario.rol,
+
+      activo: usuario.activo,
+
+      empresaId: usuario.empresaId,
+
+      avatarUrl: usuario.perfil?.avatar?.url ?? null,
+
+      portadaUrl: usuario.perfil?.portada?.url ?? null,
+    };
   }
 
   async register(createAuthDto: CreateAuthDto) {
