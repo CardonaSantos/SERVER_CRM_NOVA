@@ -10,9 +10,15 @@ import { TICKET_SOPORTE_REPOSITORY } from './domain/ticket-soporte-repository';
 import { PrismaTicketSoporteRepository } from './infraestructure/prisma-ticket-soporte';
 import { CloudApiMetaModule } from 'src/cloud-api-meta/cloud-api-meta.module';
 import { TicketResumenModule } from 'src/ticket-resumen/ticket-resumen.module';
+import { PushNotificationsModule } from 'src/push-notifications/push-notifications.module';
 
 @Module({
-  imports: [GatewayModule, CloudApiMetaModule, TicketResumenModule],
+  imports: [
+    GatewayModule,
+    CloudApiMetaModule,
+    TicketResumenModule,
+    PushNotificationsModule,
+  ],
   controllers: [TicketsSoporteController],
   providers: [
     TicketsSoporteService,

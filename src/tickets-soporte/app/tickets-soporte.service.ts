@@ -35,6 +35,7 @@ import { QuerySearchTickets } from '../dto/querySearch';
 import { query } from 'express';
 import { TZ } from 'src/Utils/tzgt';
 import { TicketFirmaTipo } from 'src/modules/ticket-soporte-conformidad/domain/enums/ticket-firma-tipo.enum';
+import { FirebasePushService } from 'src/push-notifications/infra/firebase-push.service';
 // import { dayjs } from '';
 
 @Injectable()
@@ -137,16 +138,20 @@ export class TicketsSoporteService {
   }
 
   /**
-   * Efecto secundario posterior al COMMIT.
+   * Efectos secundarios posteriores al COMMIT.
    *
    * Nunca debe ejecutarse dentro de una transacción Prisma.
    *
-   * De esta forma:
+   * Flujo:
    *
    * 1. la DB confirma el cambio;
-   * 2. Socket.IO informa del cambio;
-   * 3. el cliente puede consultar inmediatamente por HTTP
-   *    y observar el nuevo estado.
+   * 2. Socket.IO informa inmediatamente a clientes conectados;
+   * 3. FCM envía la notificación push a los dispositivos registrados;
+   * 4. el cliente puede consultar inmediatamente por HTTP
+   *    y observar el nuevo estado persistido.
+   *
+   * Ninguna falla de Socket.IO o Firebase debe revertir
+   * una operación de ticket que ya fue confirmada en DB.
    */
   private async handleTicketAssignmentChanges(params: {
     ticket: {
@@ -172,7 +177,7 @@ export class TicketsSoporteService {
       return;
     }
 
-    /*
+    /**
      * Los tickets históricos permiten empresaId nullable.
      *
      * Para eventos operativos del CRM exigimos contexto
@@ -181,7 +186,7 @@ export class TicketsSoporteService {
     if (!params.ticket.empresaId || params.ticket.empresaId <= 0) {
       this.logger.warn(
         [
-          'Cambio de asignación sin evento realtime',
+          'Cambio de asignación sin notificación realtime/push',
           `ticketId=${params.ticket.id}`,
           'motivo=empresaId ausente',
         ].join(' | '),
@@ -192,34 +197,27 @@ export class TicketsSoporteService {
 
     const occurredAt = new Date().toISOString();
 
-    /*
-     * Podemos emitir ambas ramas concurrentemente.
+    /**
+     * =====================================================
+     * REALTIME
+     * =====================================================
      *
-     * WebSocketServices ya aísla sus errores para impedir
-     * que una falla Socket.IO afecte una operación de ticket
-     * que ya fue persistida correctamente.
+     * Socket.IO sincroniza inmediatamente los clientes
+     * actualmente conectados.
      */
-    await Promise.all([
+    const realtimeTasks: Promise<unknown>[] = [
       this.ws.emitTicketAssignmentChanged({
         userIds: addedUserIds,
 
         payload: {
           version: 1,
-
           ticketId: params.ticket.id,
-
           empresaId: params.ticket.empresaId,
-
           change: 'ASSIGNED',
-
           reason: params.reason,
-
           title: params.ticket.titulo,
-
           status: params.ticket.estado,
-
           priority: params.ticket.prioridad,
-
           occurredAt,
         },
       }),
@@ -229,25 +227,87 @@ export class TicketsSoporteService {
 
         payload: {
           version: 1,
-
           ticketId: params.ticket.id,
-
           empresaId: params.ticket.empresaId,
-
           change: 'UNASSIGNED',
-
           reason: params.reason,
-
           title: params.ticket.titulo,
-
           status: params.ticket.estado,
-
           priority: params.ticket.prioridad,
-
           occurredAt,
         },
       }),
-    ]);
+    ];
+
+    /**
+     * =====================================================
+     * PUSH
+     * =====================================================
+     *
+     * FCM cubre principalmente:
+     *
+     * - aplicación en background;
+     * - aplicación terminada;
+     * - dispositivo sin Socket.IO activo.
+     *
+     * Cada usuario puede tener múltiples dispositivos.
+     */
+    const pushTasks: Promise<unknown>[] = [
+      ...addedUserIds.map((userId) =>
+        this.emitTicketAssignmentPush({
+          userId,
+
+          ticket: {
+            id: params.ticket.id,
+            titulo: params.ticket.titulo,
+            estado: params.ticket.estado,
+            prioridad: params.ticket.prioridad,
+          },
+
+          change: 'ASSIGNED',
+          reason: params.reason,
+        }),
+      ),
+
+      ...removedUserIds.map((userId) =>
+        this.emitTicketAssignmentPush({
+          userId,
+
+          ticket: {
+            id: params.ticket.id,
+            titulo: params.ticket.titulo,
+            estado: params.ticket.estado,
+            prioridad: params.ticket.prioridad,
+          },
+
+          change: 'UNASSIGNED',
+          reason: params.reason,
+        }),
+      ),
+    ];
+
+    /**
+     * Ejecutamos ambos canales concurrentemente.
+     *
+     * allSettled aporta una segunda barrera de aislamiento:
+     * aunque algún adapter inesperadamente rechace la Promise,
+     * no propagamos ese fallo hacia la operación del ticket.
+     */
+    const results = await Promise.allSettled([...realtimeTasks, ...pushTasks]);
+
+    const rejectedCount = results.filter(
+      (result) => result.status === 'rejected',
+    ).length;
+
+    if (rejectedCount > 0) {
+      this.logger.warn(
+        [
+          'Uno o más efectos secundarios de asignación fallaron',
+          `ticketId=${params.ticket.id}`,
+          `failed=${rejectedCount}`,
+        ].join(' | '),
+      );
+    }
 
     this.logger.log(
       [
@@ -255,6 +315,8 @@ export class TicketsSoporteService {
         `ticketId=${params.ticket.id}`,
         `added=[${addedUserIds.join(',')}]`,
         `removed=[${removedUserIds.join(',')}]`,
+        `realtimeEvents=2`,
+        `pushTargets=${addedUserIds.length + removedUserIds.length}`,
       ].join(' | '),
     );
   }
@@ -272,6 +334,8 @@ export class TicketsSoporteService {
 
     private readonly cloudApi: CloudApiMetaService,
     private readonly ticketResumen: TicketResumenService,
+
+    private readonly firebasePush: FirebasePushService,
   ) {}
 
   // ===================== CREATE =====================
@@ -2000,5 +2064,102 @@ export class TicketsSoporteService {
       id: updated.id!,
       estado: updated.estado,
     };
+  }
+
+  private async emitTicketAssignmentPush(params: {
+    userId: number;
+
+    ticket: {
+      id: number;
+      titulo: string | null;
+      estado: string;
+      prioridad: string;
+    };
+
+    change: 'ASSIGNED' | 'UNASSIGNED';
+
+    reason: 'CREATED' | 'REASSIGNED';
+  }): Promise<void> {
+    const { userId, ticket, change, reason } = params;
+
+    try {
+      const assigned = change === 'ASSIGNED';
+
+      const result = await this.firebasePush.sendToUser({
+        usuarioId: userId,
+
+        title: assigned
+          ? 'Nuevo ticket asignado'
+          : 'Asignación de ticket retirada',
+
+        body: assigned
+          ? `Ticket #${ticket.id} · ${ticket.titulo ?? 'Sin título'}`
+          : `El ticket #${ticket.id} ya no está asignado a ti.`,
+
+        /*
+         * Todo FCM data debe ser string.
+         */
+        data: {
+          type: 'ticket.assignment',
+
+          ticketId: String(ticket.id),
+
+          change,
+
+          reason,
+
+          status: String(ticket.estado),
+
+          priority: String(ticket.prioridad),
+        },
+
+        channelId: 'tickets',
+
+        /*
+         * Si existen varios pushes pendientes del mismo
+         * ticket, Android puede colapsar el estado viejo.
+         */
+        collapseKey: `ticket-assignment-${ticket.id}`,
+
+        /*
+         * 6 horas.
+         * Una asignación vieja no debe aparecer días después.
+         */
+        ttlMs: 6 * 60 * 60 * 1000,
+      });
+
+      this.logger.log(
+        [
+          'Ticket assignment push procesado',
+          `ticketId=${ticket.id}`,
+          `userId=${userId}`,
+          `change=${change}`,
+          `reason=${reason}`,
+          `targets=${result.targets}`,
+          `success=${result.successCount}`,
+          `failed=${result.failureCount}`,
+          `skipped=${result.skipped}`,
+          `skipReason=${result.reason ?? 'none'}`,
+        ].join(' | '),
+      );
+    } catch (error) {
+      /*
+       * CRÍTICO:
+       *
+       * La asignación del ticket ya está persistida.
+       * Un fallo en Firebase jamás debe convertir una
+       * asignación válida en error HTTP.
+       */
+      this.logger.error(
+        [
+          'No fue posible emitir push de asignación',
+          `ticketId=${ticket.id}`,
+          `userId=${userId}`,
+          `change=${change}`,
+        ].join(' | '),
+
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
   }
 }

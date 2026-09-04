@@ -52,6 +52,7 @@
     "dayjs": "^1.11.13",
     "decimal.js": "^10.6.0",
     "exceljs": "^4.4.0",
+    "firebase-admin": "^14.3.0",
     "multer": "^2.0.2",
     "node-ssh": "^13.2.1",
     "openai": "^6.9.1",
