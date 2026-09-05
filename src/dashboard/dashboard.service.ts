@@ -698,37 +698,97 @@ export class DashboardService {
         throw new NotFoundException(`Ticket con id ${ticketId} no encontrado`);
       }
 
-      const loc = rawTicket.cliente.ubicacion;
-      const medias = (rawTicket.cliente.medias ?? []).map((media) => ({
+      /*
+       * =====================================================
+       * CLIENTE
+       * =====================================================
+       *
+       * Un TicketSoporte puede existir sin ClienteInternet.
+       *
+       * El listado de tickets asignados ya soporta este caso,
+       * así que el detalle debe conservar el mismo contrato.
+       * =====================================================
+       */
+
+      const cliente = rawTicket.cliente;
+
+      const loc = cliente?.ubicacion ?? null;
+
+      const medias = (cliente?.medias ?? []).map((media) => ({
         id: media.id,
+
         titulo: media.titulo,
+
         descripcion: media.descripcion,
+
         notas: media.notas,
+
         creadoEn: media.creadoEn,
+
         actualizadoEn: media.actualizadoEn,
+
         cdnUrl: media.cdnUrl,
       }));
 
-      // 👇 misma estructura que en findTicketsAsignados, pero para 1 ticket
+      const clienteNombre = cliente
+        ? `${cliente.nombre ?? ''} ${cliente.apellidos ?? ''}`.trim() ||
+          'Cliente sin nombre'
+        : 'SIN CLIENTE';
+
+      /*
+       * =====================================================
+       * RESPONSE
+       * =====================================================
+       *
+       * direccion permanece como objeto estable porque así lo
+       * consume Android.
+       *
+       * Cuando no existe cliente o dato geográfico utilizamos
+       * string vacío; la UI es quien presenta el fallback
+       * "Sin dirección", "Sin sector", etc.
+       * =====================================================
+       */
+
       return {
         id: rawTicket.id,
+
         titulo: rawTicket.titulo,
+
         abiertoEn: rawTicket.fechaApertura,
+
         estado: rawTicket.estado,
+
         prioridad: rawTicket.prioridad,
+
         descripcion: rawTicket.descripcion,
-        clientId: rawTicket.cliente.id,
-        clienteNombre:
-          `${rawTicket.cliente.nombre ?? ''} ${rawTicket.cliente.apellidos ?? ''}`.trim(),
-        clienteTel: rawTicket.cliente.telefono,
-        referenciaContacto: rawTicket.cliente.contactoReferenciaTelefono,
+
+        clientId: cliente?.id ?? null,
+
+        clienteNombre,
+
+        clienteTel: cliente?.telefono ?? null,
+
+        referenciaContacto: cliente?.contactoReferenciaTelefono ?? null,
+
         direccion: {
-          direccion: rawTicket.cliente.direccion ?? 'N/A',
-          sector: rawTicket.cliente.sector.nombre ?? 'N/A',
-          municipio: rawTicket.cliente.municipio.nombre ?? 'N/A',
+          direccion: cliente?.direccion ?? '',
+
+          sector: cliente?.sector?.nombre ?? '',
+
+          municipio: cliente?.municipio?.nombre ?? '',
         },
-        observaciones: rawTicket.cliente.observaciones ?? 'N/A',
-        ubicacionMaps: loc ? { lat: loc.latitud, lng: loc.longitud } : null,
+
+        observaciones: cliente?.observaciones ?? '',
+
+        ubicacionMaps:
+          loc?.latitud != null && loc?.longitud != null
+            ? {
+                lat: loc.latitud,
+
+                lng: loc.longitud,
+              }
+            : null,
+
         medias,
       };
     } catch (error) {

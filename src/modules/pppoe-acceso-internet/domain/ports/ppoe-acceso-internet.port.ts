@@ -10,6 +10,11 @@ export type BuscarAccesoInternetPorIdParams = {
   accesoInternetId: number;
 };
 
+export type BuscarAccesoPppoePorClienteParams = {
+  empresaId: number;
+  clienteId: number;
+};
+
 export interface ClienteAccesoInternetRepositoryPort {
   create(
     entity: ClienteAccesoInternetEntity,
@@ -25,5 +30,9 @@ export interface ClienteAccesoInternetRepositoryPort {
 
   findByIdForClient(
     params: BuscarAccesoInternetDelClienteParams,
+  ): Promise<ClienteAccesoInternetEntity | null>;
+
+  findPppoeByClienteId(
+    params: BuscarAccesoPppoePorClienteParams,
   ): Promise<ClienteAccesoInternetEntity | null>;
 }

@@ -1380,10 +1380,11 @@ export class ClienteInstalacionPrismaRepository
 
         observaciones: record.cliente.observaciones,
 
-        municipio: record.cliente.municipio.nombre,
-        departamento: record.cliente.departamento.nombre,
+        municipio: record.cliente.municipio?.nombre ?? null,
 
-        sector: record.cliente.sector.nombre,
+        departamento: record.cliente.departamento?.nombre ?? null,
+
+        sector: record.cliente.sector?.nombre ?? null,
       },
 
       servicioInternet: record.servicioInternet

@@ -5,12 +5,14 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import {
   BuscarAccesoInternetDelClienteParams,
   BuscarAccesoInternetPorIdParams,
+  BuscarAccesoPppoePorClienteParams,
   ClienteAccesoInternetRepositoryPort,
 } from '../../domain/ports/ppoe-acceso-internet.port';
 
 import { ClienteAccesoInternetEntity } from '../../domain/entities/ppoe-acceso-internet.entity';
 
 import { ClienteAccesoInternetPrismaMapper } from './cliente-acceso-internet-prisma.mapper';
+import { MetodoAutenticacionInternet } from '../../domain/enums/ppoe-acceso-internet.enum';
 
 @Injectable()
 export class ClienteAccesoInternetPrismaRepository
@@ -78,6 +80,27 @@ export class ClienteAccesoInternetPrismaRepository
       where: {
         id: params.accesoInternetId,
         clienteId: params.clienteId,
+      },
+    });
+
+    if (!record) {
+      return null;
+    }
+
+    return ClienteAccesoInternetPrismaMapper.toDomain(record);
+  }
+
+  async findPppoeByClienteId(
+    params: BuscarAccesoPppoePorClienteParams,
+  ): Promise<ClienteAccesoInternetEntity | null> {
+    const record = await this.prisma.clienteAccesoInternet.findFirst({
+      where: {
+        empresaId: params.empresaId,
+        clienteId: params.clienteId,
+        metodoAutenticacion: MetodoAutenticacionInternet.PPPOE,
+      },
+      orderBy: {
+        id: 'desc',
       },
     });
 
