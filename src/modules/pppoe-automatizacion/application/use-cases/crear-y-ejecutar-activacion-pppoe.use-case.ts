@@ -50,6 +50,8 @@ import { CrearPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/applicat
 export enum ModoActivacionPppoe {
   INSTALACION = 'INSTALACION',
 
+  ALTA_MANUAL = 'ALTA_MANUAL',
+
   REACTIVACION_MANUAL = 'REACTIVACION_MANUAL',
 }
 
@@ -89,6 +91,18 @@ export type ActivacionPppoeInstalacionInput = ActivacionPppoeBaseInput & {
 };
 
 /**
+ * Primera activación administrativa de una cuenta PPPoE
+ * creada fuera del flujo de instalación.
+ *
+ * No se relaciona con ClienteInstalacion.
+ */
+export type AltaPppoeManualInput = ActivacionPppoeBaseInput & {
+  modo: ModoActivacionPppoe.ALTA_MANUAL;
+
+  motivo?: string | null;
+};
+
+/**
  * Reactivación administrativa de una cuenta suspendida.
  */
 export type ReactivacionPppoeManualInput = ActivacionPppoeBaseInput & {
@@ -99,6 +113,7 @@ export type ReactivacionPppoeManualInput = ActivacionPppoeBaseInput & {
 
 export type CrearYEjecutarActivacionPppoeInput =
   | ActivacionPppoeInstalacionInput
+  | AltaPppoeManualInput
   | ReactivacionPppoeManualInput;
 
 /**
@@ -483,6 +498,22 @@ export class CrearYEjecutarActivacionPppoeUseCase {
       return;
     }
 
+    if (params.modo === ModoActivacionPppoe.ALTA_MANUAL) {
+      const estadosPermitidos: EstadoCuentaPppoe[] = [
+        EstadoCuentaPppoe.EN_INSTALACION,
+
+        EstadoCuentaPppoe.EN_ACTIVACION,
+      ];
+
+      if (!estadosPermitidos.includes(params.estado)) {
+        throw new ConflictException(
+          `No puede realizarse el alta manual de la cuenta PPPoE desde el estado ${params.estado}.`,
+        );
+      }
+
+      return;
+    }
+
     if (params.modo === ModoActivacionPppoe.REACTIVACION_MANUAL) {
       if (params.estado !== EstadoCuentaPppoe.SUSPENDIDA) {
         throw new ConflictException(
@@ -597,6 +628,13 @@ export class CrearYEjecutarActivacionPppoeUseCase {
       return input.motivo.trim();
     }
 
+    if (input.modo === ModoActivacionPppoe.ALTA_MANUAL) {
+      return (
+        input.motivo?.trim() ||
+        'Activación administrativa inicial del servicio PPPoE.'
+      );
+    }
+
     return (
       input.motivo?.trim() ||
       'Activación del servicio PPPoE durante la instalación.'
@@ -643,6 +681,10 @@ export class CrearYEjecutarActivacionPppoeUseCase {
     if (input.modo === ModoActivacionPppoe.INSTALACION) {
       this.assertPositiveInteger(input.instalacionId, 'instalacionId');
 
+      return;
+    }
+
+    if (input.modo === ModoActivacionPppoe.ALTA_MANUAL) {
       return;
     }
 

@@ -39,9 +39,17 @@ import { PppoeOperacionAdminController } from './presentation/pppoe-operacion-ad
 import { AuthModule } from 'src/auth/auth.module';
 import { PpoeAccesoInternetModule } from '../pppoe-acceso-internet/ppoe-acceso-internet.module';
 import { PppoeCuentaAccionesController } from './presentation/pppoe-cuenta-acciones.controller';
+import { CrearPrealtaPppoeClienteUseCase } from './application/use-cases/crear-prealta-pppoe-cliente.use-case';
+import { ProvisionarPppoeClienteManualUseCase } from './application/use-cases/provisionar-pppoe-cliente-manual.use-case';
+import { PppoeCuentaProvisionamientoAdminService } from './application/services/pppoe-cuenta-provisionamiento-admin.service';
+import { PppoeCuentaProvisionamientoController } from './presentation/pppoe-cuenta-provisionamiento.controller';
 
 @Module({
-  controllers: [PppoeOperacionAdminController, PppoeCuentaAccionesController],
+  controllers: [
+    PppoeOperacionAdminController,
+    PppoeCuentaAccionesController,
+    PppoeCuentaProvisionamientoController,
+  ],
   imports: [
     AuthModule,
     PppoePerfilHomologacionModule,
@@ -69,7 +77,8 @@ import { PppoeCuentaAccionesController } from './presentation/pppoe-cuenta-accio
     ResolverContextoEjecucionPppoeService,
     PppoeOperacionStepRunnerService,
     PppoeOperacionAuditoriaService,
-
+    PppoeProvisionamientoService,
+    PppoeCuentaProvisionamientoAdminService,
     /*
      * Ejecutores SSH
      */
@@ -86,15 +95,15 @@ import { PppoeCuentaAccionesController } from './presentation/pppoe-cuenta-accio
     CrearYEjecutarSuspensionPppoeUseCase,
     RecuperarPppoeOperacionInterrumpidaUseCase,
     CrearYEjecutarEliminacionPppoeUseCase,
-
+    ProvisionarPppoeClienteManualUseCase,
     /*
      * Fachada pública
      */
-    PppoeProvisionamientoService,
 
     /*
      * Tokens
      */
+    CrearPrealtaPppoeClienteUseCase,
     {
       provide: PPPOE_PREALTA,
       useExisting: PrepararPrealtaPppoeUseCase,

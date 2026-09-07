@@ -36,6 +36,39 @@ import {
   PppoeOperacionAuditoriaPort,
 } from '../../domain/ports/pppoe-operacion-auditoria.port';
 import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
+import { EjecutarProvisionamientoPppoeBaseInput } from '../../domain/props/pppoe-provisionamiento.props';
+
+/**
+ * Determina el origen comercial de CREAR_SECRET.
+ *
+ * La operación técnica es la misma, pero puede pertenecer
+ * a una instalación o a una provisión administrativa.
+ */
+export enum ModoCreacionSecretPppoe {
+  INSTALACION = 'INSTALACION',
+
+  ALTA_MANUAL = 'ALTA_MANUAL',
+}
+
+/**
+ * Creación del secret fuera del flujo de instalación.
+ */
+export type CrearSecretPppoeAltaManualInput =
+  EjecutarProvisionamientoPppoeBaseInput & {
+    modo: ModoCreacionSecretPppoe.ALTA_MANUAL;
+  };
+
+/**
+ * Conservamos compatibilidad con el flujo actual de instalación.
+ *
+ * `modo` es opcional para las llamadas existentes:
+ * si no se proporciona, se interpreta como INSTALACION.
+ */
+export type CrearYEjecutarOperacionPppoeInput =
+  | (CrearSecretPppoeInput & {
+      modo?: ModoCreacionSecretPppoe.INSTALACION;
+    })
+  | CrearSecretPppoeAltaManualInput;
 
 /**
  * Crea y ejecuta una operación CREAR_SECRET.
@@ -71,7 +104,7 @@ export class CrearYEjecutarOperacionPppoeUseCase {
   ) {}
 
   async execute(
-    input: CrearSecretPppoeInput,
+    input: CrearYEjecutarOperacionPppoeInput,
   ): Promise<EjecutarOperacionPppoeResult> {
     this.validateInput(input);
 
@@ -165,6 +198,10 @@ export class CrearYEjecutarOperacionPppoeUseCase {
      * ========================================================
      */
 
+    const instalacionId = this.resolveInstalacionId(input);
+
+    const motivo = this.resolveMotivo(input);
+
     const aggregate = await this.crearOperacion.execute({
       empresaId: input.empresaId,
 
@@ -174,7 +211,7 @@ export class CrearYEjecutarOperacionPppoeUseCase {
 
       perfilHomologacionId: perfilProps.id,
 
-      instalacionId: input.instalacionId,
+      instalacionId: instalacionId,
 
       desinstalacionId: null,
 
@@ -194,9 +231,7 @@ export class CrearYEjecutarOperacionPppoeUseCase {
        */
       requiereReautenticacion: false,
 
-      motivo:
-        input.motivo ??
-        'Creación automática del secret PPPoE al iniciar la instalación.',
+      motivo: motivo,
 
       usuarioPppoeSnapshot: cuenta.usuario,
 
@@ -327,12 +362,10 @@ export class CrearYEjecutarOperacionPppoeUseCase {
     return operacion.id;
   }
 
-  private validateInput(input: CrearSecretPppoeInput): void {
+  private validateInput(input: CrearYEjecutarOperacionPppoeInput): void {
     this.assertPositiveInteger(input.empresaId, 'empresaId');
 
     this.assertPositiveInteger(input.cuentaPppoeId, 'cuentaPppoeId');
-
-    this.assertPositiveInteger(input.instalacionId, 'instalacionId');
 
     this.assertRequiredString(input.claveIdempotencia, 'claveIdempotencia');
 
@@ -355,6 +388,21 @@ export class CrearYEjecutarOperacionPppoeUseCase {
         'actor.iniciadoPorId es obligatorio cuando el origen es OPERADOR.',
       );
     }
+
+    /*
+     * ALTA_MANUAL no pertenece a una instalación.
+     */
+    if (input.modo === ModoCreacionSecretPppoe.ALTA_MANUAL) {
+      return;
+    }
+
+    /*
+     * Aquí solamente puede quedar:
+     *
+     * - INSTALACION
+     * - undefined (compatibilidad con el flujo anterior)
+     */
+    this.assertPositiveInteger(input.instalacionId, 'instalacionId');
   }
 
   private assertPositiveInteger(value: number, field: string): void {
@@ -367,5 +415,37 @@ export class CrearYEjecutarOperacionPppoeUseCase {
     if (typeof value !== 'string' || !value.trim()) {
       throw new BadRequestException(`${field} es obligatorio.`);
     }
+  }
+
+  /**
+   * CREAR_SECRET únicamente conserva instalación
+   * cuando pertenece al flujo tradicional.
+   */
+  private resolveInstalacionId(
+    input: CrearYEjecutarOperacionPppoeInput,
+  ): number | null {
+    if (input.modo === ModoCreacionSecretPppoe.ALTA_MANUAL) {
+      return null;
+    }
+
+    return input.instalacionId;
+  }
+
+  /**
+   * Describe correctamente el origen comercial
+   * de la creación del secret.
+   */
+  private resolveMotivo(input: CrearYEjecutarOperacionPppoeInput): string {
+    if (input.modo === ModoCreacionSecretPppoe.ALTA_MANUAL) {
+      return (
+        input.motivo?.trim() ||
+        'Creación administrativa inicial del secret PPPoE.'
+      );
+    }
+
+    return (
+      input.motivo?.trim() ||
+      'Creación automática del secret PPPoE al iniciar la instalación.'
+    );
   }
 }
