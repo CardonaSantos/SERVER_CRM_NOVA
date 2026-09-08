@@ -32,6 +32,8 @@ type AuthenticatedRequest = Request & {
     id?: number | string;
     sub?: number | string;
     userId?: number | string;
+
+    empresaId?: number | string;
   };
 };
 
@@ -46,8 +48,11 @@ type AuthenticatedRequest = Request & {
  */
 type ActorAdministrativoHttp = {
   operadorId: number;
+
   operadorNombre: null;
+
   ipOrigen: string | null;
+
   userAgent: string | null;
 };
 
@@ -65,37 +70,54 @@ export class PppoeOperacionAdminController {
 
   /**
    * Lista las operaciones PPPoE de forma paginada.
+   *
+   * empresaId se obtiene exclusivamente del JWT.
    */
   @Get()
   listar(
     @Query()
     query: ListarPppoeOperacionesQueryDto,
+
+    @Req()
+    req: AuthenticatedRequest,
   ) {
+    const empresaId = this.getAuthenticatedEmpresaId(req);
+
     return this.adminService.listar({
-      empresaId: query.empresaId,
+      empresaId,
 
       page: query.page,
+
       limit: query.limit,
 
       search: query.search,
 
       cuentaPppoeId: query.cuentaPppoeId,
+
       mikrotikRouterId: query.mikrotikRouterId,
+
       perfilHomologacionId: query.perfilHomologacionId,
 
       instalacionId: query.instalacionId,
+
       desinstalacionId: query.desinstalacionId,
 
       iniciadoPorId: query.iniciadoPorId,
+
       reautenticadoPorId: query.reautenticadoPorId,
+
       reintentoDeId: query.reintentoDeId,
 
       tipos: query.tipos,
+
       origenes: query.origenes,
+
       canales: query.canales,
+
       estados: query.estados,
 
       requiereReautenticacion: query.requiereReautenticacion,
+
       numeroIntento: query.numeroIntento,
 
       fechaDesde: query.fechaDesde ? new Date(query.fechaDesde) : undefined,
@@ -103,23 +125,29 @@ export class PppoeOperacionAdminController {
       fechaHasta: query.fechaHasta ? new Date(query.fechaHasta) : undefined,
 
       ordenPor: query.ordenPor,
+
       ordenDireccion: query.ordenDireccion,
     });
   }
 
   /**
    * Obtiene el detalle enriquecido de una operación.
+   *
+   * empresaId se resuelve desde el JWT.
    */
   @Get(':operacionId')
   obtenerDetalle(
     @Param('operacionId', ParseIntPipe)
     operacionId: number,
 
-    @Query('empresaId', ParseIntPipe)
-    empresaId: number,
+    @Req()
+    req: AuthenticatedRequest,
   ) {
+    const empresaId = this.getAuthenticatedEmpresaId(req);
+
     return this.adminService.obtenerDetalle({
       empresaId,
+
       operacionId,
     });
   }
@@ -140,10 +168,15 @@ export class PppoeOperacionAdminController {
     @Req()
     req: AuthenticatedRequest,
   ) {
+    const empresaId = this.getAuthenticatedEmpresaId(req);
+
     return this.adminService.autorizarYEjecutar({
-      empresaId: dto.empresaId,
+      empresaId,
+
       operacionId,
+
       password: dto.password,
+
       actor: this.getActor(req),
     });
   }
@@ -152,7 +185,7 @@ export class PppoeOperacionAdminController {
    * Crea una nueva operación a partir de una operación
    * FALLIDA o PARCIAL.
    *
-   * La operación anterior no se modifica ni se reutiliza.
+   * La operación anterior no se modifica ni reutiliza.
    */
   @Post(':operacionId/reintentar')
   @HttpCode(HttpStatus.OK)
@@ -166,11 +199,15 @@ export class PppoeOperacionAdminController {
     @Req()
     req: AuthenticatedRequest,
   ) {
+    const empresaId = this.getAuthenticatedEmpresaId(req);
+
     return this.adminService.reintentar({
-      empresaId: dto.empresaId,
+      empresaId,
+
       operacionId,
 
       claveIdempotencia: dto.claveIdempotencia,
+
       motivo: dto.motivo ?? null,
 
       actor: this.getActor(req),
@@ -195,8 +232,11 @@ export class PppoeOperacionAdminController {
     @Req()
     req: AuthenticatedRequest,
   ) {
+    const empresaId = this.getAuthenticatedEmpresaId(req);
+
     return this.adminService.recuperar({
-      empresaId: dto.empresaId,
+      empresaId,
+
       operacionId,
 
       confirmarAbandono: dto.confirmarAbandono,
@@ -223,12 +263,39 @@ export class PppoeOperacionAdminController {
     @Req()
     req: AuthenticatedRequest,
   ) {
+    const empresaId = this.getAuthenticatedEmpresaId(req);
+
     return this.adminService.cancelar({
-      empresaId: dto.empresaId,
+      empresaId,
+
       operacionId,
+
       motivo: dto.motivo,
+
       actor: this.getActor(req),
     });
+  }
+
+  /**
+   * Obtiene exclusivamente del JWT la empresa
+   * del usuario autenticado.
+   *
+   * Nunca se confía en empresaId recibido mediante:
+   *
+   * - query params;
+   * - body;
+   * - params.
+   */
+  private getAuthenticatedEmpresaId(req: AuthenticatedRequest): number {
+    const empresaId = Number(req.user?.empresaId);
+
+    if (!Number.isInteger(empresaId) || empresaId <= 0) {
+      throw new UnauthorizedException(
+        'No fue posible identificar la empresa del usuario autenticado.',
+      );
+    }
+
+    return empresaId;
   }
 
   /**
@@ -266,6 +333,9 @@ export class PppoeOperacionAdminController {
 
   /**
    * Obtiene la IP de origen de la petición.
+   *
+   * Considera x-forwarded-for para despliegues
+   * detrás de proxy reverso.
    */
   private getClientIp(req: AuthenticatedRequest): string | null {
     const forwardedFor = req.headers['x-forwarded-for'];

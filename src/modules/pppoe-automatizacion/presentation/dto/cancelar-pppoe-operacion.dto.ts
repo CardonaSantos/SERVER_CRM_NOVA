@@ -1,5 +1,6 @@
 import {
   IsInt,
+  IsOptional,
   IsPositive,
   IsString,
   MaxLength,
@@ -7,9 +8,10 @@ import {
 } from 'class-validator';
 
 export class CancelarPppoeOperacionDto {
+  @IsOptional()
   @IsInt()
   @IsPositive()
-  empresaId: number;
+  empresaId?: number;
 
   @IsString()
   @MinLength(1)

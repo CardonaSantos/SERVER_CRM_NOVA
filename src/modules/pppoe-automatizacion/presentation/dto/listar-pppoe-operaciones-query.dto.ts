@@ -56,10 +56,11 @@ function normalizeBooleanQuery(value: unknown): boolean | undefined {
 }
 
 export class ListarPppoeOperacionesQueryDto {
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @IsPositive()
-  empresaId: number;
+  empresaId?: number;
 
   @IsOptional()
   @Type(() => Number)

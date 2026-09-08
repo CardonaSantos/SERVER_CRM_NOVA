@@ -8,9 +8,10 @@ import {
 } from 'class-validator';
 
 export class ReintentarPppoeOperacionDto {
+  @IsOptional()
   @IsInt()
   @IsPositive()
-  empresaId: number;
+  empresaId?: number;
 
   @IsString()
   @MinLength(1)

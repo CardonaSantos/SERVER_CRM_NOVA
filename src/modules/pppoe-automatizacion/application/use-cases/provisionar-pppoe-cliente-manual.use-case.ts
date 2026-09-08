@@ -1,8 +1,19 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 
 import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
 
 import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
+
+import {
+  CLIENTE_PPPOE_CUENTA_REPOSITORY,
+  ClientePppoeCuentaRepositoryPort,
+} from 'src/modules/pppoe-cliente-cuenta/domain/ports/pppoe-cliente-cuenta.port';
 
 import { EstadoOperacionPppoe } from 'src/modules/pppoe-operacion/domain/enums/pppoe-operacion-operacion-paso.enums';
 
@@ -35,25 +46,30 @@ export type ProvisionarPppoeClienteManualResult = {
   cuentaPppoeId: number;
 
   /**
-   * true únicamente cuando CREAR_SECRET y
-   * ACTIVAR_SECRET finalizaron correctamente.
+   * true cuando al terminar la orquestación
+   * la activación fue exitosa y la cuenta quedó ACTIVA.
    */
   completada: boolean;
 
   /**
-   * Estado de cuenta conocido al terminar
-   * la orquestación.
+   * Estado conocido de la cuenta al finalizar.
    */
   estadoCuenta: EstadoCuentaPppoe | null;
 
   /**
-   * Resultado de la creación del secret.
+   * Resultado de CREAR_SECRET.
+   *
+   * Es null cuando el secret ya había sido confirmado
+   * previamente, por ejemplo después de un reintento
+   * exitoso de CREAR_SECRET.
    */
-  creacionSecret: EjecutarOperacionPppoeResult;
+  creacionSecret: EjecutarOperacionPppoeResult | null;
 
   /**
-   * null cuando CREAR_SECRET no terminó EXITOSA
-   * y, por seguridad, no se intentó activar.
+   * Resultado de ACTIVAR_SECRET.
+   *
+   * Es null cuando CREAR_SECRET no pudo completarse
+   * y por seguridad no se intentó activar.
    */
   activacion: EjecutarOperacionPppoeResult | null;
 };
@@ -71,14 +87,18 @@ export type ProvisionarPppoeClienteManualResult = {
  *
  * Orquesta los casos de uso técnicos existentes:
  *
- * 1. CREAR_SECRET en modo ALTA_MANUAL.
+ * 1. CREAR_SECRET en modo ALTA_MANUAL cuando sea necesario.
  * 2. ACTIVAR_SECRET en modo ALTA_MANUAL.
+ *
+ * Si CREAR_SECRET ya fue confirmado previamente,
+ * se continúa directamente con ACTIVAR_SECRET.
  */
 @Injectable()
 export class ProvisionarPppoeClienteManualUseCase {
-  private static readonly MAX_OPERATION_IDEMPOTENCY_LENGTH = 200;
-
   constructor(
+    @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
+    private readonly cuentaRepository: ClientePppoeCuentaRepositoryPort,
+
     private readonly crearSecret: CrearYEjecutarOperacionPppoeUseCase,
 
     private readonly activarSecret: CrearYEjecutarActivacionPppoeUseCase,
@@ -89,17 +109,32 @@ export class ProvisionarPppoeClienteManualUseCase {
   ): Promise<ProvisionarPppoeClienteManualResult> {
     this.validateInput(input);
 
-    // const claveBase = input.claveIdempotencia.trim();
+    /*
+     * ========================================================
+     * 1. CUENTA PPPoE
+     * ========================================================
+     */
 
-    // const claveCrearSecret = this.buildIdempotencyKey(
-    //   claveBase,
-    //   'crear-secret',
-    // );
+    const cuenta = await this.cuentaRepository.findById(input.cuentaPppoeId);
 
-    // const claveActivarSecret = this.buildIdempotencyKey(
-    //   claveBase,
-    //   'activar-secret',
-    // );
+    if (!cuenta) {
+      throw new NotFoundException(
+        `No existe la cuenta PPPoE ${input.cuentaPppoeId}.`,
+      );
+    }
+
+    if (cuenta.empresaId !== input.empresaId) {
+      throw new ConflictException(
+        'La cuenta PPPoE no pertenece a la empresa indicada.',
+      );
+    }
+
+    /*
+     * ========================================================
+     * 2. CLAVES IDEMPOTENTES DEL ALTA MANUAL
+     * ========================================================
+     */
+
     const claveCrearSecret = this.buildCreationIdempotencyKey({
       empresaId: input.empresaId,
       cuentaPppoeId: input.cuentaPppoeId,
@@ -112,85 +147,104 @@ export class ProvisionarPppoeClienteManualUseCase {
 
     /*
      * ========================================================
-     * 1. CREAR SECRET
+     * 3. DETERMINAR SI CREAR_SECRET TODAVÍA ES NECESARIO
      * ========================================================
      *
-     * La operación técnica existente:
+     * Caso normal:
      *
      * PENDIENTE_ACTIVACION
      *        ->
-     * EN_INSTALACION
+     * CREAR_SECRET
      *
-     * y deja secretCreadoEn informado.
      *
-     * No existe instalación asociada.
+     * Caso de recuperación:
+     *
+     * CREAR_SECRET FALLIDA
+     *        ->
+     * REINTENTO EXITOSO
+     *        ->
+     * EN_INSTALACION + secretCreadoEn
+     *
+     * En ese escenario no debemos volver a resolver
+     * la operación raíz fallida.
+     *
+     * El secret ya existe y fue confirmado.
+     * Continuamos directamente con ACTIVAR_SECRET.
      */
-    const creacionSecret = await this.crearSecret.execute({
-      modo: ModoCreacionSecretPppoe.ALTA_MANUAL,
 
-      empresaId: input.empresaId,
+    const puedeContinuarDesdeSecretCreado =
+      cuenta.estado === EstadoCuentaPppoe.EN_INSTALACION &&
+      cuenta.tieneSecretCreado;
 
-      cuentaPppoeId: input.cuentaPppoeId,
-
-      claveIdempotencia: claveCrearSecret,
-
-      actor: {
-        origen: input.actor.origen,
-
-        iniciadoPorId: input.actor.iniciadoPorId,
-
-        operadorNombre: input.actor.operadorNombre ?? null,
-
-        ipOrigen: input.actor.ipOrigen ?? null,
-
-        userAgent: input.actor.userAgent ?? null,
-      },
-
-      motivo: input.motivo ?? null,
-    });
+    let creacionSecret: EjecutarOperacionPppoeResult | null = null;
 
     /*
-     * CREAR_SECRET puede devolver una operación:
-     *
-     * - FALLIDA;
-     * - PARCIAL;
-     * - EJECUTANDO en una llamada concurrente;
-     * - etc.
-     *
-     * En cualquiera de esos casos NO debemos iniciar
-     * ACTIVAR_SECRET.
+     * ========================================================
+     * 4. CREAR SECRET CUANDO SEA NECESARIO
+     * ========================================================
      */
-    if (creacionSecret.estadoOperacion !== EstadoOperacionPppoe.EXITOSA) {
-      return {
+
+    if (!puedeContinuarDesdeSecretCreado) {
+      creacionSecret = await this.crearSecret.execute({
+        modo: ModoCreacionSecretPppoe.ALTA_MANUAL,
+
+        empresaId: input.empresaId,
+
         cuentaPppoeId: input.cuentaPppoeId,
 
-        completada: false,
+        claveIdempotencia: claveCrearSecret,
 
-        estadoCuenta: creacionSecret.estadoCuenta,
+        actor: {
+          origen: input.actor.origen,
 
-        creacionSecret,
+          iniciadoPorId: input.actor.iniciadoPorId,
 
-        activacion: null,
-      };
+          operadorNombre: input.actor.operadorNombre ?? null,
+
+          ipOrigen: input.actor.ipOrigen ?? null,
+
+          userAgent: input.actor.userAgent ?? null,
+        },
+
+        motivo: input.motivo ?? null,
+      });
+
+      /*
+       * No se activa mientras CREAR_SECRET no haya
+       * terminado correctamente.
+       */
+      if (creacionSecret.estadoOperacion !== EstadoOperacionPppoe.EXITOSA) {
+        return {
+          cuentaPppoeId: input.cuentaPppoeId,
+
+          completada: false,
+
+          estadoCuenta: creacionSecret.estadoCuenta,
+
+          creacionSecret,
+
+          activacion: null,
+        };
+      }
     }
 
     /*
      * ========================================================
-     * 2. ACTIVAR SECRET
+     * 5. ACTIVAR SECRET
      * ========================================================
      *
-     * Solamente llegamos aquí cuando CREAR_SECRET terminó
-     * correctamente.
+     * Llegamos aquí cuando:
      *
-     * El caso de uso de activación comprobará nuevamente:
+     * A) CREAR_SECRET acaba de terminar EXITOSA.
      *
-     * - empresa;
-     * - cuenta;
-     * - homologación;
-     * - router;
-     * - estado;
-     * - existencia local del secret.
+     * o
+     *
+     * B) un reintento previo ya confirmó el secret y
+     *    encontramos:
+     *
+     *    EN_INSTALACION + tieneSecretCreado
      */
+
     const activacion = await this.activarSecret.execute({
       modo: ModoActivacionPppoe.ALTA_MANUAL,
 
@@ -237,8 +291,6 @@ export class ProvisionarPppoeClienteManualUseCase {
 
     this.assertPositiveInteger(input.cuentaPppoeId, 'cuentaPppoeId');
 
-    // this.assertRequiredString(input.claveIdempotencia, 'claveIdempotencia');
-
     if (!input.actor) {
       throw new BadRequestException('actor es obligatorio.');
     }
@@ -258,45 +310,11 @@ export class ProvisionarPppoeClienteManualUseCase {
         'actor.iniciadoPorId es obligatorio cuando el origen es OPERADOR.',
       );
     }
-
-    /*
-     * Validamos las dos claves derivadas ahora para fallar
-     * antes de comenzar cualquier efecto remoto.
-     */
-    // const claveBase = input.claveIdempotencia.trim();
-
-    // this.buildIdempotencyKey(claveBase, 'crear-secret');
-
-    // this.buildIdempotencyKey(claveBase, 'activar-secret');
-  }
-
-  private buildIdempotencyKey(
-    base: string,
-    suffix: 'crear-secret' | 'activar-secret',
-  ): string {
-    const key = `${base}:${suffix}`;
-
-    if (
-      key.length >
-      ProvisionarPppoeClienteManualUseCase.MAX_OPERATION_IDEMPOTENCY_LENGTH
-    ) {
-      throw new BadRequestException(
-        `La clave de idempotencia es demasiado larga para generar la operación ${suffix}.`,
-      );
-    }
-
-    return key;
   }
 
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
       throw new BadRequestException(`${field} debe ser un entero positivo.`);
-    }
-  }
-
-  private assertRequiredString(value: string, field: string): void {
-    if (typeof value !== 'string' || !value.trim()) {
-      throw new BadRequestException(`${field} es obligatorio.`);
     }
   }
 
