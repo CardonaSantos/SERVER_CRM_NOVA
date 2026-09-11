@@ -32,6 +32,8 @@ export class ClientePppoeCuentaPrismaMapper {
 
       generadoPorId: record.generadoPorId ?? null,
 
+      adoptadoPorId: record.adoptadoPorId ?? null,
+
       generadoEn: new Date(record.generadoEn),
 
       secretCreadoEn: record.secretCreadoEn
@@ -43,6 +45,8 @@ export class ClientePppoeCuentaPrismaMapper {
       suspendidoEn: record.suspendidoEn ? new Date(record.suspendidoEn) : null,
 
       eliminadoEn: record.eliminadoEn ? new Date(record.eliminadoEn) : null,
+
+      adoptadoEn: record.adoptadoEn ? new Date(record.adoptadoEn) : null,
 
       ultimaSincronizacionEn: record.ultimaSincronizacionEn
         ? new Date(record.ultimaSincronizacionEn)
@@ -85,13 +89,41 @@ export class ClientePppoeCuentaPrismaMapper {
       estado: props.estado as PrismaEstadoCuentaPppoe,
 
       generadoPorId: props.generadoPorId ?? null,
+
+      adoptadoPorId: props.adoptadoPorId ?? null,
+
+      /**
+       * Ahora create() también puede recibir
+       * una entidad adoptada que ya nace ACTIVA
+       * o SUSPENDIDA.
+       *
+       * Por eso persistimos explícitamente
+       * las fechas calculadas por la entidad.
+       */
+      generadoEn: props.generadoEn,
+
+      secretCreadoEn: props.secretCreadoEn ?? null,
+
+      activadoEn: props.activadoEn ?? null,
+
+      suspendidoEn: props.suspendidoEn ?? null,
+
+      eliminadoEn: props.eliminadoEn ?? null,
+
+      adoptadoEn: props.adoptadoEn ?? null,
+
+      ultimaSincronizacionEn: props.ultimaSincronizacionEn ?? null,
+
+      ultimoError: props.ultimoError ?? null,
     };
   }
 
   /**
-   *
    * Incluye solamente los campos que pueden cambiar
    * durante el ciclo de vida de la cuenta.
+   *
+   * adoptadoPorId y adoptadoEn no se actualizan:
+   * describen el origen histórico de la cuenta.
    */
   static toUpdatePersistence(
     entity: ClientePppoeCuentaEntity,

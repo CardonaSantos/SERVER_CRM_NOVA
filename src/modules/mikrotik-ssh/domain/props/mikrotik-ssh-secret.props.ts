@@ -9,6 +9,36 @@ export type BuscarSecretMikrotikParams = {
 };
 
 /**
+ * Credenciales suministradas por un operador para comprobar
+ * que un secret PPPoE ya existente en MikroTik corresponde
+ * realmente a los datos que se desean adoptar en el CRM.
+ *
+ * IMPORTANTE:
+ *
+ * - usuarioPppoe es libre;
+ * - no se deriva del clienteId;
+ * - passwordPppoe solamente debe vivir temporalmente en memoria;
+ * - nunca debe incluirse en logs, auditorías ni comandos sanitizados.
+ *
+ * Este flujo es exclusivamente de lectura/verificación.
+ * No modifica el secret existente.
+ */
+export type VerificarCredencialesSecretMikrotikParams = {
+  /**
+   * Valor exacto de `name` dentro de /ppp secret.
+   */
+  usuarioPppoe: string;
+
+  /**
+   * Contraseña que el operador afirma que actualmente
+   * utiliza este secret en MikroTik.
+   *
+   * Será comparada remotamente, pero nunca devuelta.
+   */
+  passwordPppoe: string;
+};
+
+/**
  * Datos necesarios para crear un secret PPPoE.
  *
  * Requerimiento PPPoE v3:

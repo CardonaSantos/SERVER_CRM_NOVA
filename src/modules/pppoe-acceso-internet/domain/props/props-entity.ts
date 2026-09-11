@@ -6,19 +6,19 @@ import {
 
 /**
  * Estado completo de ClienteAccesoInternet.
- *
- * Se utiliza principalmente para:
- * - Rehidratar la entidad desde persistencia.
- * - Exponer sus valores primitivos al mapper.
  */
 export type ClienteAccesoInternetProps = {
   id: number | null;
+
   empresaId: number;
   clienteId: number;
+
   servicioInternetId: number | null;
 
   tecnologia: TecnologiaAccesoInternet;
+
   metodoAutenticacion: MetodoAutenticacionInternet;
+
   estado: EstadoAccesoInternet;
 
   activadoEn: Date | null;
@@ -32,11 +32,7 @@ export type ClienteAccesoInternetProps = {
 /**
  * Datos permitidos al crear un acceso nuevo.
  *
- * No recibe:
- * - id: lo genera la base de datos.
- * - estado: siempre comienza como PENDIENTE.
- * - fechas de activación, suspensión o baja.
- * - fechas de auditoría.
+ * Todo acceso normal comienza PENDIENTE.
  */
 export type CrearClienteAccesoInternetProps = {
   clienteId: number;
@@ -46,5 +42,45 @@ export type CrearClienteAccesoInternetProps = {
   servicioInternetId?: number | null;
 
   tecnologia: TecnologiaAccesoInternet;
+
   metodoAutenticacion: MetodoAutenticacionInternet;
+};
+
+/**
+ * Datos necesarios para registrar localmente
+ * un acceso que ya existe y está operativo
+ * previamente en infraestructura.
+ *
+ * Este flujo se utiliza durante la adopción
+ * de cuentas PPPoE históricas.
+ */
+export type AdoptarClienteAccesoInternetProps = {
+  empresaId: number;
+
+  clienteId: number;
+
+  servicioInternetId: number;
+
+  tecnologia: TecnologiaAccesoInternet;
+
+  metodoAutenticacion: MetodoAutenticacionInternet;
+
+  /**
+   * Estado observado directamente en MikroTik.
+   *
+   * Para una adopción solamente admitimos:
+   *
+   * ACTIVO
+   * SUSPENDIDO
+   */
+  estadoRemoto: EstadoAccesoInternet.ACTIVO | EstadoAccesoInternet.SUSPENDIDO;
+
+  /**
+   * Momento en que el acceso fue incorporado
+   * al CRM.
+   *
+   * No representa su fecha histórica
+   * real de activación.
+   */
+  fechaAdopcion?: Date;
 };

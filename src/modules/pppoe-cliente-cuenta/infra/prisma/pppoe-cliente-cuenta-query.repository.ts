@@ -70,6 +70,8 @@ export class ClientePppoeCuentaPrismaQueryRepository
 
           generadoEn: true,
 
+          adoptadoEn: true,
+
           secretCreadoEn: true,
 
           activadoEn: true,
@@ -269,10 +271,10 @@ export class ClientePppoeCuentaPrismaQueryRepository
             nombre: record.perfilHomologacion.mikrotikRouter.nombre,
           },
 
-          origen:
-            record.accesoInternet.instalaciones.length > 0
-              ? OrigenCuentaPppoe.INSTALACION
-              : OrigenCuentaPppoe.ALTA_MANUAL,
+          origen: this.resolveOrigen(
+            record.adoptadoEn,
+            record.accesoInternet.instalaciones.length > 0,
+          ),
 
           ultimaOperacion:
             ultimaOperacion === null
@@ -334,7 +336,10 @@ export class ClientePppoeCuentaPrismaQueryRepository
 
         generadoPorId: true,
 
+        adoptadoPorId: true,
+
         generadoEn: true,
+        adoptadoEn: true,
 
         secretCreadoEn: true,
 
@@ -351,6 +356,20 @@ export class ClientePppoeCuentaPrismaQueryRepository
         actualizadoEn: true,
 
         generadoPor: {
+          select: {
+            id: true,
+
+            nombre: true,
+
+            correo: true,
+
+            telefono: true,
+
+            activo: true,
+          },
+        },
+
+        adoptadoPor: {
           select: {
             id: true,
 
@@ -587,7 +606,11 @@ export class ClientePppoeCuentaPrismaQueryRepository
 
       generadoPorId: record.generadoPorId,
 
+      adoptadoPorId: record.adoptadoPorId,
+
       generadoEn: record.generadoEn,
+
+      adoptadoEn: record.adoptadoEn,
 
       secretCreadoEn: record.secretCreadoEn,
 
@@ -614,6 +637,20 @@ export class ClientePppoeCuentaPrismaQueryRepository
             telefono: record.generadoPor.telefono,
 
             activo: record.generadoPor.activo,
+          }
+        : null,
+
+      adoptadoPor: record.adoptadoPor
+        ? {
+            id: record.adoptadoPor.id,
+
+            nombre: record.adoptadoPor.nombre,
+
+            correo: record.adoptadoPor.correo,
+
+            telefono: record.adoptadoPor.telefono,
+
+            activo: record.adoptadoPor.activo,
           }
         : null,
 
@@ -695,10 +732,10 @@ export class ClientePppoeCuentaPrismaQueryRepository
         activo: record.perfilHomologacion.mikrotikRouter.activo,
       },
 
-      origen:
-        record.accesoInternet.instalaciones.length > 0
-          ? OrigenCuentaPppoe.INSTALACION
-          : OrigenCuentaPppoe.ALTA_MANUAL,
+      origen: this.resolveOrigen(
+        record.adoptadoEn,
+        record.accesoInternet.instalaciones.length > 0,
+      ),
 
       instalaciones: record.accesoInternet.instalaciones.map((vinculo) => ({
         vinculoId: vinculo.id,
@@ -781,6 +818,16 @@ export class ClientePppoeCuentaPrismaQueryRepository
 
     return {
       empresaId: filters.empresaId,
+
+      adoptadoEn:
+        filters.origen === OrigenCuentaPppoe.EXTERNA_ADOPTADA
+          ? {
+              not: null,
+            }
+          : filters.origen === OrigenCuentaPppoe.INSTALACION ||
+              filters.origen === OrigenCuentaPppoe.ALTA_MANUAL
+            ? null
+            : undefined,
 
       perfilHomologacionId: filters.perfilHomologacionId ?? undefined,
 
@@ -1011,5 +1058,20 @@ export class ClientePppoeCuentaPrismaQueryRepository
     if (!Number.isInteger(value) || value <= 0) {
       throw new Error(`${field} debe ser un entero positivo.`);
     }
+  }
+
+  private resolveOrigen(
+    adoptadoEn: Date | null,
+    tieneInstalacion: boolean,
+  ): OrigenCuentaPppoe {
+    if (adoptadoEn !== null) {
+      return OrigenCuentaPppoe.EXTERNA_ADOPTADA;
+    }
+
+    if (tieneInstalacion) {
+      return OrigenCuentaPppoe.INSTALACION;
+    }
+
+    return OrigenCuentaPppoe.ALTA_MANUAL;
   }
 }

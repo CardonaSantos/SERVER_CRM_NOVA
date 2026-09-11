@@ -1,5 +1,6 @@
 import { EstadoCuentaPppoe } from '../enums/pppoe-cliente-cuenta.enum';
 import {
+  AdoptarClientePppoeCuentaEntityProps,
   ClientePppoeCuentaEntityProps,
   CrearClientePppoeCuentaEntityProps,
 } from '../props/ppoe-cliente-cuenta.props';
@@ -17,7 +18,6 @@ export class ClientePppoeCuentaEntity {
   /**
    * Crea una cuenta PPPoE preparada en el CRM.
    *
-   *
    * - Las credenciales ya fueron generadas.
    * - El secreto ya fue cifrado externamente.
    * - Todavía no se ha creado el secret en MikroTik.
@@ -26,11 +26,8 @@ export class ClientePppoeCuentaEntity {
     input: CrearClientePppoeCuentaEntityProps,
   ): ClientePppoeCuentaEntity {
     this.assertPositiveId(input.empresaId, 'empresaId');
-
     this.assertPositiveId(input.accesoInternetId, 'accesoInternetId');
-
     this.assertPositiveId(input.perfilHomologacionId, 'perfilHomologacionId');
-
     this.assertOptionalPositiveId(input.generadoPorId, 'generadoPorId');
 
     const usuario = this.normalizeUsuario(input.usuario);
@@ -74,6 +71,8 @@ export class ClientePppoeCuentaEntity {
 
       generadoPorId: input.generadoPorId ?? null,
 
+      adoptadoPorId: null,
+
       generadoEn: now,
 
       secretCreadoEn: null,
@@ -81,7 +80,10 @@ export class ClientePppoeCuentaEntity {
       suspendidoEn: null,
       eliminadoEn: null,
 
+      adoptadoEn: null,
+
       ultimaSincronizacionEn: null,
+
       ultimoError: null,
 
       actualizadoEn: now,
@@ -89,9 +91,111 @@ export class ClientePppoeCuentaEntity {
   }
 
   /**
+   * Incorpora al CRM un secret PPPoE que ya existe
+   * previamente en MikroTik.
+   *
+   * - No crea ni modifica el secret remoto.
+   * - No inventa fechas históricas.
+   * - Las credenciales deben haber sido verificadas.
+   * - La contraseña debe llegar ya cifrada.
+   */
+  static adoptarExistente(
+    input: AdoptarClientePppoeCuentaEntityProps,
+  ): ClientePppoeCuentaEntity {
+    this.assertPositiveId(input.empresaId, 'empresaId');
+
+    this.assertPositiveId(input.accesoInternetId, 'accesoInternetId');
+
+    this.assertPositiveId(input.perfilHomologacionId, 'perfilHomologacionId');
+
+    this.assertPositiveId(input.adoptadoPorId, 'adoptadoPorId');
+
+    if (
+      input.estadoRemoto !== EstadoCuentaPppoe.ACTIVA &&
+      input.estadoRemoto !== EstadoCuentaPppoe.SUSPENDIDA
+    ) {
+      throw new Error(
+        'Una cuenta PPPoE adoptada debe encontrarse ACTIVA o SUSPENDIDA en MikroTik.',
+      );
+    }
+
+    const usuario = this.normalizeUsuario(input.usuario);
+
+    const secretoCifrado = this.normalizeRequiredString(
+      input.secretoCifrado,
+      'secretoCifrado',
+    );
+
+    const secretoIv = this.normalizeRequiredString(
+      input.secretoIv,
+      'secretoIv',
+    );
+
+    const secretoAuthTag = this.normalizeRequiredString(
+      input.secretoAuthTag,
+      'secretoAuthTag',
+    );
+
+    this.assertPositiveId(input.versionClave, 'versionClave');
+
+    const fechaAdopcion = input.fechaAdopcion
+      ? new Date(input.fechaAdopcion)
+      : new Date();
+
+    this.assertValidDate(fechaAdopcion, 'fechaAdopcion');
+
+    const props: ClientePppoeCuentaEntityProps = {
+      id: null,
+
+      empresaId: input.empresaId,
+
+      accesoInternetId: input.accesoInternetId,
+
+      perfilHomologacionId: input.perfilHomologacionId,
+
+      usuario,
+
+      secretoCifrado,
+      secretoIv,
+      secretoAuthTag,
+      versionClave: input.versionClave,
+
+      estado: input.estadoRemoto,
+
+      generadoPorId: null,
+
+      adoptadoPorId: input.adoptadoPorId,
+
+      generadoEn: fechaAdopcion,
+
+      /**
+       * Estas fechas históricas no son conocidas.
+       */
+      secretCreadoEn: null,
+      activadoEn: null,
+      suspendidoEn: null,
+      eliminadoEn: null,
+
+      adoptadoEn: fechaAdopcion,
+
+      /**
+       * Sí conocemos el momento en que verificamos
+       * la existencia y estado del secret.
+       */
+      ultimaSincronizacionEn: fechaAdopcion,
+
+      ultimoError: null,
+
+      actualizadoEn: fechaAdopcion,
+    };
+
+    this.assertConsistency(props);
+
+    return new ClientePppoeCuentaEntity(props);
+  }
+
+  /**
    * Reconstruye una cuenta obtenida desde persistencia.
-   *
-   *
    */
   static hydrate(
     input: ClientePppoeCuentaEntityProps,
@@ -106,6 +210,8 @@ export class ClientePppoeCuentaEntity {
 
     this.assertOptionalPositiveId(input.generadoPorId, 'generadoPorId');
 
+    this.assertOptionalPositiveId(input.adoptadoPorId, 'adoptadoPorId');
+
     this.assertPositiveId(input.versionClave, 'versionClave');
 
     this.assertValidEstado(input.estado);
@@ -119,6 +225,8 @@ export class ClientePppoeCuentaEntity {
     this.assertOptionalValidDate(input.suspendidoEn, 'suspendidoEn');
 
     this.assertOptionalValidDate(input.eliminadoEn, 'eliminadoEn');
+
+    this.assertOptionalValidDate(input.adoptadoEn, 'adoptadoEn');
 
     this.assertOptionalValidDate(
       input.ultimaSincronizacionEn,
@@ -146,6 +254,8 @@ export class ClientePppoeCuentaEntity {
 
       generadoPorId: input.generadoPorId ?? null,
 
+      adoptadoPorId: input.adoptadoPorId ?? null,
+
       generadoEn: new Date(input.generadoEn),
 
       secretCreadoEn: this.cloneOptionalDate(input.secretCreadoEn),
@@ -155,6 +265,8 @@ export class ClientePppoeCuentaEntity {
       suspendidoEn: this.cloneOptionalDate(input.suspendidoEn),
 
       eliminadoEn: this.cloneOptionalDate(input.eliminadoEn),
+
+      adoptadoEn: this.cloneOptionalDate(input.adoptadoEn),
 
       ultimaSincronizacionEn: this.cloneOptionalDate(
         input.ultimaSincronizacionEn,
@@ -214,10 +326,6 @@ export class ClientePppoeCuentaEntity {
     return this.props.versionClave;
   }
 
-  /**
-   * Salida agrupada para el adaptador que posteriormente
-   * descifrará el secreto.
-   */
   get secretoProtegido(): SecretoPppoeProtegidoProps {
     return {
       secretoCifrado: this.props.secretoCifrado,
@@ -255,7 +363,7 @@ export class ClientePppoeCuentaEntity {
   }
 
   get tieneSecretCreado(): boolean {
-    return this.props.secretCreadoEn !== null;
+    return this.props.secretCreadoEn !== null || this.props.adoptadoEn !== null;
   }
 
   get tieneError(): boolean {
@@ -273,8 +381,20 @@ export class ClientePppoeCuentaEntity {
     return this.props.generadoPorId;
   }
 
+  get adoptadoPorId(): number | null {
+    return this.props.adoptadoPorId;
+  }
+
   get generadoEn(): Date {
     return new Date(this.props.generadoEn);
+  }
+
+  get adoptadoEn(): Date | null {
+    return ClientePppoeCuentaEntity.cloneOptionalDate(this.props.adoptadoEn);
+  }
+
+  get esAdoptada(): boolean {
+    return this.props.adoptadoEn !== null;
   }
 
   get secretCreadoEn(): Date | null {
@@ -313,9 +433,6 @@ export class ClientePppoeCuentaEntity {
    * Instalación y creación del secret
    */
 
-  /**
-   * Indica que comenzó la instalación física.
-   */
   iniciarInstalacion(fecha: Date = new Date()): void {
     this.assertPersisted();
 
@@ -327,12 +444,6 @@ export class ClientePppoeCuentaEntity {
     this.cambiarEstado(EstadoCuentaPppoe.EN_INSTALACION, fecha);
   }
 
-  /**
-   * Confirma que el secret fue creado físicamente
-   * en MikroTik.
-   *
-   * La cuenta todavía no queda activa.
-   */
   marcarSecretCreado(fecha: Date = new Date()): void {
     this.assertPersisted();
 
@@ -349,8 +460,6 @@ export class ClientePppoeCuentaEntity {
 
     this.props.ultimaSincronizacionEn = new Date(fecha);
 
-    this.props.ultimaSincronizacionEn = new Date(fecha);
-
     this.props.ultimoError = null;
 
     this.touch(fecha);
@@ -360,11 +469,6 @@ export class ClientePppoeCuentaEntity {
    * Activación
    */
 
-  /**
-   * Inicia el proceso de habilitar el secret.
-   *
-   * También permite reactivar una cuenta suspendida.
-   */
   iniciarActivacion(fecha: Date = new Date()): void {
     this.assertPersisted();
 
@@ -373,18 +477,15 @@ export class ClientePppoeCuentaEntity {
       'iniciar la activación',
     );
 
-    if (!this.props.secretCreadoEn) {
+    if (!this.tieneSecretCreado) {
       throw new Error(
-        'No se puede activar una cuenta cuyo secret todavía no ha sido creado.',
+        'No se puede activar una cuenta cuyo secret todavía no ha sido confirmado.',
       );
     }
 
     this.cambiarEstado(EstadoCuentaPppoe.EN_ACTIVACION, fecha);
   }
 
-  /**
-   * Confirma que el secret está habilitado.
-   */
   marcarActiva(fecha: Date = new Date()): void {
     this.assertPersisted();
 
@@ -393,9 +494,9 @@ export class ClientePppoeCuentaEntity {
       'marcar la cuenta como activa',
     );
 
-    if (!this.props.secretCreadoEn) {
+    if (!this.tieneSecretCreado) {
       throw new Error(
-        'No se puede marcar como activa una cuenta sin un secret creado.',
+        'No se puede marcar como activa una cuenta sin un secret existente.',
       );
     }
 
@@ -410,16 +511,6 @@ export class ClientePppoeCuentaEntity {
    * Suspensión
    */
 
-  /**
-   * Confirma que el servicio fue suspendido
-   * en MikroTik.
-   */
-  /**
-   * Confirma que el servicio quedó suspendido.
-   *
-   * ERROR se admite únicamente para completar un reintento
-   * de una operación de suspensión previamente fallida.
-   */
   marcarSuspendida(fecha: Date = new Date()): void {
     this.assertPersisted();
 
@@ -428,9 +519,12 @@ export class ClientePppoeCuentaEntity {
       'suspender la cuenta',
     );
 
-    if (!this.props.secretCreadoEn || !this.props.activadoEn) {
+    if (
+      !this.tieneSecretCreado ||
+      (!this.props.activadoEn && !this.esAdoptada)
+    ) {
       throw new Error(
-        'No puede suspenderse una cuenta que nunca fue activada.',
+        'No puede suspenderse una cuenta cuyo secret no está confirmado como existente.',
       );
     }
 
@@ -451,9 +545,12 @@ export class ClientePppoeCuentaEntity {
       'confirmar la suspensión reintentada',
     );
 
-    if (!this.props.secretCreadoEn || !this.props.activadoEn) {
+    if (
+      !this.tieneSecretCreado ||
+      (!this.props.activadoEn && !this.esAdoptada)
+    ) {
       throw new Error(
-        'No puede confirmarse la suspensión de una cuenta que nunca fue activada.',
+        'No puede confirmarse la suspensión de una cuenta cuyo secret no está confirmado como existente.',
       );
     }
 
@@ -474,15 +571,10 @@ export class ClientePppoeCuentaEntity {
     this.assertCurrentState(
       [
         EstadoCuentaPppoe.PENDIENTE_ACTIVACION,
-
         EstadoCuentaPppoe.EN_INSTALACION,
-
         EstadoCuentaPppoe.EN_ACTIVACION,
-
         EstadoCuentaPppoe.ACTIVA,
-
         EstadoCuentaPppoe.SUSPENDIDA,
-
         EstadoCuentaPppoe.ERROR,
       ],
       'iniciar la desinstalación',
@@ -491,9 +583,6 @@ export class ClientePppoeCuentaEntity {
     this.cambiarEstado(EstadoCuentaPppoe.EN_DESINSTALACION, fecha);
   }
 
-  /**
-   * Confirma que el secret fue eliminado del MikroTik.
-   */
   marcarEliminada(fecha: Date = new Date()): void {
     this.assertPersisted();
 
@@ -539,9 +628,6 @@ export class ClientePppoeCuentaEntity {
     this.touch(fecha);
   }
 
-  /**
-   * Reinicia la creación del secret después de un error.
-   */
   reintentarInstalacion(fecha: Date = new Date()): void {
     this.assertPersisted();
 
@@ -550,7 +636,7 @@ export class ClientePppoeCuentaEntity {
       'reintentar la instalación',
     );
 
-    if (this.props.secretCreadoEn) {
+    if (this.tieneSecretCreado) {
       throw new Error(
         'El secret ya fue creado. Debe reintentar la activación, no la instalación.',
       );
@@ -559,9 +645,6 @@ export class ClientePppoeCuentaEntity {
     this.cambiarEstado(EstadoCuentaPppoe.EN_INSTALACION, fecha);
   }
 
-  /**
-   * Reinicia la activación después de un error.
-   */
   reintentarActivacion(fecha: Date = new Date()): void {
     this.assertPersisted();
 
@@ -570,9 +653,9 @@ export class ClientePppoeCuentaEntity {
       'reintentar la activación',
     );
 
-    if (!this.props.secretCreadoEn) {
+    if (!this.tieneSecretCreado) {
       throw new Error(
-        'No puede reintentarse la activación porque el secret no ha sido creado.',
+        'No puede reintentarse la activación porque el secret no ha sido confirmado.',
       );
     }
 
@@ -583,12 +666,6 @@ export class ClientePppoeCuentaEntity {
    * Rotación del secreto cifrado
    */
 
-  /**
-   * Sustituye el material cifrado después de una
-   * rotación de claves.
-   *
-   * La entidad nunca recibe la contraseña plana.
-   */
   rotarSecretoProtegido(
     secreto: SecretoPppoeProtegidoProps,
     fecha: Date = new Date(),
@@ -659,6 +736,8 @@ export class ClientePppoeCuentaEntity {
 
       generadoPorId: this.props.generadoPorId,
 
+      adoptadoPorId: this.props.adoptadoPorId,
+
       generadoEn: new Date(this.props.generadoEn),
 
       secretCreadoEn: ClientePppoeCuentaEntity.cloneOptionalDate(
@@ -675,6 +754,10 @@ export class ClientePppoeCuentaEntity {
 
       eliminadoEn: ClientePppoeCuentaEntity.cloneOptionalDate(
         this.props.eliminadoEn,
+      ),
+
+      adoptadoEn: ClientePppoeCuentaEntity.cloneOptionalDate(
+        this.props.adoptadoEn,
       ),
 
       ultimaSincronizacionEn: ClientePppoeCuentaEntity.cloneOptionalDate(
@@ -695,6 +778,7 @@ export class ClientePppoeCuentaEntity {
     ClientePppoeCuentaEntity.assertValidDate(fecha, 'fecha');
 
     this.props.estado = estado;
+
     this.props.ultimoError = null;
 
     this.touch(fecha);
@@ -732,21 +816,37 @@ export class ClientePppoeCuentaEntity {
   }
 
   private static assertConsistency(props: ClientePppoeCuentaEntityProps): void {
-    if (props.activadoEn && !props.secretCreadoEn) {
+    const esAdoptada = props.adoptadoEn !== null;
+
+    if ((props.adoptadoEn === null) !== (props.adoptadoPorId === null)) {
+      throw new Error(
+        'Una cuenta adoptada debe tener adoptadoEn y adoptadoPorId de forma consistente.',
+      );
+    }
+
+    if (props.activadoEn && !props.secretCreadoEn && !esAdoptada) {
       throw new Error(
         'Una cuenta activada debe tener una fecha de creación del secret.',
       );
     }
 
-    if (props.suspendidoEn && !props.secretCreadoEn) {
+    if (props.suspendidoEn && !props.secretCreadoEn && !esAdoptada) {
       throw new Error('Una cuenta suspendida debe tener un secret creado.');
     }
 
-    if (props.estado === EstadoCuentaPppoe.ACTIVA && !props.activadoEn) {
+    if (
+      props.estado === EstadoCuentaPppoe.ACTIVA &&
+      !props.activadoEn &&
+      !esAdoptada
+    ) {
       throw new Error('Una cuenta activa debe tener una fecha de activación.');
     }
 
-    if (props.estado === EstadoCuentaPppoe.SUSPENDIDA && !props.suspendidoEn) {
+    if (
+      props.estado === EstadoCuentaPppoe.SUSPENDIDA &&
+      !props.suspendidoEn &&
+      !esAdoptada
+    ) {
       throw new Error(
         'Una cuenta suspendida debe tener una fecha de suspensión.',
       );

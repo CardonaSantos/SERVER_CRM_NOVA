@@ -44,13 +44,25 @@ import { ProvisionarPppoeClienteManualUseCase } from './application/use-cases/pr
 import { PppoeCuentaProvisionamientoAdminService } from './application/services/pppoe-cuenta-provisionamiento-admin.service';
 import { PppoeCuentaProvisionamientoController } from './presentation/pppoe-cuenta-provisionamiento.controller';
 
+import { PrismaModule } from 'src/prisma/prisma.module';
+
+import { VerificarAdopcionPppoeUseCase } from './application/use-cases/verificar-adopcion-pppoe.use-case';
+
+import { PPPOE_ADOPCION_PERSISTENCE_PORT } from './domain/ports/pppoe-adopcion-persistence.port';
+
+import { PppoeAdopcionPrismaPersistence } from './infra/prisma/pppoe-adopcion-prisma.persistence';
+import { AdoptarCuentaPppoeExistenteUseCase } from './application/use-cases/adoptar-cuenta-pppoe-existente.use-case';
+import { PppoeCuentaAdopcionController } from './presentation/pppoe-cuenta-adopcion.controller';
+
 @Module({
   controllers: [
+    PppoeCuentaAdopcionController,
     PppoeOperacionAdminController,
     PppoeCuentaAccionesController,
     PppoeCuentaProvisionamientoController,
   ],
   imports: [
+    PrismaModule,
     AuthModule,
     PppoePerfilHomologacionModule,
     PppoeOperacionModule,
@@ -64,11 +76,18 @@ import { PppoeCuentaProvisionamientoController } from './presentation/pppoe-cuen
   ],
 
   providers: [
+    AdoptarCuentaPppoeExistenteUseCase,
     /*
      * Prealta y consultas
      */
     PrepararPrealtaPppoeUseCase,
     ConsultarCredencialesPppoeInstalacionUseCase,
+
+    /*
+     * Adopción de cuentas existentes
+     */
+    VerificarAdopcionPppoeUseCase,
+    PppoeAdopcionPrismaPersistence,
 
     /*
      * Servicios internos
@@ -79,6 +98,7 @@ import { PppoeCuentaProvisionamientoController } from './presentation/pppoe-cuen
     PppoeOperacionAuditoriaService,
     PppoeProvisionamientoService,
     PppoeCuentaProvisionamientoAdminService,
+
     /*
      * Ejecutores SSH
      */
@@ -86,6 +106,7 @@ import { PppoeCuentaProvisionamientoController } from './presentation/pppoe-cuen
     ActivarSecretPppoeExecutor,
     SuspenderServicioPppoeExecutor,
     EliminarSecretPppoeExecutor,
+
     /*
      * Orquestación
      */
@@ -96,29 +117,36 @@ import { PppoeCuentaProvisionamientoController } from './presentation/pppoe-cuen
     RecuperarPppoeOperacionInterrumpidaUseCase,
     CrearYEjecutarEliminacionPppoeUseCase,
     ProvisionarPppoeClienteManualUseCase,
-    /*
-     * Fachada pública
-     */
 
     /*
-     * Tokens
+     * Tokens / fachadas
      */
     CrearPrealtaPppoeClienteUseCase,
+
     {
       provide: PPPOE_PREALTA,
       useExisting: PrepararPrealtaPppoeUseCase,
     },
+
     {
       provide: PPPOE_CREDENCIALES_INSTALACION,
       useExisting: ConsultarCredencialesPppoeInstalacionUseCase,
     },
+
     {
       provide: PPPOE_PROVISIONAMIENTO,
       useExisting: PppoeProvisionamientoService,
     },
+
     {
       provide: PPPOE_OPERACION_AUDITORIA,
       useExisting: PppoeOperacionAuditoriaService,
+    },
+
+    {
+      provide: PPPOE_ADOPCION_PERSISTENCE_PORT,
+
+      useExisting: PppoeAdopcionPrismaPersistence,
     },
   ],
 

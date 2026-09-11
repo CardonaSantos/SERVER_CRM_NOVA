@@ -4,6 +4,7 @@ import {
   TecnologiaAccesoInternet,
 } from '../enums/ppoe-acceso-internet.enum';
 import {
+  AdoptarClienteAccesoInternetProps,
   ClienteAccesoInternetProps,
   CrearClienteAccesoInternetProps,
 } from '../props/props-entity';
@@ -46,6 +47,85 @@ export class ClienteAccesoInternetEntity {
 
       creadoEn: now,
       actualizadoEn: now,
+    });
+  }
+
+  /**
+   * Registra en el CRM un acceso que ya existe
+   * previamente en infraestructura.
+   *
+   * No simula:
+   *
+   * PENDIENTE -> ACTIVO
+   *
+   * ni:
+   *
+   * PENDIENTE -> ACTIVO -> SUSPENDIDO
+   *
+   * porque esas transiciones nunca ocurrieron
+   * dentro del CRM.
+   */
+  static adoptarExistente(
+    input: AdoptarClienteAccesoInternetProps,
+  ): ClienteAccesoInternetEntity {
+    this.assertPositiveId(input.empresaId, 'empresaId');
+
+    this.assertPositiveId(input.clienteId, 'clienteId');
+
+    this.assertPositiveId(input.servicioInternetId, 'servicioInternetId');
+
+    if (
+      input.estadoRemoto !== EstadoAccesoInternet.ACTIVO &&
+      input.estadoRemoto !== EstadoAccesoInternet.SUSPENDIDO
+    ) {
+      throw new Error(
+        'Un acceso adoptado debe encontrarse ACTIVO o SUSPENDIDO.',
+      );
+    }
+
+    const fechaAdopcion = input.fechaAdopcion
+      ? new Date(input.fechaAdopcion)
+      : new Date();
+
+    this.assertValidDate(fechaAdopcion, 'fechaAdopcion');
+
+    return new ClienteAccesoInternetEntity({
+      id: null,
+
+      empresaId: input.empresaId,
+
+      clienteId: input.clienteId,
+
+      servicioInternetId: input.servicioInternetId,
+
+      tecnologia: input.tecnologia,
+
+      metodoAutenticacion: input.metodoAutenticacion,
+
+      /**
+       * Reflejamos directamente el estado
+       * observado en MikroTik.
+       */
+      estado: input.estadoRemoto,
+
+      /**
+       * No conocemos las fechas históricas.
+       *
+       * Si posteriormente el CRM reactiva o
+       * suspende este acceso, esas acciones sí
+       * establecerán sus fechas correspondientes.
+       */
+      activadoEn: null,
+      suspendidoEn: null,
+      dadoDeBajaEn: null,
+
+      /**
+       * Sí conocemos cuándo se creó la
+       * representación local.
+       */
+      creadoEn: fechaAdopcion,
+
+      actualizadoEn: fechaAdopcion,
     });
   }
 
@@ -353,5 +433,13 @@ export class ClienteAccesoInternetEntity {
     }
 
     this.assertPositiveId(value, field);
+  }
+
+  private static assertValidDate(value: Date, field: string): void {
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      throw new Error(`${field} debe ser una fecha válida.`);
+    }
   }
 }

@@ -5,6 +5,7 @@ import {
   CrearSecretMikrotikParams,
   GestionarSecretMikrotikParams,
   RemoverSesionActivaMikrotikParams,
+  VerificarCredencialesSecretMikrotikParams,
 } from '../../domain/props/mikrotik-ssh-secret.props';
 
 import { ComandoRouterOsConstruido } from './types/routeros-command.types';
@@ -122,6 +123,173 @@ export class MikrotikPppoeCommandBuilder {
       ':put "CRM_SECRET_FOUND";',
 
       ':put ("CRM_NAME=<usuario>");',
+
+      ':put ("CRM_PROFILE=" . ($row->"profile"));',
+
+      ':put ("CRM_DISABLED=" . ($row->"disabled"));',
+
+      ':put ("CRM_SERVICE=" . ($row->"service"));',
+
+      '};',
+    ].join(' ');
+
+    return this.createResult(command, sanitizedCommand);
+  }
+
+  /**
+   * Verifica credenciales de un secret PPPoE existente.
+   *
+   * IMPORTANTE:
+   *
+   * - la contraseña remota nunca se imprime;
+   * - la contraseña suministrada nunca se imprime;
+   * - RouterOS realiza la comparación internamente;
+   * - stdout solamente contiene MATCH=true/false
+   *   y metadata no sensible del secret;
+   * - no existe ninguna mutación sobre RouterOS.
+   *
+   * Para poder consultar el campo `password`, el usuario
+   * SSH empleado por el CRM debe poseer permisos suficientes
+   * para parámetros sensibles.
+   */
+  construirVerificarCredencialesSecret(
+    params: VerificarCredencialesSecretMikrotikParams,
+  ): ComandoRouterOsConstruido {
+    const usuario = this.escapeUsername(params.usuarioPppoe);
+
+    /**
+     * Utilizamos exactamente el mismo escaper que en
+     * construirCrearSecret().
+     *
+     * Esto es especialmente importante porque las
+     * contraseñas actuales contienen caracteres como:
+     *
+     * NV-2026/09/10MH11:45#
+     */
+    const password = this.escaper.escaparCadena(params.passwordPppoe, {
+      campo: 'passwordPppoe',
+
+      maxBytes: MikrotikPppoeCommandBuilder.MAX_PASSWORD_BYTES,
+    });
+
+    /**
+     * El password forma parte del resultado interno de
+     * `print as-value`, pero nunca se envía a stdout.
+     */
+    const selector = [
+      '/ppp secret print',
+      'as-value',
+      'proplist=name,password,profile,disabled,service',
+      `where name=${usuario}`,
+    ].join(' ');
+
+    const selectorSanitizado = [
+      '/ppp secret print',
+      'as-value',
+      'proplist=name,password,profile,disabled,service',
+      'where name="<usuario>"',
+    ].join(' ');
+
+    const command = [
+      `:local rows [${selector}];`,
+
+      ':local total [:len $rows];',
+
+      ':if ($total = 0) do={',
+
+      ':put "CRM_SECRET_NOT_FOUND";',
+
+      '} else={',
+
+      ':if ($total > 1) do={',
+
+      ':error "CRM_SECRET_DUPLICADO";',
+
+      '};',
+
+      ':local row [:pick $rows 0];',
+
+      /**
+       * La contraseña recibida queda únicamente
+       * en una variable temporal de RouterOS.
+       */
+      `:local expectedPassword ${password};`,
+
+      ':local storedPassword ($row->"password");',
+
+      ':put "CRM_SECRET_FOUND";',
+
+      /**
+       * Único dato relacionado al password que
+       * sale del router.
+       */
+      ':if ($storedPassword = $expectedPassword) do={',
+
+      ':put "CRM_PASSWORD_MATCH=true";',
+
+      '} else={',
+
+      ':put "CRM_PASSWORD_MATCH=false";',
+
+      '};',
+
+      /**
+       * Metadata segura necesaria posteriormente para
+       * validar homologación y estado.
+       */
+      ':put ("CRM_NAME=" . ($row->"name"));',
+
+      ':put ("CRM_PROFILE=" . ($row->"profile"));',
+
+      ':put ("CRM_DISABLED=" . ($row->"disabled"));',
+
+      ':put ("CRM_SERVICE=" . ($row->"service"));',
+
+      '};',
+    ].join(' ');
+
+    /**
+     * Nunca reutilizamos `password` en esta versión.
+     *
+     * Incluso el usuario se redacta siguiendo el mismo
+     * criterio que construirBuscarSecret().
+     */
+    const sanitizedCommand = [
+      `:local rows [${selectorSanitizado}];`,
+
+      ':local total [:len $rows];',
+
+      ':if ($total = 0) do={',
+
+      ':put "CRM_SECRET_NOT_FOUND";',
+
+      '} else={',
+
+      ':if ($total > 1) do={',
+
+      ':error "CRM_SECRET_DUPLICADO";',
+
+      '};',
+
+      ':local row [:pick $rows 0];',
+
+      ':local expectedPassword "<redacted>";',
+
+      ':local storedPassword ($row->"password");',
+
+      ':put "CRM_SECRET_FOUND";',
+
+      ':if ($storedPassword = $expectedPassword) do={',
+
+      ':put "CRM_PASSWORD_MATCH=true";',
+
+      '} else={',
+
+      ':put "CRM_PASSWORD_MATCH=false";',
+
+      '};',
+
+      ':put "CRM_NAME=<usuario>";',
 
       ':put ("CRM_PROFILE=" . ($row->"profile"));',
 

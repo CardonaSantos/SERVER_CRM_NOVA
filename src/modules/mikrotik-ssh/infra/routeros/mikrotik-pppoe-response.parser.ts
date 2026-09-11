@@ -14,6 +14,7 @@ import {
   CrearSecretMikrotikParams,
   GestionarSecretMikrotikParams,
   RemoverSesionActivaMikrotikParams,
+  VerificarCredencialesSecretMikrotikParams,
 } from '../../domain/props/mikrotik-ssh-secret.props';
 
 import {
@@ -22,6 +23,7 @@ import {
   ConfirmarSecretMikrotikResult,
   CrearSecretMikrotikResult,
   GestionarSecretMikrotikResult,
+  VerificarCredencialesSecretMikrotikResult,
 } from '../../domain/results/mikrotik-ssh-secret.result';
 
 import { SesionActivaMikrotikSnapshot } from '../../domain/results/mikrotik-ssh-common.result';
@@ -166,6 +168,150 @@ export class MikrotikPppoeResponseParser {
       respuestaSanitizada: `Secret encontrado con perfil ${
         codigoPerfil ?? 'sin perfil'
       } y estado ${deshabilitado ? 'deshabilitado' : 'habilitado'}.`,
+    };
+  }
+
+  /**
+   * Interpreta la consulta utilizada para comprobar
+   * usuario + contraseña de un secret PPPoE existente.
+   *
+   * La contraseña nunca viene de vuelta desde RouterOS.
+   *
+   * RouterOS solamente devuelve:
+   *
+   * - existencia;
+   * - coincidencia de password;
+   * - name;
+   * - profile;
+   * - disabled;
+   * - service.
+   *
+   * Esta operación es exclusivamente de lectura.
+   */
+  parseVerificarCredencialesSecret(
+    execution: ResultadoEjecucionComandoMikrotikSsh,
+    params: VerificarCredencialesSecretMikrotikParams,
+  ): VerificarCredencialesSecretMikrotikResult {
+    this.assertCommandAccepted(
+      execution,
+      FaseFalloMikrotikSsh.EJECUCION,
+      EfectoRemotoMikrotik.NO_INICIADO,
+    );
+
+    const lines = this.normalizeLines(execution.stdout);
+
+    /**
+     * El usuario no existe.
+     *
+     * No hubo posibilidad de comparar una contraseña,
+     * por eso passwordCoincide es null y no false.
+     */
+    if (lines.includes('CRM_SECRET_NOT_FOUND')) {
+      return {
+        usuarioPppoe: params.usuarioPppoe,
+
+        encontrado: false,
+
+        passwordCoincide: null,
+
+        secret: null,
+
+        duracionMs: execution.duracionMs,
+
+        comandoSanitizado: execution.comandoSanitizado,
+
+        respuestaSanitizada: 'No se encontró el secret PPPoE solicitado.',
+      };
+    }
+
+    /**
+     * Si no apareció ni NOT_FOUND ni FOUND,
+     * la respuesta no cumple nuestro protocolo interno.
+     */
+    if (!lines.includes('CRM_SECRET_FOUND')) {
+      this.throwInvalidResponse(
+        'RouterOS no devolvió el marcador esperado para verificar las credenciales PPPoE.',
+        execution,
+        FaseFalloMikrotikSsh.EJECUCION,
+        EfectoRemotoMikrotik.NO_INICIADO,
+      );
+    }
+
+    /**
+     * Comprobamos que RouterOS realmente devolvió
+     * el mismo usuario que solicitamos.
+     */
+    const usuario = this.readRequiredValue(lines, 'CRM_NAME=', execution);
+
+    if (usuario !== params.usuarioPppoe) {
+      this.throwInvalidResponse(
+        'RouterOS devolvió un usuario PPPoE diferente al solicitado.',
+        execution,
+        FaseFalloMikrotikSsh.EJECUCION,
+        EfectoRemotoMikrotik.NO_INICIADO,
+      );
+    }
+
+    /**
+     * Este es el único dato relacionado con la
+     * contraseña que sale de RouterOS.
+     *
+     * Nunca recibimos la contraseña almacenada.
+     */
+    const passwordMatchValue = this.readRequiredValue(
+      lines,
+      'CRM_PASSWORD_MATCH=',
+      execution,
+    );
+
+    const passwordCoincide = this.parseBoolean(passwordMatchValue, execution);
+
+    const codigoPerfil = this.readOptionalValue(
+      lines,
+      'CRM_PROFILE=',
+      execution,
+    );
+
+    const disabledValue = this.readRequiredValue(
+      lines,
+      'CRM_DISABLED=',
+      execution,
+    );
+
+    const deshabilitado = this.parseBoolean(disabledValue, execution);
+
+    const servicio = this.readOptionalValue(lines, 'CRM_SERVICE=', execution);
+
+    return {
+      usuarioPppoe: params.usuarioPppoe,
+
+      encontrado: true,
+
+      passwordCoincide,
+
+      secret: {
+        usuarioPppoe: params.usuarioPppoe,
+
+        codigoPerfil,
+
+        deshabilitado,
+
+        servicio,
+
+        comentario: null,
+      },
+
+      duracionMs: execution.duracionMs,
+
+      comandoSanitizado: execution.comandoSanitizado,
+
+      respuestaSanitizada: passwordCoincide
+        ? `Las credenciales PPPoE fueron verificadas correctamente. Perfil ${codigoPerfil ?? 'sin perfil'}, secret ${
+            deshabilitado ? 'deshabilitado' : 'habilitado'
+          }.`
+        : `El usuario PPPoE existe, pero la contraseña suministrada no coincide. Perfil ${codigoPerfil ?? 'sin perfil'}, secret ${
+            deshabilitado ? 'deshabilitado' : 'habilitado'
+          }.`,
     };
   }
 

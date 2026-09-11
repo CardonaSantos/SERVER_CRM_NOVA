@@ -31,9 +31,13 @@ import { PPPOE_PERFIL_HOMOLOGACION_REPOSITORY } from 'src/modules/pppoe-perfil-h
 import { EjecutarOperacionPppoeResult } from '../../domain/props/pppoe-provisionamiento.props';
 
 import { EjecutarPppoeOperacionUseCase } from './ejecutar-pppoe-operacion.use-case';
+
 import { CrearPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/crear-pppoe-operacion.use-case.ts';
+
 import { MIKROTIK_ROUTER_REPOSITORY } from 'src/mikro-tik/infra/tokens/mikrotik-router.tokens';
+
 import { MikrotikRouterRepositoryPort } from 'src/mikro-tik/domain/ports/mikrotik-router-repository.port';
+
 import {
   PPPOE_OPERACION_AUDITORIA,
   PppoeOperacionAuditoriaPort,
@@ -141,6 +145,18 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
       );
     }
 
+    /**
+     * Una cuenta creada y activada por CRM dispone
+     * normalmente de activadoEn.
+     *
+     * Una cuenta adoptada puede no conocer su fecha
+     * histórica de activación. En ese caso adoptadoEn
+     * confirma que su estado remoto fue verificado antes
+     * de incorporarla al CRM.
+     */
+    const tieneActivacionConfirmada =
+      cuenta.activadoEn !== null || cuenta.esAdoptada;
+
     /*
      * ========================================================
      * 2. HOMOLOGACIÓN ASIGNADA
@@ -236,20 +252,23 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
 
         cuentaTieneSecret: cuenta.tieneSecretCreado,
 
-        cuentaFueActivada: cuenta.activadoEn !== null,
+        cuentaTieneActivacionConfirmada: tieneActivacionConfirmada,
       });
     }
 
     /*
      * Una suspensión inicial solamente puede crearse
      * cuando la cuenta está actualmente ACTIVA.
+     *
+     * Para cuentas adoptadas no exigimos activadoEn,
+     * porque esa fecha histórica puede ser desconocida.
      */
     this.assertAccountCanStartSuspension({
       estado: cuenta.estado,
 
       tieneSecret: cuenta.tieneSecretCreado,
 
-      fueActivada: cuenta.activadoEn !== null,
+      tieneActivacionConfirmada,
     });
 
     /*
@@ -326,7 +345,7 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
 
       cuentaTieneSecret: cuenta.tieneSecretCreado,
 
-      cuentaFueActivada: cuenta.activadoEn !== null,
+      cuentaTieneActivacionConfirmada: tieneActivacionConfirmada,
     });
   }
 
@@ -345,7 +364,7 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
 
     cuentaTieneSecret: boolean;
 
-    cuentaFueActivada: boolean;
+    cuentaTieneActivacionConfirmada: boolean;
   }): Promise<EjecutarOperacionPppoeResult> {
     const operacionId = this.requireOperationId(params.operacion);
 
@@ -387,7 +406,7 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
 
       tieneSecret: params.cuentaTieneSecret,
 
-      fueActivada: params.cuentaFueActivada,
+      tieneActivacionConfirmada: params.cuentaTieneActivacionConfirmada,
     });
 
     return this.ejecutarOperacion.execute({
@@ -400,6 +419,18 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
   /**
    * Valida una suspensión inicial.
    *
+   * Una cuenta puede suspenderse cuando:
+   *
+   * - tiene un secret confirmado;
+   * - dispone de activación confirmada;
+   * - está actualmente ACTIVA.
+   *
+   * Para una cuenta normal, la activación se confirma
+   * mediante activadoEn.
+   *
+   * Para una cuenta adoptada, se confirma mediante
+   * su proceso previo de adopción.
+   *
    * Una cuenta ERROR debe utilizar el flujo explícito
    * de reintento para conservar la cadena de operaciones.
    */
@@ -408,17 +439,17 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
 
     tieneSecret: boolean;
 
-    fueActivada: boolean;
+    tieneActivacionConfirmada: boolean;
   }): void {
     if (!params.tieneSecret) {
       throw new ConflictException(
-        'La cuenta PPPoE no tiene un secret creado que pueda suspenderse.',
+        'La cuenta PPPoE no tiene un secret confirmado que pueda suspenderse.',
       );
     }
 
-    if (!params.fueActivada) {
+    if (!params.tieneActivacionConfirmada) {
       throw new ConflictException(
-        'La cuenta PPPoE nunca fue activada y no puede suspenderse.',
+        'La cuenta PPPoE no tiene una activación confirmada y no puede suspenderse.',
       );
     }
 

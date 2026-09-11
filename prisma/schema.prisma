@@ -156,6 +156,8 @@ model Usuario {
 
   cuentasPppoeGeneradas ClientePppoeCuenta[] @relation("PppoeCuentaGeneradaPor")
 
+  cuentasPppoeAdoptadas ClientePppoeCuenta[] @relation("PppoeCuentaAdoptadaPor")
+
   accesosConfigurados ClienteAccesoConfiguracionTecnica[] @relation("AccesoConfiguradoPor")
 
   perfilesPppoeHomologadosCreados PppoePerfilHomologacion[] @relation("PppoePerfilHomologacionCreadoPor")
@@ -849,30 +851,54 @@ model ClientePppoeCuenta {
 
   generadoPorId Int?
 
-  generadoEn     DateTime  @default(now())
+  // NUEVO:
+  // Usuario del CRM que incorporó una cuenta
+  // que ya existía previamente en MikroTik.
+  adoptadoPorId Int?
+
+  generadoEn     DateTime @default(now())
   secretCreadoEn DateTime?
   activadoEn     DateTime?
   suspendidoEn   DateTime?
   eliminadoEn    DateTime?
 
+  // NUEVO:
+  // Fecha en que la cuenta preexistente fue
+  // incorporada formalmente al CRM.
+  //
+  // No representa la fecha real de creación
+  // del secret en MikroTik.
+  adoptadoEn DateTime?
+
   ultimaSincronizacionEn DateTime?
-  ultimoError            String?
+
+  ultimoError String?
 
   actualizadoEn DateTime @updatedAt
 
-  empresa            Empresa                 @relation(fields: [empresaId], references: [id], onDelete: Restrict)
-  accesoInternet     ClienteAccesoInternet   @relation(fields: [accesoInternetId], references: [id], onDelete: Restrict)
-  perfilHomologacion PppoePerfilHomologacion @relation(fields: [perfilHomologacionId], references: [id], onDelete: Restrict)
+  empresa Empresa @relation(fields: [empresaId],references: [id],onDelete: Restrict)
 
-  generadoPor Usuario? @relation("PppoeCuentaGeneradaPor", fields: [generadoPorId], references: [id], onDelete: Restrict)
+  accesoInternet ClienteAccesoInternet @relation(fields: [accesoInternetId],references: [id],onDelete: Restrict)
+
+  perfilHomologacion PppoePerfilHomologacion @relation(fields: [perfilHomologacionId],references: [id],onDelete: Restrict)
+
+  generadoPor Usuario? @relation("PppoeCuentaGeneradaPor",fields: [generadoPorId],references: [id],onDelete: Restrict)
+
+  // NUEVO
+  adoptadoPor Usuario? @relation("PppoeCuentaAdoptadaPor",fields: [adoptadoPorId],references: [id],onDelete: Restrict)
 
   operaciones PppoeOperacion[]
   auditorias  PppoeAuditoria[]
 
   @@unique([empresaId, usuario])
+
   @@index([empresaId, estado])
   @@index([perfilHomologacionId])
   @@index([generadoPorId])
+
+  // NUEVOS
+  @@index([adoptadoPorId])
+  @@index([empresaId, adoptadoEn])
 }
 
 model PppoeOperacion {
@@ -3382,6 +3408,12 @@ enum AccionAuditoriaPppoe {
 
   HOJA_VISUALIZADA
   HOJA_GENERADA
+
+  
+  // ADOPCIÓN DE CUENTAS EXISTENTES
+  CUENTA_EXTERNA_VERIFICADA
+  CUENTA_EXTERNA_VERIFICACION_FALLIDA
+  CUENTA_EXTERNA_ADOPTADA
 }
 
 // ============================================================

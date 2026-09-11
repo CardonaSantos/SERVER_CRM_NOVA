@@ -16,6 +16,61 @@ export type BuscarSecretMikrotikResult = ResultadoBaseMikrotikSsh & {
 };
 
 /**
+ * Resultado de comprobar las credenciales de un secret
+ * PPPoE ya existente.
+ *
+ * La contraseña real almacenada en MikroTik nunca forma
+ * parte de este contrato.
+ *
+ * Casos:
+ *
+ * encontrado=false
+ *   -> passwordCoincide=null
+ *   -> secret=null
+ *
+ * encontrado=true + contraseña incorrecta
+ *   -> passwordCoincide=false
+ *   -> secret contiene únicamente metadata segura
+ *
+ * encontrado=true + contraseña correcta
+ *   -> passwordCoincide=true
+ *   -> secret contiene metadata segura
+ */
+export type VerificarCredencialesSecretMikrotikResult =
+  ResultadoBaseMikrotikSsh & {
+    /**
+     * Usuario consultado.
+     */
+    usuarioPppoe: string;
+
+    /**
+     * Indica si RouterOS encontró exactamente un secret
+     * con ese nombre.
+     */
+    encontrado: boolean;
+
+    /**
+     * null:
+     * no existía el secret y por tanto no hubo comparación.
+     *
+     * false:
+     * el secret existe, pero la contraseña suministrada
+     * no coincide.
+     *
+     * true:
+     * usuario y contraseña fueron comprobados correctamente.
+     */
+    passwordCoincide: boolean | null;
+
+    /**
+     * Snapshot no sensible del secret encontrado.
+     *
+     * Nunca contiene password.
+     */
+    secret: SecretMikrotikSnapshot | null;
+  };
+
+/**
  * Resultado de enviar el comando de creación.
  *
  * comandoEjecutado no significa que el cambio ya haya

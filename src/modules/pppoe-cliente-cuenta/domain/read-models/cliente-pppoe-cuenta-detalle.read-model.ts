@@ -170,7 +170,11 @@ export type ClientePppoeCuentaDetalleReadModel = {
 
   generadoPorId: number | null;
 
+  adoptadoPorId: number | null;
+
   generadoEn: Date;
+
+  adoptadoEn: Date | null;
 
   secretCreadoEn: Date | null;
 
@@ -188,6 +192,8 @@ export type ClientePppoeCuentaDetalleReadModel = {
 
   generadoPor: ClientePppoeCuentaDetalleUsuarioResumen | null;
 
+  adoptadoPor: ClientePppoeCuentaDetalleUsuarioResumen | null;
+
   cliente: ClientePppoeCuentaDetalleClienteResumen;
 
   accesoInternet: ClientePppoeCuentaDetalleAcceso;
@@ -200,12 +206,6 @@ export type ClientePppoeCuentaDetalleReadModel = {
 
   origen: OrigenCuentaPppoe;
 
-  /**
-   * Normalmente habrá una instalación o ninguna.
-   *
-   * Se mantiene array porque el modelo permite conservar
-   * más de un vínculo histórico sobre el mismo acceso.
-   */
   instalaciones: ClientePppoeCuentaDetalleInstalacion[];
 
   ultimaOperacion: ClientePppoeCuentaDetalleUltimaOperacion | null;

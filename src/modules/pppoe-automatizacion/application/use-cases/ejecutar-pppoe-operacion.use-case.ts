@@ -3,6 +3,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
 } from '@nestjs/common';
 
 import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
@@ -104,6 +105,8 @@ export type EjecutarPppoeOperacionUseCaseInput = {
  */
 @Injectable()
 export class EjecutarPppoeOperacionUseCase {
+  private readonly logger = new Logger(EjecutarPppoeOperacionUseCase.name);
+
   /**
    * Pasos que pueden modificar el estado remoto.
    *
@@ -156,6 +159,10 @@ export class EjecutarPppoeOperacionUseCase {
     input: EjecutarPppoeOperacionUseCaseInput,
   ): Promise<EjecutarOperacionPppoeResult> {
     let acceso: ClienteAccesoInternetEntity | null = null;
+
+    this.logger.log(
+      `[PPPOE] Ejecutando operación ${input.operacionId} empresa=${input.empresaId}`,
+    );
 
     this.validateInput(input);
 
@@ -212,6 +219,18 @@ export class EjecutarPppoeOperacionUseCase {
 
       contexto = await this.resolverContexto.resolve(aggregate.operacion);
 
+      this.logger.log(
+        [
+          `[PPPOE] Contexto resuelto`,
+          `operacionId=${input.operacionId}`,
+          `tipo=${aggregate.operacion.tipo}`,
+          `cuentaId=${contexto.cuenta.id ?? 'null'}`,
+          `usuario=${contexto.cuenta.usuario}`,
+          `estado=${contexto.cuenta.estado}`,
+          `esAdoptada=${contexto.cuenta.esAdoptada}`,
+        ].join(' | '),
+      );
+
       /*
        * Se conserva antes de cualquier transición local.
        *
@@ -262,6 +281,9 @@ export class EjecutarPppoeOperacionUseCase {
        */
 
       executorStarted = true;
+      this.logger.log(
+        `[PPPOE] Iniciando operación técnica RouterOS. operacionId=${input.operacionId} tipo=${aggregate.operacion.tipo}`,
+      );
 
       const technicalResult = await this.executeTechnicalOperation({
         contexto,
@@ -350,6 +372,18 @@ export class EjecutarPppoeOperacionUseCase {
 
         executorStarted,
       });
+
+      this.logger.error(
+        [
+          `[PPPOE] Operación técnica fallida`,
+          `operacionId=${input.operacionId}`,
+          `tipo=${aggregate.operacion.tipo}`,
+          `codigo=${normalizedError.errorCodigo}`,
+          `mensaje=${normalizedError.message}`,
+          `executorStarted=${executorStarted}`,
+          `remoteStateConfirmed=${remoteStateConfirmed}`,
+        ].join(' | '),
+      );
 
       /*
        * Si el fallo ocurrió antes de que el executor
@@ -671,15 +705,38 @@ export class EjecutarPppoeOperacionUseCase {
   private async prepareAccountForSuspension(
     cuenta: ClientePppoeCuentaEntity,
   ): Promise<ClientePppoeCuentaEntity> {
+    /**
+     * La existencia del secret debe estar confirmada.
+     *
+     * Cuenta creada por CRM:
+     *   secretCreadoEn != null
+     *
+     * Cuenta adoptada:
+     *   adoptadoEn != null
+     *
+     * Esta distinción ya está encapsulada en
+     * cuenta.tieneSecretCreado.
+     */
     if (!cuenta.tieneSecretCreado) {
       throw new ConflictException(
-        'No puede suspenderse una cuenta cuyo secret todavía no ha sido creado.',
+        'No puede suspenderse una cuenta cuyo secret no está confirmado como existente.',
       );
     }
 
-    if (!cuenta.activadoEn) {
+    /**
+     * Las cuentas generadas por CRM conocen su
+     * fecha de activación.
+     *
+     * Las cuentas adoptadas pueden desconocer la fecha
+     * histórica, pero fueron verificadas directamente
+     * contra MikroTik antes de ser incorporadas.
+     */
+    const tieneActivacionConfirmada =
+      cuenta.activadoEn !== null || cuenta.esAdoptada;
+
+    if (!tieneActivacionConfirmada) {
       throw new ConflictException(
-        'No puede suspenderse una cuenta que nunca fue activada.',
+        'No puede suspenderse una cuenta que no tiene una activación confirmada.',
       );
     }
 
@@ -688,12 +745,11 @@ export class EjecutarPppoeOperacionUseCase {
         return cuenta;
 
       case EstadoCuentaPppoe.ERROR:
-        /*
-         * ERROR se admite para ejecutar un nuevo intento
-         * de una suspensión previamente fallida.
+        /**
+         * ERROR solamente se admite aquí para la ejecución
+         * de un reintento de suspensión previamente fallido.
          *
-         * El caso de uso creador deberá comprobar que
-         * realmente se trate de un reintento de suspensión.
+         * La cadena de reintento se valida fuera de este método.
          */
         return cuenta;
 

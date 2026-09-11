@@ -8,8 +8,23 @@ import {
 import { PaginatedResult } from 'src/Utils/pagination';
 
 export enum OrigenCuentaPppoe {
+  /**
+   * Cuenta generada durante el flujo
+   * de una instalación.
+   */
   INSTALACION = 'INSTALACION',
+
+  /**
+   * Cuenta creada manualmente desde CRM
+   * y posteriormente provisionada en MikroTik.
+   */
   ALTA_MANUAL = 'ALTA_MANUAL',
+
+  /**
+   * Secret que ya existía en MikroTik
+   * antes de ser incorporado al CRM.
+   */
+  EXTERNA_ADOPTADA = 'EXTERNA_ADOPTADA',
 }
 
 export type ClientePppoeCuentaUltimaOperacionResumen = {
@@ -147,8 +162,16 @@ export type ClientePppoeCuentaListItem = {
   /**
    * Origen administrativo de la cuenta.
    *
-   * Se deriva mediante la existencia o ausencia
-   * de ClienteInstalacionAcceso.
+   * Se deriva así:
+   *
+   * adoptadoEn != null
+   *   -> EXTERNA_ADOPTADA
+   *
+   * instalación vinculada
+   *   -> INSTALACION
+   *
+   * de lo contrario
+   *   -> ALTA_MANUAL
    */
   origen: OrigenCuentaPppoe;
 

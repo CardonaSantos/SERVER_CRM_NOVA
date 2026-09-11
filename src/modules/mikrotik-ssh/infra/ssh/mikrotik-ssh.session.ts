@@ -19,6 +19,7 @@ import {
   CrearSecretMikrotikParams,
   GestionarSecretMikrotikParams,
   RemoverSesionActivaMikrotikParams,
+  VerificarCredencialesSecretMikrotikParams,
 } from '../../domain/props/mikrotik-ssh-secret.props';
 
 import { SesionMikrotikSshInfo } from '../../domain/props/mikrotik-ssh-session.props';
@@ -30,6 +31,7 @@ import {
   CrearSecretMikrotikResult,
   GestionarSecretMikrotikResult,
   RemoverSesionActivaMikrotikResult,
+  VerificarCredencialesSecretMikrotikResult,
 } from '../../domain/results/mikrotik-ssh-secret.result';
 
 import { MikrotikPppoeCommandBuilder } from '../routeros/mikrotik-pppoe-command.builder';
@@ -136,6 +138,56 @@ export class MikrotikSshSession implements MikrotikSshSessionPort {
         EfectoRemotoMikrotik.NO_INICIADO,
       ),
     );
+  }
+
+  /**
+   * Comprueba usuario + contraseña de un secret
+   * PPPoE que ya existe en MikroTik.
+   *
+   * Es una operación exclusivamente de lectura:
+   *
+   * - no crea;
+   * - no modifica;
+   * - no habilita;
+   * - no deshabilita;
+   * - no elimina.
+   *
+   * La contraseña existe únicamente durante la
+   * construcción y ejecución temporal del comando.
+   */
+  verificarCredencialesSecret(
+    params: VerificarCredencialesSecretMikrotikParams,
+  ): Promise<VerificarCredencialesSecretMikrotikResult> {
+    return this.enqueueCommand(async () => {
+      this.assertOpen();
+
+      const command =
+        this.commandBuilder.construirVerificarCredencialesSecret(params);
+
+      /**
+       * Es una consulta.
+       *
+       * Si algo falla no existe ningún efecto
+       * remoto que reconciliar.
+       */
+      const execution = await this.executeCommand(
+        command,
+        FaseFalloMikrotikSsh.EJECUCION,
+        EfectoRemotoMikrotik.NO_INICIADO,
+      );
+
+      return this.parseWithContext(
+        () =>
+          this.responseParser.parseVerificarCredencialesSecret(
+            execution,
+            params,
+          ),
+
+        FaseFalloMikrotikSsh.EJECUCION,
+
+        EfectoRemotoMikrotik.NO_INICIADO,
+      );
+    });
   }
 
   /**

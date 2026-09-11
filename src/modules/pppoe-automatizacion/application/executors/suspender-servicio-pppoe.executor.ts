@@ -1,4 +1,4 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
 
 import {
   CodigoErrorMikrotikSsh,
@@ -65,6 +65,7 @@ export type EjecutarSuspenderServicioPppoeParams = {
  */
 @Injectable()
 export class SuspenderServicioPppoeExecutor {
+  private readonly logger = new Logger(SuspenderServicioPppoeExecutor.name);
   constructor(
     @Inject(MIKROTIK_SSH_PORT)
     private readonly mikrotikSsh: MikrotikSshPort,
@@ -77,7 +78,24 @@ export class SuspenderServicioPppoeExecutor {
   ): Promise<PppoeOperacionResultado> {
     const { contexto, pasos } = params;
 
+    this.logger.log(
+      [
+        '[SUSPENSION] Inicio executor',
+        `operacionId=${contexto.operacion.id ?? 'null'}`,
+        `cuentaId=${contexto.cuenta.id ?? 'null'}`,
+        `usuario=${contexto.cuenta.usuario}`,
+        `estado=${contexto.cuenta.estado}`,
+        `activadoEn=${contexto.cuenta.activadoEn?.toISOString() ?? 'null'}`,
+        `adoptadoEn=${contexto.cuenta.adoptadoEn?.toISOString() ?? 'null'}`,
+        `esAdoptada=${contexto.cuenta.esAdoptada}`,
+        `tieneSecret=${contexto.cuenta.tieneSecretCreado}`,
+      ].join(' | '),
+    );
+
     this.validateContext(contexto);
+    this.logger.log(
+      `[SUSPENSION] Contexto válido. Se continuará hacia SSH. usuario=${contexto.cuenta.usuario}`,
+    );
 
     const operacionId = contexto.operacion.id;
 
@@ -131,6 +149,9 @@ export class SuspenderServicioPppoeExecutor {
        * 1. CONECTAR AL ROUTER
        * ======================================================
        */
+      this.logger.log(
+        `[SUSPENSION] Abriendo SSH router=${contexto.router.host}:${contexto.router.port} usuarioPppoe=${usuarioPppoe}`,
+      );
 
       await this.stepRunner.ejecutar({
         empresaId,
@@ -479,16 +500,20 @@ export class SuspenderServicioPppoeExecutor {
       );
     }
 
-    /*
-     * La suspensión aplica sobre un servicio que
-     * anteriormente fue activado.
+    /**
+     * Las cuentas creadas por CRM tienen activadoEn.
+     *
+     * Las cuentas adoptadas pueden desconocer esa fecha histórica,
+     * pero su estado remoto fue verificado durante la adopción.
      */
-    if (!contexto.cuenta.activadoEn) {
+    const tieneActivacionConfirmada =
+      contexto.cuenta.activadoEn !== null || contexto.cuenta.esAdoptada;
+
+    if (!tieneActivacionConfirmada) {
       throw new ConflictException(
-        'La cuenta PPPoE nunca fue activada y no puede suspenderse.',
+        'La cuenta PPPoE no tiene una activación confirmada y no puede suspenderse.',
       );
     }
-
     /*
      * SUSPENDER_SERVICIO no necesita descifrar
      * la contraseña PPPoE.

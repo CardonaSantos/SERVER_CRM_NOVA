@@ -4,6 +4,7 @@ import {
   CrearSecretMikrotikParams,
   GestionarSecretMikrotikParams,
   RemoverSesionActivaMikrotikParams,
+  VerificarCredencialesSecretMikrotikParams,
 } from '../props/mikrotik-ssh-secret.props';
 
 import { SesionMikrotikSshInfo } from '../props/mikrotik-ssh-session.props';
@@ -14,6 +15,7 @@ import {
   CrearSecretMikrotikResult,
   GestionarSecretMikrotikResult,
   RemoverSesionActivaMikrotikResult,
+  VerificarCredencialesSecretMikrotikResult,
 } from '../results/mikrotik-ssh-secret.result';
 
 /**
@@ -41,6 +43,23 @@ export interface MikrotikSshSessionPort {
   buscarSecret(
     params: BuscarSecretMikrotikParams,
   ): Promise<BuscarSecretMikrotikResult>;
+
+  /**
+   * Comprueba que un usuario y contraseña suministrados
+   * correspondan a un secret PPPoE existente.
+   *
+   * Esta operación:
+   *
+   * - no crea el secret;
+   * - no modifica el secret;
+   * - no habilita ni deshabilita;
+   * - nunca devuelve la contraseña almacenada en RouterOS.
+   *
+   * La comparación del password ocurre dentro de RouterOS.
+   */
+  verificarCredencialesSecret(
+    params: VerificarCredencialesSecretMikrotikParams,
+  ): Promise<VerificarCredencialesSecretMikrotikResult>;
 
   /**
    * Crea un secret PPPoE.
