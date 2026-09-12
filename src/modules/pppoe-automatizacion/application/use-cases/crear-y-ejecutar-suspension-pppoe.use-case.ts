@@ -584,6 +584,8 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
     }
   }
 
+  // comiteo
+
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
       throw new BadRequestException(`${field} debe ser un entero positivo.`);
