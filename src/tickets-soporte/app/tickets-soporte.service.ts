@@ -753,65 +753,122 @@ export class TicketsSoporteService {
   // Obtener todos los tickets con sus detalles y comentarios
   async getTickets(query: QuerySearchTickets) {
     try {
+      // =====================================================
+      // ESTADOS POR VISTA
+      // =====================================================
+      //
+      // Centralizamos los estados para evitar diferencias
+      // entre:
+      //
+      // - los tickets que muestra cada tab
+      // - el contador mostrado por cada tab
+      //
+      // =====================================================
+
+      const estadosResueltos: EstadoTicketSoporte[] = [
+        EstadoTicketSoporte.RESUELTA,
+        EstadoTicketSoporte.CERRADO,
+      ];
+
+      const estadosEnProceso: EstadoTicketSoporte[] = [
+        EstadoTicketSoporte.EN_PROCESO,
+        EstadoTicketSoporte.PENDIENTE,
+        EstadoTicketSoporte.PENDIENTE_CLIENTE,
+        EstadoTicketSoporte.PENDIENTE_TECNICO,
+        EstadoTicketSoporte.PENDIENTE_REVISION,
+      ];
+
+      const estadosCancelados: EstadoTicketSoporte[] = [
+        EstadoTicketSoporte.CANCELADA,
+      ];
+
+      const estadosFueraDeInbox: EstadoTicketSoporte[] = [
+        ...estadosResueltos,
+        EstadoTicketSoporte.ARCHIVADA,
+        ...estadosCancelados,
+      ];
+
+      // =====================================================
+      // FILTRO BASE SEGÚN LA TAB SELECCIONADA
+      // =====================================================
+
       const baseWhere: Prisma.TicketSoporteWhereInput = (() => {
         switch (query.vista) {
+          // =================================================
+          // RESUELTOS
+          // =================================================
           case 'lista':
             return {
               estado: {
-                in: [EstadoTicketSoporte.RESUELTA, EstadoTicketSoporte.CERRADO],
+                in: estadosResueltos,
               },
             };
 
+          // =================================================
+          // EN PROCESO
+          // =================================================
           case 'enProceso':
             return {
               estado: {
-                in: [
-                  EstadoTicketSoporte.EN_PROCESO,
-                  EstadoTicketSoporte.PENDIENTE,
-                  EstadoTicketSoporte.PENDIENTE_CLIENTE,
-                  EstadoTicketSoporte.PENDIENTE_TECNICO,
-                  EstadoTicketSoporte.PENDIENTE_REVISION,
-                ],
+                in: estadosEnProceso,
               },
             };
 
-          case 'archivados':
+          // =================================================
+          // CANCELADOS
+          // =================================================
+          case 'cancelados':
             return {
               estado: {
-                in: [
-                  EstadoTicketSoporte.ARCHIVADA,
-                  EstadoTicketSoporte.CANCELADA,
-                ],
+                in: estadosCancelados,
               },
             };
 
+          // =================================================
+          // TODOS / INBOX
+          // =================================================
           case 'inbox':
           default:
             return {
               estado: {
-                notIn: [
-                  EstadoTicketSoporte.RESUELTA,
-                  EstadoTicketSoporte.CERRADO,
-                  EstadoTicketSoporte.ARCHIVADA,
-                  EstadoTicketSoporte.CANCELADA,
-                ],
+                notIn: estadosFueraDeInbox,
               },
             };
         }
       })();
 
+      // =====================================================
+      // BÚSQUEDA POR ID
+      // =====================================================
+
       const searchID = Number(query.search);
 
       // =====================================================
       // FILTROS QUE NECESITAN OR
+      // =====================================================
       //
       // Los dejamos dentro de AND para poder combinar:
+      //
       // - búsqueda
-      // - técnico principal/adicional
+      // - técnico principal
+      // - técnico adicional
+      //
       // sin que un OR reemplace al otro.
+      //
       // =====================================================
 
       const andFilters: Prisma.TicketSoporteWhereInput[] = [];
+
+      // =====================================================
+      // FILTRO POR TÉCNICO
+      // =====================================================
+      //
+      // Puede ser:
+      //
+      // - técnico principal
+      // - técnico adicional
+      //
+      // =====================================================
 
       if (query.tecs?.length) {
         andFilters.push({
@@ -833,6 +890,10 @@ export class TicketsSoporteService {
           ],
         });
       }
+
+      // =====================================================
+      // FILTRO DE BÚSQUEDA
+      // =====================================================
 
       if (query.search) {
         andFilters.push({
@@ -871,12 +932,24 @@ export class TicketsSoporteService {
         });
       }
 
+      // =====================================================
+      // WHERE FINAL
+      // =====================================================
+
       const where: Prisma.TicketSoporteWhereInput = {
         ...baseWhere,
+
+        // ===================================================
+        // CREADO POR
+        // ===================================================
 
         ...(query.creadosPor && {
           creadoPorId: query.creadosPor,
         }),
+
+        // ===================================================
+        // SECTOR
+        // ===================================================
 
         ...(query.sector && {
           cliente: {
@@ -885,6 +958,10 @@ export class TicketsSoporteService {
             },
           },
         }),
+
+        // ===================================================
+        // ETIQUETAS
+        // ===================================================
 
         ...(query.tags?.length && {
           etiquetas: {
@@ -896,6 +973,10 @@ export class TicketsSoporteService {
           },
         }),
 
+        // ===================================================
+        // FECHA
+        // ===================================================
+
         ...(query.fechaInicio &&
           query.fechaFin && {
             fechaApertura: {
@@ -904,15 +985,36 @@ export class TicketsSoporteService {
             },
           }),
 
+        // ===================================================
+        // FILTROS OR AGRUPADOS
+        // ===================================================
+
         ...(andFilters.length > 0 && {
           AND: andFilters,
         }),
       };
 
-      this.logger.log(`Where:\n${JSON.stringify(query, null, 2)}`);
+      this.logger.log(
+        `Where:\n${JSON.stringify(
+          {
+            query,
+            where,
+          },
+          null,
+          2,
+        )}`,
+      );
+
+      // =====================================================
+      // PAGINACIÓN
+      // =====================================================
 
       const page = query.page ?? 1;
       const limit = query.limit ?? 10;
+
+      // =====================================================
+      // CONSULTAS
+      // =====================================================
 
       const [
         tickets,
@@ -920,7 +1022,12 @@ export class TicketsSoporteService {
         ticketsDisponibles,
         ticketEnProceso,
         ticketsResueltos,
+        ticketsCancelados,
       ] = await Promise.all([
+        // ===================================================
+        // LISTADO ACTUAL
+        // ===================================================
+
         this.prisma.ticketSoporte.findMany({
           where,
 
@@ -950,12 +1057,20 @@ export class TicketsSoporteService {
 
             fijado: true,
 
+            // =================================================
+            // TÉCNICO PRINCIPAL
+            // =================================================
+
             tecnico: {
               select: {
                 id: true,
                 nombre: true,
               },
             },
+
+            // =================================================
+            // TÉCNICOS ADICIONALES
+            // =================================================
 
             asignaciones: {
               select: {
@@ -969,6 +1084,10 @@ export class TicketsSoporteService {
               },
             },
 
+            // =================================================
+            // CREADOR
+            // =================================================
+
             creadoPor: {
               select: {
                 id: true,
@@ -976,6 +1095,10 @@ export class TicketsSoporteService {
                 rol: true,
               },
             },
+
+            // =================================================
+            // CLIENTE
+            // =================================================
 
             cliente: {
               select: {
@@ -995,6 +1118,10 @@ export class TicketsSoporteService {
             fechaResolucionTecnico: true,
             fechaCierre: true,
 
+            // =================================================
+            // ETIQUETAS
+            // =================================================
+
             etiquetas: {
               select: {
                 etiqueta: {
@@ -1005,6 +1132,10 @@ export class TicketsSoporteService {
                 },
               },
             },
+
+            // =================================================
+            // SEGUIMIENTO
+            // =================================================
 
             SeguimientoTicket: {
               select: {
@@ -1028,6 +1159,10 @@ export class TicketsSoporteService {
               },
             },
 
+            // =================================================
+            // LOGS DE TIEMPO
+            // =================================================
+
             logsTiempo: {
               select: {
                 id: true,
@@ -1036,6 +1171,10 @@ export class TicketsSoporteService {
                 duracionMinutos: true,
               },
             },
+
+            // =================================================
+            // RESUMEN
+            // =================================================
 
             resumen: {
               select: {
@@ -1059,31 +1198,65 @@ export class TicketsSoporteService {
           },
         }),
 
+        // ===================================================
+        // TOTAL DE LA VISTA ACTUAL
+        // ===================================================
+        //
+        // Este count sí usa todos los filtros actuales.
+        //
+        // Sirve para la paginación.
+        //
+        // ===================================================
+
         this.prisma.ticketSoporte.count({
           where,
         }),
 
+        // ===================================================
+        // CONTADOR: TODOS / INBOX
+        // ===================================================
+
         this.prisma.ticketSoporte.count({
           where: {
             estado: {
-              notIn: [
-                EstadoTicketSoporte.CERRADO,
-                EstadoTicketSoporte.CANCELADA,
-                EstadoTicketSoporte.RESUELTA,
-              ],
+              notIn: estadosFueraDeInbox,
             },
           },
         }),
 
-        this.prisma.ticketSoporte.count({
-          where: {
-            estado: EstadoTicketSoporte.EN_PROCESO,
-          },
-        }),
+        // ===================================================
+        // CONTADOR: EN PROCESO
+        // ===================================================
 
         this.prisma.ticketSoporte.count({
           where: {
-            estado: EstadoTicketSoporte.RESUELTA,
+            estado: {
+              in: estadosEnProceso,
+            },
+          },
+        }),
+
+        // ===================================================
+        // CONTADOR: RESUELTOS
+        // ===================================================
+
+        this.prisma.ticketSoporte.count({
+          where: {
+            estado: {
+              in: estadosResueltos,
+            },
+          },
+        }),
+
+        // ===================================================
+        // CONTADOR: CANCELADOS
+        // ===================================================
+
+        this.prisma.ticketSoporte.count({
+          where: {
+            estado: {
+              in: estadosCancelados,
+            },
           },
         }),
       ]);
@@ -1109,7 +1282,9 @@ export class TicketsSoporteService {
         >();
 
         for (const { tecnico } of ticket.asignaciones) {
-          // Evitar mostrar al principal también como acompañante.
+          // Evitar mostrar al técnico principal también
+          // como acompañante.
+
           if (ticket.tecnico?.id === tecnico.id) {
             continue;
           }
@@ -1125,6 +1300,7 @@ export class TicketsSoporteService {
 
         // ===================================================
         // TIEMPO TÉCNICO ACTUAL
+        // ===================================================
         //
         // Logs cerrados:
         //   duracionMinutos
@@ -1132,8 +1308,9 @@ export class TicketsSoporteService {
         // Log actualmente abierto:
         //   inicio -> ahora
         //
-        // Esto permite que el valor mostrado sea realmente
-        // "live" mientras el ticket está EN_PROCESO.
+        // Esto permite mantener el valor "live" mientras
+        // el ticket se encuentra trabajando.
+        //
         // ===================================================
 
         const tiempoTecnicoLive = ticket.logsTiempo.reduce((total, log) => {
@@ -1149,16 +1326,25 @@ export class TicketsSoporteService {
           return total + (log.duracionMinutos ?? 0);
         }, 0);
 
-        /*
-         * Una vez cerrado, TicketResumen es la fuente
-         * histórica consolidada.
-         *
-         * Mientras siga abierto, calculamos desde logs.
-         */
+        // ===================================================
+        // MÉTRICAS CONSOLIDADAS
+        // ===================================================
+        //
+        // Una vez que existe TicketResumen, utilizamos
+        // sus valores históricos.
+        //
+        // Mientras no exista, calculamos desde los logs.
+        //
+        // ===================================================
+
         const tiempoTecnicoDisplay =
           ticket.resumen?.tiempoTecnicoMinutos ?? tiempoTecnicoLive;
 
         const tiempoTotalDisplay = ticket.resumen?.tiempoTotalMinutos ?? null;
+
+        // ===================================================
+        // RESPUESTA DEL TICKET
+        // ===================================================
 
         return {
           id: ticket.id,
@@ -1203,6 +1389,10 @@ export class TicketsSoporteService {
                 rol: 'SISTEMA',
               },
 
+          // =================================================
+          // CLIENTE
+          // =================================================
+
           customer: ticket.cliente
             ? {
                 id: ticket.cliente.id,
@@ -1228,6 +1418,10 @@ export class TicketsSoporteService {
             ticket.fechaResolucionTecnico?.toISOString() ?? null,
 
           closedAt: ticket.fechaCierre?.toISOString() ?? null,
+
+          // =================================================
+          // LEÍDO / NO LEÍDO
+          // =================================================
 
           unread: ticket.estado === EstadoTicketSoporte.ABIERTA,
 
@@ -1275,6 +1469,7 @@ export class TicketsSoporteService {
                 },
 
             text: comment.descripcion,
+
             date: comment.fechaRegistro.toISOString(),
           })),
 
@@ -1283,18 +1478,14 @@ export class TicketsSoporteService {
           // =================================================
 
           metrics: {
-            /*
-             * Tiempo realmente trabajado según
-             * TicketTimeLog.
-             */
+            // Tiempo realmente trabajado según TicketTimeLog.
+
             timeSpentMinutes: tiempoTecnicoDisplay,
 
-            /*
-             * Duración calendario apertura -> cierre.
-             *
-             * Sólo existe como consolidado cuando
-             * el ticket fue cerrado.
-             */
+            // Duración calendario apertura -> cierre.
+            //
+            // Utilizamos el valor consolidado cuando existe.
+
             totalElapsedMinutes: tiempoTotalDisplay,
 
             logsCount: ticket.logsTiempo.length,
@@ -1315,8 +1506,17 @@ export class TicketsSoporteService {
         };
       });
 
+      // =====================================================
+      // PAGINACIÓN FINAL
+      // =====================================================
+
       const total = counts;
+
       const totalPages = Math.ceil(total / limit);
+
+      // =====================================================
+      // RESPONSE
+      // =====================================================
 
       return {
         data: ticketsFormateados,
@@ -1325,15 +1525,18 @@ export class TicketsSoporteService {
           ticketsDisponibles,
           ticketEnProceso,
           ticketsResueltos,
+          ticketsCancelados,
         },
 
         meta: {
           page,
           limit,
+
           total,
           totalPages,
 
           hasNextPage: page < totalPages,
+
           hasPrevPage: page > 1,
         },
       };
@@ -1898,13 +2101,22 @@ export class TicketsSoporteService {
   // ===================== DELETE =====================
   async delete(ticketId: number) {
     return await this.prisma.$transaction(async (tx) => {
-      const deletedTicket = await tx.ticketSoporte.delete({
+      const ticketCancelado = await tx.ticketSoporte.update({
         where: {
           id: ticketId,
         },
+
+        data: {
+          estado: EstadoTicketSoporte.CANCELADA,
+        },
       });
-      this.logger.debug('El ticket eliminado es: ', deletedTicket);
-      return deletedTicket;
+
+      this.logger.debug(
+        `Ticket ${ticketId} marcado como CANCELADA`,
+        ticketCancelado,
+      );
+
+      return ticketCancelado;
     });
   }
 
