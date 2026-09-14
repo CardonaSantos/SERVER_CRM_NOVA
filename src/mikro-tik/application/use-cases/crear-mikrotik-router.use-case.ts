@@ -1,4 +1,4 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
 
 import { MIKROTIK_ROUTER_REPOSITORY } from '../../infra/tokens/mikrotik-router.tokens';
 
@@ -19,6 +19,7 @@ import { MikrotikRouterEntity } from 'src/mikro-tik/domain/entities/mikrotik-rou
 
 @Injectable()
 export class CrearMikrotikRouterUseCase {
+  private readonly logger = new Logger(CrearMikrotikRouterUseCase.name);
   constructor(
     @Inject(MIKROTIK_ROUTER_REPOSITORY)
     private readonly repository: MikrotikRouterRepositoryPort,
@@ -30,6 +31,8 @@ export class CrearMikrotikRouterUseCase {
   async execute(
     command: CreateMikroTikDto,
   ): Promise<MikrotikRouterPublicoReadModel> {
+    this.logger.log(`DTO recibido:\n${JSON.stringify(command, null, 2)}`);
+
     const nombre = command.nombre.trim();
 
     const duplicated = await this.repository.findByName({
