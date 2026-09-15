@@ -1,6 +1,7 @@
 import {
   ActivarSecretPppoeInput,
   CrearSecretPppoeInput,
+  DarDeBajaServicioPppoeInput,
   EjecutarOperacionPppoeResult,
   EliminarSecretPppoeInput,
   ReactivarServicioPppoeInput,
@@ -49,6 +50,9 @@ export interface PppoeProvisionamientoPort {
 
   /**
    * Deshabilita el secret y elimina sesiones activas.
+   *
+   * Es una operación reversible mediante
+   * reactivarServicio().
    */
   suspenderServicio(
     input: SuspenderServicioPppoeInput,
@@ -57,9 +61,30 @@ export interface PppoeProvisionamientoPort {
   /**
    * Deshabilita, desconecta y elimina definitivamente
    * el secret asociado a una desinstalación.
+   *
+   * Este método pertenece exclusivamente al contexto
+   * ClienteDesinstalacion.
    */
   eliminarSecret(
     input: EliminarSecretPppoeInput,
+  ): Promise<EjecutarOperacionPppoeResult>;
+
+  /**
+   * Da de baja definitivamente una cuenta PPPoE
+   * por decisión administrativa.
+   *
+   * No crea ni requiere:
+   *
+   * - ClienteInstalacion;
+   * - ClienteDesinstalacion.
+   *
+   * Reutiliza técnicamente ELIMINAR_SECRET.
+   *
+   * La reautenticación del operador debe ocurrir
+   * antes de invocar este puerto.
+   */
+  darDeBajaServicio(
+    input: DarDeBajaServicioPppoeInput,
   ): Promise<EjecutarOperacionPppoeResult>;
 
   /**

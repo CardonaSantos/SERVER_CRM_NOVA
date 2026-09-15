@@ -15,6 +15,8 @@ import {
   ClientePppoeCuentaRepositoryPort,
 } from 'src/modules/pppoe-cliente-cuenta/domain/ports/pppoe-cliente-cuenta.port';
 
+import { CrearPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/crear-pppoe-operacion.use-case.ts';
+
 import { PppoeOperacionEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion.entity';
 
 import { TipoOperacionPppoe } from 'src/modules/pppoe-operacion/domain/enums/pppoe-operacion-operacion-paso.enums';
@@ -38,21 +40,69 @@ import {
 } from '../../domain/ports/pppoe-operacion-auditoria.port';
 
 import {
+  ActorOperacionPppoeInput,
+  DarDeBajaServicioPppoeInput,
   EjecutarOperacionPppoeResult,
   EliminarSecretPppoeInput,
 } from '../../domain/props/pppoe-provisionamiento.props';
 
 import { EjecutarPppoeOperacionUseCase } from './ejecutar-pppoe-operacion.use-case';
-import { CrearPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/crear-pppoe-operacion.use-case.ts';
 
 /**
- * Crea y ejecuta una operación ELIMINAR_SECRET.
+ * Contexto funcional desde el que se solicita
+ * ELIMINAR_SECRET.
  *
- * La desinstalación recibida debe representar un flujo
- * previamente autorizado por el dominio de negocio.
+ * La operación técnica es la misma.
+ * Lo que cambia es la intención de negocio que la origina.
+ */
+export enum ModoEliminacionPppoe {
+  DESINSTALACION = 'DESINSTALACION',
+
+  BAJA_MANUAL = 'BAJA_MANUAL',
+}
+
+type EjecutarEliminacionPppoeInternaInput = {
+  modo: ModoEliminacionPppoe;
+
+  empresaId: number;
+
+  cuentaPppoeId: number;
+
+  claveIdempotencia: string;
+
+  motivo?: string | null;
+
+  actor: ActorOperacionPppoeInput;
+
+  instalacionId: number | null;
+
+  desinstalacionId: number | null;
+};
+
+/**
+ * Crea y ejecuta una operación técnica ELIMINAR_SECRET.
  *
- * Por esa razón no se solicita una segunda
- * reautenticación dentro de este caso de uso.
+ * Puede ser utilizada desde dos contextos funcionales:
+ *
+ * 1. DESINSTALACION
+ *
+ *    La eliminación pertenece a una
+ *    ClienteDesinstalacion previamente autorizada.
+ *
+ * 2. BAJA_MANUAL
+ *
+ *    La eliminación fue solicitada directamente
+ *    por un operador administrativo sin crear
+ *    ClienteInstalacion ni ClienteDesinstalacion.
+ *
+ * En ambos casos:
+ *
+ * - la reautenticación ocurre antes de entrar aquí;
+ * - este caso de uso no conoce contraseñas del operador;
+ * - se reutiliza exactamente la misma operación
+ *   técnica ELIMINAR_SECRET;
+ * - se mantiene la misma infraestructura de
+ *   idempotencia, pasos, auditoría y recuperación.
  */
 @Injectable()
 export class CrearYEjecutarEliminacionPppoeUseCase {
@@ -77,13 +127,75 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
     private readonly routerRepository: MikrotikRouterRepositoryPort,
   ) {}
 
-  async execute(
+  /**
+   * Conserva el contrato existente utilizado por
+   * ClienteDesinstalacion.
+   *
+   * No cambia ningún caller actual.
+   */
+  execute(
     input: EliminarSecretPppoeInput,
+  ): Promise<EjecutarOperacionPppoeResult> {
+    return this.executeInternal({
+      modo: ModoEliminacionPppoe.DESINSTALACION,
+
+      empresaId: input.empresaId,
+
+      cuentaPppoeId: input.cuentaPppoeId,
+
+      claveIdempotencia: input.claveIdempotencia,
+
+      motivo: input.motivo ?? null,
+
+      actor: input.actor,
+
+      instalacionId: input.instalacionId ?? null,
+
+      desinstalacionId: input.desinstalacionId,
+    });
+  }
+
+  /**
+   * Ejecuta la misma baja técnica sin crear
+   * un flujo ClienteDesinstalacion.
+   *
+   * Esta función todavía no debe exponerse
+   * directamente desde HTTP.
+   *
+   * La fachada administrativa será responsable
+   * de reautenticar al operador antes de llamarla.
+   */
+  executeBajaManual(
+    input: DarDeBajaServicioPppoeInput,
+  ): Promise<EjecutarOperacionPppoeResult> {
+    return this.executeInternal({
+      modo: ModoEliminacionPppoe.BAJA_MANUAL,
+
+      empresaId: input.empresaId,
+
+      cuentaPppoeId: input.cuentaPppoeId,
+
+      claveIdempotencia: input.claveIdempotencia,
+
+      motivo: input.motivo,
+
+      actor: input.actor,
+
+      instalacionId: null,
+
+      desinstalacionId: null,
+    });
+  }
+
+  private async executeInternal(
+    input: EjecutarEliminacionPppoeInternaInput,
   ): Promise<EjecutarOperacionPppoeResult> {
     this.validateInput(input);
 
     /*
-     * CUENTA PPPoE
+     * ========================================================
+     * 1. CUENTA PPPoE
+     * ========================================================
      */
 
     const cuenta = await this.cuentaRepository.findById(input.cuentaPppoeId);
@@ -198,17 +310,24 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
         operacion: existingOperation,
 
         estadoCuenta: cuenta.estado,
+
+        modo: input.modo,
       });
     }
 
     /*
-     * Una nueva intención no puede iniciarse cuando la
-     * cuenta ya fue eliminada.
+     * Una nueva intención no puede iniciarse cuando
+     * el estado de la cuenta no es compatible con
+     * el contexto funcional solicitado.
      *
-     * La repetición idempotente de una operación anterior
-     * se resolvió antes de esta validación.
+     * Una repetición idempotente de una operación
+     * anterior fue resuelta antes de esta validación.
      */
-    this.assertAccountCanBeDeleted(cuenta.estado);
+    this.assertAccountCanBeDeleted({
+      estado: cuenta.estado,
+
+      modo: input.modo,
+    });
 
     /*
      * ========================================================
@@ -225,7 +344,7 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
 
       perfilHomologacionId: perfilProps.id,
 
-      instalacionId: input.instalacionId ?? null,
+      instalacionId: input.instalacionId,
 
       desinstalacionId: input.desinstalacionId,
 
@@ -238,14 +357,16 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
       iniciadoPorId: input.actor.iniciadoPorId,
 
       /*
-       * El flujo de desinstalación ya fue autorizado.
-       * No se solicita una segunda autenticación aquí.
+       * Tanto DESINSTALACION como BAJA_MANUAL
+       * llegan aquí después de una autorización
+       * o reautenticación realizada por su fachada
+       * administrativa correspondiente.
+       *
+       * La contraseña jamás entra al motor PPPoE.
        */
       requiereReautenticacion: false,
 
-      motivo:
-        input.motivo ??
-        'Eliminación definitiva del secret PPPoE durante la desinstalación.',
+      motivo: this.resolveOperationReason(input),
 
       usuarioPppoeSnapshot: cuenta.usuario,
 
@@ -278,12 +399,14 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
       operacion: aggregate.operacion,
 
       estadoCuenta: cuenta.estado,
+
+      modo: input.modo,
     });
   }
 
   /**
-   * Ejecuta una operación pendiente o devuelve el estado
-   * de una operación existente sin repetir SSH.
+   * Ejecuta una operación pendiente o devuelve
+   * el estado persistido sin repetir SSH.
    */
   private async resolveOperation(params: {
     empresaId: number;
@@ -291,6 +414,8 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
     operacion: PppoeOperacionEntity;
 
     estadoCuenta: EstadoCuentaPppoe;
+
+    modo: ModoEliminacionPppoe;
   }): Promise<EjecutarOperacionPppoeResult> {
     const operacionId = this.requireOperationId(params.operacion);
 
@@ -310,9 +435,20 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
       });
     }
 
+    /*
+     * Ninguno de estos dos contextos genera una
+     * operación PPPoE pendiente de una segunda
+     * autorización.
+     *
+     * DESINSTALACION:
+     *   fue autorizada por su flujo administrativo.
+     *
+     * BAJA_MANUAL:
+     *   el operador fue reautenticado antes de llegar aquí.
+     */
     if (params.operacion.estaAutorizada()) {
       throw new ConflictException(
-        `La operación PPPoE ${operacionId} está AUTORIZADA, pero este flujo de desinstalación no utiliza reautenticación adicional.`,
+        `La operación PPPoE ${operacionId} está AUTORIZADA, pero este flujo ejecuta ELIMINAR_SECRET después de una autorización administrativa previa.`,
       );
     }
 
@@ -322,7 +458,11 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
       );
     }
 
-    this.assertAccountCanBeDeleted(params.estadoCuenta);
+    this.assertAccountCanBeDeleted({
+      estado: params.estadoCuenta,
+
+      modo: params.modo,
+    });
 
     return this.ejecutarOperacion.execute({
       empresaId: params.empresaId,
@@ -332,10 +472,41 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
   }
 
   /**
-   * Estados válidos antes de preparar la desinstalación.
+   * Estados permitidos para iniciar una nueva
+   * eliminación según su contexto de negocio.
+   *
+   * DESINSTALACION conserva las reglas actuales.
+   *
+   * BAJA_MANUAL se limita deliberadamente a cuentas
+   * cuyo servicio ya se encontraba formalmente
+   * ACTIVO o SUSPENDIDO.
    */
-  private assertAccountCanBeDeleted(estado: EstadoCuentaPppoe): void {
-    const estadosPermitidos: EstadoCuentaPppoe[] = [
+  private assertAccountCanBeDeleted(params: {
+    estado: EstadoCuentaPppoe;
+
+    modo: ModoEliminacionPppoe;
+  }): void {
+    if (params.estado === EstadoCuentaPppoe.ELIMINADA) {
+      throw new ConflictException('La cuenta PPPoE ya se encuentra eliminada.');
+    }
+
+    if (params.modo === ModoEliminacionPppoe.BAJA_MANUAL) {
+      const estadosPermitidosBajaManual: EstadoCuentaPppoe[] = [
+        EstadoCuentaPppoe.ACTIVA,
+
+        EstadoCuentaPppoe.SUSPENDIDA,
+      ];
+
+      if (estadosPermitidosBajaManual.includes(params.estado)) {
+        return;
+      }
+
+      throw new ConflictException(
+        `No puede darse de baja manualmente una cuenta PPPoE desde el estado ${params.estado}.`,
+      );
+    }
+
+    const estadosPermitidosDesinstalacion: EstadoCuentaPppoe[] = [
       EstadoCuentaPppoe.PENDIENTE_ACTIVACION,
 
       EstadoCuentaPppoe.EN_INSTALACION,
@@ -351,25 +522,21 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
       EstadoCuentaPppoe.EN_DESINSTALACION,
     ];
 
-    if (estadosPermitidos.includes(estado)) {
+    if (estadosPermitidosDesinstalacion.includes(params.estado)) {
       return;
     }
 
-    if (estado === EstadoCuentaPppoe.ELIMINADA) {
-      throw new ConflictException('La cuenta PPPoE ya se encuentra eliminada.');
-    }
-
     throw new ConflictException(
-      `No puede eliminarse el secret PPPoE desde el estado ${estado}.`,
+      `No puede eliminarse el secret PPPoE desde el estado ${params.estado}.`,
     );
   }
 
   /**
-   * Evita utilizar una clave idempotente
+   * Evita reutilizar una clave idempotente
    * para una intención diferente.
    */
   private assertCompatibleExistingOperation(params: {
-    input: EliminarSecretPppoeInput;
+    input: EjecutarEliminacionPppoeInternaInput;
 
     operacion: PppoeOperacionEntity;
 
@@ -384,23 +551,60 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
       params.operacion.tipo === TipoOperacionPppoe.ELIMINAR_SECRET;
 
     const sameInstallation =
-      params.operacion.instalacionId === (params.input.instalacionId ?? null);
+      params.operacion.instalacionId === params.input.instalacionId;
 
     const sameUninstallation =
       params.operacion.desinstalacionId === params.input.desinstalacionId;
+
+    const sameMode =
+      this.resolveOperationMode(params.operacion) === params.input.modo;
 
     if (
       sameAccount &&
       sameRouter &&
       sameType &&
       sameInstallation &&
-      sameUninstallation
+      sameUninstallation &&
+      sameMode
     ) {
       return;
     }
 
     throw new ConflictException(
       'La clave de idempotencia ya pertenece a una operación PPPoE diferente.',
+    );
+  }
+
+  /**
+   * La forma persistida permite distinguir los
+   * dos contextos sin agregar una columna nueva:
+   *
+   * DESINSTALACION:
+   *   desinstalacionId != null
+   *
+   * BAJA_MANUAL:
+   *   desinstalacionId == null
+   *   instalacionId == null
+   */
+  private resolveOperationMode(
+    operacion: PppoeOperacionEntity,
+  ): ModoEliminacionPppoe {
+    if (operacion.tipo !== TipoOperacionPppoe.ELIMINAR_SECRET) {
+      throw new ConflictException(
+        `La operación ${operacion.id ?? 'sin-id'} no es ELIMINAR_SECRET.`,
+      );
+    }
+
+    if (operacion.desinstalacionId !== null) {
+      return ModoEliminacionPppoe.DESINSTALACION;
+    }
+
+    if (operacion.instalacionId === null) {
+      return ModoEliminacionPppoe.BAJA_MANUAL;
+    }
+
+    throw new ConflictException(
+      'La operación ELIMINAR_SECRET no contiene un contexto funcional válido.',
     );
   }
 
@@ -447,14 +651,14 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
     return operacion.id;
   }
 
-  private validateInput(input: EliminarSecretPppoeInput): void {
+  /**
+   * Valida tanto datos comunes como las invariantes
+   * particulares del contexto funcional.
+   */
+  private validateInput(input: EjecutarEliminacionPppoeInternaInput): void {
     this.assertPositiveInteger(input.empresaId, 'empresaId');
 
     this.assertPositiveInteger(input.cuentaPppoeId, 'cuentaPppoeId');
-
-    this.assertPositiveInteger(input.desinstalacionId, 'desinstalacionId');
-
-    this.assertOptionalPositiveInteger(input.instalacionId, 'instalacionId');
 
     this.assertRequiredString(input.claveIdempotencia, 'claveIdempotencia');
 
@@ -477,6 +681,86 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
         'actor.iniciadoPorId es obligatorio cuando el origen es OPERADOR.',
       );
     }
+
+    switch (input.modo) {
+      case ModoEliminacionPppoe.DESINSTALACION:
+        this.validateUninstallationInput(input);
+        return;
+
+      case ModoEliminacionPppoe.BAJA_MANUAL:
+        this.validateManualTerminationInput(input);
+        return;
+
+      default:
+        throw new BadRequestException(
+          `Modo de eliminación PPPoE no soportado: ${String(input.modo)}.`,
+        );
+    }
+  }
+
+  private validateUninstallationInput(
+    input: EjecutarEliminacionPppoeInternaInput,
+  ): void {
+    if (input.desinstalacionId === null) {
+      throw new BadRequestException(
+        'desinstalacionId es obligatorio para una eliminación originada por desinstalación.',
+      );
+    }
+
+    this.assertPositiveInteger(input.desinstalacionId, 'desinstalacionId');
+
+    this.assertOptionalPositiveInteger(input.instalacionId, 'instalacionId');
+  }
+
+  private validateManualTerminationInput(
+    input: EjecutarEliminacionPppoeInternaInput,
+  ): void {
+    if (input.desinstalacionId !== null) {
+      throw new BadRequestException(
+        'Una baja manual PPPoE no puede estar vinculada a una desinstalación.',
+      );
+    }
+
+    if (input.instalacionId !== null) {
+      throw new BadRequestException(
+        'Una baja manual PPPoE no puede estar vinculada a una instalación.',
+      );
+    }
+
+    if (input.actor.origen !== OrigenOperacionPppoe.OPERADOR) {
+      throw new BadRequestException(
+        'Una baja manual PPPoE debe ser iniciada por un operador.',
+      );
+    }
+
+    if (input.actor.iniciadoPorId === null) {
+      throw new BadRequestException(
+        'actor.iniciadoPorId es obligatorio para una baja manual PPPoE.',
+      );
+    }
+
+    this.assertRequiredString(input.motivo, 'motivo');
+  }
+
+  private resolveOperationReason(
+    input: EjecutarEliminacionPppoeInternaInput,
+  ): string {
+    const motivo = input.motivo?.trim();
+
+    if (motivo) {
+      return motivo;
+    }
+
+    if (input.modo === ModoEliminacionPppoe.DESINSTALACION) {
+      return 'Eliminación definitiva del secret PPPoE durante la desinstalación.';
+    }
+
+    /*
+     * En BAJA_MANUAL validateManualTerminationInput()
+     * exige motivo, por lo que este fallback es solamente
+     * defensivo.
+     */
+    return 'Baja manual definitiva de la cuenta PPPoE.';
   }
 
   private assertPositiveInteger(value: number, field: string): void {
@@ -496,7 +780,10 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
     this.assertPositiveInteger(value, field);
   }
 
-  private assertRequiredString(value: string, field: string): void {
+  private assertRequiredString(
+    value: string | null | undefined,
+    field: string,
+  ): void {
     if (typeof value !== 'string' || !value.trim()) {
       throw new BadRequestException(`${field} es obligatorio.`);
     }

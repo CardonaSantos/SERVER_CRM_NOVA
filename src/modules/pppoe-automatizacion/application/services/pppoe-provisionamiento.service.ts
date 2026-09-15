@@ -17,6 +17,7 @@ import { PppoeProvisionamientoPort } from '../../domain/ports/pppoe-provisionami
 import {
   ActivarSecretPppoeInput,
   CrearSecretPppoeInput,
+  DarDeBajaServicioPppoeInput,
   EjecutarOperacionPppoeResult,
   EliminarSecretPppoeInput,
   ReactivarServicioPppoeInput,
@@ -199,6 +200,27 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
     input: EliminarSecretPppoeInput,
   ): Promise<EjecutarOperacionPppoeResult> {
     return this.eliminarSecretUseCase.execute(input);
+  }
+
+  /**
+   * Elimina definitivamente una cuenta PPPoE
+   * mediante una baja administrativa manual.
+   *
+   * No pertenece a:
+   *
+   * - ClienteInstalacion;
+   * - ClienteDesinstalacion.
+   *
+   * La reautenticación del operador debe realizarse
+   * antes de llegar a esta fachada.
+   *
+   * La operación técnica reutilizada continúa siendo
+   * ELIMINAR_SECRET.
+   */
+  darDeBajaServicio(
+    input: DarDeBajaServicioPppoeInput,
+  ): Promise<EjecutarOperacionPppoeResult> {
+    return this.eliminarSecretUseCase.executeBajaManual(input);
   }
 
   /**

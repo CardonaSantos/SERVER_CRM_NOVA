@@ -564,6 +564,9 @@ export class EjecutarPppoeOperacionUseCase {
    * Prepara la cuenta según el tipo de operación.
    */
 
+  /**
+   * Prepara la cuenta según el tipo de operación.
+   */
   private async prepareAccountForOperation(params: {
     operacion: PppoeOperacionEntity;
 
@@ -580,11 +583,20 @@ export class EjecutarPppoeOperacionUseCase {
         return this.prepareAccountForSuspension(params.cuenta);
 
       case TipoOperacionPppoe.ELIMINAR_SECRET:
-        if (params.operacion.desinstalacionId === null) {
-          throw new ConflictException(
-            'ELIMINAR_SECRET debe estar vinculada a una desinstalación.',
-          );
-        }
+        /*
+         * ELIMINAR_SECRET puede provenir de:
+         *
+         * 1. una ClienteDesinstalacion;
+         * 2. una baja administrativa manual.
+         *
+         * La autorización funcional y la reautenticación
+         * pertenecen a los casos de uso superiores.
+         *
+         * Este motor solamente valida que la operación
+         * persistida posea un contexto estructural coherente
+         * antes de modificar el estado local o RouterOS.
+         */
+        this.assertValidDeletionContext(params.operacion);
 
         return this.prepareAccountForDeletion(params.cuenta);
 
@@ -1258,5 +1270,68 @@ export class EjecutarPppoeOperacionUseCase {
     if (!Number.isInteger(value) || value <= 0) {
       throw new BadRequestException(`${field} debe ser un entero positivo.`);
     }
+  }
+
+  /**
+   * Valida el contexto persistido de una operación
+   * ELIMINAR_SECRET.
+   *
+   * Contextos válidos:
+   *
+   * DESINSTALACION
+   *   desinstalacionId != null
+   *
+   * BAJA_MANUAL
+   *   desinstalacionId == null
+   *   instalacionId == null
+   *
+   * Una instalación por sí sola no constituye un
+   * contexto válido para eliminar definitivamente
+   * una cuenta PPPoE.
+   *
+   * La autorización del operador no se valida aquí.
+   * Este caso de uso pertenece al motor técnico y
+   * recibe operaciones previamente creadas por los
+   * flujos de aplicación correspondientes.
+   */
+  private assertValidDeletionContext(operacion: PppoeOperacionEntity): void {
+    if (operacion.tipo !== TipoOperacionPppoe.ELIMINAR_SECRET) {
+      throw new ConflictException(
+        `La operación PPPoE ${operacion.id ?? 'sin-id'} no corresponde a ELIMINAR_SECRET.`,
+      );
+    }
+
+    /*
+     * Flujo tradicional:
+     *
+     * ClienteDesinstalacion -> ELIMINAR_SECRET
+     *
+     * Puede conservar instalacionId o no.
+     */
+    if (operacion.desinstalacionId !== null) {
+      return;
+    }
+
+    /*
+     * Baja manual:
+     *
+     * No existe ClienteInstalacion ni
+     * ClienteDesinstalacion como origen funcional.
+     */
+    if (operacion.instalacionId === null) {
+      return;
+    }
+
+    /*
+     * Contexto inconsistente:
+     *
+     * existe instalacionId pero no desinstalacionId.
+     *
+     * No admitimos que una instalación por sí sola
+     * origine una eliminación definitiva.
+     */
+    throw new ConflictException(
+      'La operación ELIMINAR_SECRET contiene un contexto inválido: una eliminación sin desinstalación no puede estar vinculada únicamente a una instalación.',
+    );
   }
 }

@@ -187,6 +187,19 @@ export class PppoeOperacionAdminController {
    *
    * La operación anterior no se modifica ni reutiliza.
    */
+  /**
+   * Crea una nueva operación a partir de una operación
+   * FALLIDA o PARCIAL.
+   *
+   * La operación anterior no se modifica ni reutiliza.
+   *
+   * Cuando la operación pertenece a una BAJA MANUAL,
+   * el servicio de aplicación exigirá una nueva
+   * reautenticación antes de crear el siguiente intento.
+   *
+   * Para el resto de operaciones, contrasenaActual
+   * puede omitirse.
+   */
   @Post(':operacionId/reintentar')
   @HttpCode(HttpStatus.OK)
   reintentar(
@@ -206,9 +219,11 @@ export class PppoeOperacionAdminController {
 
       operacionId,
 
-      claveIdempotencia: dto.claveIdempotencia,
+      claveIdempotencia: dto.claveIdempotencia.trim(),
 
-      motivo: dto.motivo ?? null,
+      motivo: dto.motivo?.trim() || null,
+
+      contrasenaActual: dto.contrasenaActual ?? null,
 
       actor: this.getActor(req),
     });

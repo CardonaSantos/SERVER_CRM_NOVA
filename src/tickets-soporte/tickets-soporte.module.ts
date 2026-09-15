@@ -11,6 +11,7 @@ import { PrismaTicketSoporteRepository } from './infraestructure/prisma-ticket-s
 import { CloudApiMetaModule } from 'src/cloud-api-meta/cloud-api-meta.module';
 import { TicketResumenModule } from 'src/ticket-resumen/ticket-resumen.module';
 import { PushNotificationsModule } from 'src/push-notifications/push-notifications.module';
+import { TicketSoporteHistorialModule } from 'src/modules/ticket-soporte-historial';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { PushNotificationsModule } from 'src/push-notifications/push-notificatio
     CloudApiMetaModule,
     TicketResumenModule,
     PushNotificationsModule,
+    TicketSoporteHistorialModule,
   ],
   controllers: [TicketsSoporteController],
   providers: [

@@ -9,17 +9,11 @@ import {
 
 import { PppoeOperacionResultado } from 'src/modules/pppoe-operacion/domain/props/pppoe-operacion.props';
 
-export type ReactivarServicioPppoeInput = {
-  empresaId: number;
-
-  cuentaPppoeId: number;
-
-  claveIdempotencia: string;
-
-  motivo: string;
-
-  actor: ActorProvisionamientoPppoeInput;
-};
+/**
+ * Contexto del actor que origina una operación.
+ *
+ * No contiene contraseñas ni información de reautenticación.
+ */
 export type ActorProvisionamientoPppoeInput = {
   origen: OrigenOperacionPppoe;
 
@@ -33,9 +27,8 @@ export type ActorProvisionamientoPppoeInput = {
 };
 
 /**
- * Contexto del actor que origina una operación.
- *
- * No contiene contraseñas ni información de reautenticación.
+ * Alias semántico utilizado por los casos de uso
+ * que trabajan directamente con operaciones PPPoE.
  */
 export type ActorOperacionPppoeInput = {
   origen: OrigenOperacionPppoe;
@@ -86,6 +79,23 @@ export type ActivarSecretPppoeInput = EjecutarProvisionamientoPppoeBaseInput & {
 };
 
 /**
+ * Reactiva manualmente una cuenta PPPoE suspendida.
+ *
+ * No pertenece al flujo de instalación.
+ */
+export type ReactivarServicioPppoeInput = {
+  empresaId: number;
+
+  cuentaPppoeId: number;
+
+  claveIdempotencia: string;
+
+  motivo: string;
+
+  actor: ActorProvisionamientoPppoeInput;
+};
+
+/**
  * Deshabilita el secret y elimina sus sesiones activas.
  *
  * Puede originarse por cobranza, operador o sistema.
@@ -96,7 +106,9 @@ export type SuspenderServicioPppoeInput = {
   cuentaPppoeId: number;
 
   claveIdempotencia: string;
+
   operadorNombre?: string | null;
+
   /**
    * Obligatorio para conservar la razón administrativa
    * de la suspensión.
@@ -105,9 +117,17 @@ export type SuspenderServicioPppoeInput = {
 
   actor: ActorProvisionamientoPppoeInput;
 };
+
 /**
  * Elimina definitivamente el secret durante
  * una desinstalación autorizada.
+ *
+ * Este contrato conserva deliberadamente
+ * desinstalacionId como obligatorio.
+ *
+ * Una eliminación administrativa que no pertenece
+ * al flujo de ClienteDesinstalacion debe utilizar
+ * DarDeBajaServicioPppoeInput.
  */
 export type EliminarSecretPppoeInput =
   EjecutarProvisionamientoPppoeBaseInput & {
@@ -122,6 +142,28 @@ export type EliminarSecretPppoeInput =
      */
     instalacionId?: number | null;
   };
+
+/**
+ * Baja administrativa definitiva de una cuenta PPPoE.
+ *
+ * No pertenece a:
+ *
+ * - ClienteInstalacion;
+ * - ClienteDesinstalacion.
+ *
+ * El operador ya debe haber sido reautenticado
+ * por la fachada administrativa antes de que
+ * este input llegue al motor de provisionamiento.
+ *
+ * El motivo es obligatorio porque representa
+ * una acción destructiva e irreversible.
+ */
+export type DarDeBajaServicioPppoeInput = Omit<
+  EjecutarProvisionamientoPppoeBaseInput,
+  'motivo'
+> & {
+  motivo: string;
+};
 
 /**
  * Genera y ejecuta un intento nuevo sobre una operación
@@ -158,8 +200,8 @@ export type EjecutarOperacionPppoeResult = {
 
   estadoOperacion: EstadoOperacionPppoe;
 
-  //   estadoCuenta: EstadoCuentaPppoe;
   estadoCuenta: EstadoCuentaPppoe | null;
+
   numeroIntento: number;
 
   reintentable: boolean;

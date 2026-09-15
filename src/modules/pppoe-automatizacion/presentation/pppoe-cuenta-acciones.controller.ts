@@ -21,6 +21,7 @@ import { PppoeOperacionAdminService } from '../application/services/pppoe-operac
 
 import { SuspenderPppoeManualDto } from './dto/suspender-pppoe-manual.dto';
 import { ReactivarPppoeManualDto } from './dto/reactivar-pppoe-manual.dto';
+import { DarDeBajaPppoeManualDto } from './dto/dar-de-baja-pppoe-manual.dto';
 
 type AuthenticatedRequest = Request & {
   user?: {
@@ -103,7 +104,9 @@ export class PppoeCuentaAccionesController {
       claveIdempotencia: dto.claveIdempotencia.trim(),
 
       motivo: dto.motivo.trim(),
+
       contrasenaActual: dto.contrasenaActual,
+
       actor: {
         operadorId: contexto.actor.operadorId,
 
@@ -153,13 +156,73 @@ export class PppoeCuentaAccionesController {
 
       cuentaPppoeId,
 
-      claveIdempotencia: dto.claveIdempotencia,
+      claveIdempotencia: dto.claveIdempotencia.trim(),
 
-      motivo: dto.motivo,
+      motivo: dto.motivo.trim(),
+
       contrasenaActual: dto.contrasenaActual,
 
       actor: {
         operadorId: contexto.actor.operadorId,
+
+        operadorNombre: contexto.actor.operadorNombre,
+
+        ipOrigen: contexto.actor.ipOrigen,
+
+        userAgent: contexto.actor.userAgent,
+      },
+    });
+  }
+
+  /**
+   * Da de baja definitivamente una cuenta PPPoE.
+   *
+   * Esta acción NO crea una ClienteDesinstalacion.
+   *
+   * El operador debe reautenticarse antes de que
+   * el motor PPPoE ejecute cualquier cambio remoto.
+   *
+   * Cuando la operación concluye correctamente:
+   *
+   * - se elimina el secret del MikroTik;
+   * - se remueven sesiones PPPoE activas;
+   * - se confirma la ausencia del secret;
+   * - ClientePppoeCuenta termina ELIMINADA;
+   * - ClienteAccesoInternet termina BAJA.
+   *
+   * La empresa y el operador se obtienen únicamente
+   * del JWT autenticado.
+   *
+   * La clave de idempotencia se genera internamente
+   * en la fachada administrativa.
+   */
+  @Post(':cuentaPppoeId/dar-de-baja')
+  @HttpCode(HttpStatus.OK)
+  darDeBaja(
+    @Param('cuentaPppoeId', ParseIntPipe)
+    cuentaPppoeId: number,
+
+    @Body()
+    dto: DarDeBajaPppoeManualDto,
+
+    @Req()
+    req: AuthenticatedRequest,
+  ) {
+    const contexto = this.getAuthenticatedContext(req);
+
+    return this.adminService.darDeBajaManual({
+      empresaId: contexto.empresaId,
+
+      cuentaPppoeId,
+
+      motivo: dto.motivo.trim(),
+
+      contrasenaActual: dto.contrasenaActual,
+
+      actor: {
+        operadorId: contexto.actor.operadorId,
+
+        operadorNombre: contexto.actor.operadorNombre,
 
         ipOrigen: contexto.actor.ipOrigen,
 
