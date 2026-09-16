@@ -819,18 +819,17 @@ model ClienteAccesoInternet {
 model ClienteInstalacionAcceso {
   id Int @id @default(autoincrement())
 
-  instalacionId    Int
+  instalacionId    Int @unique
   accesoInternetId Int
 
   accion AccionInstalacionAcceso
 
   creadoEn DateTime @default(now())
 
-  instalacion ClienteInstalacion @relation(fields: [instalacionId], references: [id], onDelete: Cascade)
+  instalacion ClienteInstalacion @relation(fields: [instalacionId],references: [id],onDelete: Cascade)
 
-  accesoInternet ClienteAccesoInternet @relation(fields: [accesoInternetId], references: [id], onDelete: Restrict)
+  accesoInternet ClienteAccesoInternet @relation(fields: [accesoInternetId],references: [id],onDelete: Restrict)
 
-  @@unique([instalacionId, accesoInternetId])
   @@index([accesoInternetId])
 }
 
@@ -2806,9 +2805,10 @@ model ClienteInstalacion {
   equipos          ClienteInstalacionEquipo[]
   gastosOperativos GastoOperativo[]
 
-  clienteInstalacionAccesos ClienteInstalacionAcceso[]
+  // clienteInstalacionAccesos ClienteInstalacionAcceso[]
 
   equiposAccesoAsignados ClienteAccesoEquipo[] @relation("AccesoEquipoInstalacionAsignacion")
+  clienteInstalacionAcceso ClienteInstalacionAcceso?
 
   equiposAccesoRetirados ClienteAccesoEquipo[] @relation("AccesoEquipoInstalacionRetiro")
 

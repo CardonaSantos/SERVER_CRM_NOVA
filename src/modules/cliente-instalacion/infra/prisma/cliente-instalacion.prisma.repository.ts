@@ -852,7 +852,9 @@ export class ClienteInstalacionPrismaRepository
         equipos: record._count.equipos,
       },
 
-      cuentaPppoe: {},
+      cuentaPppoe: {
+        id: 1,
+      },
 
       ticket: record.ticket
         ? {
