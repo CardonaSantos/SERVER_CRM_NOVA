@@ -12,7 +12,7 @@ export interface ClienteInstalacionAccesoRepositoryPort {
 
   findByInstalacionId(
     instalacionId: number,
-  ): Promise<ClienteInstalacionAccesoEntity[]>;
+  ): Promise<ClienteInstalacionAccesoEntity | null>;
 
   findByInstalacionAndAcceso(
     params: BuscarInstalacionAccesoParams,

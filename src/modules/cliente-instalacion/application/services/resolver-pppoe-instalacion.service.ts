@@ -68,74 +68,66 @@ export class ResolverPppoeInstalacionService {
       );
     }
 
-    const vinculos = await this.instalacionAccesoRepository.findByInstalacionId(
+    const vinculo = await this.instalacionAccesoRepository.findByInstalacionId(
       instalacion.id,
     );
 
     /*
-     * El provisionamiento inicial solamente corresponde
-     * a accesos creados por esta instalación.
-     *
-     * Un acceso MODIFICADO puede tener un servicio activo
-     * y no debe recrearse automáticamente.
+     * Una instalación puede no tener todavía un acceso vinculado.
      */
-    const vinculosCreados = vinculos.filter(
-      (vinculo) => vinculo.accion === AccionInstalacionAcceso.CREADO,
-    );
-
-    const accesosPppoe: {
-      accesoInternetId: number;
-    }[] = [];
-
-    for (const vinculo of vinculosCreados) {
-      const acceso = await this.accesoInternetRepository.findByIdForClient({
-        accesoInternetId: vinculo.accesoInternetId,
-
-        clienteId: instalacion.clienteId,
-      });
-
-      if (!acceso) {
-        throw new ConflictException(
-          `El acceso ${vinculo.accesoInternetId} vinculado a la instalación no existe o no pertenece al cliente.`,
-        );
-      }
-
-      const esGponPppoe =
-        acceso.tecnologia === TecnologiaAccesoInternet.FIBRA_GPON &&
-        acceso.metodoAutenticacion === MetodoAutenticacionInternet.PPPOE;
-
-      if (!esGponPppoe) {
-        continue;
-      }
-
-      if (!acceso.id) {
-        throw new ConflictException(
-          'El acceso PPPoE vinculado no contiene un identificador persistido.',
-        );
-      }
-
-      accesosPppoe.push({
-        accesoInternetId: acceso.id,
-      });
-    }
-
-    if (accesosPppoe.length === 0) {
+    if (!vinculo) {
       return {
         aplica: false,
-
         accesoInternetId: null,
-
         cuenta: null,
       };
     }
 
-    if (accesosPppoe.length > 1) {
+    /*
+     * El provisionamiento inicial solamente corresponde
+     * al acceso creado por esta instalación.
+     *
+     * Un acceso MODIFICADO puede tener un servicio activo
+     * y no debe recrearse automáticamente.
+     */
+    if (vinculo.accion !== AccionInstalacionAcceso.CREADO) {
+      return {
+        aplica: false,
+        accesoInternetId: null,
+        cuenta: null,
+      };
+    }
+
+    const acceso = await this.accesoInternetRepository.findByIdForClient({
+      accesoInternetId: vinculo.accesoInternetId,
+      clienteId: instalacion.clienteId,
+    });
+
+    if (!acceso) {
       throw new ConflictException(
-        'La instalación contiene más de un acceso GPON/PPPoE nuevo. No puede determinarse cuál debe provisionarse.',
+        `El acceso ${vinculo.accesoInternetId} vinculado a la instalación no existe o no pertenece al cliente.`,
       );
     }
 
-    const accesoInternetId = accesosPppoe[0].accesoInternetId;
+    const esGponPppoe =
+      acceso.tecnologia === TecnologiaAccesoInternet.FIBRA_GPON &&
+      acceso.metodoAutenticacion === MetodoAutenticacionInternet.PPPOE;
+
+    if (!esGponPppoe) {
+      return {
+        aplica: false,
+        accesoInternetId: null,
+        cuenta: null,
+      };
+    }
+
+    if (!acceso.id) {
+      throw new ConflictException(
+        'El acceso PPPoE vinculado no contiene un identificador persistido.',
+      );
+    }
+
+    const accesoInternetId = acceso.id;
 
     const cuenta =
       await this.cuentaPppoeRepository.findByAccesoInternetId(accesoInternetId);
@@ -160,9 +152,7 @@ export class ResolverPppoeInstalacionService {
 
     return {
       aplica: true,
-
       accesoInternetId,
-
       cuenta,
     };
   }

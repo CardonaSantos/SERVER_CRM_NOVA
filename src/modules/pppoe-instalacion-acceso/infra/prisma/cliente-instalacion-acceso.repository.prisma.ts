@@ -1,12 +1,18 @@
 import { Injectable } from '@nestjs/common';
-
-import { PrismaService } from 'src/prisma/prisma.service';
+import { ClienteInstalacionAccesoEntity } from 'src/modules/ppoe-instalacion-acceso/domain/entities/ppoe-instalacion-acceso.entity';
 import {
   BuscarInstalacionAccesoParams,
   ClienteInstalacionAccesoRepositoryPort,
-} from '../../domain/ports/cliente-instalacion-acceso.port';
-import { ClienteInstalacionAccesoEntity } from '../../domain/entities/pppoe-instalacion-acceso.entity';
-import { ClienteInstalacionAccesoPrismaMapper } from './cliente-instalacion-acceso.mapper';
+} from 'src/modules/ppoe-instalacion-acceso/domain/ports/cliente-instalacion-acceso.port';
+import { ClienteInstalacionAccesoPrismaMapper } from 'src/modules/ppoe-instalacion-acceso/infra/prisma/cliente-instalacion-acceso.mapper';
+
+import { PrismaService } from 'src/prisma/prisma.service';
+// import {
+//   BuscarInstalacionAccesoParams,
+//   ClienteInstalacionAccesoRepositoryPort,
+// } from '../../domain/ports/cliente-instalacion-acceso.port';
+// import { ClienteInstalacionAccesoEntity } from '../../domain/entities/pppoe-instalacion-acceso.entity';
+// import { ClienteInstalacionAccesoPrismaMapper } from './cliente-instalacion-acceso.mapper';
 
 @Injectable()
 export class ClienteInstalacionAccesoPrismaRepository
@@ -26,19 +32,16 @@ export class ClienteInstalacionAccesoPrismaRepository
 
   async findByInstalacionId(
     instalacionId: number,
-  ): Promise<ClienteInstalacionAccesoEntity[]> {
-    const records = await this.prisma.clienteInstalacionAcceso.findMany({
+  ): Promise<ClienteInstalacionAccesoEntity | null> {
+    const record = await this.prisma.clienteInstalacionAcceso.findUnique({
       where: {
         instalacionId,
       },
-      orderBy: {
-        id: 'asc',
-      },
     });
 
-    return records.map((record) =>
-      ClienteInstalacionAccesoPrismaMapper.toDomain(record),
-    );
+    return record
+      ? ClienteInstalacionAccesoPrismaMapper.toDomain(record)
+      : null;
   }
 
   async findByInstalacionAndAcceso({

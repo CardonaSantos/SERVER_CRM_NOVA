@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from 'src/prisma/prisma.service';
+
 import {
   BuscarInstalacionAccesoParams,
   ClienteInstalacionAccesoRepositoryPort,
 } from '../../domain/ports/cliente-instalacion-acceso.port';
-import { ClienteInstalacionAccesoEntity } from '../../domain/entities/ppoe-instalacion-acceso.entity';
+
 import { ClienteInstalacionAccesoPrismaMapper } from './cliente-instalacion-acceso.mapper';
+import { ClienteInstalacionAccesoEntity } from '../../domain/entities/ppoe-instalacion-acceso.entity';
 
 @Injectable()
 export class ClienteInstalacionAccesoPrismaRepository
@@ -26,19 +28,16 @@ export class ClienteInstalacionAccesoPrismaRepository
 
   async findByInstalacionId(
     instalacionId: number,
-  ): Promise<ClienteInstalacionAccesoEntity[]> {
-    const records = await this.prisma.clienteInstalacionAcceso.findMany({
+  ): Promise<ClienteInstalacionAccesoEntity | null> {
+    const record = await this.prisma.clienteInstalacionAcceso.findUnique({
       where: {
         instalacionId,
       },
-      orderBy: {
-        id: 'asc',
-      },
     });
 
-    return records.map((record) =>
-      ClienteInstalacionAccesoPrismaMapper.toDomain(record),
-    );
+    return record
+      ? ClienteInstalacionAccesoPrismaMapper.toDomain(record)
+      : null;
   }
 
   async findByInstalacionAndAcceso({
@@ -47,15 +46,14 @@ export class ClienteInstalacionAccesoPrismaRepository
   }: BuscarInstalacionAccesoParams): Promise<ClienteInstalacionAccesoEntity | null> {
     const record = await this.prisma.clienteInstalacionAcceso.findUnique({
       where: {
-        instalacionId_accesoInternetId: {
-          instalacionId,
-          accesoInternetId,
-        },
+        instalacionId,
       },
     });
 
-    return record
-      ? ClienteInstalacionAccesoPrismaMapper.toDomain(record)
-      : null;
+    if (!record || record.accesoInternetId !== accesoInternetId) {
+      return null;
+    }
+
+    return ClienteInstalacionAccesoPrismaMapper.toDomain(record);
   }
 }

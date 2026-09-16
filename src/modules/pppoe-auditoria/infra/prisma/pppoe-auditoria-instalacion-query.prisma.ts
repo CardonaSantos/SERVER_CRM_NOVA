@@ -307,16 +307,10 @@ const instalacionSummarySelect = {
     },
   },
 
-  clienteInstalacionAccesos: {
-    where: {
-      accion: PrismaAccionInstalacionAcceso.CREADO,
-    },
-
-    orderBy: {
-      creadoEn: 'desc',
-    },
-
+  clienteInstalacionAcceso: {
     select: {
+      accion: true,
+
       accesoInternet: {
         select: {
           ...accesoResumenSelect,
@@ -543,22 +537,21 @@ export class PppoeAuditoriaInstalacionPrismaQuery
   private buildInstallationPppoeContext(
     installation: InstallationSummaryRecord,
   ): InstallationPppoeContext {
-    const accesoInternetIds: number[] = [];
-    const cuentaPppoeIds: number[] = [];
+    const link = installation.clienteInstalacionAcceso;
 
-    for (const link of installation.clienteInstalacionAccesos) {
-      const access = link.accesoInternet;
-
-      accesoInternetIds.push(access.id);
-
-      if (access.cuentaPppoe) {
-        cuentaPppoeIds.push(access.cuentaPppoe.id);
-      }
+    if (!link || link.accion !== PrismaAccionInstalacionAcceso.CREADO) {
+      return {
+        accesoInternetIds: [],
+        cuentaPppoeIds: [],
+      };
     }
 
+    const access = link.accesoInternet;
+
     return {
-      accesoInternetIds: [...new Set(accesoInternetIds)],
-      cuentaPppoeIds: [...new Set(cuentaPppoeIds)],
+      accesoInternetIds: [access.id],
+
+      cuentaPppoeIds: access.cuentaPppoe ? [access.cuentaPppoe.id] : [],
     };
   }
 
@@ -1039,14 +1032,19 @@ export class PppoeAuditoriaInstalacionPrismaQuery
 
     const totalOperaciones = operationStates.length;
 
-    const pppoeAccesses = installation.clienteInstalacionAccesos
-      .map((link) => link.accesoInternet)
-      .filter(
-        (access) =>
-          access.tecnologia === PrismaTecnologiaAccesoInternet.FIBRA_GPON &&
-          access.metodoAutenticacion ===
-            PrismaMetodoAutenticacionInternet.PPPOE,
-      );
+    const link = installation.clienteInstalacionAcceso;
+
+    const access =
+      link?.accion === PrismaAccionInstalacionAcceso.CREADO
+        ? link.accesoInternet
+        : null;
+
+    const pppoeAccesses =
+      access &&
+      access.tecnologia === PrismaTecnologiaAccesoInternet.FIBRA_GPON &&
+      access.metodoAutenticacion === PrismaMetodoAutenticacionInternet.PPPOE
+        ? [access]
+        : [];
 
     const accesosPppoe = pppoeAccesses.map((access) => ({
       ...this.mapAccess(access),
