@@ -1,0 +1,238 @@
+name: Fix cardinalidad instalacion acceso
+
+on:
+  push:
+    branches:
+      - refinaciones-septiembre
+
+permissions:
+  contents: write
+
+jobs:
+  fix-cardinalidad:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: refinaciones-septiembre
+          fetch-depth: 0
+
+      - name: Aplicar ajustes de cardinalidad
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          def read(path: str) -> str:
+              return Path(path).read_text(encoding='utf-8')
+
+          def write(path: str, content: str) -> None:
+              Path(path).write_text(content, encoding='utf-8')
+
+          def replace_exact(content: str, old: str, new: str, label: str, expected: int = 1) -> str:
+              count = content.count(old)
+              if count != expected:
+                  raise RuntimeError(f'{label}: se esperaban {expected} coincidencias y se encontraron {count}')
+              return content.replace(old, new, expected)
+
+          # ------------------------------------------------------------
+          # cliente-instalacion: adaptar queries/mapeos a relacion 0..1
+          # ------------------------------------------------------------
+          path = 'src/modules/cliente-instalacion/infra/prisma/cliente-instalacion.prisma.repository.ts'
+          s = read(path)
+
+          s = replace_exact(
+              s,
+              'clienteInstalacionAccesos: {',
+              'clienteInstalacionAcceso: {',
+              'cliente-instalacion includes',
+              expected=2,
+          )
+
+          old = """        clienteInstalacionAcceso: {
+          orderBy: {
+            creadoEn: 'asc',
+          },
+
+          include: {"""
+          new = """        clienteInstalacionAcceso: {
+          include: {"""
+          s = replace_exact(s, old, new, 'cliente-instalacion include singular')
+
+          old = """      cuentaPppoe: {
+        id: 1,
+      },"""
+          new = """      cuentaPppoe: record.clienteInstalacionAcceso?.accesoInternet.cuentaPppoe
+        ? {
+            id: record.clienteInstalacionAcceso.accesoInternet.cuentaPppoe.id,
+          }
+        : null,"""
+          s = replace_exact(s, old, new, 'cliente-instalacion cuenta PPPoE detalle')
+
+          old = '      accesos: record.clienteInstalacionAccesos.map((vinculo) => {'
+          new = """      accesos: record.clienteInstalacionAcceso
+        ? [record.clienteInstalacionAcceso].map((vinculo) => {"""
+          s = replace_exact(s, old, new, 'cliente-instalacion mapeo acceso tecnico')
+
+          start = s.index(new)
+          evidence_marker = '      evidencias: record.evidencias.map((evidencia) => ({'
+          end = s.index(evidence_marker, start)
+          segment = s[start:end]
+          close = '      }),\n\n'
+          close_index = segment.rfind(close)
+          if close_index < 0:
+              raise RuntimeError('cliente-instalacion: no se encontro cierre del map de accesos')
+          segment = (
+              segment[:close_index]
+              + '      })\n        : [],\n\n'
+              + segment[close_index + len(close):]
+          )
+          s = s[:start] + segment + s[end:]
+
+          if 'clienteInstalacionAccesos' in s:
+              raise RuntimeError('cliente-instalacion: quedaron referencias plurales antiguas')
+          write(path, s)
+
+          # Contrato: una instalacion puede no tener aun cuenta PPPoE.
+          path = 'src/modules/cliente-instalacion/domain/ports/cliente-instalacion.repository.port.ts'
+          s = read(path)
+          old = """  cuentaPppoe: {
+    id: number;
+  };"""
+          new = """  cuentaPppoe: {
+    id: number;
+  } | null;"""
+          s = replace_exact(s, old, new, 'cliente-instalacion port cuenta PPPoE')
+          write(path, s)
+
+          # ------------------------------------------------------------
+          # pppoe-instalacion-acceso: desaparecio el unique compuesto
+          # ------------------------------------------------------------
+          path = 'src/modules/pppoe-instalacion-acceso/infra/prisma/cliente-instalacion-acceso.repository.prisma.ts'
+          s = read(path)
+          old = """    const record = await this.prisma.clienteInstalacionAcceso.findUnique({
+      where: {
+        instalacionId_accesoInternetId: {
+          instalacionId,
+          accesoInternetId,
+        },
+      },
+    });"""
+          new = """    const record = await this.prisma.clienteInstalacionAcceso.findFirst({
+      where: {
+        instalacionId,
+        accesoInternetId,
+      },
+    });"""
+          s = replace_exact(s, old, new, 'pppoe-instalacion-acceso lookup')
+          write(path, s)
+
+          # ------------------------------------------------------------
+          # pppoe-auditoria: preservar salida array 0..1 sobre relacion singular
+          # ------------------------------------------------------------
+          path = 'src/modules/pppoe-auditoria/infra/prisma/pppoe-auditoria-instalacion-query.prisma.ts'
+          s = read(path)
+
+          old = """  clienteInstalacionAccesos: {
+    where: {
+      accion: PrismaAccionInstalacionAcceso.CREADO,
+    },
+
+    orderBy: {
+      creadoEn: 'desc',
+    },
+
+    select: {
+      accesoInternet: {"""
+          new = """  clienteInstalacionAcceso: {
+    select: {
+      accion: true,
+
+      accesoInternet: {"""
+          s = replace_exact(s, old, new, 'pppoe-auditoria summary select')
+
+          old = """    for (const link of installation.clienteInstalacionAccesos) {
+      const access = link.accesoInternet;
+
+      accesoInternetIds.push(access.id);
+
+      if (access.cuentaPppoe) {
+        cuentaPppoeIds.push(access.cuentaPppoe.id);
+      }
+    }"""
+          new = """    const link = installation.clienteInstalacionAcceso;
+
+    if (link?.accion === PrismaAccionInstalacionAcceso.CREADO) {
+      const access = link.accesoInternet;
+
+      accesoInternetIds.push(access.id);
+
+      if (access.cuentaPppoe) {
+        cuentaPppoeIds.push(access.cuentaPppoe.id);
+      }
+    }"""
+          s = replace_exact(s, old, new, 'pppoe-auditoria context singular')
+
+          old = """    const pppoeAccesses = installation.clienteInstalacionAccesos
+      .map((link) => link.accesoInternet)
+      .filter(
+        (access) =>
+          access.tecnologia === PrismaTecnologiaAccesoInternet.FIBRA_GPON &&
+          access.metodoAutenticacion ===
+            PrismaMetodoAutenticacionInternet.PPPOE,
+      );"""
+          new = """    const installationAccess =
+      installation.clienteInstalacionAcceso?.accion ===
+      PrismaAccionInstalacionAcceso.CREADO
+        ? installation.clienteInstalacionAcceso.accesoInternet
+        : null;
+
+    const pppoeAccesses =
+      installationAccess &&
+      installationAccess.tecnologia ===
+        PrismaTecnologiaAccesoInternet.FIBRA_GPON &&
+      installationAccess.metodoAutenticacion ===
+        PrismaMetodoAutenticacionInternet.PPPOE
+        ? [installationAccess]
+        : [];"""
+          s = replace_exact(s, old, new, 'pppoe-auditoria summary singular')
+
+          if 'clienteInstalacionAccesos' in s:
+              raise RuntimeError('pppoe-auditoria: quedaron referencias plurales antiguas')
+          write(path, s)
+
+          print('Codemod aplicado correctamente.')
+          PY
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Regenerar Prisma Client
+        env:
+          DATABASE_URL_CRM: postgresql://user:password@localhost:5432/crm
+        run: npx prisma generate
+
+      - name: Compilar NestJS
+        run: npm run build
+
+      - name: Crear commit corregido
+        shell: bash
+        run: |
+          rm -f .github/workflows/fix-cardinalidad-instalacion-acceso.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/modules/cliente-instalacion/infra/prisma/cliente-instalacion.prisma.repository.ts \
+                  src/modules/cliente-instalacion/domain/ports/cliente-instalacion.repository.port.ts \
+                  src/modules/pppoe-instalacion-acceso/infra/prisma/cliente-instalacion-acceso.repository.prisma.ts \
+                  src/modules/pppoe-auditoria/infra/prisma/pppoe-auditoria-instalacion-query.prisma.ts \
+                  .github/workflows/fix-cardinalidad-instalacion-acceso.yml
+          git commit -m "Fix cardinalidad instalacion-acceso"
+          git push origin HEAD:refinaciones-septiembre
