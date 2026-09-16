@@ -5,11 +5,16 @@ export const CLIENTE_PPPOE_CUENTA_REPOSITORY = Symbol(
   'CLIENTE_PPPOE_CUENTA_REPOSITORY',
 );
 
+export type BuscarCuentaPppoeVigentePorUsuarioParams = {
+  empresaId: number;
+  usuario: string;
+};
+
 export interface ClientePppoeCuentaRepositoryPort {
   /**
    * Persiste una cuenta PPPoE nueva.
    *
-   * La cuenta  inicia en:
+   * La cuenta inicia en:
    * PENDIENTE_ACTIVACION.
    */
   create(entity: ClientePppoeCuentaEntity): Promise<ClientePppoeCuentaEntity>;
@@ -29,7 +34,7 @@ export interface ClientePppoeCuentaRepositoryPort {
    * Busca la cuenta uno a uno correspondiente
    * a un acceso de internet.
    *
-   * es uno de los métodos principales para los
+   * Es uno de los métodos principales para los
    * flujos de instalación y operación SSH.
    */
   findByAccesoInternetId(
@@ -37,12 +42,20 @@ export interface ClientePppoeCuentaRepositoryPort {
   ): Promise<ClientePppoeCuentaEntity | null>;
 
   /**
-   * Busca una cuenta mediante su usuario PPPoE.
-   *
-   * Sirve para validar duplicados y para operaciones
-   * futuras iniciadas con el nombre del secret.
+   * Busca cualquier cuenta mediante su usuario PPPoE,
+   * incluyendo cuentas históricas y terminales.
    */
   findByUsuario(usuario: string): Promise<ClientePppoeCuentaEntity | null>;
+
+  /**
+   * Busca una cuenta vigente para el usuario PPPoE
+   * dentro de la empresa.
+   *
+   * ELIMINADA y CANCELADA no se consideran vigentes.
+   */
+  findVigenteByEmpresaYUsuario(
+    params: BuscarCuentaPppoeVigentePorUsuarioParams,
+  ): Promise<ClientePppoeCuentaEntity | null>;
 
   /**
    * Obtiene las cuentas PPPoE vinculadas a una instalación,

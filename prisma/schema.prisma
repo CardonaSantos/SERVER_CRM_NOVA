@@ -852,10 +852,6 @@ model ClientePppoeCuenta {
   estado EstadoCuentaPppoe @default(PENDIENTE_ACTIVACION)
 
   generadoPorId Int?
-
-  // NUEVO:
-  // Usuario del CRM que incorporó una cuenta
-  // que ya existía previamente en MikroTik.
   adoptadoPorId Int?
 
   generadoEn     DateTime  @default(now())
@@ -864,17 +860,10 @@ model ClientePppoeCuenta {
   suspendidoEn   DateTime?
   eliminadoEn    DateTime?
 
-  // NUEVO:
-  // Fecha en que la cuenta preexistente fue
-  // incorporada formalmente al CRM.
-  //
-  // No representa la fecha real de creación
-  // del secret en MikroTik.
   adoptadoEn DateTime?
 
   ultimaSincronizacionEn DateTime?
-
-  ultimoError String?
+  ultimoError            String?
 
   actualizadoEn DateTime @updatedAt
 
@@ -884,19 +873,21 @@ model ClientePppoeCuenta {
 
   perfilHomologacion PppoePerfilHomologacion @relation(fields: [perfilHomologacionId], references: [id], onDelete: Restrict)
 
-  generadoPor Usuario? @relation("PppoeCuentaGeneradaPor", fields: [generadoPorId], references: [id], onDelete: Restrict)
+  generadoPor Usuario? @relation("PppoeCuentaGeneradaPor",fields: [generadoPorId],references: [id],onDelete: Restrict)
 
-  // NUEVO
-  adoptadoPor Usuario? @relation("PppoeCuentaAdoptadaPor", fields: [adoptadoPorId], references: [id], onDelete: Restrict)
+  adoptadoPor Usuario? @relation("PppoeCuentaAdoptadaPor",fields: [adoptadoPorId],references: [id],onDelete: Restrict)
 
   operaciones PppoeOperacion[]
   auditorias  PppoeAuditoria[]
 
-  @@unique([empresaId, usuario])
+  /// El usuario puede repetirse entre ciclos históricos finalizados.
+  /// La unicidad de cuentas vigentes se protege en PostgreSQL mediante
+  /// un índice único parcial definido en la migración correspondiente.
+  @@index([empresaId, usuario])
+
   @@index([empresaId, estado])
   @@index([perfilHomologacionId])
   @@index([generadoPorId])
-  // NUEVOS
   @@index([adoptadoPorId])
   @@index([empresaId, adoptadoEn])
 }

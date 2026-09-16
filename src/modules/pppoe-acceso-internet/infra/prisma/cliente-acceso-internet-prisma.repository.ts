@@ -12,7 +12,11 @@ import {
 import { ClienteAccesoInternetEntity } from '../../domain/entities/ppoe-acceso-internet.entity';
 
 import { ClienteAccesoInternetPrismaMapper } from './cliente-acceso-internet-prisma.mapper';
-import { MetodoAutenticacionInternet } from '../../domain/enums/ppoe-acceso-internet.enum';
+
+import {
+  EstadoAccesoInternet,
+  MetodoAutenticacionInternet,
+} from '../../domain/enums/ppoe-acceso-internet.enum';
 
 @Injectable()
 export class ClienteAccesoInternetPrismaRepository
@@ -98,6 +102,35 @@ export class ClienteAccesoInternetPrismaRepository
         empresaId: params.empresaId,
         clienteId: params.clienteId,
         metodoAutenticacion: MetodoAutenticacionInternet.PPPOE,
+      },
+      orderBy: {
+        id: 'desc',
+      },
+    });
+
+    if (!record) {
+      return null;
+    }
+
+    return ClienteAccesoInternetPrismaMapper.toDomain(record);
+  }
+
+  async findPppoeVigenteByClienteId(
+    params: BuscarAccesoPppoePorClienteParams,
+  ): Promise<ClienteAccesoInternetEntity | null> {
+    const record = await this.prisma.clienteAccesoInternet.findFirst({
+      where: {
+        empresaId: params.empresaId,
+        clienteId: params.clienteId,
+        metodoAutenticacion: MetodoAutenticacionInternet.PPPOE,
+        estado: {
+          in: [
+            EstadoAccesoInternet.PENDIENTE,
+            EstadoAccesoInternet.CONFIGURANDO,
+            EstadoAccesoInternet.ACTIVO,
+            EstadoAccesoInternet.SUSPENDIDO,
+          ],
+        },
       },
       orderBy: {
         id: 'desc',

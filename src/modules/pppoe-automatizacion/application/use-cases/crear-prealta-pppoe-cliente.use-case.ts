@@ -94,8 +94,14 @@ export class CrearPrealtaPppoeClienteUseCase {
   private async resolverAccesoInternet(
     input: CrearPrealtaPppoeClienteInput,
   ): Promise<ClienteAccesoInternetEntity> {
+    /*
+     * Buscamos exclusivamente un ciclo PPPoE vigente.
+     *
+     * Un acceso en BAJA pertenece a un ciclo ya terminado y
+     * no debe ser reutilizado ni impedir una nueva prealta.
+     */
     const accesoExistente =
-      await this.accesoInternetRepository.findPppoeByClienteId({
+      await this.accesoInternetRepository.findPppoeVigenteByClienteId({
         empresaId: input.empresaId,
         clienteId: input.clienteId,
       });

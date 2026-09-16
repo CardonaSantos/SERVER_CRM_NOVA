@@ -11,29 +11,37 @@ import { PppoeAuditoriaEntity } from '../../../pppoe-auditoria/domain/entities/p
 import { PrepararPrealtaPppoeInput } from '../inputs/preparar-prealta-pppoe.input';
 
 import { PrepararPrealtaPppoeResult } from '../results/preparar-prealta-pppoe.result';
+
 import { PppoePrealtaPort } from '../../domain/ports/pppoe-prealta.port';
-import { PPPOE_PERFIL_HOMOLOGACION_REPOSITORY } from 'src/modules/pppoe-perfil-homologacion/infra/tokens/ppoe-perfil-homologacion.token';
-import { PerfilHomologacionRepositoryPort } from 'src/modules/pppoe-perfil-homologacion/domain/ports/ppoe-perfil-homologacion.port';
+
 import {
   CLIENTE_PPPOE_CUENTA_REPOSITORY,
   ClientePppoeCuentaRepositoryPort,
 } from 'src/modules/pppoe-cliente-cuenta/domain/ports/pppoe-cliente-cuenta.port';
+
 import {
   PPPOE_CREDENTIAL_GENERATOR,
   PPPOE_SECRET_CIPHER,
 } from 'src/modules/pppoe-cliente-cuenta/infra/tokens/pppoe-cliente-cuenta.token';
+
 import { PppoeCredentialGeneratorPort } from 'src/modules/pppoe-credentials/application/ports/pppoe-credential-generator.port';
+
 import { PppoeSecretCipherPort } from 'src/modules/pppoe-credentials/application/ports/pppoe-secret-cipher.port';
+
 import {
   PPPOE_AUDITORIA_REPOSITORY,
   PppoeAuditoriaRepositoryPort,
 } from 'src/modules/pppoe-auditoria/domain/ports/pppoe-auditoria-repository';
-import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/ppoe-cliente-cuenta.entity';
+
 import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
+
 import {
   AccionAuditoriaPppoe,
   OrigenOperacionPppoe,
 } from 'src/modules/pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
+import { PPPOE_PERFIL_HOMOLOGACION_REPOSITORY } from 'src/modules/pppoe-perfil-homologacion/infra/tokens/ppoe-perfil-homologacion.token';
+import { PerfilHomologacionRepositoryPort } from 'src/modules/pppoe-perfil-homologacion/domain/ports/ppoe-perfil-homologacion.port';
+import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/ppoe-cliente-cuenta.entity';
 
 @Injectable()
 export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
@@ -61,7 +69,6 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
 
     const perfil = await this.perfilRepository.findActiveByRouterAndService({
       mikrotikRouterId: input.mikrotikRouterId,
-
       servicioInternetId: input.servicioInternetId,
     });
 
@@ -85,17 +92,18 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
 
     const credenciales = this.credentialGenerator.generate({
       clienteId: input.clienteId,
-
       fecha: input.fechaReferencia,
     });
 
-    const cuentaConMismoUsuario = await this.cuentaRepository.findByUsuario(
-      credenciales.usuario,
-    );
+    const cuentaVigenteConMismoUsuario =
+      await this.cuentaRepository.findVigenteByEmpresaYUsuario({
+        empresaId: input.empresaId,
+        usuario: credenciales.usuario,
+      });
 
-    if (cuentaConMismoUsuario) {
+    if (cuentaVigenteConMismoUsuario) {
       throw new ConflictException(
-        `El usuario PPPoE ${credenciales.usuario} ya está asignado a otro acceso de internet.`,
+        `El usuario PPPoE ${credenciales.usuario} ya está asignado a una cuenta vigente.`,
       );
     }
 
@@ -173,18 +181,15 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
       );
     }
 
-    if (cuenta.estado === EstadoCuentaPppoe.ELIMINADA) {
+    if (
+      cuenta.estado === EstadoCuentaPppoe.ELIMINADA ||
+      cuenta.estado === EstadoCuentaPppoe.CANCELADA
+    ) {
       throw new ConflictException(
-        'La cuenta PPPoE asociada al acceso ya fue eliminada. Debe crearse un nuevo acceso o ejecutarse un flujo explícito de reprovisión.',
+        'La cuenta PPPoE asociada al acceso pertenece a un ciclo terminado. Debe utilizarse un nuevo acceso PPPoE.',
       );
     }
 
-    /*
-     * La prealta ya existe.
-     *
-     * No volvemos a generar la contraseña,
-     * no rotamos el secreto y no duplicamos auditorías.
-     */
     return this.toResult(cuenta, false);
   }
 
@@ -192,9 +197,11 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
     input: PrepararPrealtaPppoeInput;
 
     cuentaPppoeId: number;
+
     perfilHomologacionId: number;
 
     usuario: string;
+
     codigoPerfil: string;
 
     generadoEn: Date;

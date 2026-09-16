@@ -1,10 +1,18 @@
 import { Injectable } from '@nestjs/common';
+
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ClientePppoeCuentaRepositoryPort } from '../../domain/ports/pppoe-cliente-cuenta.port';
-import { ClientePppoeCuentaEntity } from '../../domain/entities/ppoe-cliente-cuenta.entity';
+
+import {
+  BuscarCuentaPppoeVigentePorUsuarioParams,
+  ClientePppoeCuentaRepositoryPort,
+} from '../../domain/ports/pppoe-cliente-cuenta.port';
+
 import { ClientePppoeCuentaPrismaMapper } from './pppoe-cliente-cuenta.mapper';
+
 import { ClientePppoeCuentaProtegidaInstalacion } from '../../domain/read-models/cliente-pppoe-cuenta-protegida-instalacion.read-model';
+
 import { EstadoCuentaPppoe } from '../../domain/enums/pppoe-cliente-cuenta.enum';
+import { ClientePppoeCuentaEntity } from '../../domain/entities/ppoe-cliente-cuenta.entity';
 
 @Injectable()
 export class ClientePppoeCuentaPrismaRepository
@@ -72,6 +80,31 @@ export class ClientePppoeCuentaPrismaRepository
     const record = await this.prisma.clientePppoeCuenta.findFirst({
       where: {
         usuario,
+      },
+
+      orderBy: {
+        id: 'desc',
+      },
+    });
+
+    return record ? ClientePppoeCuentaPrismaMapper.toDomain(record) : null;
+  }
+
+  async findVigenteByEmpresaYUsuario(
+    params: BuscarCuentaPppoeVigentePorUsuarioParams,
+  ): Promise<ClientePppoeCuentaEntity | null> {
+    const record = await this.prisma.clientePppoeCuenta.findFirst({
+      where: {
+        empresaId: params.empresaId,
+        usuario: params.usuario,
+
+        estado: {
+          notIn: [EstadoCuentaPppoe.ELIMINADA, EstadoCuentaPppoe.CANCELADA],
+        },
+      },
+
+      orderBy: {
+        id: 'desc',
       },
     });
 
@@ -151,11 +184,8 @@ export class ClientePppoeCuentaPrismaRepository
       usuario: record.usuario,
 
       secretoCifrado: record.secretoCifrado,
-
       secretoIv: record.secretoIv,
-
       secretoAuthTag: record.secretoAuthTag,
-
       versionClave: record.versionClave,
 
       estadoCuenta: this.mapEstadoCuenta(record.estado),

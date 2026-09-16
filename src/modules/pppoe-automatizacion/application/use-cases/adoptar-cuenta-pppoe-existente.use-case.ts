@@ -6,10 +6,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { ClienteAccesoInternetRepositoryPort } from 'src/modules/pppoe-acceso-internet/domain/ports/ppoe-acceso-internet.port';
-
-import { CLIENTE_ACCESO_INTERNET_REPOSITORY } from 'src/modules/pppoe-acceso-internet/infra/tokens/token-ppoe-acceso-internet.token';
-
 import {
   CLIENTE_PPPOE_CUENTA_REPOSITORY,
   ClientePppoeCuentaRepositoryPort,
@@ -20,10 +16,6 @@ import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums
 import { PPPOE_SECRET_CIPHER } from 'src/modules/pppoe-cliente-cuenta/infra/tokens/pppoe-cliente-cuenta.token';
 
 import { PppoeSecretCipherPort } from 'src/modules/pppoe-credentials/application/ports/pppoe-secret-cipher.port';
-
-import { PerfilHomologacionRepositoryPort } from 'src/modules/pppoe-perfil-homologacion/domain/ports/ppoe-perfil-homologacion.port';
-
-import { PPPOE_PERFIL_HOMOLOGACION_REPOSITORY } from 'src/modules/pppoe-perfil-homologacion/infra/tokens/ppoe-perfil-homologacion.token';
 
 import {
   MIKROTIK_SSH_PORT,
@@ -44,6 +36,10 @@ import {
 } from '../../domain/ports/pppoe-adopcion-persistence.port';
 
 import { AdoptarCuentaPppoeExistenteResult } from '../results/adoptar-cuenta-pppoe-existente.result';
+import { CLIENTE_ACCESO_INTERNET_REPOSITORY } from 'src/modules/pppoe-acceso-internet/infra/tokens/token-ppoe-acceso-internet.token';
+import { ClienteAccesoInternetRepositoryPort } from 'src/modules/pppoe-acceso-internet/domain/ports/ppoe-acceso-internet.port';
+import { PPPOE_PERFIL_HOMOLOGACION_REPOSITORY } from 'src/modules/pppoe-perfil-homologacion/infra/tokens/ppoe-perfil-homologacion.token';
+import { PerfilHomologacionRepositoryPort } from 'src/modules/pppoe-perfil-homologacion/domain/ports/ppoe-perfil-homologacion.port';
 import { EstadoAccesoInternet } from 'src/modules/pppoe-acceso-internet/domain/enums/ppoe-acceso-internet.enum';
 
 export type AdoptarCuentaPppoeExistenteInput = {
@@ -126,42 +122,29 @@ export class AdoptarCuentaPppoeExistenteUseCase {
   ): Promise<AdoptarCuentaPppoeExistenteResult> {
     const normalized = this.validateAndNormalizeInput(input);
 
-    /**
-     * =======================================================
-     * 1. VALIDACIONES LOCALES PREVIAS
-     * =======================================================
-     *
-     * Estas validaciones evitan abrir una conexión SSH
-     * cuando ya sabemos que la adopción no puede realizarse.
-     */
+    const accesoVigente =
+      await this.accesoRepository.findPppoeVigenteByClienteId({
+        empresaId: normalized.empresaId,
+        clienteId: normalized.clienteId,
+      });
 
-    const accesoExistente = await this.accesoRepository.findPppoeByClienteId({
-      empresaId: normalized.empresaId,
-
-      clienteId: normalized.clienteId,
-    });
-
-    if (accesoExistente) {
+    if (accesoVigente) {
       throw new ConflictException(
-        'El cliente ya posee un acceso PPPoE registrado en el CRM.',
+        `El cliente ya posee un acceso PPPoE vigente en estado ${accesoVigente.estado}.`,
       );
     }
 
-    const cuentaConMismoUsuario = await this.cuentaRepository.findByUsuario(
-      normalized.usuarioPppoe,
-    );
+    const cuentaVigenteConMismoUsuario =
+      await this.cuentaRepository.findVigenteByEmpresaYUsuario({
+        empresaId: normalized.empresaId,
+        usuario: normalized.usuarioPppoe,
+      });
 
-    if (cuentaConMismoUsuario) {
+    if (cuentaVigenteConMismoUsuario) {
       throw new ConflictException(
-        `El usuario PPPoE "${normalized.usuarioPppoe}" ya se encuentra registrado en el CRM.`,
+        `El usuario PPPoE "${normalized.usuarioPppoe}" ya se encuentra asociado a una cuenta vigente en el CRM.`,
       );
     }
-
-    /**
-     * =======================================================
-     * 2. HOMOLOGACIÓN
-     * =======================================================
-     */
 
     const perfil = await this.perfilRepository.findById(
       normalized.perfilHomologacionId,
@@ -191,26 +174,7 @@ export class AdoptarCuentaPppoeExistenteUseCase {
 
     const codigoPerfilEsperado = perfil.codigoPerfil;
 
-    /**
-     * =======================================================
-     * 3. RESOLVER ROUTER
-     * =======================================================
-     */
-
     const router = await this.routerContext.resolve(mikrotikRouterId);
-
-    /**
-     * =======================================================
-     * 4. VERIFICACIÓN FINAL CONTRA MIKROTIK
-     * =======================================================
-     *
-     * Esta comprobación NO depende del endpoint previo
-     * de "verificar".
-     *
-     * Aunque el usuario haya hecho una previsualización,
-     * aquí volvemos a comprobar todo inmediatamente antes
-     * de cifrar y persistir.
-     */
 
     let session: MikrotikSshSessionPort | null = null;
 
@@ -249,18 +213,12 @@ export class AdoptarCuentaPppoeExistenteUseCase {
         passwordPppoe: normalized.passwordPppoe,
       });
 
-      /**
-       * Secret inexistente.
-       */
       if (!verification.encontrado) {
         throw new ConflictException(
           `No existe un secret PPPoE con el usuario "${normalized.usuarioPppoe}" en el MikroTik seleccionado.`,
         );
       }
 
-      /**
-       * Contraseña incorrecta.
-       */
       if (verification.passwordCoincide !== true) {
         throw new ConflictException(
           'La contraseña suministrada no coincide con la configurada actualmente en MikroTik.',
@@ -273,10 +231,6 @@ export class AdoptarCuentaPppoeExistenteUseCase {
         );
       }
 
-      /**
-       * El profile remoto debe coincidir exactamente
-       * con la homologación elegida.
-       */
       if (verification.secret.codigoPerfil !== codigoPerfilEsperado) {
         throw new ConflictException(
           `El secret utiliza el profile "${verification.secret.codigoPerfil ?? 'sin perfil'}", pero la homologación seleccionada requiere "${codigoPerfilEsperado}".`,
@@ -296,12 +250,6 @@ export class AdoptarCuentaPppoeExistenteUseCase {
       await this.closeSessionSafely(session);
     }
 
-    /**
-     * =======================================================
-     * 5. DETERMINAR ESTADO REAL
-     * =======================================================
-     */
-
     const estado = deshabilitado
       ? {
           estadoCuenta: EstadoCuentaPppoe.SUSPENDIDA as const,
@@ -319,19 +267,6 @@ export class AdoptarCuentaPppoeExistenteUseCase {
         normalized.passwordPppoe,
       );
 
-    /**
-     * =======================================================
-     * 6. CIFRAR EXACTAMENTE LA MISMA CONTRASEÑA
-     * =======================================================
-     *
-     * No generamos una contraseña nueva.
-     *
-     * No modificamos MikroTik.
-     *
-     * Ciframos exactamente la contraseña que acaba
-     * de comprobarse contra RouterOS.
-     */
-
     const secretoProtegido = await this.secretCipher.encrypt(
       normalized.passwordPppoe,
     );
@@ -339,12 +274,6 @@ export class AdoptarCuentaPppoeExistenteUseCase {
     const fechaAdopcion = normalized.fechaReferencia
       ? new Date(normalized.fechaReferencia)
       : new Date();
-
-    /**
-     * =======================================================
-     * 7. PERSISTENCIA ATÓMICA
-     * =======================================================
-     */
 
     const persisted = await this.persistence.persistir({
       empresaId: normalized.empresaId,
@@ -378,20 +307,12 @@ export class AdoptarCuentaPppoeExistenteUseCase {
 
     const advertencias: string[] = [];
 
-    /**
-     * service=any funciona para PPPoE,
-     * pero las nuevas cuentas utilizan pppoe.
-     */
     if (servicioRemoto?.trim().toLowerCase() === 'any') {
       advertencias.push(
         'El secret utiliza service=any. Es compatible con PPPoE, aunque las cuentas nuevas del CRM utilizan service=pppoe.',
       );
     }
 
-    /**
-     * Una contraseña histórica puede conservarse
-     * aunque no utilice el formato actual.
-     */
     if (!cumpleFormatoNova) {
       advertencias.push(
         'La contraseña adoptada no utiliza la nomenclatura actual de NOVA. Se conservó sin modificaciones porque coincide con MikroTik.',
@@ -464,12 +385,6 @@ export class AdoptarCuentaPppoeExistenteUseCase {
       );
     }
 
-    /**
-     * La contraseña NO se trimmea.
-     *
-     * Debemos comparar exactamente el valor
-     * utilizado históricamente en MikroTik.
-     */
     if (
       typeof input.passwordPppoe !== 'string' ||
       input.passwordPppoe.length === 0
@@ -501,9 +416,6 @@ export class AdoptarCuentaPppoeExistenteUseCase {
 
       usuarioPppoe,
 
-      /**
-       * Se conserva exactamente como llegó.
-       */
       passwordPppoe: input.passwordPppoe,
     };
   }
@@ -534,10 +446,7 @@ export class AdoptarCuentaPppoeExistenteUseCase {
     try {
       await session.cerrar();
     } catch {
-      /**
-       * No sustituimos el resultado principal
-       * por un error secundario de cierre.
-       */
+      return;
     }
   }
 }
