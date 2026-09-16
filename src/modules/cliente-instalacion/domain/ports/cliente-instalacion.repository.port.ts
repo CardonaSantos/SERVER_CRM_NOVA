@@ -162,7 +162,7 @@ export type ClienteInstalacionDetalle = {
   };
   cuentaPppoe: {
     id: number;
-  };
+  } | null;
 };
 
 export type ClienteInstalacionMiAsignacionResumen = {
