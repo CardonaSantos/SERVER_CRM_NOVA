@@ -2190,200 +2190,695 @@ export class TicketsSoporteService {
   // ===================== CLOSE =====================
   async closeTickets(id: number, dto: CloseTicketDto) {
     try {
-      const ticketToClose = await this.prisma.ticketSoporte.findUnique({
-        where: {
-          id,
-        },
-      });
-
       this.logger.log(`DTO CIERRE DE TICKET:\n${JSON.stringify(dto, null, 2)}`);
-
-      if (!ticketToClose) {
-        throw new NotFoundException('Ticket no encontrado');
-      }
-
-      // =====================================================
-      // FINALIZAR CICLO TÉCNICO, SI EXISTE
-      //
-      // El ticket puede cerrarse directamente por motivos
-      // administrativos/incidentes sin haber pasado por
-      // atención técnica.
-      //
-      // En ese caso NO debemos fabricar una
-      // fechaResolucionTecnico.
-      // =====================================================
-
-      const logTecnicoAbierto = await this.prisma.ticketTimeLog.findFirst({
-        where: {
-          ticketId: id,
-          fin: null,
-        },
-        select: {
-          id: true,
-        },
-      });
-
-      const tieneCicloTecnicoPorFinalizar =
-        ticketToClose.estado === EstadoTicketSoporte.EN_PROCESO ||
-        Boolean(logTecnicoAbierto);
-
-      if (tieneCicloTecnicoPorFinalizar) {
-        await this.updateStatusEnRevision(id);
-      }
 
       // =====================================================
       // INSTANTE ÚNICO DE CIERRE
+      // =====================================================
+      //
+      // El mismo instante se utiliza para:
+      //
+      // - cerrar logs técnicos abiertos;
+      // - fechaResolucionTecnico, si corresponde;
+      // - fechaCierre.
+      //
       // =====================================================
 
       const fechaCierre = dayjs().toDate();
 
       // =====================================================
-      // TIEMPO TÉCNICO
-      //
-      // Suma únicamente TicketTimeLog.
-      // Si nunca hubo trabajo técnico, será 0.
+      // TRANSACCIÓN PRINCIPAL
       // =====================================================
 
-      const tiempoTecnicoMinutos =
-        await this.ticketsRepo.obtenerTiempoTecnicoTrabajado(id);
+      const transactionResult = await this.prisma.$transaction(async (tx) => {
+        // ===============================================
+        // SNAPSHOT DEL TICKET
+        // ===============================================
 
-      // =====================================================
-      // TIEMPO TOTAL
-      //
-      // Tiempo calendario:
-      // fechaApertura -> fechaCierre
-      // =====================================================
-
-      const tiempoTotalMinutos = Math.max(
-        dayjs(fechaCierre).diff(dayjs(ticketToClose.fechaApertura), 'minutes'),
-        0,
-      );
-
-      const dtoSolucion: CreateTicketResumenDto = {
-        ticketId: id,
-        notasInternas: dto.notasInternas,
-        resueltoComo: dto.resueltoComo,
-        solucionId: dto.solucionId,
-        tiempoTotalMinutos,
-        tiempoTecnicoMinutos,
-      };
-
-      // =====================================================
-      // ETIQUETAS
-      //
-      // Sólo sincronizamos si realmente vienen en el DTO.
-      //
-      // Si no vienen, conservamos las existentes.
-      // Si viene [], significa quitar todas.
-      // =====================================================
-
-      if (dto.tags !== undefined) {
-        const etiquetaIds = dto.tags.map((tag) => Number(tag.value));
-
-        const tieneEtiquetaInvalida = etiquetaIds.some(
-          (etiquetaId) => !Number.isInteger(etiquetaId) || etiquetaId <= 0,
-        );
-
-        if (tieneEtiquetaInvalida) {
-          throw new BadRequestException(
-            'La lista de etiquetas contiene identificadores inválidos.',
-          );
-        }
-
-        const etiquetaIdsUnicos = [...new Set(etiquetaIds)];
-
-        await this.prisma.ticketEtiqueta.deleteMany({
+        const ticketActual = await tx.ticketSoporte.findUnique({
           where: {
-            ticketId: id,
+            id,
+          },
+
+          select: {
+            id: true,
+            empresaId: true,
+
+            titulo: true,
+            descripcion: true,
+
+            estado: true,
+            prioridad: true,
+
+            fijado: true,
+
+            tecnicoId: true,
+
+            fechaApertura: true,
+            fechaCierre: true,
+            fechaResolucionTecnico: true,
+
+            tecnico: {
+              select: {
+                id: true,
+                nombre: true,
+              },
+            },
+
+            asignaciones: {
+              select: {
+                tecnicoId: true,
+              },
+            },
+
+            etiquetas: {
+              select: {
+                etiquetaId: true,
+              },
+            },
+
+            logsTiempo: {
+              select: {
+                id: true,
+                inicio: true,
+                fin: true,
+                duracionMinutos: true,
+              },
+            },
+
+            resumen: {
+              select: {
+                id: true,
+                reabierto: true,
+                numeroReaperturas: true,
+                intentos: true,
+              },
+            },
           },
         });
 
-        if (etiquetaIdsUnicos.length > 0) {
-          await this.prisma.ticketEtiqueta.createMany({
-            data: etiquetaIdsUnicos.map((etiquetaId) => ({
-              ticketId: id,
-              etiquetaId,
-            })),
-            skipDuplicates: true,
+        if (!ticketActual) {
+          throw new NotFoundException(`Ticket con id ${id} no encontrado`);
+        }
+
+        // ===============================================
+        // EVITAR CIERRE DUPLICADO
+        // ===============================================
+
+        if (
+          ticketActual.estado === EstadoTicketSoporte.RESUELTA ||
+          ticketActual.estado === EstadoTicketSoporte.CERRADO
+        ) {
+          throw new BadRequestException(
+            'El ticket ya se encuentra resuelto o cerrado.',
+          );
+        }
+
+        if (ticketActual.estado === EstadoTicketSoporte.CANCELADA) {
+          throw new BadRequestException(
+            'No se puede resolver un ticket cancelado.',
+          );
+        }
+
+        // ===============================================
+        // ACTOR
+        // ===============================================
+        //
+        // CloseTicketDto actualmente tiene usuarioId.
+        //
+        // También soportamos userId como fallback porque
+        // UpdateTicketsSoporteDto lo hereda del DTO base.
+        //
+        // ===============================================
+
+        const actorUsuarioId = dto.usuarioId ?? dto.userId ?? null;
+
+        let actor: {
+          id: number;
+          nombre: string;
+        } | null = null;
+
+        if (actorUsuarioId) {
+          actor = await tx.usuario.findUnique({
+            where: {
+              id: actorUsuarioId,
+            },
+
+            select: {
+              id: true,
+              nombre: true,
+            },
+          });
+
+          if (!actor) {
+            throw new BadRequestException(
+              `El usuario actor ${actorUsuarioId} no existe.`,
+            );
+          }
+        }
+
+        // ===============================================
+        // ETIQUETAS ANTERIORES
+        // ===============================================
+
+        const etiquetasAnteriores = [
+          ...new Set(ticketActual.etiquetas.map((item) => item.etiquetaId)),
+        ].sort((a, b) => a - b);
+
+        let etiquetasResultantes = [...etiquetasAnteriores];
+
+        // ===============================================
+        // VALIDAR ETIQUETAS RESULTANTES
+        // ===============================================
+        //
+        // undefined -> conservar
+        // []        -> quitar todas
+        // [1, 3]    -> dejar exactamente 1 y 3
+        //
+        // ===============================================
+
+        if (dto.tags !== undefined) {
+          const etiquetaIds = dto.tags.map((tagId) => Number(tagId));
+
+          const tieneEtiquetaInvalida = etiquetaIds.some(
+            (etiquetaId) => !Number.isInteger(etiquetaId) || etiquetaId <= 0,
+          );
+
+          if (tieneEtiquetaInvalida) {
+            this.logger.warn(
+              [
+                `Ticket ${id}`,
+                'Etiquetas inválidas al cerrar ticket',
+                `tags=${JSON.stringify(dto.tags)}`,
+              ].join(' | '),
+            );
+
+            throw new BadRequestException(
+              'La lista de etiquetas contiene identificadores inválidos.',
+            );
+          }
+
+          etiquetasResultantes = [...new Set(etiquetaIds)].sort(
+            (a, b) => a - b,
+          );
+
+          // =============================================
+          // VALIDAR EXISTENCIA
+          // =============================================
+
+          if (etiquetasResultantes.length > 0) {
+            const existentes = await tx.etiquetaTicket.findMany({
+              where: {
+                id: {
+                  in: etiquetasResultantes,
+                },
+              },
+
+              select: {
+                id: true,
+              },
+            });
+
+            const existentesSet = new Set(
+              existentes.map((etiqueta) => etiqueta.id),
+            );
+
+            const noEncontradas = etiquetasResultantes.filter(
+              (etiquetaId) => !existentesSet.has(etiquetaId),
+            );
+
+            if (noEncontradas.length > 0) {
+              throw new BadRequestException(
+                `Las siguientes etiquetas no existen: ${noEncontradas.join(
+                  ', ',
+                )}`,
+              );
+            }
+          }
+        }
+
+        // ===============================================
+        // FINALIZAR CICLO TÉCNICO
+        // ===============================================
+        //
+        // Sustituimos la llamada externa:
+        //
+        // this.updateStatusEnRevision(id)
+        //
+        // porque queremos que:
+        //
+        // - cierre de logs;
+        // - fechaResolucionTecnico;
+        // - estado RESUELTA;
+        //
+        // formen parte de LA MISMA transacción.
+        //
+        // ===============================================
+
+        const logsAbiertos = ticketActual.logsTiempo.filter(
+          (log) => log.fin === null,
+        );
+
+        const tieneCicloTecnicoPorFinalizar =
+          ticketActual.estado === EstadoTicketSoporte.EN_PROCESO ||
+          logsAbiertos.length > 0;
+
+        const duracionesLogsAbiertos = new Map<number, number>();
+
+        for (const log of logsAbiertos) {
+          const minutosReales = dayjs(fechaCierre).diff(
+            dayjs(log.inicio),
+            'minutes',
+          );
+
+          /**
+           * Conservamos la misma regla que ya utilizaba
+           * updateStatusEnRevision:
+           *
+           * un ciclo iniciado cuenta como mínimo 1 minuto.
+           */
+          const duracionMinutos = minutosReales > 0 ? minutosReales : 1;
+
+          duracionesLogsAbiertos.set(log.id, duracionMinutos);
+
+          await tx.ticketTimeLog.update({
+            where: {
+              id: log.id,
+            },
+
+            data: {
+              fin: fechaCierre,
+              duracionMinutos,
+            },
           });
         }
-      }
 
-      // =====================================================
-      // CERRAR TICKET
-      //
-      // No reasignamos técnico durante el cierre.
-      // La asignación debe haberse realizado previamente
-      // mediante el flujo de actualización.
-      // =====================================================
+        // ===============================================
+        // TIEMPO TÉCNICO
+        // ===============================================
+        //
+        // Calculamos desde el mismo snapshot de logs.
+        //
+        // Para logs que estaban abiertos utilizamos
+        // el valor recién calculado.
+        //
+        // ===============================================
 
-      const ticketClosed = await this.prisma.ticketSoporte.update({
-        where: {
-          id,
-        },
+        const tiempoTecnicoMinutos = ticketActual.logsTiempo.reduce(
+          (total, log) => {
+            if (log.fin === null) {
+              return total + (duracionesLogsAbiertos.get(log.id) ?? 0);
+            }
 
-        data: {
-          titulo: dto.title,
-          descripcion: dto.description,
-
-          estado: EstadoTicketSoporte.RESUELTA,
-          prioridad: dto.priority,
-
-          fechaCierre,
-
-          fijado: false,
-        },
-      });
-
-      // =====================================================
-      // METAS
-      //
-      // Participantes únicos:
-      // principal + adicionales.
-      //
-      // Esto también protege datos históricos donde el
-      // principal pudiera estar repetido en asignaciones.
-      // =====================================================
-
-      const participantes = await this.prisma.ticketSoporte.findUnique({
-        where: {
-          id: ticketClosed.id,
-        },
-
-        select: {
-          tecnicoId: true,
-
-          asignaciones: {
-            select: {
-              tecnicoId: true,
-            },
+            return total + (log.duracionMinutos ?? 0);
           },
-        },
+          0,
+        );
+
+        // ===============================================
+        // TIEMPO TOTAL
+        // ===============================================
+
+        const tiempoTotalMinutos = Math.max(
+          dayjs(fechaCierre).diff(dayjs(ticketActual.fechaApertura), 'minutes'),
+          0,
+        );
+
+        // ===============================================
+        // CERRAR TICKET
+        // ===============================================
+
+        const ticketClosed = await tx.ticketSoporte.update({
+          where: {
+            id,
+          },
+
+          data: {
+            titulo: dto.title,
+
+            descripcion: dto.description,
+
+            prioridad: dto.priority,
+
+            estado: EstadoTicketSoporte.RESUELTA,
+
+            fijado: false,
+
+            fechaCierre,
+
+            /**
+             * Solamente generamos resolución técnica
+             * cuando realmente existió un ciclo
+             * técnico que finalizar.
+             *
+             * Si ya existía una fecha histórica,
+             * la conservamos.
+             */
+            fechaResolucionTecnico: tieneCicloTecnicoPorFinalizar
+              ? (ticketActual.fechaResolucionTecnico ?? fechaCierre)
+              : undefined,
+          },
+        });
+
+        // ===============================================
+        // SINCRONIZAR ETIQUETAS
+        // ===============================================
+
+        if (dto.tags !== undefined) {
+          await tx.ticketEtiqueta.deleteMany({
+            where: {
+              ticketId: id,
+            },
+          });
+
+          if (etiquetasResultantes.length > 0) {
+            await tx.ticketEtiqueta.createMany({
+              data: etiquetasResultantes.map((etiquetaId) => ({
+                ticketId: id,
+                etiquetaId,
+              })),
+
+              skipDuplicates: true,
+            });
+          }
+        }
+
+        // ===============================================
+        // RESUMEN HISTÓRICO
+        // ===============================================
+        //
+        // Antes se llamaba:
+        //
+        // this.ticketResumen.create(...)
+        //
+        // Eso utiliza otro PrismaService fuera de esta
+        // transacción.
+        //
+        // Ahora lo persistimos con el mismo tx.
+        //
+        // Además soportamos un TicketResumen existente,
+        // útil para tickets que fueron reabiertos.
+        //
+        // ===============================================
+
+        const resumenExistente = await tx.ticketResumen.findUnique({
+          where: {
+            ticketId: id,
+          },
+
+          select: {
+            id: true,
+            numeroReaperturas: true,
+            intentos: true,
+          },
+        });
+
+        if (resumenExistente) {
+          await tx.ticketResumen.update({
+            where: {
+              id: resumenExistente.id,
+            },
+
+            data: {
+              solucionId: dto.solucionId ?? null,
+
+              resueltoComo: dto.resueltoComo?.trim() || null,
+
+              notasInternas: dto.notasInternas?.trim() || null,
+
+              reabierto: false,
+
+              /**
+               * No reiniciamos:
+               *
+               * - numeroReaperturas
+               * - intentos
+               *
+               * porque contienen historia previa.
+               */
+
+              tiempoTotalMinutos,
+
+              tiempoTecnicoMinutos,
+            },
+          });
+        } else {
+          await tx.ticketResumen.create({
+            data: {
+              ticketId: id,
+
+              solucionId: dto.solucionId ?? null,
+
+              resueltoComo: dto.resueltoComo?.trim() || null,
+
+              notasInternas: dto.notasInternas?.trim() || null,
+
+              reabierto: false,
+
+              numeroReaperturas: 0,
+
+              /**
+               * TicketResumen.create() utiliza
+               * intentos = 1 como valor inicial.
+               * Conservamos esa misma semántica.
+               */
+              intentos: 1,
+
+              tiempoTotalMinutos,
+
+              tiempoTecnicoMinutos,
+            },
+          });
+        }
+
+        // ===============================================
+        // AUDITORÍA
+        // ===============================================
+
+        const cambios: TicketHistorialCambio[] = [];
+
+        // -----------------------------------------------
+        // TÍTULO
+        // -----------------------------------------------
+
+        if (ticketActual.titulo !== ticketClosed.titulo) {
+          cambios.push({
+            campo: 'titulo',
+
+            anterior: ticketActual.titulo ?? null,
+
+            nuevo: ticketClosed.titulo ?? null,
+          });
+        }
+
+        // -----------------------------------------------
+        // DESCRIPCIÓN
+        // -----------------------------------------------
+
+        if (ticketActual.descripcion !== ticketClosed.descripcion) {
+          cambios.push({
+            campo: 'descripcion',
+
+            anterior: ticketActual.descripcion ?? null,
+
+            nuevo: ticketClosed.descripcion ?? null,
+          });
+        }
+
+        // -----------------------------------------------
+        // ESTADO
+        // -----------------------------------------------
+
+        if (ticketActual.estado !== ticketClosed.estado) {
+          cambios.push({
+            campo: 'estado',
+
+            anterior: ticketActual.estado,
+
+            nuevo: ticketClosed.estado,
+          });
+        }
+
+        // -----------------------------------------------
+        // PRIORIDAD
+        // -----------------------------------------------
+
+        if (ticketActual.prioridad !== ticketClosed.prioridad) {
+          cambios.push({
+            campo: 'prioridad',
+
+            anterior: ticketActual.prioridad,
+
+            nuevo: ticketClosed.prioridad,
+          });
+        }
+
+        // -----------------------------------------------
+        // FIJADO
+        // -----------------------------------------------
+
+        if (ticketActual.fijado !== ticketClosed.fijado) {
+          cambios.push({
+            campo: 'fijado',
+
+            anterior: ticketActual.fijado,
+
+            nuevo: ticketClosed.fijado,
+          });
+        }
+
+        // -----------------------------------------------
+        // ETIQUETAS
+        // -----------------------------------------------
+
+        const etiquetasCambiaron =
+          JSON.stringify(etiquetasAnteriores) !==
+          JSON.stringify(etiquetasResultantes);
+
+        if (etiquetasCambiaron) {
+          cambios.push({
+            campo: 'etiquetas',
+
+            anterior: etiquetasAnteriores,
+
+            nuevo: etiquetasResultantes,
+          });
+        }
+
+        // ===============================================
+        // PERSISTIR AUDITORÍA
+        // ===============================================
+
+        if (cambios.length > 0) {
+          await this.ticketHistorialTx.registrarActualizacion(tx, {
+            ticketId: id,
+
+            actor: actor
+              ? {
+                  usuarioId: actor.id,
+
+                  usuarioNombre: actor.nombre,
+                }
+              : null,
+
+            cambios,
+          });
+        }
+
+        // ===============================================
+        // PARTICIPANTES PARA METAS
+        // ===============================================
+
+        const tecnicoIds = [
+          ...new Set(
+            [
+              ticketActual.tecnicoId,
+
+              ...ticketActual.asignaciones.map(
+                (asignacion) => asignacion.tecnicoId,
+              ),
+            ].filter(
+              (tecnicoId): tecnicoId is number =>
+                typeof tecnicoId === 'number' && tecnicoId > 0,
+            ),
+          ),
+        ];
+
+        return {
+          ticketClosed,
+
+          tecnicoIds,
+
+          tecnicoNombre: ticketActual.tecnico?.nombre ?? null,
+
+          tiempoTecnicoMinutos,
+
+          tiempoTotalMinutos,
+        };
       });
 
-      const tecnicoIds = new Set<number>();
+      // =====================================================
+      // POST-COMMIT: METAS
+      // =====================================================
+      //
+      // Las metas pertenecen a otro servicio/recurso y
+      // actualmente no aceptan Prisma.TransactionClient.
+      //
+      // Por eso se procesan después del COMMIT.
+      //
+      // Un fallo de una meta NO debe convertir un ticket
+      // correctamente cerrado en un cierre fallido.
+      //
+      // =====================================================
 
-      if (participantes?.tecnicoId) {
-        tecnicoIds.add(participantes.tecnicoId);
-      }
+      const resultadosMetas = await Promise.allSettled(
+        transactionResult.tecnicoIds.map((tecnicoId) =>
+          this.metasTicketSoporte.incrementMeta(tecnicoId),
+        ),
+      );
 
-      for (const asignacion of participantes?.asignaciones ?? []) {
-        tecnicoIds.add(asignacion.tecnicoId);
-      }
+      const metasFallidas = resultadosMetas.filter(
+        (resultado) => resultado.status === 'rejected',
+      );
 
-      for (const tecnicoId of tecnicoIds) {
-        await this.metasTicketSoporte.incrementMeta(tecnicoId);
+      if (metasFallidas.length > 0) {
+        this.logger.warn(
+          [
+            'Ticket cerrado, pero una o más metas no pudieron actualizarse',
+            `ticketId=${id}`,
+            `fallidas=${metasFallidas.length}`,
+          ].join(' | '),
+        );
       }
 
       // =====================================================
-      // RESUMEN HISTÓRICO
+      // POST-COMMIT: WEBSOCKET
+      // =====================================================
+      //
+      // El flujo anterior podía emitir PENDIENTE_REVISION
+      // al llamar updateStatusEnRevision(), pero no siempre
+      // emitía el estado final RESUELTA.
+      //
+      // Ahora emitimos únicamente el estado persistido.
+      //
       // =====================================================
 
-      await this.ticketResumen.create(dtoSolucion);
+      try {
+        await this.ws.sendTicketSuportChangeStatus({
+          empresaId: transactionResult.ticketClosed.empresaId,
+
+          ticketId: transactionResult.ticketClosed.id,
+
+          nuevoEstado: transactionResult.ticketClosed.estado,
+
+          titulo: transactionResult.ticketClosed.titulo,
+
+          tecnico: transactionResult.tecnicoNombre,
+        });
+      } catch (error) {
+        this.logger.warn(
+          [
+            'Ticket cerrado correctamente, pero falló la notificación WebSocket',
+            `ticketId=${id}`,
+            `error=${error instanceof Error ? error.message : String(error)}`,
+          ].join(' | '),
+        );
+      }
+
+      this.logger.log(
+        [
+          'Ticket cerrado correctamente',
+          `ticketId=${id}`,
+          `estado=${transactionResult.ticketClosed.estado}`,
+          `tiempoTecnico=${transactionResult.tiempoTecnicoMinutos}min`,
+          `tiempoTotal=${transactionResult.tiempoTotalMinutos}min`,
+        ].join(' | '),
+      );
 
       return {
         message: 'Ticket cerrado con éxito',
-        ticket: ticketClosed,
+
+        ticket: transactionResult.ticketClosed,
       };
     } catch (error) {
       this.logger.error('Error al cerrar ticket: ', error);
