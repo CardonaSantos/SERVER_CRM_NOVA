@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 
 import { AuthService } from 'src/auth/auth.service';
 
@@ -13,25 +17,23 @@ import {
   ProvisionarPppoeClienteManualUseCase,
 } from '../use-cases/provisionar-pppoe-cliente-manual.use-case';
 
-/**
- * Actor administrativo obtenido exclusivamente
- * de la petición autenticada.
- */
 export type ActorProvisionamientoPppoeAdmin = {
   operadorId: number;
 
   operadorNombre?: string | null;
+
+  /**
+   * Rol obtenido exclusivamente del JWT.
+   *
+   * Nunca debe recibirse desde el body.
+   */
+  actorRol: string;
 
   ipOrigen?: string | null;
 
   userAgent?: string | null;
 };
 
-/**
- * Preparación administrativa de una cuenta PPPoE.
- *
- * Todavía no ejecuta comandos contra MikroTik.
- */
 export type CrearPrealtaPppoeClienteManualParams = {
   empresaId: number;
 
@@ -44,10 +46,6 @@ export type CrearPrealtaPppoeClienteManualParams = {
   actor: ActorProvisionamientoPppoeAdmin;
 };
 
-/**
- * Primera provisión real de una cuenta PPPoE
- * previamente preparada.
- */
 export type ProvisionarPppoeClienteManualParams = {
   empresaId: number;
 
@@ -62,21 +60,17 @@ export type ProvisionarPppoeClienteManualParams = {
 
 /**
  * Fachada administrativa para crear y provisionar
- * cuentas PPPoE fuera del flujo de instalación.
+ * cuentas PPPoE fuera de ClienteInstalacion.
  *
- * Responsabilidades:
+ * Esta capa representa una operación administrativa
+ * sensible, por lo que valida:
  *
- * - validar contexto administrativo;
- * - preparar acceso y cuenta PPPoE;
- * - reautenticar antes de modificar MikroTik;
- * - delegar la ejecución técnica a los use cases existentes.
+ * - empresa desde JWT;
+ * - operador desde JWT;
+ * - rol administrativo;
+ * - reautenticación antes de tocar MikroTik.
  *
- * No conoce:
- *
- * - comandos RouterOS;
- * - sesiones SSH;
- * - credenciales PPPoE cifradas;
- * - detalles de persistencia.
+ * La contraseña de reautenticación termina aquí.
  */
 @Injectable()
 export class PppoeCuentaProvisionamientoAdminService {
@@ -89,16 +83,18 @@ export class PppoeCuentaProvisionamientoAdminService {
   ) {}
 
   /**
-   * Crea o recupera la prealta administrativa.
+   * Prepara acceso y cuenta PPPoE localmente.
    *
-   * Esta operación únicamente afecta el estado local.
-   * No necesita reautenticación porque todavía
-   * no ejecuta acciones sobre MikroTik.
+   * No ejecuta SSH, pero sigue siendo una operación
+   * administrativa: crea una identidad PPPoE para
+   * un cliente existente.
    */
   crearPrealta(
     params: CrearPrealtaPppoeClienteManualParams,
   ): Promise<PrepararPrealtaPppoeResult> {
     this.validateActor(params.actor);
+
+    this.assertOfficeRole(params.actor.actorRol);
 
     this.assertPositiveInteger(params.empresaId, 'empresaId');
 
@@ -128,20 +124,29 @@ export class PppoeCuentaProvisionamientoAdminService {
   }
 
   /**
-   * Ejecuta la primera provisión real de la cuenta.
+   * Ejecuta la primera activación real
+   * de una cuenta ALTA_MANUAL.
    *
-   * Antes de cualquier operación SSH se valida
-   * nuevamente la contraseña del operador.
+   * Antes de delegar cualquier operación PPPoE
+   * se vuelve a autenticar al operador.
    */
   async provisionar(
     params: ProvisionarPppoeClienteManualParams,
   ): Promise<ProvisionarPppoeClienteManualResult> {
     this.validateActor(params.actor);
 
+    this.assertOfficeRole(params.actor.actorRol);
+
     this.assertPositiveInteger(params.empresaId, 'empresaId');
 
     this.assertPositiveInteger(params.cuentaPppoeId, 'cuentaPppoeId');
 
+    /**
+     * No aplicar trim().
+     *
+     * Una contraseña puede contener espacios
+     * intencionalmente.
+     */
     if (
       typeof params.contrasenaActual !== 'string' ||
       params.contrasenaActual.length === 0
@@ -149,12 +154,16 @@ export class PppoeCuentaProvisionamientoAdminService {
       throw new BadRequestException('contrasenaActual es obligatoria.');
     }
 
-    /*
-     * La contraseña únicamente sirve para confirmar
-     * nuevamente la identidad del operador.
+    /**
+     * La contraseña existe únicamente durante
+     * la reautenticación.
      *
-     * No se transmite a los use cases PPPoE ni se
-     * almacena en auditorías u operaciones.
+     * No pasa a:
+     *
+     * - use cases PPPoE;
+     * - operaciones;
+     * - auditorías;
+     * - ejecutores SSH.
      */
     await this.authService.reautenticarUsuarioPorId(
       params.actor.operadorId,
@@ -188,6 +197,31 @@ export class PppoeCuentaProvisionamientoAdminService {
     }
 
     this.assertPositiveInteger(actor.operadorId, 'actor.operadorId');
+
+    if (
+      typeof actor.actorRol !== 'string' ||
+      actor.actorRol.trim().length === 0
+    ) {
+      throw new ForbiddenException(
+        'No fue posible determinar el rol del operador.',
+      );
+    }
+  }
+
+  /**
+   * Conservamos la misma política utilizada
+   * por la activación PPPoE desde instalaciones.
+   */
+  private assertOfficeRole(actorRol: string): void {
+    const rol = actorRol.trim().toUpperCase();
+
+    if (rol === 'OFICINA' || rol === 'ADMIN' || rol === 'SUPER_ADMIN') {
+      return;
+    }
+
+    throw new ForbiddenException(
+      'El operador no posee permisos para administrar altas PPPoE.',
+    );
   }
 
   private assertPositiveInteger(value: number, field: string): void {

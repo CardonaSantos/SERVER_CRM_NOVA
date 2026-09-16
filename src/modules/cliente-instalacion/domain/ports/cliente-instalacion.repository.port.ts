@@ -160,6 +160,9 @@ export type ClienteInstalacionDetalle = {
     evidencias: number;
     equipos: number;
   };
+  cuentaPppoe: {
+    id: number;
+  };
 };
 
 export type ClienteInstalacionMiAsignacionResumen = {

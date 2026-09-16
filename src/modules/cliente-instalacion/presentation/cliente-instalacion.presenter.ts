@@ -251,6 +251,9 @@ export class ClienteInstalacionPresenter {
 
         direccion: detalle.cliente.direccion ?? null,
       },
+      cuentaPppoe: {
+        id: detalle.cuentaPppoe.id,
+      },
 
       servicioInternet: detalle.servicioInternet
         ? {

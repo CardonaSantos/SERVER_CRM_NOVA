@@ -57,6 +57,15 @@ import { PppoeCuentaConsultaController } from './presentation/pppoe-cuenta-consu
     },
   ],
 
-  exports: [CLIENTE_PPPOE_CUENTA_REPOSITORY],
+  exports: [
+    CLIENTE_PPPOE_CUENTA_REPOSITORY,
+
+    /**
+     * Se exporta la política administrativa del detalle
+     * para que otros módulos puedan consultar las acciones
+     * permitidas sin duplicar reglas de estado/origen.
+     */
+    ObtenerDetalleCuentaPppoeUseCase,
+  ],
 })
 export class PppoeClienteCuentaModule {}

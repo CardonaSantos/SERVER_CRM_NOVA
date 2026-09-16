@@ -26,10 +26,19 @@ import { ProvisionarPppoeClienteManualDto } from './dto/provisionar-pppoe-client
 type AuthenticatedRequest = Request & {
   user?: {
     id?: number | string;
+
     sub?: number | string;
+
     userId?: number | string;
+
     empresaId?: number | string;
+
     nombre?: string;
+
+    /**
+     * Proveniente del JWT validado.
+     */
+    rol?: string;
   };
 };
 
@@ -37,6 +46,8 @@ type ActorAdministrativoHttp = {
   operadorId: number;
 
   operadorNombre: string | null;
+
+  actorRol: string;
 
   ipOrigen: string | null;
 
@@ -50,27 +61,26 @@ type ContextoAutenticadoHttp = {
 };
 
 /**
- * Expone el flujo administrativo para asignar
- * y provisionar PPPoE a clientes existentes.
+ * Expone el flujo administrativo para crear
+ * y provisionar PPPoE a clientes existentes
+ * fuera de ClienteInstalacion.
  *
- * Este controlador no pertenece al flujo
- * de ClienteInstalacion.
+ * Seguridad:
  *
- * Flujo:
- *
- * 1. POST /pppoe-cuentas/prealta
- *    Crea ClienteAccesoInternet + ClientePppoeCuenta.
- *
- * 2. POST /pppoe-cuentas/:cuentaPppoeId/provisionar
- *    Reautentica al operador y ejecuta:
- *
- *    CREAR_SECRET -> ACTIVAR_SECRET.
+ * - empresaId: JWT;
+ * - operadorId: JWT;
+ * - rol: JWT;
+ * - contraseña de reautenticación: body;
+ * - nunca aceptamos identidad administrativa
+ *   desde el payload HTTP.
  */
 @UseGuards(JwtAuthGuard)
 @UsePipes(
   new ValidationPipe({
     transform: true,
+
     whitelist: true,
+
     forbidNonWhitelisted: true,
   }),
 )
@@ -83,15 +93,13 @@ export class PppoeCuentaProvisionamientoController {
   /**
    * Prepara una cuenta PPPoE para un cliente existente.
    *
-   * Esta acción:
+   * Crea/recupera:
    *
-   * - crea o recupera ClienteAccesoInternet;
-   * - crea ClientePppoeCuenta;
-   * - asigna la homologación seleccionada;
-   * - genera las credenciales PPPoE;
-   * - registra auditoría;
+   * ClienteAccesoInternet
+   *        ↓
+   * ClientePppoeCuenta
    *
-   * pero NO ejecuta comandos SSH contra MikroTik.
+   * Todavía no ejecuta SSH.
    */
   @Post('prealta')
   @HttpCode(HttpStatus.OK)
@@ -118,6 +126,8 @@ export class PppoeCuentaProvisionamientoController {
 
         operadorNombre: contexto.actor.operadorNombre,
 
+        actorRol: contexto.actor.actorRol,
+
         ipOrigen: contexto.actor.ipOrigen,
 
         userAgent: contexto.actor.userAgent,
@@ -126,21 +136,14 @@ export class PppoeCuentaProvisionamientoController {
   }
 
   /**
-   * Provisiona por primera vez una cuenta PPPoE
-   * previamente creada mediante prealta administrativa.
+   * Primera activación real de una cuenta
+   * creada mediante ALTA_MANUAL.
    *
-   * Esta acción:
+   * El use case volverá a comprobar además que:
    *
-   * - reautentica al operador;
-   * - crea o confirma el secret en MikroTik;
-   * - ejecuta la activación formal;
-   * - marca ClientePppoeCuenta como ACTIVA;
-   * - marca ClienteAccesoInternet como ACTIVO.
+   * acciones.activar.flujo === ALTA_MANUAL
    *
-   * Si CREAR_SECRET falla, ACTIVAR_SECRET no se ejecuta.
-   *
-   * Las operaciones FALLIDA o PARCIAL pueden utilizar
-   * posteriormente el flujo genérico de reintento PPPoE.
+   * antes de ejecutar cualquier operación técnica.
    */
   @Post(':cuentaPppoeId/provisionar')
   @HttpCode(HttpStatus.OK)
@@ -161,6 +164,11 @@ export class PppoeCuentaProvisionamientoController {
 
       cuentaPppoeId,
 
+      /**
+       * IMPORTANTE:
+       *
+       * no aplicar trim a contrasenaActual.
+       */
       contrasenaActual: dto.contrasenaActual,
 
       motivo: dto.motivo?.trim() || null,
@@ -170,6 +178,8 @@ export class PppoeCuentaProvisionamientoController {
 
         operadorNombre: contexto.actor.operadorNombre,
 
+        actorRol: contexto.actor.actorRol,
+
         ipOrigen: contexto.actor.ipOrigen,
 
         userAgent: contexto.actor.userAgent,
@@ -178,8 +188,8 @@ export class PppoeCuentaProvisionamientoController {
   }
 
   /**
-   * Obtiene empresa y operador exclusivamente
-   * desde el JWT validado por JwtAuthGuard.
+   * Toda la identidad administrativa se deriva
+   * exclusivamente del JWT validado por JwtAuthGuard.
    */
   private getAuthenticatedContext(
     req: AuthenticatedRequest,
@@ -189,6 +199,8 @@ export class PppoeCuentaProvisionamientoController {
     const operadorId = Number(rawOperadorId);
 
     const empresaId = Number(req.user?.empresaId);
+
+    const actorRol = req.user?.rol?.trim();
 
     if (!Number.isInteger(operadorId) || operadorId <= 0) {
       throw new UnauthorizedException(
@@ -202,6 +214,12 @@ export class PppoeCuentaProvisionamientoController {
       );
     }
 
+    if (!actorRol) {
+      throw new UnauthorizedException(
+        'No fue posible identificar el rol del operador autenticado.',
+      );
+    }
+
     return {
       empresaId,
 
@@ -210,6 +228,8 @@ export class PppoeCuentaProvisionamientoController {
 
         operadorNombre: req.user?.nombre?.trim() || null,
 
+        actorRol,
+
         ipOrigen: this.getClientIp(req),
 
         userAgent: req.headers['user-agent']?.trim() || null,
@@ -217,9 +237,6 @@ export class PppoeCuentaProvisionamientoController {
     };
   }
 
-  /**
-   * Resuelve la IP real considerando proxies reversos.
-   */
   private getClientIp(req: AuthenticatedRequest): string | null {
     const forwardedFor = req.headers['x-forwarded-for'];
 

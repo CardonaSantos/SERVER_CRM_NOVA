@@ -29,42 +29,57 @@ import { EstadoOperacionPppoe } from 'src/modules/pppoe-operacion/domain/enums/p
 import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
 
 import { ActivarPppoeInstalacionResult } from '../../results/activar-pppoe-instalacion.result';
+
 import { ClienteInstalacionEntity } from '../../domain/entities/cliente-instalacion.entity';
+
+import { ObtenerDetalleCuentaPppoeUseCase } from 'src/modules/pppoe-cliente-cuenta/application/use-cases/obtener-detalle-cuenta-pppoe.use-case';
+
+import { FlujoActivacionCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/flujo-activacion-cuenta-pppoe.enum';
+
+import { ClientePppoeCuentaDetalleActivacionAccion } from 'src/modules/pppoe-cliente-cuenta/domain/read-models/cliente-pppoe-cuenta-detalle.read-model';
 
 export type ActivarPppoeInstalacionCommand = {
   instalacionId: number;
 
   /**
-   * Datos obtenidos exclusivamente del JWT.
+   * Contexto obtenido exclusivamente del JWT.
    */
   empresaId: number;
+
   operadorId: number;
+
   operadorNombre?: string | null;
+
   actorRol: string;
 
   ipOrigen?: string | null;
+
   userAgent?: string | null;
 
   /**
-   * Único valor recibido desde el body.
+   * Único dato sensible recibido desde el body.
+   *
+   * Sólo se utiliza para reautenticación administrativa.
    */
   contrasenaActual: string;
 };
 
 /**
- * Activa la cuenta PPPoE asociada con una instalación.
+ * Realiza la primera activación PPPoE de una cuenta
+ * perteneciente a ClienteInstalacion.
  *
- * Este caso de uso:
+ * Responsabilidades específicas:
  *
- * 1. valida que el actor sea de OFICINA;
- * 2. reautentica al operador;
- * 3. valida empresa e instalación;
- * 4. resuelve la cuenta generada durante la prealta;
- * 5. crea o confirma el secret en MikroTik;
- * 6. habilita o confirma habilitado el secret;
- * 7. registra fechaActivacionServicio.
+ * - comprobar permisos de oficina;
+ * - reautenticar al operador;
+ * - resolver instalación, acceso y cuenta;
+ * - validar que la cuenta declara flujo INSTALACION;
+ * - iniciar formalmente la instalación cuando corresponda;
+ * - crear/confirmar el secret;
+ * - activar/confirmar habilitado el secret;
+ * - registrar fechaActivacionServicio.
  *
- * No cambia el estado general de ClienteInstalacion.
+ * No construye comandos RouterOS ni abre SSH directamente.
  */
 @Injectable()
 export class ActivarPppoeInstalacionUseCase {
@@ -73,6 +88,8 @@ export class ActivarPppoeInstalacionUseCase {
     private readonly clienteInstalacionRepository: ClienteInstalacionRepositoryPort,
 
     private readonly resolverPppoe: ResolverPppoeInstalacionService,
+
+    private readonly obtenerDetalleCuenta: ObtenerDetalleCuentaPppoeUseCase,
 
     private readonly authService: AuthService,
 
@@ -87,9 +104,15 @@ export class ActivarPppoeInstalacionUseCase {
 
     this.assertOfficeRole(command.actorRol);
 
-    /*
-     * La contraseña no se registra en operaciones,
-     * auditorías ni metadata.
+    /**
+     * La contraseña termina en AuthService.
+     *
+     * Nunca entra en:
+     *
+     * - operaciones PPPoE;
+     * - auditorías PPPoE;
+     * - metadata;
+     * - ejecutores SSH.
      */
     await this.authService.reautenticarUsuarioPorId(
       command.operadorId,
@@ -100,8 +123,8 @@ export class ActivarPppoeInstalacionUseCase {
       id: command.instalacionId,
     });
 
-    /*
-     * No revelamos si el ID pertenece a otra empresa.
+    /**
+     * No revelamos si un ID existe en otra empresa.
      */
     if (!instalacion || instalacion.empresaId !== command.empresaId) {
       throw new NotFoundException(
@@ -109,8 +132,10 @@ export class ActivarPppoeInstalacionUseCase {
       );
     }
 
-    // this.assertInstallationAllowsActivation(instalacion.estado);
-
+    /**
+     * Resolvemos la identidad PPPoE creada durante
+     * la prealta de esta instalación.
+     */
     const contextoPppoe = await this.resolverPppoe.resolve(instalacion);
 
     if (!contextoPppoe.aplica) {
@@ -127,13 +152,33 @@ export class ActivarPppoeInstalacionUseCase {
       );
     }
 
-    /*
-     * La activación administrativa inicia formalmente
-     * el flujo de instalación.
+    /**
+     * La política del detalle debe confirmar que esta cuenta
+     * pertenece precisamente al flujo de esta instalación.
      *
-     * Se persiste antes de ejecutar SSH. Si MikroTik falla,
-     * la instalación permanece EN_PROCESO y la operación
-     * podrá reintentarse.
+     * Esto evita que los diferentes entry-points de activación
+     * tengan reglas independientes.
+     */
+    const detalleCuenta = await this.obtenerDetalleCuenta.execute({
+      empresaId: command.empresaId,
+
+      cuentaPppoeId,
+    });
+
+    this.assertInstallationActivationAllowed({
+      accion: detalleCuenta.acciones.activar,
+
+      instalacionId: command.instalacionId,
+    });
+
+    /**
+     * La activación administrativa inicia formalmente
+     * el trabajo cuando todavía se encuentra programado.
+     *
+     * Se persiste antes de SSH.
+     *
+     * Si MikroTik falla, la instalación permanecerá
+     * EN_PROCESO y la operación podrá recuperarse/reintentarse.
      */
     let instalacionPersistida =
       await this.ensureInstallationInProgress(instalacion);
@@ -150,23 +195,11 @@ export class ActivarPppoeInstalacionUseCase {
       userAgent: command.userAgent ?? null,
     };
 
-    /*
-     * Primero creamos o confirmamos el secret.
-     *
-     * La clave es la misma utilizada por el flujo
-     * anterior, por lo que una repetición no genera
-     * otra operación SSH.
-     */
     let resultadoCreacion: EjecutarOperacionPppoeResult | null = null;
 
-    /*
-     * Una prealta o un reintento anterior puede haber
-     * confirmado correctamente la creación del secret.
-     *
-     * En ese caso no volvemos a consultar la operación raíz
-     * mediante su clave de idempotencia, porque dicha
-     * operación pudo haber fallado y haber sido corregida
-     * mediante un reintento posterior.
+    /**
+     * Si el secret ya fue confirmado por una ejecución
+     * o reintento anterior, no repetimos CREAR_SECRET.
      */
     if (!contextoPppoe.cuenta.tieneSecretCreado) {
       resultadoCreacion = await this.pppoeProvisionamiento.crearSecret({
@@ -178,6 +211,7 @@ export class ActivarPppoeInstalacionUseCase {
 
         claveIdempotencia: this.buildCreationIdempotencyKey({
           instalacionId: command.instalacionId,
+
           cuentaPppoeId,
         }),
 
@@ -192,9 +226,9 @@ export class ActivarPppoeInstalacionUseCase {
       this.assertSuccessfulOperation(resultadoCreacion, 'creación del secret');
     }
 
-    /*
-     * Luego habilitamos o confirmamos habilitado
-     * el secret.
+    /**
+     * ACTIVAR_SECRET utiliza una clave independiente de
+     * CREAR_SECRET para mantener idempotencia por operación.
      */
     const resultadoActivacion = await this.pppoeProvisionamiento.activarSecret({
       empresaId: instalacionPersistida.empresaId,
@@ -205,6 +239,7 @@ export class ActivarPppoeInstalacionUseCase {
 
       claveIdempotencia: this.buildActivationIdempotencyKey({
         instalacionId: command.instalacionId,
+
         cuentaPppoeId,
       }),
 
@@ -221,11 +256,11 @@ export class ActivarPppoeInstalacionUseCase {
       'activación del secret',
     );
 
-    /*
-     * Confirmamos localmente la fecha de activación.
+    /**
+     * La identidad PPPoE y el acceso ya quedaron activos.
      *
-     * Este método no cambia el estado de la
-     * instalación a EN_PROCESO ni COMPLETADA.
+     * Ahora registramos el efecto propio del aggregate
+     * ClienteInstalacion.
      */
     const primitives = instalacionPersistida.toPrimitives();
 
@@ -236,6 +271,7 @@ export class ActivarPppoeInstalacionUseCase {
         instalacionPersistida,
       );
     }
+
     const activadoEn =
       instalacionPersistida.toPrimitives().fechaActivacionServicio;
 
@@ -260,6 +296,38 @@ export class ActivarPppoeInstalacionUseCase {
     };
   }
 
+  /**
+   * Confirma que el detalle de cuenta eligió exactamente
+   * el orquestador de instalación actual.
+   */
+  private assertInstallationActivationAllowed(params: {
+    accion: ClientePppoeCuentaDetalleActivacionAccion;
+
+    instalacionId: number;
+  }): void {
+    const { accion, instalacionId } = params;
+
+    if (accion.flujo !== FlujoActivacionCuentaPppoe.INSTALACION) {
+      throw new ConflictException(
+        'La cuenta PPPoE no pertenece al flujo de instalación.',
+      );
+    }
+
+    if (accion.instalacionId !== instalacionId) {
+      throw new ConflictException(
+        accion.instalacionId === null
+          ? 'La cuenta PPPoE no posee una instalación operativa vinculada.'
+          : `La cuenta PPPoE está vinculada operativamente a la instalación ${accion.instalacionId}, no a la instalación ${instalacionId}.`,
+      );
+    }
+
+    if (!accion.habilitada) {
+      throw new ConflictException(
+        accion.motivo ?? 'La cuenta PPPoE no puede activarse actualmente.',
+      );
+    }
+  }
+
   private assertOfficeRole(actorRol: string): void {
     const rolNormalizado = actorRol.trim().toUpperCase();
 
@@ -275,14 +343,6 @@ export class ActivarPppoeInstalacionUseCase {
       'Solo el personal de oficina puede activar una cuenta PPPoE.',
     );
   }
-
-  /**
-   * EN_PROCESO es el flujo normal.
-   *
-   * COMPLETADA se admite para recuperar instalaciones
-   * cuyo trabajo físico terminó antes de que oficina
-   * confirmara la activación.
-   */
 
   private assertSuccessfulOperation(
     resultado: EjecutarOperacionPppoeResult,
@@ -316,26 +376,36 @@ export class ActivarPppoeInstalacionUseCase {
 
   private buildCreationIdempotencyKey(params: {
     instalacionId: number;
+
     cuentaPppoeId: number;
   }): string {
     return [
       'cliente-instalacion',
+
       params.instalacionId,
+
       'cuenta-pppoe',
+
       params.cuentaPppoeId,
+
       'crear-secret',
     ].join(':');
   }
 
   private buildActivationIdempotencyKey(params: {
     instalacionId: number;
+
     cuentaPppoeId: number;
   }): string {
     return [
       'cliente-instalacion',
+
       params.instalacionId,
+
       'cuenta-pppoe',
+
       params.cuentaPppoeId,
+
       'activar-secret',
     ].join(':');
   }
@@ -356,9 +426,14 @@ export class ActivarPppoeInstalacionUseCase {
       );
     }
 
+    /**
+     * No utilizamos trim() sobre la contraseña.
+     *
+     * Una contraseña puede contener espacios legítimos.
+     */
     if (
       typeof command.contrasenaActual !== 'string' ||
-      command.contrasenaActual.trim().length === 0
+      command.contrasenaActual.length === 0
     ) {
       throw new BadRequestException('contrasenaActual es obligatoria.');
     }
@@ -384,19 +459,18 @@ export class ActivarPppoeInstalacionUseCase {
       }
 
       case EstadoInstalacionCliente.EN_PROCESO:
-        /*
+        /**
          * Repetición idempotente.
          *
-         * No reemplazamos fechaInicio.
+         * Conservamos fechaInicio.
          */
         return instalacion;
 
       case EstadoInstalacionCliente.COMPLETADA:
-        /*
-         * Compatibilidad para instalaciones históricas que
-         * fueron completadas antes de activar PPPoE.
-         *
-         * En el nuevo flujo ya no debería ocurrir.
+        /**
+         * Compatibilidad con instalaciones históricas
+         * terminadas físicamente antes de que oficina
+         * confirmara PPPoE.
          */
         return instalacion;
 

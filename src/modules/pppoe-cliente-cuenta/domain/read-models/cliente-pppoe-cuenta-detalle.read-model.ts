@@ -7,6 +7,8 @@ import {
 
 import { EstadoCuentaPppoe } from '../enums/pppoe-cliente-cuenta.enum';
 
+import { FlujoActivacionCuentaPppoe } from '../enums/flujo-activacion-cuenta-pppoe.enum';
+
 import { OrigenCuentaPppoe } from './cliente-pppoe-cuenta-listado.read-model';
 
 export type ClientePppoeCuentaDetalleUsuarioResumen = {
@@ -99,7 +101,7 @@ export type ClientePppoeCuentaDetalleRouter = {
 
 export type ClientePppoeCuentaDetalleInstalacion = {
   /**
-   * ClienteInstalacionAcceso.
+   * Identificador del vínculo ClienteInstalacionAcceso.
    */
   vinculoId: number;
 
@@ -153,7 +155,13 @@ export type ClientePppoeCuentaDetalleUltimaOperacion = {
 /**
  * Estado administrativo completo de una cuenta PPPoE.
  *
- * No contiene secretos ni contraseñas.
+ * Este read-model nunca contiene:
+ *
+ * - contraseña PPPoE en texto plano;
+ * - secreto cifrado;
+ * - IV;
+ * - auth tag;
+ * - claves criptográficas.
  */
 export type ClientePppoeCuentaDetalleReadModel = {
   cuentaPppoeId: number;
@@ -204,8 +212,17 @@ export type ClientePppoeCuentaDetalleReadModel = {
 
   router: ClientePppoeCuentaDetalleRouter;
 
+  /**
+   * Origen histórico/administrativo de la cuenta.
+   */
   origen: OrigenCuentaPppoe;
 
+  /**
+   * Vínculos de instalación asociados al acceso.
+   *
+   * El QueryRepository los devuelve de más reciente
+   * a más antiguo.
+   */
   instalaciones: ClientePppoeCuentaDetalleInstalacion[];
 
   ultimaOperacion: ClientePppoeCuentaDetalleUltimaOperacion | null;
@@ -219,13 +236,51 @@ export type ClientePppoeCuentaDetalleReadModel = {
   };
 };
 
-// NUEVO PARA DETALLES
+/**
+ * Capacidad administrativa sencilla.
+ */
 export type ClientePppoeCuentaDetalleAccion = {
   habilitada: boolean;
 
+  /**
+   * null cuando la acción puede ejecutarse.
+   *
+   * Cuando habilitada === false contiene una explicación
+   * apta para mostrar en UI.
+   */
   motivo: string | null;
 };
 
+/**
+ * Describe la primera activación de una cuenta.
+ *
+ * La UI no debe inferir el flujo a partir de fechas,
+ * estados ni existencia de instalaciones.
+ *
+ * Debe consumir directamente esta información.
+ */
+export type ClientePppoeCuentaDetalleActivacionAccion =
+  ClientePppoeCuentaDetalleAccion & {
+    /**
+     * Orquestador que debe utilizarse.
+     *
+     * null significa que la cuenta no posee un flujo
+     * de primera activación aplicable.
+     */
+    flujo: FlujoActivacionCuentaPppoe | null;
+
+    /**
+     * Obligatorio cuando flujo === INSTALACION.
+     *
+     * null para ALTA_MANUAL y cuentas donde
+     * no exista un flujo de activación válido.
+     */
+    instalacionId: number | null;
+  };
+
+/**
+ * Acción administrativa asociada a una operación PPPoE.
+ */
 export type ClientePppoeCuentaDetalleOperacionAccion =
   ClientePppoeCuentaDetalleAccion & {
     /**
@@ -235,8 +290,19 @@ export type ClientePppoeCuentaDetalleOperacionAccion =
     operacionId: number | null;
   };
 
+/**
+ * Capacidades calculadas por backend para la cuenta.
+ *
+ * La UI debe usar este objeto como fuente de verdad
+ * en lugar de reconstruir reglas a partir de estadoCuenta.
+ */
 export type ClientePppoeCuentaDetalleAcciones = {
-  provisionar: ClientePppoeCuentaDetalleAccion;
+  /**
+   * Primera activación contextual.
+   *
+   * Reemplaza el antiguo concepto "provisionar".
+   */
+  activar: ClientePppoeCuentaDetalleActivacionAccion;
 
   suspender: ClientePppoeCuentaDetalleAccion;
 

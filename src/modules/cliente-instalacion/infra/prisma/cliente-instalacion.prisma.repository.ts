@@ -575,6 +575,20 @@ export class ClienteInstalacionPrismaRepository
       },
 
       include: {
+        clienteInstalacionAccesos: {
+          select: {
+            accesoInternet: {
+              select: {
+                cuentaPppoe: {
+                  select: {
+                    id: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+
         ticket: {
           select: {
             id: true,
@@ -837,6 +851,8 @@ export class ClienteInstalacionPrismaRepository
         evidencias: record._count.evidencias,
         equipos: record._count.equipos,
       },
+
+      cuentaPppoe: {},
 
       ticket: record.ticket
         ? {

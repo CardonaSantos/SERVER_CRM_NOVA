@@ -10,10 +10,16 @@ import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/domain/enums/p
 
 import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
 
+import { FlujoActivacionCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/flujo-activacion-cuenta-pppoe.enum';
+
 import {
   CLIENTE_PPPOE_CUENTA_REPOSITORY,
   ClientePppoeCuentaRepositoryPort,
 } from 'src/modules/pppoe-cliente-cuenta/domain/ports/pppoe-cliente-cuenta.port';
+
+import { ClientePppoeCuentaDetalleActivacionAccion } from 'src/modules/pppoe-cliente-cuenta/domain/read-models/cliente-pppoe-cuenta-detalle.read-model';
+
+import { ObtenerDetalleCuentaPppoeUseCase } from 'src/modules/pppoe-cliente-cuenta/application/use-cases/obtener-detalle-cuenta-pppoe.use-case';
 
 import { EstadoOperacionPppoe } from 'src/modules/pppoe-operacion/domain/enums/pppoe-operacion-operacion-paso.enums';
 
@@ -45,59 +51,43 @@ export type ProvisionarPppoeClienteManualInput = {
 export type ProvisionarPppoeClienteManualResult = {
   cuentaPppoeId: number;
 
-  /**
-   * true cuando al terminar la orquestación
-   * la activación fue exitosa y la cuenta quedó ACTIVA.
-   */
   completada: boolean;
 
-  /**
-   * Estado conocido de la cuenta al finalizar.
-   */
   estadoCuenta: EstadoCuentaPppoe | null;
 
-  /**
-   * Resultado de CREAR_SECRET.
-   *
-   * Es null cuando el secret ya había sido confirmado
-   * previamente, por ejemplo después de un reintento
-   * exitoso de CREAR_SECRET.
-   */
   creacionSecret: EjecutarOperacionPppoeResult | null;
 
-  /**
-   * Resultado de ACTIVAR_SECRET.
-   *
-   * Es null cuando CREAR_SECRET no pudo completarse
-   * y por seguridad no se intentó activar.
-   */
   activacion: EjecutarOperacionPppoeResult | null;
 };
 
 /**
- * Provisiona una cuenta PPPoE ya preparada mediante
- * el flujo administrativo/manual.
+ * Ejecuta la primera activación de una cuenta creada
+ * mediante ALTA_MANUAL.
  *
- * Este caso de uso NO:
+ * Este caso de uso no puede utilizarse para:
  *
- * - crea instalaciones;
- * - crea ClienteInstalacionAcceso;
- * - construye comandos RouterOS;
- * - abre sesiones SSH directamente.
+ * - cuentas originadas por una instalación;
+ * - cuentas adoptadas desde MikroTik;
+ * - cuentas cuya acción de activación esté bloqueada;
+ * - cuentas con operaciones que requieran reintento
+ *   o recuperación.
  *
- * Orquesta los casos de uso técnicos existentes:
+ * La política administrativa se obtiene desde
+ * ObtenerDetalleCuentaPppoeUseCase.
  *
- * 1. CREAR_SECRET en modo ALTA_MANUAL cuando sea necesario.
- * 2. ACTIVAR_SECRET en modo ALTA_MANUAL.
+ * La ejecución técnica continúa delegándose a:
  *
- * Si CREAR_SECRET ya fue confirmado previamente,
- * se continúa directamente con ACTIVAR_SECRET.
+ * CREAR_SECRET
+ *      ↓
+ * ACTIVAR_SECRET
  */
 @Injectable()
 export class ProvisionarPppoeClienteManualUseCase {
   constructor(
     @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
     private readonly cuentaRepository: ClientePppoeCuentaRepositoryPort,
+
+    private readonly obtenerDetalleCuenta: ObtenerDetalleCuentaPppoeUseCase,
 
     private readonly crearSecret: CrearYEjecutarOperacionPppoeUseCase,
 
@@ -109,12 +99,26 @@ export class ProvisionarPppoeClienteManualUseCase {
   ): Promise<ProvisionarPppoeClienteManualResult> {
     this.validateInput(input);
 
-    /*
-     * ========================================================
-     * 1. CUENTA PPPoE
-     * ========================================================
+    /**
+     * Primero consultamos la política administrativa.
+     *
+     * Con esto impedimos que alguien invoque directamente
+     * el endpoint /provisionar utilizando una cuenta
+     * perteneciente a ClienteInstalacion.
      */
+    const detalle = await this.obtenerDetalleCuenta.execute({
+      empresaId: input.empresaId,
 
+      cuentaPppoeId: input.cuentaPppoeId,
+    });
+
+    this.assertManualActivationAllowed(detalle.acciones.activar);
+
+    /**
+     * Recuperamos después el agregado porque los use cases
+     * técnicos trabajan con la entidad de dominio y necesitamos
+     * conocer tieneSecretCreado.
+     */
     const cuenta = await this.cuentaRepository.findById(input.cuentaPppoeId);
 
     if (!cuenta) {
@@ -129,60 +133,29 @@ export class ProvisionarPppoeClienteManualUseCase {
       );
     }
 
-    /*
-     * ========================================================
-     * 2. CLAVES IDEMPOTENTES DEL ALTA MANUAL
-     * ========================================================
-     */
-
     const claveCrearSecret = this.buildCreationIdempotencyKey({
       empresaId: input.empresaId,
+
       cuentaPppoeId: input.cuentaPppoeId,
     });
 
     const claveActivarSecret = this.buildActivationIdempotencyKey({
       empresaId: input.empresaId,
+
       cuentaPppoeId: input.cuentaPppoeId,
     });
 
-    /*
-     * ========================================================
-     * 3. DETERMINAR SI CREAR_SECRET TODAVÍA ES NECESARIO
-     * ========================================================
+    /**
+     * Recuperación después de un CREAR_SECRET que fue
+     * resuelto correctamente mediante un reintento.
      *
-     * Caso normal:
-     *
-     * PENDIENTE_ACTIVACION
-     *        ->
-     * CREAR_SECRET
-     *
-     *
-     * Caso de recuperación:
-     *
-     * CREAR_SECRET FALLIDA
-     *        ->
-     * REINTENTO EXITOSO
-     *        ->
-     * EN_INSTALACION + secretCreadoEn
-     *
-     * En ese escenario no debemos volver a resolver
-     * la operación raíz fallida.
-     *
-     * El secret ya existe y fue confirmado.
-     * Continuamos directamente con ACTIVAR_SECRET.
+     * En ese caso no ejecutamos nuevamente CREAR_SECRET.
      */
-
     const puedeContinuarDesdeSecretCreado =
       cuenta.estado === EstadoCuentaPppoe.EN_INSTALACION &&
       cuenta.tieneSecretCreado;
 
     let creacionSecret: EjecutarOperacionPppoeResult | null = null;
-
-    /*
-     * ========================================================
-     * 4. CREAR SECRET CUANDO SEA NECESARIO
-     * ========================================================
-     */
 
     if (!puedeContinuarDesdeSecretCreado) {
       creacionSecret = await this.crearSecret.execute({
@@ -194,24 +167,14 @@ export class ProvisionarPppoeClienteManualUseCase {
 
         claveIdempotencia: claveCrearSecret,
 
-        actor: {
-          origen: input.actor.origen,
-
-          iniciadoPorId: input.actor.iniciadoPorId,
-
-          operadorNombre: input.actor.operadorNombre ?? null,
-
-          ipOrigen: input.actor.ipOrigen ?? null,
-
-          userAgent: input.actor.userAgent ?? null,
-        },
+        actor: this.buildActor(input.actor),
 
         motivo: input.motivo ?? null,
       });
 
-      /*
-       * No se activa mientras CREAR_SECRET no haya
-       * terminado correctamente.
+      /**
+       * ACTIVAR_SECRET nunca debe ejecutarse mientras
+       * CREAR_SECRET no haya finalizado correctamente.
        */
       if (creacionSecret.estadoOperacion !== EstadoOperacionPppoe.EXITOSA) {
         return {
@@ -228,23 +191,6 @@ export class ProvisionarPppoeClienteManualUseCase {
       }
     }
 
-    /*
-     * ========================================================
-     * 5. ACTIVAR SECRET
-     * ========================================================
-     *
-     * Llegamos aquí cuando:
-     *
-     * A) CREAR_SECRET acaba de terminar EXITOSA.
-     *
-     * o
-     *
-     * B) un reintento previo ya confirmó el secret y
-     *    encontramos:
-     *
-     *    EN_INSTALACION + tieneSecretCreado
-     */
-
     const activacion = await this.activarSecret.execute({
       modo: ModoActivacionPppoe.ALTA_MANUAL,
 
@@ -254,17 +200,7 @@ export class ProvisionarPppoeClienteManualUseCase {
 
       claveIdempotencia: claveActivarSecret,
 
-      actor: {
-        origen: input.actor.origen,
-
-        iniciadoPorId: input.actor.iniciadoPorId,
-
-        operadorNombre: input.actor.operadorNombre ?? null,
-
-        ipOrigen: input.actor.ipOrigen ?? null,
-
-        userAgent: input.actor.userAgent ?? null,
-      },
+      actor: this.buildActor(input.actor),
 
       motivo: input.motivo ?? null,
     });
@@ -283,6 +219,59 @@ export class ProvisionarPppoeClienteManualUseCase {
       creacionSecret,
 
       activacion,
+    };
+  }
+
+  private assertManualActivationAllowed(
+    accion: ClientePppoeCuentaDetalleActivacionAccion,
+  ): void {
+    /**
+     * Primera barrera:
+     *
+     * este caso de uso sólo representa ALTA_MANUAL.
+     */
+    if (accion.flujo !== FlujoActivacionCuentaPppoe.ALTA_MANUAL) {
+      throw new ConflictException(
+        'La cuenta PPPoE no pertenece al flujo de alta manual.',
+      );
+    }
+
+    /**
+     * Una cuenta ALTA_MANUAL no debe depender de
+     * ClienteInstalacion.
+     */
+    if (accion.instalacionId !== null) {
+      throw new ConflictException(
+        'La cuenta PPPoE presenta un contexto de instalación incompatible con el flujo de alta manual.',
+      );
+    }
+
+    /**
+     * Segunda barrera:
+     *
+     * aunque sea ALTA_MANUAL, su estado actual puede
+     * impedir la activación.
+     */
+    if (!accion.habilitada) {
+      throw new ConflictException(
+        accion.motivo ?? 'La cuenta PPPoE no puede activarse actualmente.',
+      );
+    }
+  }
+
+  private buildActor(
+    actor: ActorOperacionPppoeInput,
+  ): ActorOperacionPppoeInput {
+    return {
+      origen: actor.origen,
+
+      iniciadoPorId: actor.iniciadoPorId,
+
+      operadorNombre: actor.operadorNombre ?? null,
+
+      ipOrigen: actor.ipOrigen ?? null,
+
+      userAgent: actor.userAgent ?? null,
     };
   }
 
@@ -320,28 +309,40 @@ export class ProvisionarPppoeClienteManualUseCase {
 
   private buildCreationIdempotencyKey(params: {
     empresaId: number;
+
     cuentaPppoeId: number;
   }): string {
     return [
       'pppoe-alta-manual',
+
       'empresa',
+
       params.empresaId,
+
       'cuenta-pppoe',
+
       params.cuentaPppoeId,
+
       'crear-secret',
     ].join(':');
   }
 
   private buildActivationIdempotencyKey(params: {
     empresaId: number;
+
     cuentaPppoeId: number;
   }): string {
     return [
       'pppoe-alta-manual',
+
       'empresa',
+
       params.empresaId,
+
       'cuenta-pppoe',
+
       params.cuentaPppoeId,
+
       'activar-secret',
     ].join(':');
   }
