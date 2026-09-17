@@ -68,19 +68,17 @@ export class PppoeCuentaAccionesController {
    *
    * Esta acción:
    *
-   * - crea una PppoeOperacion SUSPENDER_SERVICIO;
-   * - deshabilita el secret;
-   * - remueve sesiones activas;
-   * - confirma el estado remoto;
-   * - marca la cuenta como SUSPENDIDA;
+   * - marca la cuenta PPPoE como SUSPENDIDA;
    * - marca el acceso como SUSPENDIDO;
+   * - sincroniza ClienteInternet.estadoCliente = SUSPENDIDO;
+   * - registra el cambio en ClienteEstadoHistorial;
    * - registra al operador autenticado y el motivo.
    *
    * No modifica:
    *
-   * - ClienteInternet.estadoCliente;
    * - ClienteInternet.estadoCobranza;
    * - la instalación que originó el acceso.
+   *
    */
   @Post(':cuentaPppoeId/suspender')
   @HttpCode(HttpStatus.OK)
@@ -124,16 +122,14 @@ export class PppoeCuentaAccionesController {
    *
    * Esta acción:
    *
-   * - crea una PppoeOperacion ACTIVAR_SECRET;
-   * - habilita el secret o confirma que ya está habilitado;
-   * - confirma el estado remoto;
-   * - marca la cuenta como ACTIVA;
+   * - marca la cuenta PPPoE como ACTIVA;
    * - marca el acceso como ACTIVO;
+   * - sincroniza ClienteInternet.estadoCliente = ACTIVO;
+   * - registra el cambio en ClienteEstadoHistorial;
    * - registra al operador autenticado y el motivo.
    *
    * No modifica:
    *
-   * - ClienteInternet.estadoCliente;
    * - ClienteInternet.estadoCobranza;
    * - la instalación que originó el acceso.
    */

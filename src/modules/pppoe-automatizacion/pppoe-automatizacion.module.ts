@@ -53,6 +53,8 @@ import { PPPOE_ADOPCION_PERSISTENCE_PORT } from './domain/ports/pppoe-adopcion-p
 import { PppoeAdopcionPrismaPersistence } from './infra/prisma/pppoe-adopcion-prisma.persistence';
 import { AdoptarCuentaPppoeExistenteUseCase } from './application/use-cases/adoptar-cuenta-pppoe-existente.use-case';
 import { PppoeCuentaAdopcionController } from './presentation/pppoe-cuenta-adopcion.controller';
+import { CLIENTE_INTERNET_ESTADO_OPERATIVO } from './domain/ports/cliente-internet-estado-operativo.port';
+import { ClienteInternetEstadoOperativoPrismaAdapter } from './infra/prisma/cliente-internet-estado-operativo-prisma.adapter';
 
 @Module({
   controllers: [
@@ -147,6 +149,11 @@ import { PppoeCuentaAdopcionController } from './presentation/pppoe-cuenta-adopc
       provide: PPPOE_ADOPCION_PERSISTENCE_PORT,
 
       useExisting: PppoeAdopcionPrismaPersistence,
+    },
+    {
+      provide: CLIENTE_INTERNET_ESTADO_OPERATIVO,
+
+      useClass: ClienteInternetEstadoOperativoPrismaAdapter,
     },
   ],
 
