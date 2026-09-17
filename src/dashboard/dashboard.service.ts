@@ -9,7 +9,11 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { TZ } from 'src/Utils/tzgt';
 import { EstadoInstalacionCliente } from 'src/modules/cliente-instalacion/domain/enums/estado-instalacion-cliente.enum';
-import { EstadoTicketSoporte, Prisma } from '@prisma/client';
+import {
+  EstadoTicketSoporte,
+  PrioridadTicketSoporte,
+  Prisma,
+} from '@prisma/client';
 import {
   average,
   buildMonthlyActivity,
@@ -22,6 +26,10 @@ import {
   round,
 } from './dashboard-tecnico.utils';
 import { isDate } from 'util/types';
+import {
+  DashboardTicketsActividadQueryDto,
+  DashboardTicketsPreset,
+} from './dto/dashboard-tickets-actividad-query.dto';
 
 const TICKET_ESTADOS_TERMINALES: EstadoTicketSoporte[] = [
   EstadoTicketSoporte.RESUELTA,
@@ -35,6 +43,27 @@ const INSTALACION_ESTADOS_ACTIVOS: EstadoInstalacionCliente[] = [
   EstadoInstalacionCliente.REPROGRAMADA,
   EstadoInstalacionCliente.EN_PROCESO,
 ];
+
+const TICKET_ESTADOS_RESUELTOS: EstadoTicketSoporte[] = [
+  EstadoTicketSoporte.RESUELTA,
+  EstadoTicketSoporte.CERRADO,
+];
+
+type TicketsGranularidad = 'DIA' | 'MES' | 'TRIMESTRE' | 'ANIO';
+
+type TicketsPrioridadCount = Record<PrioridadTicketSoporte, number>;
+
+type TicketsActividadPoint = {
+  periodo: string;
+
+  creados: number;
+  resueltos: number;
+
+  prioridades: {
+    creados: TicketsPrioridadCount;
+    resueltos: TicketsPrioridadCount;
+  };
+};
 
 @Injectable()
 export class DashboardService {
@@ -989,132 +1018,334 @@ export class DashboardService {
   }
 
   /**
-   * GET DE KPIS PARA DASHBOARD
+   * KPIs PRINCIPALES DEL DASHBOARD
+   *
+   * IMPORTANTE:
+   *
+   * estadoCliente:
+   * - ACTIVO
+   * - SUSPENDIDO
+   * - DESINSTALADO
+   * - PENDIENTE_ACTIVO
+   * - EN_INSTALACION
+   *
+   * estadoCobranza:
+   * - AL_DIA
+   * - PAGO_PENDIENTE
+   * - ATRASADO
+   * - MOROSO
+   *
+   * Nunca utilizar estados de cobranza desde estadoCliente.
    */
   async dashboardData() {
     try {
       const today = dayjs().tz(TZ);
-      const inicioMes = today.startOf('month').toDate();
-      const finMes = today.endOf('month').toDate();
 
-      // CLIENTES POR ESTADO
-      const [
-        enSistema,
-        alDia,
-        suspendidos,
-        desinstalados,
-        pendienteActivo,
-        morosos,
-      ] = await Promise.all([
-        this.prisma.clienteInternet.count(),
-        this.prisma.clienteInternet.count({
-          where: { estadoCliente: 'ACTIVO' },
-        }),
-        this.prisma.clienteInternet.count({
-          where: { estadoCliente: 'SUSPENDIDO' },
-        }),
-        this.prisma.clienteInternet.count({
-          where: { estadoCliente: 'DESINSTALADO' },
-        }),
-        this.prisma.clienteInternet.count({
-          where: { estadoCliente: 'PENDIENTE_ACTIVO' },
-        }),
-        this.prisma.clienteInternet.count({
-          where: { estadoCliente: 'MOROSO' },
-        }),
-      ]);
+      const inicioMes = today.startOf('month');
 
-      // FACTURACION
+      const inicioMesSiguiente = inicioMes.add(1, 'month');
+
+      /**
+       * ============================================================
+       * CLIENTES
+       * ============================================================
+       *
+       * Solo clientes vigentes en sistema.
+       *
+       * Los registros con soft-delete no deben participar en:
+       * - total;
+       * - estado de servicio;
+       * - estado de cobranza.
+       */
+      const clientesWhere = {
+        isEliminado: false,
+      } satisfies Prisma.ClienteInternetWhereInput;
+
       const [
-        fEmitidasMes, //emisiones del mes
-        fPagadasMes, //creadas el mes, y ya están pagadas
-        fTotalGeneradas, //generadas del mes, y la suma total de esas facturas
-        fTotalPagadas, // Suma total de facturas pagadas del mes, generadas del mes
-        fGeneradasSinPagar, // suma total de facturas monto sin pagar aun, del mes
+        totalEnSistema,
+
+        clientesPorEstadoServicio,
+        clientesPorEstadoCobranza,
+
+        /**
+         * ==========================================================
+         * FACTURACIÓN
+         * ==========================================================
+         */
+        facturasEmitidasMes,
+
+        facturasPagadasMes,
+
+        montoFacturadoMesAgg,
+
+        montoCobradoMesAgg,
+
+        montoPendienteMesAgg,
       ] = await Promise.all([
+        /**
+         * ----------------------------------------------------------
+         * CLIENTES
+         * ----------------------------------------------------------
+         */
+
+        this.prisma.clienteInternet.count({
+          where: clientesWhere,
+        }),
+
+        /**
+         * Agrupamos por estado operativo.
+         *
+         * Evitamos hacer 5 queries independientes.
+         */
+        this.prisma.clienteInternet.groupBy({
+          by: ['estadoCliente'],
+
+          where: clientesWhere,
+
+          _count: {
+            _all: true,
+          },
+        }),
+
+        /**
+         * Agrupamos por estado de cobranza.
+         */
+        this.prisma.clienteInternet.groupBy({
+          by: ['estadoCobranza'],
+
+          where: clientesWhere,
+
+          _count: {
+            _all: true,
+          },
+        }),
+
+        /**
+         * ----------------------------------------------------------
+         * FACTURAS EMITIDAS EN EL MES
+         * ----------------------------------------------------------
+         */
         this.prisma.facturaInternet.count({
           where: {
             creadoEn: {
-              gte: inicioMes,
-              lte: finMes,
+              gte: inicioMes.toDate(),
+              lt: inicioMesSiguiente.toDate(),
             },
           },
         }),
 
+        /**
+         * ----------------------------------------------------------
+         * FACTURAS PAGADAS DURANTE EL MES
+         * ----------------------------------------------------------
+         *
+         * Aquí usamos fechaPagada.
+         *
+         * Una factura creada en agosto y pagada en septiembre
+         * cuenta como pagada en septiembre.
+         */
         this.prisma.facturaInternet.count({
           where: {
-            creadoEn: {
-              gte: inicioMes,
-              lte: finMes,
-            },
             estadoFacturaInternet: 'PAGADA',
+
+            fechaPagada: {
+              gte: inicioMes.toDate(),
+              lt: inicioMesSiguiente.toDate(),
+            },
           },
         }),
 
+        /**
+         * ----------------------------------------------------------
+         * MONTO FACTURADO
+         * ----------------------------------------------------------
+         *
+         * Importe nominal de facturas generadas en este mes.
+         */
         this.prisma.facturaInternet.aggregate({
           where: {
             creadoEn: {
-              gte: inicioMes,
-              lte: finMes,
+              gte: inicioMes.toDate(),
+              lt: inicioMesSiguiente.toDate(),
             },
           },
+
           _sum: {
             montoPago: true,
           },
         }),
 
-        this.prisma.facturaInternet.aggregate({
+        /**
+         * ----------------------------------------------------------
+         * MONTO COBRADO
+         * ----------------------------------------------------------
+         *
+         * Fuente de verdad:
+         * PagoFacturaInternet.
+         *
+         * Esto representa dinero efectivamente registrado como
+         * cobrado durante el mes, independientemente del período
+         * de la factura.
+         */
+        this.prisma.pagoFacturaInternet.aggregate({
           where: {
-            creadoEn: {
-              gte: inicioMes,
-              lte: finMes,
+            fechaPago: {
+              gte: inicioMes.toDate(),
+              lt: inicioMesSiguiente.toDate(),
             },
-            estadoFacturaInternet: 'PAGADA',
           },
+
           _sum: {
-            montoPago: true,
+            montoPagado: true,
           },
         }),
 
+        /**
+         * ----------------------------------------------------------
+         * SALDO PENDIENTE DE FACTURAS GENERADAS ESTE MES
+         * ----------------------------------------------------------
+         *
+         * Se usa saldoPendiente y NO montoPago.
+         *
+         * Esto incluye correctamente facturas:
+         * - pendientes;
+         * - parcialmente pagadas.
+         *
+         * Las pagadas deberían aportar 0.
+         */
         this.prisma.facturaInternet.aggregate({
           where: {
             creadoEn: {
-              gte: inicioMes,
-              lte: finMes,
+              gte: inicioMes.toDate(),
+              lt: inicioMesSiguiente.toDate(),
             },
-            estadoFacturaInternet: 'PENDIENTE',
           },
+
           _sum: {
-            montoPago: true,
+            saldoPendiente: true,
           },
         }),
       ]);
 
-      const data = {
-        clientes: {
-          totalEnSistema: enSistema,
-          activos: alDia,
-          suspendidos,
-          desinstalados,
-          pendientesActivacion: pendienteActivo,
-          morosos,
+      /**
+       * ============================================================
+       * NORMALIZACIÓN DE ESTADOS DE SERVICIO
+       * ============================================================
+       */
+
+      const servicioCountMap = new Map(
+        clientesPorEstadoServicio.map((item) => [
+          item.estadoCliente,
+          item._count._all,
+        ]),
+      );
+
+      const activos = servicioCountMap.get('ACTIVO') ?? 0;
+
+      const suspendidos = servicioCountMap.get('SUSPENDIDO') ?? 0;
+
+      const desinstalados = servicioCountMap.get('DESINSTALADO') ?? 0;
+
+      const pendientesActivacion =
+        servicioCountMap.get('PENDIENTE_ACTIVO') ?? 0;
+
+      const enInstalacion = servicioCountMap.get('EN_INSTALACION') ?? 0;
+
+      /**
+       * Cartera operacional actual.
+       *
+       * No incluimos DESINSTALADO.
+       *
+       * Tampoco usamos:
+       * PAGO_PENDIENTE
+       * ATRASADO
+       * MOROSO
+       *
+       * aunque sigan existiendo temporalmente en EstadoCliente
+       * por compatibilidad/migración.
+       */
+      const carteraActual =
+        activos + suspendidos + pendientesActivacion + enInstalacion;
+
+      /**
+       * ============================================================
+       * NORMALIZACIÓN DE COBRANZA
+       * ============================================================
+       */
+
+      const cobranzaCountMap = new Map(
+        clientesPorEstadoCobranza.map((item) => [
+          item.estadoCobranza,
+          item._count._all,
+        ]),
+      );
+
+      const alDia = cobranzaCountMap.get('AL_DIA') ?? 0;
+
+      const pagoPendiente = cobranzaCountMap.get('PAGO_PENDIENTE') ?? 0;
+
+      const atrasados = cobranzaCountMap.get('ATRASADO') ?? 0;
+
+      const morosos = cobranzaCountMap.get('MOROSO') ?? 0;
+
+      /**
+       * ============================================================
+       * FACTURACIÓN
+       * ============================================================
+       */
+
+      const montoFacturadoMes = montoFacturadoMesAgg._sum.montoPago ?? 0;
+
+      const montoCobradoMes = montoCobradoMesAgg._sum.montoPagado ?? 0;
+
+      const montoPendienteMes = montoPendienteMesAgg._sum.saldoPendiente ?? 0;
+
+      /**
+       * ============================================================
+       * RESPONSE
+       * ============================================================
+       */
+
+      return {
+        periodo: {
+          desde: inicioMes.format('YYYY-MM-DD'),
+          hasta: today.format('YYYY-MM-DD'),
+          zonaHoraria: TZ,
         },
+
+        clientes: {
+          resumen: {
+            totalEnSistema,
+            carteraActual,
+          },
+
+          servicio: {
+            activos,
+            suspendidos,
+            pendientesActivacion,
+            enInstalacion,
+            desinstalados,
+          },
+
+          cobranza: {
+            alDia,
+            pagoPendiente,
+            atrasados,
+            morosos,
+          },
+        },
+
         facturacion: {
-          facturasEmitidasMes: fEmitidasMes,
-          facturasPagadasMes: fPagadasMes,
-          montoFacturadoMes: fTotalGeneradas._sum.montoPago ?? 0,
-          montoCobradoMes: fTotalPagadas._sum.montoPago ?? 0,
-          montoPendienteMes: fGeneradasSinPagar._sum.montoPago ?? 0,
+          facturasEmitidasMes,
+          facturasPagadasMes,
+
+          montoFacturadoMes,
+          montoCobradoMes,
+          montoPendienteMes,
         },
       };
-
-      return data;
     } catch (error) {
-      throwFatalError(
-        error,
-        this.logger,
-        'Dashboard service -getDashboardData',
-      );
+      throwFatalError(error, this.logger, 'Dashboard service - dashboardData');
     }
   }
 
@@ -1122,20 +1353,125 @@ export class DashboardService {
    * INSTALACIONES DEL MES vs DESINSTALACIONES
    * @returns ChartSeries[]
    */
+  /**
+   * ACTIVIDAD DE INSTALACIONES Y DESINSTALACIONES DEL MES ACTUAL
+   *
+   * Fuente de verdad:
+   * - ClienteInstalacion COMPLETADA -> fechaFinalizacion
+   * - ClienteDesinstalacion COMPLETADA -> fechaFinalizacion
+   *
+   * Retorna información neutral para que el frontend decida
+   * cómo representarla.
+   */
   async getDashboardInstalacionesChart() {
     try {
+      const today = dayjs().tz(TZ);
+
+      const inicioMes = today.startOf('month');
+      const inicioMesSiguiente = inicioMes.add(1, 'month');
+
       const [instalaciones, desinstalaciones] = await Promise.all([
-        this.getInstalacionesChart(),
-        this.getDesInstalacionesChart(),
+        this.prisma.clienteInstalacion.findMany({
+          where: {
+            estado: 'COMPLETADA',
+            fechaFinalizacion: {
+              gte: inicioMes.toDate(),
+              lt: inicioMesSiguiente.toDate(),
+            },
+          },
+          select: {
+            fechaFinalizacion: true,
+          },
+        }),
+
+        this.prisma.clienteDesinstalacion.findMany({
+          where: {
+            estado: 'COMPLETADA',
+            fechaFinalizacion: {
+              gte: inicioMes.toDate(),
+              lt: inicioMesSiguiente.toDate(),
+            },
+          },
+          select: {
+            fechaFinalizacion: true,
+          },
+        }),
       ]);
 
-      // Esto ahora sí es ChartDataLineNivo (ChartSeries[])
-      return [instalaciones, desinstalaciones];
+      const instalacionesPorDia = new Map<string, number>();
+      const desinstalacionesPorDia = new Map<string, number>();
+
+      for (const instalacion of instalaciones) {
+        if (!instalacion.fechaFinalizacion) continue;
+
+        const fecha = dayjs(instalacion.fechaFinalizacion)
+          .tz(TZ)
+          .format('YYYY-MM-DD');
+
+        instalacionesPorDia.set(
+          fecha,
+          (instalacionesPorDia.get(fecha) ?? 0) + 1,
+        );
+      }
+
+      for (const desinstalacion of desinstalaciones) {
+        if (!desinstalacion.fechaFinalizacion) continue;
+
+        const fecha = dayjs(desinstalacion.fechaFinalizacion)
+          .tz(TZ)
+          .format('YYYY-MM-DD');
+
+        desinstalacionesPorDia.set(
+          fecha,
+          (desinstalacionesPorDia.get(fecha) ?? 0) + 1,
+        );
+      }
+
+      /**
+       * Para el mes actual mostramos únicamente hasta hoy.
+       *
+       * No tiene sentido devolver del 18 al 30 como "0",
+       * porque todavía son días futuros y visualmente parecerían
+       * días sin actividad.
+       */
+      const diasTranscurridos = today.date();
+
+      const actividadDiaria = Array.from(
+        { length: diasTranscurridos },
+        (_, index) => {
+          const fecha = inicioMes.add(index, 'day').format('YYYY-MM-DD');
+
+          return {
+            fecha,
+            instalaciones: instalacionesPorDia.get(fecha) ?? 0,
+            desinstalaciones: desinstalacionesPorDia.get(fecha) ?? 0,
+          };
+        },
+      );
+
+      const totalInstalaciones = instalaciones.length;
+      const totalDesinstalaciones = desinstalaciones.length;
+
+      return {
+        periodo: {
+          desde: inicioMes.format('YYYY-MM-DD'),
+          hasta: today.format('YYYY-MM-DD'),
+          zonaHoraria: TZ,
+        },
+
+        totales: {
+          instalaciones: totalInstalaciones,
+          desinstalaciones: totalDesinstalaciones,
+          balance: totalInstalaciones - totalDesinstalaciones,
+        },
+
+        actividadDiaria,
+      };
     } catch (error) {
       throwFatalError(
         error,
         this.logger,
-        'Dashboard service -getDashboardData',
+        'Dashboard service - getDashboardInstalacionesChart',
       );
     }
   }
@@ -1246,64 +1582,130 @@ export class DashboardService {
   }
 
   /**
-   * HISTÓRICO DE INSTALACIONES POR MES (AÑO ACTUAL)
-   * Formato para Nivo Bar:
-   *   { label: '2025-01', instalaciones: 10 }
+   * ACTIVIDAD HISTÓRICA DE INSTALACIONES Y DESINSTALACIONES
+   *
+   * Ventana móvil de los últimos 12 meses, incluyendo el actual.
+   *
+   * Fuente de verdad:
+   * - ClienteInstalacion COMPLETADA -> fechaFinalizacion
+   * - ClienteDesinstalacion COMPLETADA -> fechaFinalizacion
    */
   async getDashboardInstalacionesHistoricasChart() {
     try {
-      type InstalacionesHistoricasBarPoint = {
-        label: string; // ej: "2025-01"
-        instalaciones: number;
-      };
-
       const today = dayjs().tz(TZ);
-      const inicioAnio = today.startOf('year').toDate();
-      const finAnio = today.endOf('year').toDate();
 
-      const instalacionesAnio = await this.prisma.clienteInternet.findMany({
-        where: {
-          creadoEn: {
-            gte: inicioAnio,
-            lte: finAnio,
+      const inicioMesActual = today.startOf('month');
+
+      // Mes actual + 11 anteriores = 12 meses.
+      const inicioPeriodo = inicioMesActual.subtract(11, 'month');
+
+      // Rango semiabierto: [inicioPeriodo, inicioMesSiguiente)
+      const finPeriodoExclusivo = inicioMesActual.add(1, 'month');
+
+      const [instalaciones, desinstalaciones] = await Promise.all([
+        this.prisma.clienteInstalacion.findMany({
+          where: {
+            estado: 'COMPLETADA',
+            fechaFinalizacion: {
+              gte: inicioPeriodo.toDate(),
+              lt: finPeriodoExclusivo.toDate(),
+            },
           },
-        },
-        select: {
-          creadoEn: true,
-        },
+          select: {
+            fechaFinalizacion: true,
+          },
+        }),
+
+        this.prisma.clienteDesinstalacion.findMany({
+          where: {
+            estado: 'COMPLETADA',
+            fechaFinalizacion: {
+              gte: inicioPeriodo.toDate(),
+              lt: finPeriodoExclusivo.toDate(),
+            },
+          },
+          select: {
+            fechaFinalizacion: true,
+          },
+        }),
+      ]);
+
+      const instalacionesPorMes = new Map<string, number>();
+      const desinstalacionesPorMes = new Map<string, number>();
+
+      for (const instalacion of instalaciones) {
+        if (!instalacion.fechaFinalizacion) continue;
+
+        const mes = dayjs(instalacion.fechaFinalizacion)
+          .tz(TZ)
+          .format('YYYY-MM');
+
+        instalacionesPorMes.set(mes, (instalacionesPorMes.get(mes) ?? 0) + 1);
+      }
+
+      for (const desinstalacion of desinstalaciones) {
+        if (!desinstalacion.fechaFinalizacion) continue;
+
+        const mes = dayjs(desinstalacion.fechaFinalizacion)
+          .tz(TZ)
+          .format('YYYY-MM');
+
+        desinstalacionesPorMes.set(
+          mes,
+          (desinstalacionesPorMes.get(mes) ?? 0) + 1,
+        );
+      }
+
+      /**
+       * Construimos siempre los 12 meses.
+       * Si un mes no tuvo actividad, aparecerá con 0.
+       */
+      const actividadMensual = Array.from({ length: 12 }, (_, index) => {
+        const mes = inicioPeriodo.add(index, 'month').format('YYYY-MM');
+
+        const instalacionesMes = instalacionesPorMes.get(mes) ?? 0;
+        const desinstalacionesMes = desinstalacionesPorMes.get(mes) ?? 0;
+
+        return {
+          mes,
+          instalaciones: instalacionesMes,
+          desinstalaciones: desinstalacionesMes,
+          balance: instalacionesMes - desinstalacionesMes,
+        };
       });
 
-      // 1. Conteos por mes
-      const countsMap = instalacionesAnio.reduce(
-        (acc, item) => {
-          const fechaKey = dayjs(item.creadoEn).tz(TZ).format('YYYY-MM');
-          acc[fechaKey] = (acc[fechaKey] || 0) + 1;
-          return acc;
+      const totalInstalaciones = instalaciones.length;
+      const totalDesinstalaciones = desinstalaciones.length;
+
+      return {
+        periodo: {
+          desde: inicioPeriodo.format('YYYY-MM-DD'),
+          hasta: today.format('YYYY-MM-DD'),
+          meses: 12,
+          zonaHoraria: TZ,
         },
-        {} as Record<string, number>,
-      );
 
-      // 2. Pasar a entries y ordenar por mes
-      const entriesOrdenadas = Object.entries(countsMap).sort(([a], [b]) =>
-        a.localeCompare(b),
-      );
+        totales: {
+          instalaciones: totalInstalaciones,
+          desinstalaciones: totalDesinstalaciones,
+          balance: totalInstalaciones - totalDesinstalaciones,
 
-      // 3. Omitir el primer mes (el más antiguo)
-      const [, ...entriesSinPrimerMes] = entriesOrdenadas;
+          promedioInstalacionesMes: Number(
+            (totalInstalaciones / 12).toFixed(2),
+          ),
 
-      // 4. Construir el chartData
-      const chartData: InstalacionesHistoricasBarPoint[] =
-        entriesSinPrimerMes.map(([yearMonth, count]) => ({
-          label: yearMonth, // ej: "2025-04"
-          instalaciones: count,
-        }));
+          promedioDesinstalacionesMes: Number(
+            (totalDesinstalaciones / 12).toFixed(2),
+          ),
+        },
 
-      return chartData;
+        actividadMensual,
+      };
     } catch (error) {
       throwFatalError(
         error,
         this.logger,
-        'Dashboard service -getDashboardInstalacionesHistoricasChart',
+        'Dashboard service - getDashboardInstalacionesHistoricasChart',
       );
     }
   }
@@ -1497,4 +1899,786 @@ export class DashboardService {
       );
     }
   }
+
+  /**
+   * ACTIVIDAD HISTÓRICA / RECIENTE DE SOPORTE
+   *
+   * Permite analizar:
+   * - Tickets creados.
+   * - Tickets resueltos.
+   * - Prioridades.
+   * - Backlog actual.
+   * - Tiempos medios.
+   * - Comparación contra período anterior.
+   *
+   * Presets:
+   * - 7D
+   * - 30D
+   * - 12M
+   * - HISTORICO
+   * - CUSTOM
+   */
+  async getDashboardTicketsActividad(query: DashboardTicketsActividadQueryDto) {
+    try {
+      const now = dayjs().tz(TZ);
+
+      /**
+       * ============================================================
+       * 1. RANGO
+       * ============================================================
+       */
+
+      let primerTicketFecha: Date | null = null;
+
+      if (query.preset === DashboardTicketsPreset.HISTORICO) {
+        const primerTicket = await this.prisma.ticketSoporte.findFirst({
+          orderBy: {
+            fechaApertura: 'asc',
+          },
+          select: {
+            fechaApertura: true,
+          },
+        });
+
+        primerTicketFecha = primerTicket?.fechaApertura ?? null;
+      }
+
+      const rango = resolveTicketsActivityRange({
+        query,
+        now,
+        primerTicketFecha,
+      });
+
+      /**
+       * Para comparación necesitamos consultar también el
+       * período inmediatamente anterior.
+       */
+      const inicioConsulta = rango.comparacion?.desde ?? rango.desde;
+
+      /**
+       * ============================================================
+       * 2. CONSULTAS
+       * ============================================================
+       */
+
+      const resolvedRangeWhere = {
+        OR: [
+          {
+            fechaResolucionTecnico: {
+              gte: inicioConsulta.toDate(),
+              lt: rango.hastaExclusivo.toDate(),
+            },
+          },
+          {
+            fechaCierre: {
+              gte: inicioConsulta.toDate(),
+              lt: rango.hastaExclusivo.toDate(),
+            },
+          },
+          {
+            asignaciones: {
+              some: {
+                resolvioEn: {
+                  gte: inicioConsulta.toDate(),
+                  lt: rango.hastaExclusivo.toDate(),
+                },
+              },
+            },
+          },
+        ],
+      } satisfies Prisma.TicketSoporteWhereInput;
+
+      const [
+        ticketsCreadosCandidatos,
+        ticketsResueltosCandidatos,
+        ticketsPendientes,
+      ] = await Promise.all([
+        /**
+         * Tickets abiertos durante el período actual +
+         * período anterior cuando existe comparativa.
+         */
+        this.prisma.ticketSoporte.findMany({
+          where: {
+            fechaApertura: {
+              gte: inicioConsulta.toDate(),
+              lt: rango.hastaExclusivo.toDate(),
+            },
+          },
+
+          select: {
+            id: true,
+            fechaApertura: true,
+            prioridad: true,
+          },
+        }),
+
+        /**
+         * Tickets resueltos.
+         *
+         * IMPORTANTE:
+         * La consulta obtiene candidatos. Luego usamos
+         * getTicketResolutionDate() para determinar UNA sola
+         * fecha efectiva de resolución.
+         */
+        this.prisma.ticketSoporte.findMany({
+          where: {
+            estado: {
+              in: TICKET_ESTADOS_RESUELTOS,
+            },
+
+            AND: [resolvedRangeWhere],
+          },
+
+          select: {
+            id: true,
+
+            prioridad: true,
+
+            fechaApertura: true,
+            fechaInicioAtencion: true,
+            fechaResolucionTecnico: true,
+            fechaCierre: true,
+
+            asignaciones: {
+              where: {
+                resolvioEn: {
+                  not: null,
+                },
+              },
+
+              orderBy: {
+                resolvioEn: 'desc',
+              },
+
+              take: 1,
+
+              select: {
+                resolvioEn: true,
+              },
+            },
+          },
+        }),
+
+        /**
+         * Backlog ACTUAL.
+         *
+         * No depende del preset porque representa el estado
+         * actual del departamento de soporte.
+         */
+        this.prisma.ticketSoporte.findMany({
+          where: {
+            estado: {
+              notIn: TICKET_ESTADOS_TERMINALES,
+            },
+          },
+
+          select: {
+            id: true,
+            prioridad: true,
+            fechaApertura: true,
+          },
+        }),
+      ]);
+
+      /**
+       * ============================================================
+       * 3. NORMALIZAR RESOLUCIONES
+       * ============================================================
+       */
+
+      const ticketsResueltosNormalizados = ticketsResueltosCandidatos
+        .map((ticket) => ({
+          ...ticket,
+
+          fechaResolucion: getTicketResolutionDate(ticket),
+        }))
+        .filter(
+          (
+            ticket,
+          ): ticket is typeof ticket & {
+            fechaResolucion: Date;
+          } => Boolean(ticket.fechaResolucion),
+        );
+
+      /**
+       * ============================================================
+       * 4. SEPARAR PERÍODO ACTUAL
+       * ============================================================
+       */
+
+      const ticketsCreadosActual = ticketsCreadosCandidatos.filter((ticket) =>
+        isDateInsideRange(
+          ticket.fechaApertura,
+          rango.desde.toDate(),
+          rango.hastaExclusivo.toDate(),
+        ),
+      );
+
+      const ticketsResueltosActual = ticketsResueltosNormalizados.filter(
+        (ticket) =>
+          isDateInsideRange(
+            ticket.fechaResolucion,
+            rango.desde.toDate(),
+            rango.hastaExclusivo.toDate(),
+          ),
+      );
+
+      /**
+       * ============================================================
+       * 5. PERÍODO ANTERIOR
+       * ============================================================
+       */
+
+      const ticketsCreadosAnterior = rango.comparacion
+        ? ticketsCreadosCandidatos.filter((ticket) =>
+            isDateInsideRange(
+              ticket.fechaApertura,
+              rango.comparacion!.desde.toDate(),
+              rango.comparacion!.hastaExclusivo.toDate(),
+            ),
+          )
+        : [];
+
+      const ticketsResueltosAnterior = rango.comparacion
+        ? ticketsResueltosNormalizados.filter((ticket) =>
+            isDateInsideRange(
+              ticket.fechaResolucion,
+              rango.comparacion!.desde.toDate(),
+              rango.comparacion!.hastaExclusivo.toDate(),
+            ),
+          )
+        : [];
+
+      /**
+       * ============================================================
+       * 6. ACTIVIDAD DEL CHART
+       * ============================================================
+       */
+
+      const actividad = buildTicketsActivity({
+        desde: rango.desde,
+        hastaExclusivo: rango.hastaExclusivo,
+        granularidad: rango.granularidad,
+      });
+
+      const actividadMap = new Map(
+        actividad.map((item) => [item.periodo, item]),
+      );
+
+      for (const ticket of ticketsCreadosActual) {
+        const periodo = getTicketsActivityKey(
+          ticket.fechaApertura,
+          rango.granularidad,
+        );
+
+        const item = actividadMap.get(periodo);
+
+        if (!item) continue;
+
+        item.creados += 1;
+
+        item.prioridades.creados[ticket.prioridad] += 1;
+      }
+
+      for (const ticket of ticketsResueltosActual) {
+        const periodo = getTicketsActivityKey(
+          ticket.fechaResolucion,
+          rango.granularidad,
+        );
+
+        const item = actividadMap.get(periodo);
+
+        if (!item) continue;
+
+        item.resueltos += 1;
+
+        item.prioridades.resueltos[ticket.prioridad] += 1;
+      }
+
+      /**
+       * ============================================================
+       * 7. PRIORIDADES DEL PERÍODO
+       * ============================================================
+       */
+
+      const prioridadesCreados = createEmptyPriorityCounter();
+
+      const prioridadesResueltos = createEmptyPriorityCounter();
+
+      const prioridadesPendientes = createEmptyPriorityCounter();
+
+      for (const ticket of ticketsCreadosActual) {
+        prioridadesCreados[ticket.prioridad] += 1;
+      }
+
+      for (const ticket of ticketsResueltosActual) {
+        prioridadesResueltos[ticket.prioridad] += 1;
+      }
+
+      for (const ticket of ticketsPendientes) {
+        prioridadesPendientes[ticket.prioridad] += 1;
+      }
+
+      /**
+       * ============================================================
+       * 8. TIEMPOS
+       * ============================================================
+       */
+
+      const tiemposResolucion = ticketsResueltosActual
+        .map((ticket) =>
+          getMinutesBetween(ticket.fechaApertura, ticket.fechaResolucion),
+        )
+        .filter(isFiniteNumber);
+
+      const tiemposPrimeraAtencion = ticketsResueltosActual
+        .map((ticket) =>
+          getMinutesBetween(ticket.fechaApertura, ticket.fechaInicioAtencion),
+        )
+        .filter(isFiniteNumber);
+
+      /**
+       * ============================================================
+       * 9. BACKLOG
+       * ============================================================
+       */
+
+      const hace48Horas = now.subtract(48, 'hour').toDate();
+
+      const pendientesMas48Horas = ticketsPendientes.filter(
+        (ticket) => ticket.fechaApertura < hace48Horas,
+      ).length;
+
+      const urgentesPendientes =
+        prioridadesPendientes[PrioridadTicketSoporte.URGENTE];
+
+      const altosPendientes =
+        prioridadesPendientes[PrioridadTicketSoporte.ALTA];
+
+      /**
+       * ============================================================
+       * 10. COMPARATIVA
+       * ============================================================
+       */
+
+      const comparativa = rango.comparacion
+        ? {
+            periodoAnterior: {
+              desde: rango.comparacion.desde.format('YYYY-MM-DD'),
+
+              hasta: rango.comparacion.hastaExclusivo
+                .subtract(1, 'day')
+                .format('YYYY-MM-DD'),
+            },
+
+            creados: {
+              actual: ticketsCreadosActual.length,
+
+              anterior: ticketsCreadosAnterior.length,
+
+              variacionPorcentaje: calculatePercentageVariation(
+                ticketsCreadosActual.length,
+                ticketsCreadosAnterior.length,
+              ),
+            },
+
+            resueltos: {
+              actual: ticketsResueltosActual.length,
+
+              anterior: ticketsResueltosAnterior.length,
+
+              variacionPorcentaje: calculatePercentageVariation(
+                ticketsResueltosActual.length,
+                ticketsResueltosAnterior.length,
+              ),
+            },
+          }
+        : null;
+
+      /**
+       * ============================================================
+       * RESPONSE
+       * ============================================================
+       */
+
+      return {
+        periodo: {
+          preset: rango.preset,
+
+          desde: rango.desde.format('YYYY-MM-DD'),
+
+          hasta: rango.hastaExclusivo.subtract(1, 'day').format('YYYY-MM-DD'),
+
+          granularidad: rango.granularidad,
+
+          puntos: actividad.length,
+
+          zonaHoraria: TZ,
+        },
+
+        resumen: {
+          creados: ticketsCreadosActual.length,
+
+          resueltos: ticketsResueltosActual.length,
+
+          pendientesActuales: ticketsPendientes.length,
+
+          urgentesPendientes,
+
+          altosPendientes,
+
+          pendientesMas48Horas,
+        },
+
+        tiempos: {
+          promedioResolucionMinutos: average(tiemposResolucion),
+
+          promedioPrimeraAtencionMinutos: average(tiemposPrimeraAtencion),
+        },
+
+        prioridades: {
+          creadosPeriodo: prioridadesCreados,
+
+          resueltosPeriodo: prioridadesResueltos,
+
+          pendientesActuales: prioridadesPendientes,
+        },
+
+        comparativa,
+
+        actividad,
+      };
+    } catch (error) {
+      throwFatalError(
+        error,
+        this.logger,
+        'Dashboard service - getDashboardTicketsActividad',
+      );
+    }
+  }
+
+  // HELPERS
+}
+
+// HELPERS
+type TicketsActivityRangeInput = {
+  query: DashboardTicketsActividadQueryDto;
+
+  now: ReturnType<typeof dayjs>;
+
+  primerTicketFecha: Date | null;
+};
+
+function resolveTicketsActivityRange({
+  query,
+  now,
+  primerTicketFecha,
+}: TicketsActivityRangeInput) {
+  const preset = query.preset ?? DashboardTicketsPreset.ULTIMOS_7_DIAS;
+
+  const hoy = now.startOf('day');
+
+  const manana = hoy.add(1, 'day');
+
+  let desde: ReturnType<typeof dayjs>;
+  let hastaExclusivo: ReturnType<typeof dayjs>;
+
+  let granularidad: TicketsGranularidad;
+
+  switch (preset) {
+    case DashboardTicketsPreset.ULTIMOS_7_DIAS: {
+      desde = hoy.subtract(6, 'day');
+      hastaExclusivo = manana;
+
+      granularidad = 'DIA';
+
+      break;
+    }
+
+    case DashboardTicketsPreset.ULTIMOS_30_DIAS: {
+      desde = hoy.subtract(29, 'day');
+      hastaExclusivo = manana;
+
+      granularidad = 'DIA';
+
+      break;
+    }
+
+    case DashboardTicketsPreset.ULTIMOS_12_MESES: {
+      desde = hoy.startOf('month').subtract(11, 'month');
+
+      /**
+       * No devolvemos días futuros del mes actual.
+       */
+      hastaExclusivo = manana;
+
+      granularidad = 'MES';
+
+      break;
+    }
+
+    case DashboardTicketsPreset.HISTORICO: {
+      desde = primerTicketFecha
+        ? dayjs(primerTicketFecha).tz(TZ).startOf('day')
+        : hoy;
+
+      hastaExclusivo = manana;
+
+      granularidad = inferTicketsGranularity(desde, hastaExclusivo);
+
+      break;
+    }
+
+    case DashboardTicketsPreset.PERSONALIZADO: {
+      if (!query.desde || !query.hasta) {
+        throw new BadRequestException(
+          'Los parámetros desde y hasta son requeridos para preset=CUSTOM.',
+        );
+      }
+
+      desde = dayjs.tz(query.desde, TZ).startOf('day');
+
+      const hasta = dayjs.tz(query.hasta, TZ).startOf('day');
+
+      if (!desde.isValid() || !hasta.isValid()) {
+        throw new BadRequestException('El rango de fechas no es válido.');
+      }
+
+      if (desde.isAfter(hasta)) {
+        throw new BadRequestException(
+          'La fecha desde no puede ser posterior a hasta.',
+        );
+      }
+
+      if (hasta.isAfter(hoy)) {
+        throw new BadRequestException(
+          'La fecha hasta no puede ser posterior a hoy.',
+        );
+      }
+
+      hastaExclusivo = hasta.add(1, 'day');
+
+      granularidad = inferTicketsGranularity(desde, hastaExclusivo);
+
+      break;
+    }
+
+    default: {
+      throw new BadRequestException(
+        'Preset de actividad de tickets no válido.',
+      );
+    }
+  }
+
+  /**
+   * HISTORICO no tiene período anterior comparable.
+   */
+  if (preset === DashboardTicketsPreset.HISTORICO) {
+    return {
+      preset,
+      desde,
+      hastaExclusivo,
+      granularidad,
+      comparacion: null,
+    };
+  }
+
+  /**
+   * Para 12M conservamos exactamente el mismo rango
+   * desplazado un año.
+   */
+  if (preset === DashboardTicketsPreset.ULTIMOS_12_MESES) {
+    return {
+      preset,
+      desde,
+      hastaExclusivo,
+      granularidad,
+
+      comparacion: {
+        desde: desde.subtract(12, 'month'),
+
+        hastaExclusivo: hastaExclusivo.subtract(12, 'month'),
+      },
+    };
+  }
+
+  /**
+   * 7D, 30D y CUSTOM:
+   *
+   * se compara contra un rango inmediatamente anterior
+   * de la misma cantidad de días.
+   */
+  const dias = hastaExclusivo.diff(desde, 'day');
+
+  return {
+    preset,
+    desde,
+    hastaExclusivo,
+    granularidad,
+
+    comparacion: {
+      desde: desde.subtract(dias, 'day'),
+
+      hastaExclusivo: desde,
+    },
+  };
+}
+
+function inferTicketsGranularity(
+  desde: ReturnType<typeof dayjs>,
+  hastaExclusivo: ReturnType<typeof dayjs>,
+): TicketsGranularidad {
+  const dias = hastaExclusivo.diff(desde, 'day');
+
+  /**
+   * Hasta 45 puntos diarios.
+   */
+  if (dias <= 45) {
+    return 'DIA';
+  }
+
+  /**
+   * Hasta aproximadamente 2 años:
+   * puntos mensuales.
+   */
+  if (dias <= 730) {
+    return 'MES';
+  }
+
+  /**
+   * Hasta 5 años:
+   * puntos trimestrales.
+   */
+  if (dias <= 1825) {
+    return 'TRIMESTRE';
+  }
+
+  return 'ANIO';
+}
+
+function buildTicketsActivity({
+  desde,
+  hastaExclusivo,
+  granularidad,
+}: {
+  desde: ReturnType<typeof dayjs>;
+  hastaExclusivo: ReturnType<typeof dayjs>;
+  granularidad: TicketsGranularidad;
+}): TicketsActividadPoint[] {
+  const result: TicketsActividadPoint[] = [];
+
+  let cursor = getBucketStart(desde, granularidad);
+
+  while (cursor.isBefore(hastaExclusivo)) {
+    result.push({
+      periodo: getTicketsActivityKey(cursor.toDate(), granularidad),
+
+      creados: 0,
+      resueltos: 0,
+
+      prioridades: {
+        creados: createEmptyPriorityCounter(),
+
+        resueltos: createEmptyPriorityCounter(),
+      },
+    });
+
+    cursor = incrementBucket(cursor, granularidad);
+  }
+
+  return result;
+}
+
+function getTicketsActivityKey(date: Date, granularidad: TicketsGranularidad) {
+  const value = dayjs(date).tz(TZ);
+
+  switch (granularidad) {
+    case 'DIA':
+      return value.format('YYYY-MM-DD');
+
+    case 'MES':
+      return value.format('YYYY-MM');
+
+    case 'TRIMESTRE': {
+      const trimestre = Math.floor(value.month() / 3) + 1;
+
+      return `${value.year()}-Q${trimestre}`;
+    }
+
+    case 'ANIO':
+      return String(value.year());
+  }
+}
+
+function getBucketStart(
+  date: ReturnType<typeof dayjs>,
+  granularidad: TicketsGranularidad,
+) {
+  switch (granularidad) {
+    case 'DIA':
+      return date.startOf('day');
+
+    case 'MES':
+      return date.startOf('month');
+
+    case 'TRIMESTRE': {
+      const firstMonth = Math.floor(date.month() / 3) * 3;
+
+      return date.month(firstMonth).startOf('month');
+    }
+
+    case 'ANIO':
+      return date.startOf('year');
+  }
+}
+
+function incrementBucket(
+  date: ReturnType<typeof dayjs>,
+  granularidad: TicketsGranularidad,
+) {
+  switch (granularidad) {
+    case 'DIA':
+      return date.add(1, 'day');
+
+    case 'MES':
+      return date.add(1, 'month');
+
+    case 'TRIMESTRE':
+      return date.add(3, 'month');
+
+    case 'ANIO':
+      return date.add(1, 'year');
+  }
+}
+
+function createEmptyPriorityCounter(): TicketsPrioridadCount {
+  return {
+    [PrioridadTicketSoporte.BAJA]: 0,
+    [PrioridadTicketSoporte.MEDIA]: 0,
+    [PrioridadTicketSoporte.ALTA]: 0,
+    [PrioridadTicketSoporte.URGENTE]: 0,
+  };
+}
+
+function isDateInsideRange(date: Date, desde: Date, hastaExclusivo: Date) {
+  const time = date.getTime();
+
+  return time >= desde.getTime() && time < hastaExclusivo.getTime();
+}
+
+function calculatePercentageVariation(
+  actual: number,
+  anterior: number,
+): number | null {
+  /**
+   * No podemos calcular porcentaje cuando el período
+   * anterior era 0.
+   *
+   * Si ambos son cero, sí podemos expresar 0% de cambio.
+   */
+  if (anterior === 0) {
+    return actual === 0 ? 0 : null;
+  }
+
+  return round(((actual - anterior) / anterior) * 100, 2);
 }

@@ -61,11 +61,11 @@ export class TicketsSoporteService {
       return;
     }
 
-    if (this.estadosConFlujoDedicado.has(estadoSolicitado)) {
-      throw new BadRequestException(
-        `El cambio de estado ${estadoActual} → ${estadoSolicitado} debe realizarse mediante su flujo dedicado.`,
-      );
-    }
+    // if (this.estadosConFlujoDedicado.has(estadoSolicitado)) {
+    //   throw new BadRequestException(
+    //     `El cambio de estado ${estadoActual} → ${estadoSolicitado} debe realizarse mediante su flujo dedicado.`,
+    //   );
+    // }
   }
 
   // NUEVOS HELPERS

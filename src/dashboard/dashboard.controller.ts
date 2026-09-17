@@ -10,9 +10,11 @@ import {
   UsePipes,
   ValidationPipe,
   UnauthorizedException,
+  Query,
 } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
 import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
+import { DashboardTicketsActividadQueryDto } from './dto/dashboard-tickets-actividad-query.dto';
 
 type AuthenticatedRequest = Request & {
   user?: {
@@ -79,6 +81,33 @@ export class DashboardController {
   @Get('/instalaciones-historicas')
   getDashboardInstalacionesHistoricasChart() {
     return this.dashboardService.getDashboardInstalacionesHistoricasChart();
+  }
+
+  /**
+   * Actividad histórica y reciente del área de soporte.
+   *
+   * Presets:
+   * - 7D
+   * - 30D
+   * - 12M
+   * - HISTORICO
+   * - CUSTOM
+   *
+   * CUSTOM:
+   * ?preset=CUSTOM&desde=2026-08-01&hasta=2026-09-17
+   */
+  @Get('/tickets-actividad')
+  @UsePipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+    }),
+  )
+  getDashboardTicketsActividad(
+    @Query()
+    query: DashboardTicketsActividadQueryDto,
+  ) {
+    return this.dashboardService.getDashboardTicketsActividad(query);
   }
 
   /**
