@@ -3,12 +3,17 @@ import {
   Controller,
   Delete,
   Get,
+  Logger,
   Param,
   ParseIntPipe,
   Patch,
   Post,
   Query,
   Req,
+  UnauthorizedException,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
@@ -33,7 +38,13 @@ import { ClienteDesInstalacionApplicationService } from '../application/services
 import { ClienteDesinstalacionAutorizacionPresenter } from './autorizacion-cliente-desinstalacion.presenter';
 import { ClienteDesinstalacionPresenter } from './cliente-desinstalacion.presenter';
 import { ClienteDesinstalacionTecnicoPresenter } from './cliente-desinstalacion-tecnico.presenter';
+import { MarcarFallidaClienteDesinstalacionDto } from '../application/dto/marcar-fallida-cliente-desinstalacion.dto';
+import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
+import { SubirEvidenciaDesinstalacionDto } from '../application/dto/subir-evidencia-desinstalacion.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { FiltrarAutorizacionesPendientesDto } from '../application/dto/filtrar-autorizaciones-pendientes.dto';
 
+@UseGuards(JwtAuthGuard)
 @UsePipes(
   new ValidationPipe({
     transform: true,
@@ -43,6 +54,7 @@ import { ClienteDesinstalacionTecnicoPresenter } from './cliente-desinstalacion-
 )
 @Controller('cliente-desinstalaciones')
 export class ClienteDesinstalacionController {
+  private readonly logger = new Logger(ClienteDesinstalacionController.name);
   constructor(
     private readonly clienteDesinstalacionService: ClienteDesInstalacionApplicationService,
   ) {}
@@ -50,9 +62,14 @@ export class ClienteDesinstalacionController {
   // AUTORIZACIONES
 
   @Get('autorizaciones/pendientes')
-  async listarAutorizacionesPendientes() {
+  async listarAutorizacionesPendientes(
+    @Query()
+    query: FiltrarAutorizacionesPendientesDto,
+  ) {
     const result =
-      await this.clienteDesinstalacionService.listarAutorizacionesPendientes();
+      await this.clienteDesinstalacionService.listarAutorizacionesPendientes(
+        query,
+      );
 
     return ClienteDesinstalacionAutorizacionPresenter.pendientesToHttp(result);
   }
@@ -63,8 +80,7 @@ export class ClienteDesinstalacionController {
     @Body() dto: AprobarDesinstalacionAutorizacionDto,
     @Req() req: any,
   ) {
-    const autorizadoPorId = req.user?.id ?? 1;
-
+    const autorizadoPorId = this.obtenerUsuarioId(req);
     const result = await this.clienteDesinstalacionService.aprobarAutorizacion(
       id,
       dto,
@@ -80,7 +96,7 @@ export class ClienteDesinstalacionController {
     @Body() dto: RechazarDesinstalacionAutorizacionDto,
     @Req() req: any,
   ) {
-    const autorizadoPorId = req.user?.id ?? 1;
+    const autorizadoPorId = this.obtenerUsuarioId(req);
 
     const result = await this.clienteDesinstalacionService.rechazarAutorizacion(
       id,
@@ -95,12 +111,14 @@ export class ClienteDesinstalacionController {
 
   @Post()
   async crear(@Body() dto: CrearClienteDesinstalacionDto, @Req() req: any) {
-    const creadoPorId = req.user?.id ?? dto.solicitadoPorId ?? 1;
+    const creadoPorId = this.obtenerUsuarioId(req);
 
     const result = await this.clienteDesinstalacionService.crear(
       dto,
       creadoPorId,
     );
+
+    this.logger.log(`DTO recibido:\n${JSON.stringify(dto, null, 2)}`);
 
     return ClienteDesinstalacionPresenter.crearToHttp(result);
   }
@@ -110,6 +128,13 @@ export class ClienteDesinstalacionController {
     const result = await this.clienteDesinstalacionService.listar(query);
 
     return ClienteDesinstalacionPresenter.paginatedToHttp(result);
+  }
+
+  @Get('contexto-creacion/:clienteId')
+  async obtenerContextoCreacion(
+    @Param('clienteId', ParseIntPipe) clienteId: number,
+  ) {
+    return this.clienteDesinstalacionService.obtenerContextoCreacion(clienteId);
   }
 
   // DETALLE
@@ -166,10 +191,14 @@ export class ClienteDesinstalacionController {
   async iniciar(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: IniciarClienteDesinstalacionDto,
+    @Req() req: any,
   ) {
+    const ejecutadoPorId = this.obtenerUsuarioId(req);
+
     const desinstalacion = await this.clienteDesinstalacionService.iniciar(
       id,
       dto,
+      ejecutadoPorId,
     );
 
     return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
@@ -201,14 +230,60 @@ export class ClienteDesinstalacionController {
     return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
   }
 
+  @Patch(':id/fallar')
+  async marcarFallida(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: MarcarFallidaClienteDesinstalacionDto,
+  ) {
+    const desinstalacion =
+      await this.clienteDesinstalacionService.marcarFallida(id, dto);
+
+    return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
+  }
+
   // AUTORIZACIÓN POR DESINSTALACIÓN
+
+  // EVIDENCIAS
+
+  @Post(':id/evidencias/upload')
+  @UseInterceptors(FileInterceptor('file'))
+  async subirEvidencia(
+    @Param('id', ParseIntPipe)
+    id: number,
+
+    @UploadedFile()
+    file: Express.Multer.File,
+
+    @Body()
+    dto: SubirEvidenciaDesinstalacionDto,
+
+    @Req()
+    req: any,
+  ) {
+    const subidoPorId = this.obtenerUsuarioId(req);
+
+    return this.clienteDesinstalacionService.cargarEvidencia({
+      desinstalacionId: id,
+
+      subidoPorId,
+
+      file,
+
+      tipo: dto.tipo,
+
+      descripcion: dto.descripcion ?? null,
+
+      orden: dto.orden ?? 0,
+    });
+  }
 
   @Post(':id/autorizaciones')
   async crearAutorizacion(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: SolicitarDesinstalacionAutorizacionDto,
+    @Req() req: any,
   ) {
-    const solicitadoPorId = dto.solicitadoPorId;
+    const solicitadoPorId = this.obtenerUsuarioId(req);
 
     const autorizacion =
       await this.clienteDesinstalacionService.crearAutorizacion(
@@ -255,5 +330,17 @@ export class ClienteDesinstalacionController {
     return {
       ok: true,
     };
+  }
+
+  private obtenerUsuarioId(req: any): number {
+    const usuarioId = Number(req.user?.id);
+
+    if (!Number.isInteger(usuarioId) || usuarioId <= 0) {
+      throw new UnauthorizedException(
+        'No se pudo identificar al usuario autenticado.',
+      );
+    }
+
+    return usuarioId;
   }
 }

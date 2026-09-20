@@ -1,21 +1,66 @@
 import { Module } from '@nestjs/common';
-import { MikroTikService } from './application/mikro-tik.service';
+
+import { PrismaModule } from 'src/prisma/prisma.module';
+
+import { MikrotikRouterCredentialsModule } from 'src/modules/mikrotik-router-credentials/mikrotik-router-credentials.module';
+
 import { MikroTikController } from './presentation/mikro-tik.controller';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { MikrotikRouterRepository } from './domain/mikrotik-repository';
-import { MikrotikRouterPrisma } from './infraestructure/mikrotik.repository';
-import { MikrotikCryptoService } from 'src/ssh-mikrotik-connection/helpers/mikrotik-crypto.service';
+
+import {
+  MIKROTIK_ROUTER_CONNECTION_CONTEXT,
+  MIKROTIK_ROUTER_REPOSITORY,
+} from './infra/tokens/mikrotik-router.tokens';
+
+import { CrearMikrotikRouterUseCase } from './application/use-cases/crear-mikrotik-router.use-case';
+
+import { ActualizarMikrotikRouterUseCase } from './application/use-cases/actualizar-mikrotik-router.use-case';
+
+import { ObtenerMikrotikRouterUseCase } from './application/use-cases/obtener-mikrotik-router.use-case';
+
+import { ListarMikrotikRoutersUseCase } from './application/use-cases/listar-mikrotik-routers.use-case';
+
+import { EliminarMikrotikRouterUseCase } from './application/use-cases/eliminar-mikrotik-router.use-case';
+
+import { ResolverContextoConexionMikrotikUseCase } from './application/use-cases/resolver-contexto-conexion-mikrotik.use-case';
+import { MikrotikRouterPrismaRepository } from './infra/mikrotik-router-prisma.repository';
+
+const useCases = [
+  CrearMikrotikRouterUseCase,
+
+  ActualizarMikrotikRouterUseCase,
+
+  ObtenerMikrotikRouterUseCase,
+
+  ListarMikrotikRoutersUseCase,
+
+  EliminarMikrotikRouterUseCase,
+
+  ResolverContextoConexionMikrotikUseCase,
+];
 
 @Module({
+  imports: [PrismaModule, MikrotikRouterCredentialsModule],
+
   controllers: [MikroTikController],
+
   providers: [
-    MikroTikService,
-    PrismaService,
-    MikrotikCryptoService,
+    MikrotikRouterPrismaRepository,
+
+    ...useCases,
+
     {
-      provide: MikrotikRouterRepository,
-      useClass: MikrotikRouterPrisma,
+      provide: MIKROTIK_ROUTER_REPOSITORY,
+
+      useExisting: MikrotikRouterPrismaRepository,
+    },
+
+    {
+      provide: MIKROTIK_ROUTER_CONNECTION_CONTEXT,
+
+      useExisting: ResolverContextoConexionMikrotikUseCase,
     },
   ],
+
+  exports: [MIKROTIK_ROUTER_REPOSITORY, MIKROTIK_ROUTER_CONNECTION_CONTEXT],
 })
 export class MikroTikModule {}

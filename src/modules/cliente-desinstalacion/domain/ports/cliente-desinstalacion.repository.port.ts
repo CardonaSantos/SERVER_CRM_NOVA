@@ -1,56 +1,70 @@
-import { ClienteDesinstalacionTecnicoEntity } from '../entities/cliente-desinstalacion-tecnico.entity';
 import { ClienteDesinstalacionEntity } from '../entities/cliente-desinstalacion.entitie';
+
 import { EstadoDesinstalacionCliente } from '../enums/estado-desinstalacion-cliente.enum';
+
 import { MotivoDesinstalacionCliente } from '../enums/motivo-desinstalacion-cliente.enum';
+
 import { TipoDesinstalacionCliente } from '../enums/tipo-desinstalacion-cliente.enum';
 
+import {
+  ClienteDesinstalacionDetalle,
+  ClienteDesinstalacionListadoItem,
+} from '../read-models/cliente-desinstalacion.read-model';
+
 export type ClienteDesInstalacionFindManyFilters = {
-  empresaId: number;
+  /**
+   * Puede omitirse porque actualmente existe una sola
+   * empresa por base de datos.
+   */
+  empresaId?: number | null;
 
   page: number;
+
   limit: number;
 
   search?: string | null;
 
   clienteId?: number | null;
+
   servicioInternetId?: number | null;
+
   ticketId?: number | null;
-  asesorId?: number | null;
+
+  accesoInternetId?: number | null;
+
   creadoPorId?: number | null;
-  completadoPorId?: number | null;
 
   solicitadoPorId?: number | null;
 
   ejecutadoPorId?: number | null;
-  motivo?: MotivoDesinstalacionCliente;
+
+  motivo?: MotivoDesinstalacionCliente | null;
 
   estado?: EstadoDesinstalacionCliente | null;
+
   tipo?: TipoDesinstalacionCliente | null;
 
   fechaProgramadaDesde?: Date | null;
+
   fechaProgramadaHasta?: Date | null;
 
   fechaFinalizacionDesde?: Date | null;
+
   fechaFinalizacionHasta?: Date | null;
 };
 
 export type ClienteDesInstalacionPaginatedResult = {
-  items: ClienteDesinstalacionDetalle[];
-  total: number;
-  page: number;
-  limit: number;
-};
+  data: ClienteDesinstalacionListadoItem[];
 
-export type ClienteDesinstalacionDetalle = {
-  desinstalacion: ClienteDesinstalacionEntity;
-  tecnicos: ClienteDesinstalacionTecnicoEntity[];
-};
+  meta: {
+    total: number;
 
-export type ClienteDesInstalacionPaginatedDetalleResult = {
-  items: ClienteDesinstalacionDetalle[];
-  total: number;
-  page: number;
-  limit: number;
+    page: number;
+
+    limit: number;
+
+    totalPages: number;
+  };
 };
 
 export interface ClienteDesInstalacionRepositoryPort {
@@ -58,8 +72,14 @@ export interface ClienteDesInstalacionRepositoryPort {
     entity: ClienteDesinstalacionEntity,
   ): Promise<ClienteDesinstalacionEntity>;
 
+  /**
+   * Consulta mínima utilizada por comandos y transiciones.
+   */
   findById(id: number): Promise<ClienteDesinstalacionEntity | null>;
 
+  /**
+   * Consulta enriquecida utilizada por presentación.
+   */
   findDetalleById(id: number): Promise<ClienteDesinstalacionDetalle | null>;
 
   findMany(

@@ -8,10 +8,6 @@ import {
 } from 'class-validator';
 
 export class CompletarClienteInstalacionDto {
-  @IsInt()
-  @Min(1)
-  completadoPorId: number;
-
   @IsOptional()
   @IsString()
   resultado?: string | null;

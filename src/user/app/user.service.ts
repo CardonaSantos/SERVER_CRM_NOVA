@@ -269,6 +269,33 @@ export class UserService {
     }));
   }
 
+  async validarContrasenaActual(
+    usuarioId: number,
+    contrasenaActual: string,
+  ): Promise<boolean> {
+    if (
+      !Number.isInteger(usuarioId) ||
+      usuarioId <= 0 ||
+      typeof contrasenaActual !== 'string' ||
+      contrasenaActual.length === 0
+    ) {
+      return false;
+    }
+
+    const usuario = await this.usuariosRepo.findById(usuarioId);
+
+    if (!usuario) {
+      return false;
+    }
+
+    const usuarioData = usuario.toObject();
+
+    if (!usuarioData.activo) {
+      return false;
+    }
+
+    return bcrypt.compare(contrasenaActual, usuarioData.contrasena);
+  }
   // setSaldo0: esto pertenece a otro agregado (SaldoCliente),
   // lo ideal es moverlo a otro servicio/repo y no mezclarlo con Usuario.
 }

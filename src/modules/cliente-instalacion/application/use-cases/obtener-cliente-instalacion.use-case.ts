@@ -7,7 +7,6 @@ import { CLIENTE_INSTALACION_REPOSITORY } from '../../infra/tokens/cliente-insta
 
 export type ObtenerClienteInstalacionCommand = {
   id: number;
-  empresaId: number;
 };
 
 @Injectable()

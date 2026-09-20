@@ -33,6 +33,8 @@ export class ListarClienteDesinstalacionesUseCase {
       ejecutadoPorId: filters.ejecutadoPorId ?? null,
       creadoPorId: filters.creadoPorId ?? null,
 
+      accesoInternetId: filters.accesoInternetId ?? null,
+
       estado: filters.estado ?? null,
       tipo: filters.tipo ?? null,
       motivo: filters.motivo ?? null,

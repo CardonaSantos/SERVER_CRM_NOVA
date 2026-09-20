@@ -12,6 +12,7 @@ import {
   CLIENTE_DESINSTALACION_REPOSITORY,
 } from '../../infra/tokens/cliente-desinstalacion.token';
 import { SolicitarDesinstalacionAutorizacionDto } from '../dto/autorizacion-desinstalacion.dto';
+import { EstadoAutorizacionDesinstalacion } from '../../domain/enums/estado-autorizacion-desintalacion.enum';
 
 export type CrearAutorizacionDesinstalacionCommand =
   SolicitarDesinstalacionAutorizacionDto & {
@@ -44,14 +45,24 @@ export class CrearAutorizacionDesinstalacionUseCase {
       );
     }
 
-    const pendiente =
-      await this.autorizacionRepository.findPendienteByDesinstalacionId(
+    const ultimaAutorizacion =
+      await this.autorizacionRepository.findUltimaByDesinstalacionId(
         command.desinstalacionId,
       );
 
-    if (pendiente) {
+    if (
+      ultimaAutorizacion?.estado === EstadoAutorizacionDesinstalacion.PENDIENTE
+    ) {
       throw new ConflictException(
         'Ya existe una autorización pendiente para esta desinstalación.',
+      );
+    }
+
+    if (
+      ultimaAutorizacion?.estado === EstadoAutorizacionDesinstalacion.APROBADA
+    ) {
+      throw new ConflictException(
+        'La desinstalación ya cuenta con una autorización aprobada.',
       );
     }
 

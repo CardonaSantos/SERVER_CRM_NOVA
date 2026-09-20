@@ -1,9 +1,19 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { CancelarClienteDesinstalacionDto } from '../dto/cancelar-cliente-desinstalacion.dto';
-import { CLIENTE_DESINSTALACION_REPOSITORY } from '../../infra/tokens/cliente-desinstalacion.token';
-import { ClienteDesInstalacionRepositoryPort } from '../../domain/ports/cliente-desinstalacion.repository.port';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+
 import { dayjs } from 'src/Utils/dayjs.config';
-import { ClienteDesinstalacionPrismaMapper } from '../../infra/prisma/cliente-desinstalacion.prisma.mapper';
+
+import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entitie';
+
+import { ClienteDesInstalacionRepositoryPort } from '../../domain/ports/cliente-desinstalacion.repository.port';
+
+import { CLIENTE_DESINSTALACION_REPOSITORY } from '../../infra/tokens/cliente-desinstalacion.token';
+
+import { CancelarClienteDesinstalacionDto } from '../dto/cancelar-cliente-desinstalacion.dto';
 
 export type CancelarClienteDesinstalacionCommand =
   CancelarClienteDesinstalacionDto & {
@@ -17,18 +27,34 @@ export class CancelarClienteDesinstalacionUseCase {
     private readonly clienteDesinstalacionRepository: ClienteDesInstalacionRepositoryPort,
   ) {}
 
-  async execute(command: CancelarClienteDesinstalacionCommand) {
+  async execute(
+    command: CancelarClienteDesinstalacionCommand,
+  ): Promise<ClienteDesinstalacionEntity> {
     const desinstalacion = await this.clienteDesinstalacionRepository.findById(
       command.id,
     );
 
-    desinstalacion.cancelar({
-      fechaCancelacion: command.fechaCancelacion
-        ? dayjs(command.fechaCancelacion).toDate()
-        : null,
-      motivo: command.motivo ?? null,
-      observaciones: command.observaciones ?? null,
-    });
+    if (!desinstalacion) {
+      throw new NotFoundException('Desinstalación no encontrada.');
+    }
+
+    try {
+      desinstalacion.cancelar({
+        fechaCancelacion: command.fechaCancelacion
+          ? dayjs(command.fechaCancelacion).toDate()
+          : undefined,
+
+        motivo: command.motivo ?? null,
+
+        observaciones: command.observaciones ?? null,
+      });
+    } catch (error) {
+      throw new ConflictException(
+        error instanceof Error
+          ? error.message
+          : 'No se pudo cancelar la desinstalación.',
+      );
+    }
 
     return this.clienteDesinstalacionRepository.save(desinstalacion);
   }

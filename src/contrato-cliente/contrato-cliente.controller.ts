@@ -33,12 +33,15 @@ export class ContratoClienteController {
     return this.contratoService.getAllContratos();
   }
 
-  @Get('/get-one-contrato/:contratoId/:plantillaId')
+  @Get('/get-one-contrato/:instalacionId/:plantillaId')
   async getOneContrato(
-    @Param('contratoId', ParseIntPipe) contratoId: number,
+    @Param('instalacionId', ParseIntPipe) instalacionId: number,
     @Param('plantillaId', ParseIntPipe) plantillaId: number,
   ) {
-    return this.contratoService.getOneContrato(contratoId, plantillaId);
+    return this.contratoService.getVistaContratoPorInstalacion(
+      instalacionId,
+      plantillaId,
+    );
   }
 
   @Patch()

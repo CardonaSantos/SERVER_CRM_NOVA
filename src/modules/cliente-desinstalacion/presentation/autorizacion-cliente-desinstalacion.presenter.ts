@@ -1,5 +1,8 @@
 import { ClienteDesinstalacionAutorizacionEntity } from '../domain/entities/cliente-desintalacion-autorizacion.entitie';
-import { AutorizacionDesinstalacionPendiente } from '../domain/ports/cliente-desinstalacion-autorizacion.repository.port';
+import {
+  AutorizacionDesinstalacionPendiente,
+  AutorizacionesPendientesPaginatedResult,
+} from '../domain/ports/cliente-desinstalacion-autorizacion.repository.port';
 import { ClienteDesinstalacionPresenter } from './cliente-desinstalacion.presenter';
 import { ClienteDesinstalacionEntity } from '../domain/entities/cliente-desinstalacion.entitie';
 
@@ -27,15 +30,33 @@ export class ClienteDesinstalacionAutorizacionPresenter {
   static pendienteToHttp(item: AutorizacionDesinstalacionPendiente) {
     return {
       autorizacion: this.toHttp(item.autorizacion),
-      desinstalacion: item.desinstalacion,
+
+      solicitadoPor: item.solicitadoPor,
+
+      desinstalacion: {
+        ...item.desinstalacion,
+
+        servicioInternet: item.desinstalacion.servicioInternet
+          ? {
+              ...item.desinstalacion.servicioInternet,
+            }
+          : null,
+      },
     };
   }
 
-  static pendientesToHttp(items: AutorizacionDesinstalacionPendiente[]) {
+  static pendientesToHttp(result: AutorizacionesPendientesPaginatedResult) {
     return {
-      data: items.map((item) => this.pendienteToHttp(item)),
+      data: result.data.map((item) => this.pendienteToHttp(item)),
+
       meta: {
-        total: items.length,
+        total: result.meta.total,
+
+        page: result.meta.page,
+
+        limit: result.meta.limit,
+
+        totalPages: result.meta.totalPages,
       },
     };
   }

@@ -10,8 +10,15 @@ import {
 } from 'class-validator';
 import { MotivoDesinstalacionCliente } from '../../domain/enums/motivo-desinstalacion-cliente.enum';
 import { TipoDesinstalacionCliente } from '../../domain/enums/tipo-desinstalacion-cliente.enum';
+import { Type } from 'class-transformer';
 
 export class ActualizarClienteDesinstalacionDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  accesoInternetId?: number | null;
+
   @IsOptional()
   @IsInt()
   @Min(1)

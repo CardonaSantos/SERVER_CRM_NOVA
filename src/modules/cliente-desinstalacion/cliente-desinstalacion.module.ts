@@ -11,6 +11,8 @@ import { ReprogramarClienteDesinstalacionUseCase } from './application/use-cases
 import { ActualizarCostosDesinstalacionUseCase } from './application/use-cases/actualizar-costos-desinstalacion.use-case';
 import {
   CLIENTE_DESINSTALACION_AUTORIZACION_REPOSITORY,
+  CLIENTE_DESINSTALACION_CONTEXTO_REPOSITORY,
+  CLIENTE_DESINSTALACION_MEDIA_REPOSITORY,
   CLIENTE_DESINSTALACION_REPOSITORY,
   CLIENTE_DESINSTALACION_TECNICO_REPOSITORY,
 } from './infra/tokens/cliente-desinstalacion.token';
@@ -26,13 +28,41 @@ import { AsignarTecnicoDesinstalacionUseCase } from './application/use-cases/asi
 import { ListarTecnicosDesinstalacionUseCase } from './application/use-cases/listar-tecnicos-desintalacion.use-case';
 import { EliminarTecnicoDesinstalacionUseCase } from './application/use-cases/eliminar-tecnico-desinstalacion.use-case';
 import { ClienteDesinstalacionTecnicoPrismaRepository } from './infra/prisma/cliente-desinstalacion-tecnico.prisma.repository';
+import { MarcarFallidaClienteDesinstalacionUseCase } from './application/use-cases/marcar-fallida-cliente-desinstalacion.use-case';
+import { ValidarAccesoDesinstalacionService } from './application/services/validar-acceso-desinstalacion.service';
+import { PpoeAccesoInternetModule } from '../pppoe-acceso-internet/ppoe-acceso-internet.module';
+
+import { ValidarAutorizacionDesinstalacionService } from './application/services/validar-autorizacion-desinstalacion.service';
+import { AuthModule } from 'src/auth/auth.module';
+import { PppoeAutomatizacionModule } from '../pppoe-automatizacion/pppoe-automatizacion.module';
+import { PppoeClienteCuentaModule } from '../pppoe-cliente-cuenta/ppoe-cliente-cuenta.module';
+import { TipoEvidenciaClienteOperacion } from '../cliente-instalacion/domain/enums/tipo-evidencia-cliente-operacion.enum';
+import { SubirEvidenciaDesinstalacionUseCase } from './application/use-cases/subir-evidencia-desinstalacion.use-case';
+import { ClienteDesinstalacionMediaPrismaRepository } from './infra/prisma/cliente-desinstalacion-media.prisma.repository';
+import { DigitalOceanMediaModule } from '../digital-ocean-media/digital-ocean-media.module';
+import { ObtenerContextoCreacionDesinstalacionUseCase } from './application/use-cases/obtener-contexto-creacion-desinstalacion.use-case';
+import { ClienteDesinstalacionContextoPrismaRepository } from './infra/prisma/cliente-desinstalacion-contexto.prisma.repository';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [
+    PrismaModule,
+
+    PpoeAccesoInternetModule,
+
+    PppoeClienteCuentaModule,
+
+    PppoeAutomatizacionModule,
+
+    AuthModule,
+
+    DigitalOceanMediaModule,
+  ],
   controllers: [ClienteDesinstalacionController],
   providers: [
+    SubirEvidenciaDesinstalacionUseCase,
+    ValidarAutorizacionDesinstalacionService,
     ClienteDesInstalacionApplicationService,
-
+    MarcarFallidaClienteDesinstalacionUseCase,
     CrearDesinstalacionUseCase,
     ListarClienteDesinstalacionesUseCase,
     ObtenerClienteDesinstalacionUseCase,
@@ -51,6 +81,8 @@ import { ClienteDesinstalacionTecnicoPrismaRepository } from './infra/prisma/cli
     AsignarTecnicoDesinstalacionUseCase,
     ListarTecnicosDesinstalacionUseCase,
     EliminarTecnicoDesinstalacionUseCase,
+    ValidarAccesoDesinstalacionService,
+    ObtenerContextoCreacionDesinstalacionUseCase,
 
     {
       provide: CLIENTE_DESINSTALACION_REPOSITORY,
@@ -63,6 +95,15 @@ import { ClienteDesinstalacionTecnicoPrismaRepository } from './infra/prisma/cli
     {
       provide: CLIENTE_DESINSTALACION_TECNICO_REPOSITORY,
       useClass: ClienteDesinstalacionTecnicoPrismaRepository,
+    },
+    {
+      provide: CLIENTE_DESINSTALACION_MEDIA_REPOSITORY,
+      useClass: ClienteDesinstalacionMediaPrismaRepository,
+    },
+
+    {
+      provide: CLIENTE_DESINSTALACION_CONTEXTO_REPOSITORY,
+      useClass: ClienteDesinstalacionContextoPrismaRepository,
     },
   ],
   exports: [ClienteDesInstalacionApplicationService],

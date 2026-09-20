@@ -4,6 +4,7 @@ import { CLIENTE_DESINSTALACION_REPOSITORY } from '../../infra/tokens/cliente-de
 import { ClienteDesInstalacionRepositoryPort } from '../../domain/ports/cliente-desinstalacion.repository.port';
 import { dayjs } from 'src/Utils/dayjs.config';
 import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entitie';
+import { ValidarAccesoDesinstalacionService } from '../services/validar-acceso-desinstalacion.service';
 
 export type ActualizarClienteDesinstalacionCommand =
   ActualizarClienteDesinstalacionDto & {
@@ -15,6 +16,8 @@ export class ActualizarClienteDesinstalacionUseCase {
   constructor(
     @Inject(CLIENTE_DESINSTALACION_REPOSITORY)
     private readonly clienteDesinstalacionRepository: ClienteDesInstalacionRepositoryPort,
+
+    private readonly validarAccesoDesinstalacionService: ValidarAccesoDesinstalacionService,
   ) {}
 
   async execute(
@@ -28,9 +31,31 @@ export class ActualizarClienteDesinstalacionUseCase {
       throw new NotFoundException('Desinstalación no encontrada.');
     }
 
+    const propsActuales = desinstalacion.toPrimitives();
+
+    const accesoInternetIdFinal =
+      command.accesoInternetId !== undefined
+        ? command.accesoInternetId
+        : (propsActuales.accesoInternetId ?? null);
+
+    const servicioInternetIdFinal =
+      command.servicioInternetId !== undefined
+        ? command.servicioInternetId
+        : (propsActuales.servicioInternetId ?? null);
+
+    if (accesoInternetIdFinal !== null) {
+      await this.validarAccesoDesinstalacionService.validar({
+        clienteId: propsActuales.clienteId,
+
+        accesoInternetId: accesoInternetIdFinal,
+      });
+    }
+
     desinstalacion.actualizarDatosGenerales({
       servicioInternetId: command.servicioInternetId,
       ticketId: command.ticketId,
+
+      accesoInternetId: command.accesoInternetId,
 
       solicitadoPorId: command.solicitadoPorId,
       ejecutadoPorId: command.ejecutadoPorId,

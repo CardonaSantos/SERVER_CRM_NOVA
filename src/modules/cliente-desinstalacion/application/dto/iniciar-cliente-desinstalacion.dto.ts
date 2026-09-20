@@ -1,12 +1,18 @@
-import { IsDateString, IsInt, IsOptional, Min } from 'class-validator';
+import {
+  IsDateString,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class IniciarClienteDesinstalacionDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  contrasenaActual: string;
+
   @IsOptional()
   @IsDateString()
   fechaInicio?: string;
-
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  ejecutadoPorId?: number;
 }

@@ -502,6 +502,11 @@ export class ClienteInternetService {
           where: { id: clienteInternetId },
           include: {
             medias: {
+              where: {
+                categoria: {
+                  notIn: ['SOPORTE_TICKET'],
+                },
+              },
               select: {
                 id: true,
                 cdnUrl: true,

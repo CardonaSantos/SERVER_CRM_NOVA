@@ -30,10 +30,19 @@ import { AsignarTecnicoDesinstalacionUseCase } from '../use-cases/asignar-tecnic
 import { ListarTecnicosDesinstalacionUseCase } from '../use-cases/listar-tecnicos-desintalacion.use-case';
 import { EliminarTecnicoDesinstalacionUseCase } from '../use-cases/eliminar-tecnico-desinstalacion.use-case';
 import { AsignarTecnicoDesinstalacionDto } from '../dto/tecnico-desinstalacion.dto';
+import { MarcarFallidaClienteDesinstalacionUseCase } from '../use-cases/marcar-fallida-cliente-desinstalacion.use-case';
+import { MarcarFallidaClienteDesinstalacionDto } from '../dto/marcar-fallida-cliente-desinstalacion.dto';
+import {
+  SubirEvidenciaDesinstalacionCommand,
+  SubirEvidenciaDesinstalacionUseCase,
+} from '../use-cases/subir-evidencia-desinstalacion.use-case';
+import { ObtenerContextoCreacionDesinstalacionUseCase } from '../use-cases/obtener-contexto-creacion-desinstalacion.use-case';
+import { FiltrarAutorizacionesPendientesDto } from '../dto/filtrar-autorizaciones-pendientes.dto';
 
 @Injectable()
 export class ClienteDesInstalacionApplicationService {
   constructor(
+    private readonly marcarFallidaUseCase: MarcarFallidaClienteDesinstalacionUseCase,
     private readonly crearDesinstalacionUseCase: CrearDesinstalacionUseCase,
     private readonly listarClienteDesinstalacionesUseCase: ListarClienteDesinstalacionesUseCase,
     private readonly obtenerClienteDesinstalacionUseCase: ObtenerClienteDesinstalacionUseCase,
@@ -53,6 +62,10 @@ export class ClienteDesInstalacionApplicationService {
     private readonly asignarTecnicoDesinstalacionUseCase: AsignarTecnicoDesinstalacionUseCase,
     private readonly listarTecnicosDesinstalacionUseCase: ListarTecnicosDesinstalacionUseCase,
     private readonly eliminarTecnicoDesinstalacionUseCase: EliminarTecnicoDesinstalacionUseCase,
+
+    private readonly subirEvidenciaDesinstalacionUseCase: SubirEvidenciaDesinstalacionUseCase,
+
+    private readonly obtenerContextoCreacionDesinstalacionUseCase: ObtenerContextoCreacionDesinstalacionUseCase,
   ) {}
 
   crear(dto: CrearClienteDesinstalacionDto, creadoPorId: number) {
@@ -79,6 +92,13 @@ export class ClienteDesInstalacionApplicationService {
     });
   }
 
+  marcarFallida(id: number, dto: MarcarFallidaClienteDesinstalacionDto) {
+    return this.marcarFallidaUseCase.execute({
+      id,
+      ...dto,
+    });
+  }
+
   reprogramar(id: number, dto: ReprogramarClienteDesinstalacionDto) {
     return this.reprogramarClienteDesinstalacionUseCase.execute({
       id,
@@ -86,10 +106,15 @@ export class ClienteDesInstalacionApplicationService {
     });
   }
 
-  iniciar(id: number, dto: IniciarClienteDesinstalacionDto) {
+  iniciar(
+    id: number,
+    dto: IniciarClienteDesinstalacionDto,
+    ejecutadoPorId: number,
+  ) {
     return this.iniciarClienteDesinstalacionUseCase.execute({
       id,
       ...dto,
+      ejecutadoPorId,
     });
   }
 
@@ -114,6 +139,14 @@ export class ClienteDesInstalacionApplicationService {
     });
   }
 
+  cargarEvidencia(command: SubirEvidenciaDesinstalacionCommand) {
+    return this.subirEvidenciaDesinstalacionUseCase.execute(command);
+  }
+
+  obtenerContextoCreacion(clienteId: number) {
+    return this.obtenerContextoCreacionDesinstalacionUseCase.execute(clienteId);
+  }
+
   // registrarFirma(id: number, dto: RegistrarFirmaDesinstalacionDto) {
   //   return this.registrarFirmaDesinstalacionUseCase.execute({
   //     id,
@@ -133,8 +166,8 @@ export class ClienteDesInstalacionApplicationService {
     });
   }
 
-  listarAutorizacionesPendientes() {
-    return this.listarAutorizacionesPendientesUseCase.execute();
+  listarAutorizacionesPendientes(filters: FiltrarAutorizacionesPendientesDto) {
+    return this.listarAutorizacionesPendientesUseCase.execute(filters);
   }
 
   aprobarAutorizacion(

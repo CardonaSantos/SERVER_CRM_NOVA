@@ -37,20 +37,13 @@ export type ClienteInstalacionProps = {
   latitud?: number | null;
   longitud?: number | null;
 
-  ssidRouter?: string | null;
-  contrasenaWifi?: string | null;
-
   costoInstalacion: Money;
   costoMateriales: Money;
   costoManoObra: Money;
   costoOtros: Money;
   montoCobradoCliente: Money;
-  saldoPendiente: Money;
 
   notasCostos?: string | null;
-
-  esMigrada: boolean;
-  metadata?: unknown;
 
   creadoEn?: Date;
   actualizadoEn?: Date;
@@ -63,7 +56,6 @@ export type CrearClienteInstalacionCostosProps = {
   costoOtros?: number;
 
   montoCobradoCliente?: number;
-  saldoPendiente?: number;
 
   notas?: string | null;
 };
@@ -121,10 +113,12 @@ export type IniciarClienteInstalacionParams = {
 
 export type CompletarClienteInstalacionParams = {
   completadoPorId: number;
+
   resultado?: string | null;
+
   observaciones?: string | null;
+
   fechaFinalizacion?: Date;
-  activarServicio?: boolean;
 };
 
 export type CancelarClienteInstalacionParams = {
@@ -141,17 +135,28 @@ export type MarcarFallidaClienteInstalacionParams = {
 };
 
 export type ActualizarDatosGeneralesInstalacionParams = {
-  asesorId?: number | null;
-  servicioInternetId?: number | null;
-  ticketId?: number | null;
-  fechaProgramada?: Date | null;
-  direccionInstalacion?: string | null;
-  referenciaUbicacion?: string | null;
-  latitud?: number | null;
-  longitud?: number | null;
-  observaciones?: string | null;
-};
+  tipo?: TipoInstalacionCliente;
 
+  asesorId?: number | null;
+
+  ticketId?: number | null;
+
+  descripcion?: string | null;
+
+  motivo?: string | null;
+
+  observaciones?: string | null;
+
+  fechaProgramada?: Date | null;
+
+  direccionInstalacion?: string | null;
+
+  referenciaUbicacion?: string | null;
+
+  latitud?: number | null;
+
+  longitud?: number | null;
+};
 export type ActualizarCostosInstalacionParams = {
   costoInstalacion?: Money;
   costoMateriales?: Money;
@@ -159,11 +164,6 @@ export type ActualizarCostosInstalacionParams = {
   costoOtros?: Money;
   montoCobradoCliente?: Money;
   notasCostos?: string | null;
-};
-
-export type RegistrarConfiguracionWifiParams = {
-  ssidRouter: string;
-  contrasenaWifi: string;
 };
 
 // NUEVAS PROSP

@@ -84,26 +84,16 @@ export class TagsTicketService {
   async remove(id: number) {
     // return `This action removes a #${id} tagsTicket`;
     try {
-      return await this.prisma.$transaction(async (tx) => {
-        const tagEliminada = tx.etiquetaTicket.findUnique({
-          where: {
-            id: id,
-          },
-        });
-
-        if (!tagEliminada) {
-          throw new NotFoundException('Error al encontrar el tag');
-        }
-
-        const x = await tx.etiquetaTicket.delete({
-          where: {
-            id: id,
-          },
-        });
-
-        console.log('El tag eliminado es:', x);
-        return x;
+      const ticket = await this.prisma.ticketSoporte.update({
+        where: {
+          id: id,
+        },
+        data: {
+          estado: 'CANCELADA',
+          descripcion: `Este ticket ha sido catalogado como cancelado/eliminado el día: ${new Date().getTime().toFixed}`,
+        },
       });
+      return ticket;
     } catch (error) {}
   }
 }

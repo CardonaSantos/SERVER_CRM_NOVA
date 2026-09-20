@@ -23,13 +23,15 @@ export class TicketResumenService {
       solucionId: dto.solucionId ?? null,
       resueltoComo: dto.resueltoComo ?? null,
       notasInternas: dto.notasInternas ?? null,
+
       reabierto: dto.reabierto,
       numeroReaperturas: dto.numeroReaperturas,
       intentos: dto.intentos,
-      // tiempoTotalMinutos: dto.tiempoTotalMinutos,
-      // tiempoTecnicoMinutos: dto.tiempoTecnicoMinutos,
-    });
 
+      tiempoTotalMinutos: dto.tiempoTotalMinutos ?? null,
+
+      tiempoTecnicoMinutos: dto.tiempoTecnicoMinutos ?? null,
+    });
 
     const created = await this.repo.create(resumen);
 

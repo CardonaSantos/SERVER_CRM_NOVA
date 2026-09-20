@@ -19,10 +19,12 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "prisma:seed": "npx prisma db seed",
-    "fill:periodo": "ts-node prisma/fill-periodo.ts",
-    "fix:duplicates": "ts-node prisma/fix-duplicates.ts",
-    "backfill:clientes-search": "ts-node prisma/backfill-search-nombre.ts",
-    "migrate:estado-cobranza": "ts-node -r dotenv/config -r tsconfig-paths/register scripts/estado-cobranza-migration.ts"
+    "test:mikrotik:ssh": "ts-node -r tsconfig-paths/register scripts/test-mikrotik-ssh.ts",
+    "test:mikrotik:ssh:write": "ts-node -r tsconfig-paths/register scripts/test-mikrotik-ssh-write.ts",
+    "smoke:pppoe": "ts-node -r tsconfig-paths/register scripts/smoke-core-pppoe.ts",
+    "smoke:pppoe:convergence": "ts-node -r tsconfig-paths/register scripts/smoke-pppoe-session-convergence.ts",
+    "smoke:pppoe:race": "ts-node -r tsconfig-paths/register scripts/smoke-pppoe-session-race.ts",
+    "smoke:tracking": "ts-node -r tsconfig-paths/register scripts/smoke-real-time-location.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
@@ -50,6 +52,7 @@
     "dayjs": "^1.11.13",
     "decimal.js": "^10.6.0",
     "exceljs": "^4.4.0",
+    "firebase-admin": "^14.3.0",
     "multer": "^2.0.2",
     "node-ssh": "^13.2.1",
     "openai": "^6.9.1",
@@ -59,6 +62,7 @@
     "routeros-client": "^1.1.1",
     "rxjs": "^7.8.2",
     "socket.io": "^4.8.1",
+    "ssh2": "^1.17.0",
     "twilio": "^5.5.1",
     "uuid": "^11.1.0"
   },
@@ -70,6 +74,7 @@
     "@types/jest": "^29.5.2",
     "@types/multer": "^2.0.0",
     "@types/node": "^20.3.1",
+    "@types/ssh2": "^1.15.5",
     "@types/supertest": "^6.0.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.0.0",
