@@ -4,41 +4,46 @@ import {
   IsEmail,
   IsEnum,
   IsInt,
-  IsNumber,
   IsOptional,
   IsString,
+  MaxLength,
   Min,
+  MinLength,
 } from 'class-validator';
 
 export class CreateUserDto {
-  @IsNumber()
-  id?: number;
+  @IsInt()
+  @Min(1)
+  empresaId: number;
 
   @IsString()
+  @MaxLength(160)
   nombre: string;
 
   @IsEmail()
-  @IsString()
+  @MaxLength(190)
   correo: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
+  @MaxLength(30)
   telefono?: string;
 
   @IsEnum(RolUsuario)
   rol: RolUsuario;
 
-  @Min(8)
   @IsString()
+  @MinLength(8)
+  @MaxLength(200)
   contrasena: string;
 
-  @Min(8)
+  @IsOptional()
   @IsString()
+  @MinLength(8)
+  @MaxLength(200)
   contrasenaConfirm?: string;
 
+  @IsOptional()
   @IsBoolean()
-  activo: boolean;
-
-  @IsInt()
-  empresaId: number;
+  activo?: boolean;
 }

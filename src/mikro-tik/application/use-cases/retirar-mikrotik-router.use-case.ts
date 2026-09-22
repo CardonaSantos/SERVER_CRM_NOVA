@@ -9,13 +9,14 @@ import { MikrotikRouterRepositoryPort } from '../../domain/ports/mikrotik-router
 
 import { MIKROTIK_ROUTER_REPOSITORY } from '../../infra/tokens/mikrotik-router.tokens';
 
-export type EliminarMikrotikRouterResult = {
+export type RetirarMikrotikRouterResult = {
   id: number;
-  eliminado: true;
+  activo: false;
+  nombre: string;
 };
 
 @Injectable()
-export class EliminarMikrotikRouterUseCase {
+export class RetirarMikrotikRouterUseCase {
   private static readonly MAX_NAME_LENGTH = 160;
 
   constructor(
@@ -23,7 +24,7 @@ export class EliminarMikrotikRouterUseCase {
     private readonly repository: MikrotikRouterRepositoryPort,
   ) {}
 
-  async execute(id: number): Promise<EliminarMikrotikRouterResult> {
+  async execute(id: number): Promise<RetirarMikrotikRouterResult> {
     if (!Number.isInteger(id) || id <= 0) {
       throw new BadRequestException('id debe ser un entero positivo.');
     }
@@ -35,15 +36,14 @@ export class EliminarMikrotikRouterUseCase {
     }
 
     /*
-     * DELETE idempotente.
-     *
-     * Si ya fue retirado, no volvemos
-     * a modificar el nombre.
+     * Ya retirado.
+     * No volvemos a cambiarle el correlativo.
      */
     if (!router.activo) {
       return {
         id,
-        eliminado: true,
+        activo: false,
+        nombre: router.nombre,
       };
     }
 
@@ -54,11 +54,12 @@ export class EliminarMikrotikRouterUseCase {
 
     router.retirar(nombreArchivado);
 
-    await this.repository.update(router);
+    const updated = await this.repository.update(router);
 
     return {
       id,
-      eliminado: true,
+      activo: false,
+      nombre: updated.nombre,
     };
   }
 
@@ -66,15 +67,13 @@ export class EliminarMikrotikRouterUseCase {
     empresaId: number;
     nombreActual: string;
   }): Promise<string> {
-    let correlativo = 1;
+    for (let correlativo = 1; correlativo <= 9999; correlativo += 1) {
+      const number = String(correlativo).padStart(2, '0');
 
-    while (correlativo <= 9999) {
-      const correlativoTexto = String(correlativo).padStart(2, '0');
-
-      const suffix = ` [DESACTIVADO-${correlativoTexto}]`;
+      const suffix = ` [DESACTIVADO-${number}]`;
 
       const maxBaseLength =
-        EliminarMikrotikRouterUseCase.MAX_NAME_LENGTH - suffix.length;
+        RetirarMikrotikRouterUseCase.MAX_NAME_LENGTH - suffix.length;
 
       const baseName = params.nombreActual
         .trim()
@@ -91,8 +90,6 @@ export class EliminarMikrotikRouterUseCase {
       if (!existing) {
         return candidate;
       }
-
-      correlativo += 1;
     }
 
     throw new Error(

@@ -323,6 +323,34 @@ export class MikrotikRouterEntity {
     return normalized;
   }
 
+  retirar(nombreArchivado: string, fecha: Date = new Date()): void {
+    this.assertPersisted();
+
+    this.props.nombre = MikrotikRouterEntity.normalizeRequiredString(
+      nombreArchivado,
+      'nombre',
+      MikrotikRouterEntity.MAX_NAME_LENGTH,
+    );
+
+    this.props.activo = false;
+
+    this.touch(fecha);
+  }
+
+  reactivar(nombreRestaurado: string, fecha: Date = new Date()): void {
+    this.assertPersisted();
+
+    this.props.nombre = MikrotikRouterEntity.normalizeRequiredString(
+      nombreRestaurado,
+      'nombre',
+      MikrotikRouterEntity.MAX_NAME_LENGTH,
+    );
+
+    this.props.activo = true;
+
+    this.touch(fecha);
+  }
+
   private static normalizeOptionalString(
     value: string | null,
     maxLength: number,

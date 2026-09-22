@@ -76,8 +76,76 @@ export class AesGcmMikrotikRouterSecretCipher
   }
 
   async decrypt(passwordEnc: string): Promise<string> {
-    const envelope = this.decodeEnvelope(passwordEnc);
+    const encoded = passwordEnc?.trim();
 
+    if (!encoded) {
+      throw new Error(
+        'La credencial cifrada del router MikroTik es obligatoria.',
+      );
+    }
+
+    const currentEnvelope = this.tryDecodeCurrentEnvelope(encoded);
+
+    if (currentEnvelope) {
+      return this.decryptCurrentEnvelope(currentEnvelope);
+    }
+
+    return this.decryptLegacy(encoded);
+  }
+
+  private tryDecodeCurrentEnvelope(
+    passwordEnc: string,
+  ): MikrotikRouterSecretEnvelope | null {
+    let serialized: string;
+
+    try {
+      serialized = this.decodeBase64(passwordEnc, 'passwordEnc').toString(
+        'utf8',
+      );
+    } catch {
+      throw new Error(
+        'La credencial cifrada del router MikroTik no contiene un Base64 válido.',
+      );
+    }
+
+    let parsed: unknown;
+
+    try {
+      parsed = JSON.parse(serialized);
+    } catch {
+      /*
+       * El formato antiguo no contiene
+       * un JSON serializado.
+       *
+       * Por tanto, que falle JSON.parse()
+       * significa que probablemente estamos
+       * frente a una credencial legacy.
+       */
+      return null;
+    }
+
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      Array.isArray(parsed)
+    ) {
+      return null;
+    }
+
+    const envelope = parsed as Record<string, unknown>;
+
+    if (envelope.formato !== AesGcmMikrotikRouterSecretCipher.FORMAT) {
+      return null;
+    }
+
+    this.assertEnvelope(parsed);
+
+    return parsed;
+  }
+
+  private decryptCurrentEnvelope(
+    envelope: MikrotikRouterSecretEnvelope,
+  ): string {
     const key = this.getKey(envelope.versionClave);
 
     const encrypted = this.decodeBase64(envelope.ciphertext, 'ciphertext');
@@ -112,16 +180,79 @@ export class AesGcmMikrotikRouterSecretCipher
 
       const decrypted = Buffer.concat([
         decipher.update(encrypted),
-
         decipher.final(),
       ]);
 
-      const password = decrypted.toString('utf8');
-
-      return this.normalizePlainPassword(password);
+      return this.normalizePlainPassword(decrypted.toString('utf8'));
     } catch {
       throw new Error(
         'No fue posible descifrar la credencial administrativa del router MikroTik.',
+      );
+    }
+  }
+
+  private decryptLegacy(passwordEnc: string): string {
+    /*
+     * Compatibilidad con el cifrador histórico:
+     *
+     * MikrotikCryptoService
+     *
+     * formato:
+     * [12 bytes IV]
+     * [16 bytes authTag]
+     * [ciphertext]
+     *
+     * todo serializado en Base64.
+     */
+
+    const legacyKey = this.configService.get<string>('MIKROTIK_SECRET_KEY');
+
+    if (!legacyKey || legacyKey.length < 32) {
+      throw new Error(
+        'Se detectó una credencial MikroTik legacy, pero MIKROTIK_SECRET_KEY no está configurada.',
+      );
+    }
+
+    try {
+      const data = Buffer.from(passwordEnc, 'base64');
+
+      if (
+        data.length <=
+        AesGcmMikrotikRouterSecretCipher.IV_LENGTH +
+          AesGcmMikrotikRouterSecretCipher.AUTH_TAG_LENGTH
+      ) {
+        throw new Error('Credencial legacy incompleta.');
+      }
+
+      const iv = data.subarray(0, 12);
+
+      const authTag = data.subarray(12, 28);
+
+      const encrypted = data.subarray(28);
+
+      /*
+       * Debe replicar EXACTAMENTE
+       * el comportamiento del cifrador viejo.
+       */
+      const key = Buffer.from(legacyKey.slice(0, 32));
+
+      const decipher = createDecipheriv(
+        AesGcmMikrotikRouterSecretCipher.ALGORITHM,
+        key,
+        iv,
+      );
+
+      decipher.setAuthTag(authTag);
+
+      const decrypted = Buffer.concat([
+        decipher.update(encrypted),
+        decipher.final(),
+      ]);
+
+      return this.normalizePlainPassword(decrypted.toString('utf8'));
+    } catch {
+      throw new Error(
+        'No fue posible descifrar la credencial legacy del router MikroTik. Verifique MIKROTIK_SECRET_KEY.',
       );
     }
   }

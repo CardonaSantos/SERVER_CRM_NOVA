@@ -41,6 +41,14 @@ export class AuthService {
       return null;
     }
 
+    if (!usuario.activo) {
+      this.logger.warn(
+        `El usuario con el Email ${cleanEmail} está desactivado`,
+      );
+
+      throw new UnauthorizedException('Este usuario está desactivado');
+    }
+
     // Comparamos contraseña
     const isMatch = await bcrypt.compare(contrasena, usuario.contrasena);
 

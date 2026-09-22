@@ -3,13 +3,19 @@ import {
   IsBoolean,
   IsEmail,
   IsEnum,
+  IsInt,
   IsOptional,
   IsString,
   MaxLength,
+  Min,
   MinLength,
 } from 'class-validator';
 
-export class UpdateOneUserDto {
+export class AdminUpdateUserDto {
+  @IsInt()
+  @Min(1)
+  userId: number;
+
   @IsOptional()
   @IsString()
   @MaxLength(160)
@@ -19,11 +25,6 @@ export class UpdateOneUserDto {
   @IsEmail()
   @MaxLength(190)
   correo?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(30)
-  telefono?: string;
 
   @IsOptional()
   @IsEnum(RolUsuario)
@@ -37,5 +38,8 @@ export class UpdateOneUserDto {
   @IsString()
   @MinLength(8)
   @MaxLength(200)
-  contrasena?: string;
+  nuevaContrasena?: string;
+
+  @IsString()
+  adminPassword: string;
 }

@@ -10,7 +10,18 @@ type UbicacionWithRelations = UbicacionActual & {
 export class PrismaRealTimeMapper {
   static toDomain(raw: UbicacionWithRelations): RealTimeLocation {
     const userDomain = raw.usuario
-      ? Usuario.fromPrisma(raw.usuario)
+      ? Usuario.rehydrate({
+          id: raw.usuario.id,
+          empresaId: raw.usuario.empresaId,
+          nombre: raw.usuario.nombre,
+          correo: raw.usuario.correo,
+          telefono: raw.usuario.telefono ?? null,
+          rol: raw.usuario.rol,
+          activo: raw.usuario.activo,
+          contrasena: raw.usuario.contrasena,
+          creadoEn: raw.usuario.creadoEn,
+          actualizadoEn: raw.usuario.actualizadoEn,
+        })
       : undefined;
 
     return RealTimeLocation.create({

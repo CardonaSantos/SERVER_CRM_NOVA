@@ -1,60 +1,65 @@
+import { Transform } from 'class-transformer';
+import { RolUsuario } from '@prisma/client';
 import {
+  IsBoolean,
+  IsEmail,
+  IsEnum,
   IsOptional,
   IsString,
-  IsEmail,
-  IsBoolean,
-  IsEnum,
+  MaxLength,
+  MinLength,
 } from 'class-validator';
-import { Transform } from 'class-transformer';
 
-export enum RolUsuario {
-  TECNICO = 'TECNICO',
-  OFICINA = 'OFICINA',
-  ADMIN = 'ADMIN',
-  SUPER_ADMIN = 'SUPER_ADMIN',
-  COBRADOR = 'COBRADOR',
-}
-
-// Función auxiliar para transformar strings de FormData a booleanos
 const TransformBoolean = () =>
   Transform(({ value }) => {
-    if (value === 'true' || value === true || value === '1' || value === 1)
+    if (value === 'true' || value === true || value === '1' || value === 1) {
       return true;
-    if (value === 'false' || value === false || value === '0' || value === 0)
+    }
+    if (
+      value === 'false' ||
+      value === false ||
+      value === '0' ||
+      value === 0
+    ) {
       return false;
+    }
     return value;
   });
 
 export class UpdateUserDto {
-  // ===== DATOS DEL USUARIO =====
   @IsOptional()
   @IsString()
+  @MaxLength(160)
   nombre?: string;
 
   @IsOptional()
   @IsEmail()
+  @MaxLength(190)
   correo?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(30)
   telefono?: string;
 
   @IsOptional()
   @IsString()
+  @MinLength(8)
+  @MaxLength(200)
   contrasena?: string;
 
   @IsOptional()
   @IsEnum(RolUsuario)
-  rol?: RolUsuario; // <--- CAMBIA 'rolUsuario' POR 'ro
+  rol?: RolUsuario;
 
   @IsOptional()
   @TransformBoolean()
   @IsBoolean()
   activo?: boolean;
 
-  // ===== DATOS DEL PERFIL =====
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   bio?: string;
 
   @IsOptional()

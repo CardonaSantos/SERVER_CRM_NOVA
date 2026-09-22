@@ -1,301 +1,102 @@
-// src/usuarios/app/user.service.ts
-import {
-  BadRequestException,
-  Injectable,
-  InternalServerErrorException,
-  NotFoundException,
-  Inject,
-  Logger,
-} from '@nestjs/common';
-import * as bcrypt from 'bcryptjs';
-
-import { CreateUserDto } from '../dto/create-user.dto';
+import { Injectable } from '@nestjs/common';
 import { UserTokenAuth } from 'src/auth/dto/userToken.dto';
-
-import { RolUsuario } from '@prisma/client';
-import {
-  USUARIO_REPOSITORY,
-  UsuarioRepository,
-} from '../domain/user-repository';
-import { Usuario } from '../entities/user.entity';
-import { PerfilService } from 'src/perfil/app/perfil.service';
+import { CreateUserDto } from '../dto/create-user.dto';
+import { UpdateOneUserDto } from '../dto/update-one-user.dto';
 import { UpdateUserDto } from '../dto/updateProfile';
+import { UsuarioQueries } from './queries/usuario.queries';
+import { CreateUserUseCase } from './use-cases/create-user.use-case';
+import { RestoreUserUseCase } from './use-cases/restore-user.use-case';
+import { SoftDeleteUserUseCase } from './use-cases/soft-delete-user.use-case';
+import { UpdateUserProfileUseCase } from './use-cases/update-user-profile.use-case';
+import { UpdateUserUseCase } from './use-cases/update-user.use-case';
+import { ValidateUserPasswordUseCase } from './use-cases/validate-user-password.use-case';
 
 @Injectable()
 export class UserService {
-  private readonly logger = new Logger(UserService.name);
-
   constructor(
-    @Inject(USUARIO_REPOSITORY)
-    private readonly usuariosRepo: UsuarioRepository,
-
-    private readonly perfilService: PerfilService,
+    private readonly createUserUseCase: CreateUserUseCase,
+    private readonly updateUserUseCase: UpdateUserUseCase,
+    private readonly updateUserProfileUseCase: UpdateUserProfileUseCase,
+    private readonly softDeleteUserUseCase: SoftDeleteUserUseCase,
+    private readonly restoreUserUseCase: RestoreUserUseCase,
+    private readonly validateUserPasswordUseCase: ValidateUserPasswordUseCase,
+    private readonly queries: UsuarioQueries,
   ) {}
 
-  // ===== CREATE =====
-  async create(createUserDto: CreateUserDto) {
-    try {
-      const existing = await this.usuariosRepo.findByCorreo(
-        createUserDto.correo,
-      );
-      if (existing) {
-        throw new BadRequestException('Ya existe un usuario con ese correo');
-      }
-
-      // const salt = await bcrypt.genSalt(10);
-      // const passwordHash = await bcrypt.hash(createUserDto.contrasena, salt);
-
-      const usuario = Usuario.create({
-        empresaId: createUserDto.empresaId,
-        nombre: createUserDto.nombre,
-        correo: createUserDto.correo,
-        contrasena: createUserDto.contrasena,
-        rol: createUserDto.rol,
-        telefono: (createUserDto as any).telefono ?? null,
-      });
-
-      const created = await this.usuariosRepo.create(usuario);
-      return created.toObject();
-    } catch (error) {
-      this.logger.error('Error al crear usuario', error as any);
-      if (error instanceof BadRequestException) throw error;
-      throw new InternalServerErrorException('No se pudo crear el usuario');
-    }
+  create(dto: CreateUserDto) {
+    return this.createUserUseCase.execute(dto);
   }
 
-  // ===== FIND BY EMAIL (gmail) =====
-  async findByGmail(correo: string) {
-    this.logger.debug('Al findByGmail llega: ' + correo);
-
-    const user = await this.usuariosRepo.findByCorreo(correo);
-
-    // Si no existe, devolvemos null para que el AuthService sepa
-    if (!user) {
-      return null;
-    }
-
-    const obj = user.toObject();
-    return {
-      ...obj,
-      empresa: { id: obj.empresaId },
-    };
+  findByGmail(correo: string) {
+    return this.queries.findByGmail(correo);
   }
 
-  async getUsuario() {
-    // si luego necesitas algo específico lo metes aquí
+  getUsuario() {
     return null;
   }
 
-  // ===== FIND ALL =====
-  async findAll(_userAuth: UserTokenAuth) {
-    const users = await this.usuariosRepo.findMany();
-    return users.map((u) => u.toObject());
+  findAll(userAuth?: UserTokenAuth) {
+    return this.queries.findAll(userAuth);
   }
 
-  // ===== FIND USER INFO =====
-  async findUserInfo(id: number) {
-    if (!id) {
-      throw new NotFoundException('Error id no disponible');
-    }
-
-    // 1. Obtener la data base del usuario
-    const usuario = await this.usuariosRepo.findById(id);
-    if (!usuario) {
-      throw new NotFoundException('Usuario no encontrado');
-    }
-
-    // 2. Obtener la data extendida del perfil
-    const perfil = await this.perfilService.obtenerPerfilPorUsuarioId(id);
-
-    // 3. Combinar ambos objetos
-    const usuarioObj = usuario.toObject();
-
-    return {
-      ...usuarioObj,
-      perfil: perfil, // Será null si no tiene, o el objeto completo si lo tiene
-    };
+  findDeleted(userAuth?: UserTokenAuth) {
+    return this.queries.findDeleted(userAuth);
   }
 
-  // ===== USERS PARA PROFILE CONFIG =====
-  async getUsersToProfileConfig() {
-    const users = await this.usuariosRepo.findMany();
-    if (!users || users.length === 0) {
-      throw new NotFoundException('Error al conseguir usuarios');
-    }
-
-    return users.map((u) => {
-      const obj = u.toObject();
-      return {
-        id: obj.id,
-        nombre: obj.nombre,
-        telefono: obj.telefono,
-        activo: obj.activo,
-        actualizadoEn: obj.actualizadoEn,
-        creadoEn: obj.creadoEn,
-        correo: obj.correo,
-        rol: obj.rol,
-      };
-    });
+  findUserInfo(id: number) {
+    return this.queries.findUserInfo(id);
   }
 
-  // ===== UPDATE / UPDATE ONE (comparten lógica) =====
-  async updateUser(
+  getUsersToProfileConfig(userAuth?: UserTokenAuth) {
+    return this.queries.getUsersToProfileConfig(userAuth);
+  }
+
+  updateUser(
     id: number,
     data: UpdateUserDto,
     avatar?: Express.Multer.File,
     portada?: Express.Multer.File,
   ) {
-    const updatedUsuario = await this.updateUserInternal(id, data);
-
-    const hasProfileData =
-      data.bio !== undefined ||
-      data.notificarWhatsApp !== undefined ||
-      avatar ||
-      portada;
-
-    if (hasProfileData) {
-      await this.perfilService.upsertPerfil(
-        id,
-        {
-          bio: data.bio,
-          telefono: data.telefono,
-          notificarWhatsApp: data.notificarWhatsApp,
-          notificarPush: data.notificarPush,
-          notificarSonido: data.notificarSonido,
-        },
-        avatar,
-        portada,
-      );
-    }
-
-    return updatedUsuario;
+    return this.updateUserProfileUseCase.execute(id, data, avatar, portada);
   }
 
-  async updateOneUser(id: number, dto: UpdateUserDto) {
-    return this.updateUserInternal(id, dto);
+  updateOneUser(id: number, dto: UpdateOneUserDto) {
+    return this.updateUserUseCase.execute(id, dto);
   }
 
-  private async updateUserInternal(id: number, dto: Partial<UpdateUserDto>) {
-    const usuario = await this.usuariosRepo.findById(id);
-    if (!usuario) throw new NotFoundException('Usuario no encontrado');
-
-    // contrasena
-    if (dto.contrasena) {
-      const salt = await bcrypt.genSalt(10);
-      const hash = await bcrypt.hash(dto.contrasena, salt);
-      usuario.cambiarContrasena(hash);
-    }
-
-    // datos básicos
-    if (
-      dto.nombre !== undefined ||
-      dto.correo !== undefined ||
-      dto.telefono !== undefined
-    ) {
-      usuario.actualizarDatosBasicos({
-        nombre: dto.nombre,
-        correo: dto.correo,
-        telefono: dto.telefono as any,
-      });
-    }
-
-    // rol / activo si vienen en DTO admin
-    if ((dto as any).rol !== undefined) {
-      usuario.cambiarRol((dto as any).rol as RolUsuario);
-    }
-
-    if ((dto as any).activo !== undefined) {
-      const activo = (dto as any).activo as boolean;
-      if (activo) usuario.activar();
-      else usuario.desactivar();
-    }
-
-    const updated = await this.usuariosRepo.update(usuario);
-    return updated.toObject();
+  async deleteUser(id: number, eliminadoPorId?: number): Promise<void> {
+    await this.softDeleteUserUseCase.execute(id, eliminadoPorId);
   }
 
-  // ===== DELETE =====
-  async deleteUser(id: number): Promise<void> {
-    const userExist = await this.usuariosRepo.findById(id);
-    if (!userExist) {
-      throw new NotFoundException(`Usuario con id ${id} no encontrado`);
-    }
-    await this.usuariosRepo.deleteById(id);
+  restoreUser(id: number) {
+    return this.restoreUserUseCase.execute(id);
   }
 
-  // ===== USERS PARA CREAR TICKETS =====
-  async getUsersToCreateTickets() {
-    const tecs = await this.usuariosRepo.findMany({ activo: true });
-    return tecs.map((t) => ({ id: t.id, nombre: t.nombre }));
+  activateUser(id: number) {
+    return this.updateUserUseCase.execute(id, { activo: true });
   }
 
-  // ===== USERS BY ROLE (proyección especial para UI) =====
-  async getUserByRole() {
-    const users = await this.usuariosRepo.findMany();
-    if (!users || users.length === 0) {
-      throw new NotFoundException('Usuario no encontrado');
-    }
-
-    return users.map((user) => ({
-      id: user.id,
-      nombre: user.nombre,
-      apellidos: user.nombre,
-      email: user.correo,
-      telefono: user.telefono,
-      rol: user.rol,
-    }));
+  deactivateUser(id: number) {
+    return this.updateUserUseCase.execute(id, { activo: false });
   }
 
-  // ===== TÉCNICOS PARA TICKET =====
-  async getTecnicosToTicket() {
-    const tecs = await this.usuariosRepo.findMany({
-      rol: RolUsuario.TECNICO,
-      activo: true,
-    });
-
-    return tecs.map((t) => ({
-      id: t.id,
-      nombre: t.nombre,
-    }));
+  getUsersToCreateTickets(userAuth?: UserTokenAuth) {
+    return this.queries.getUsersToCreateTickets(userAuth);
   }
 
-  // ===== USERS PARA META =====
-  async getUsersToMeta() {
-    const users = await this.usuariosRepo.findMany();
-    return users.map((u) => ({
-      id: u.id,
-      nombre: u.nombre,
-      rol: u.rol,
-    }));
+  getUserByRole(userAuth?: UserTokenAuth) {
+    return this.queries.getUserByRole(userAuth);
   }
 
-  async validarContrasenaActual(
-    usuarioId: number,
-    contrasenaActual: string,
-  ): Promise<boolean> {
-    if (
-      !Number.isInteger(usuarioId) ||
-      usuarioId <= 0 ||
-      typeof contrasenaActual !== 'string' ||
-      contrasenaActual.length === 0
-    ) {
-      return false;
-    }
-
-    const usuario = await this.usuariosRepo.findById(usuarioId);
-
-    if (!usuario) {
-      return false;
-    }
-
-    const usuarioData = usuario.toObject();
-
-    if (!usuarioData.activo) {
-      return false;
-    }
-
-    return bcrypt.compare(contrasenaActual, usuarioData.contrasena);
+  getTecnicosToTicket(userAuth?: UserTokenAuth) {
+    return this.queries.getTecnicosToTicket(userAuth);
   }
-  // setSaldo0: esto pertenece a otro agregado (SaldoCliente),
-  // lo ideal es moverlo a otro servicio/repo y no mezclarlo con Usuario.
+
+  getUsersToMeta(userAuth?: UserTokenAuth) {
+    return this.queries.getUsersToMeta(userAuth);
+  }
+
+  validarContrasenaActual(usuarioId: number, contrasenaActual: string) {
+    return this.validateUserPasswordUseCase.execute(usuarioId, contrasenaActual);
+  }
 }
