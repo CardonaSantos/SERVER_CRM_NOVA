@@ -22,6 +22,8 @@ import { ObtenerMikrotikRouterUseCase } from '../application/use-cases/obtener-m
 import { ListarMikrotikRoutersUseCase } from '../application/use-cases/listar-mikrotik-routers.use-case';
 
 import { EliminarMikrotikRouterUseCase } from '../application/use-cases/eliminar-mikrotik-router.use-case';
+import { RetirarMikrotikRouterUseCase } from '../application/use-cases/retirar-mikrotik-router.use-case';
+import { ReactivarMikrotikRouterUseCase } from '../application/use-cases/reactivar-mikrotik-router.use-case';
 
 @Controller('mikro-tik')
 export class MikroTikController {
@@ -35,6 +37,10 @@ export class MikroTikController {
     private readonly listarMikrotikRouters: ListarMikrotikRoutersUseCase,
 
     private readonly eliminarMikrotikRouter: EliminarMikrotikRouterUseCase,
+
+    private readonly retirarMikrotikRouter: RetirarMikrotikRouterUseCase,
+
+    private readonly reactivarMikrotikRouter: ReactivarMikrotikRouterUseCase,
   ) {}
 
   @Post()
@@ -71,6 +77,22 @@ export class MikroTikController {
 
       ...dto,
     });
+  }
+
+  @Patch(':id/desactivar')
+  desactivar(
+    @Param('id', ParseIntPipe)
+    id: number,
+  ) {
+    return this.retirarMikrotikRouter.execute(id);
+  }
+
+  @Patch(':id/reactivar')
+  reactivar(
+    @Param('id', ParseIntPipe)
+    id: number,
+  ) {
+    return this.reactivarMikrotikRouter.execute(id);
   }
 
   @Delete(':id')

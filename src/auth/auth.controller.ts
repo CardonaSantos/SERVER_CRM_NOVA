@@ -9,6 +9,9 @@ import {
   UseGuards,
   Req,
   UnauthorizedException,
+  Patch,
+  Param,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateAuthDto } from './dto/create-auth.dto';

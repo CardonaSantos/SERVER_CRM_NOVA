@@ -1,18 +1,28 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { SuspendCustomerDto } from '../dto/create-ssh-mikrotik-connection.dto';
-import { NodeSSH } from 'node-ssh';
+
 import { ConfigService } from '@nestjs/config';
-import { throwFatalError } from 'src/Utils/CommonFatalError';
-import { PrismaService } from 'src/prisma/prisma.service';
-import * as bycrypt from 'bcryptjs';
+import { NodeSSH } from 'node-ssh';
+import * as bcrypt from 'bcryptjs';
+
+import { SuspendCustomerDto } from '../dto/create-ssh-mikrotik-connection.dto';
 import { ActivateCustomerDto } from '../dto/activate-ssh-mikrotik.dto';
-import { MikrotikCryptoService } from '../helpers/mikrotik-crypto.service';
+
+import { PrismaService } from 'src/prisma/prisma.service';
+import { throwFatalError } from 'src/Utils/CommonFatalError';
+
+import {
+  MikrotikRouterConnectionContext,
+  MikrotikRouterConnectionContextPort,
+} from 'src/mikro-tik/domain/ports/mikrotik-router-connection-context.port';
+
+import { MIKROTIK_ROUTER_CONNECTION_CONTEXT } from 'src/mikro-tik/infra/tokens/mikrotik-router.tokens';
 
 interface MkConfig {
   host: string;
@@ -24,14 +34,35 @@ interface MkConfig {
 @Injectable()
 export class SshMikrotikConnectionService {
   private readonly logger = new Logger(SshMikrotikConnectionService.name);
+
   constructor(
     private readonly config: ConfigService,
+
     private readonly prisma: PrismaService,
-    private readonly mkCrypto: MikrotikCryptoService,
+
+    @Inject(MIKROTIK_ROUTER_CONNECTION_CONTEXT)
+    private readonly routerContext: MikrotikRouterConnectionContextPort,
   ) {}
 
+  /**
+   * ============================================================
+   * EJECUCIÓN SSH
+   * ============================================================
+   *
+   * Este método recibe una contraseña YA DESCIFRADA.
+   *
+   * Nunca:
+   *
+   * - consulta passwordEnc;
+   * - conoce el formato criptográfico;
+   * - descifra credenciales.
+   *
+   * Esa responsabilidad pertenece al
+   * MikrotikRouterConnectionContextPort.
+   */
   async runCommand(command: string, config: MkConfig) {
     const ssh = new NodeSSH();
+
     try {
       this.logger.log(
         `Conectando a MikroTik ${config.host}:${config.port} con usuario ${config.username}`,
@@ -41,15 +72,26 @@ export class SshMikrotikConnectionService {
         host: config.host,
         port: config.port,
         username: config.username,
+
+        /**
+         * Contraseña plana únicamente en memoria
+         * durante la sesión SSH.
+         */
         password: config.password,
+
         tryKeyboard: false,
       });
 
-      this.logger.debug(`Ejecutando comando: ${command}`);
+      this.logger.debug(
+        `Ejecutando comando SSH en ${config.host}:${config.port}`,
+      );
+
       const result = await ssh.execCommand(command);
 
       if (result.stderr) {
-        this.logger.error(`STDERR: ${result.stderr}`);
+        this.logger.error(
+          `STDERR MikroTik ${config.host}:${config.port}: ${result.stderr}`,
+        );
       }
 
       return {
@@ -57,57 +99,82 @@ export class SshMikrotikConnectionService {
         stderr: result.stderr,
       };
     } catch (error) {
-      throwFatalError(error, this.logger, 'Ssh-mikrotik -RunCommand');
+      throwFatalError(error, this.logger, 'Ssh-mikrotik - RunCommand');
+
+      throw error;
     } finally {
       this.logger.log(
         `Cerrando conexión a MikroTik ${config.host}:${config.port} con usuario ${config.username}`,
       );
-      ssh.dispose(); // no hace falta await, es sync
+
+      ssh.dispose();
     }
   }
 
   /**
-   * Helper eliminacion de ip de cualquier lista
-   * @param routerId
-   * @param ip
+   * ============================================================
+   * LIMPIEZA DE LISTAS
+   * ============================================================
    */
-  async clearIpFromAllLists(routerId: number, ip: string) {
-    await this.removeIpFromSuspendedListByRouterId(routerId, ip);
-    await this.removeIpFromListarInternetOkByRouterId(routerId, ip);
+  async clearIpFromAllLists(routerId: number, ip: string): Promise<void> {
+    const config = await this.buildConfigFromRouterId(routerId);
+
+    await this.removeIpFromSuspendedList(config, ip);
+
+    await this.removeIpFromInternetList(config, ip);
   }
 
-  // SUSPENDER
+  /**
+   * ============================================================
+   * SUSPENDER CLIENTE
+   * ============================================================
+   */
   async suspendCustomer(dto: SuspendCustomerDto) {
-    // ─── 1. OBTENER DATOS ────────────────────────────────────────────────────
+    /**
+     * 1. Usuario que autoriza la operación.
+     */
     const usuarioAdmin = await this.prisma.usuario.findUnique({
-      where: { id: dto.userId },
+      where: {
+        id: dto.userId,
+      },
     });
 
     if (!usuarioAdmin) {
       throw new NotFoundException('Usuario administrador no encontrado');
     }
 
+    /**
+     * 2. Cliente + IP + router asociado.
+     *
+     * Ya NO necesitamos:
+     *
+     * - host;
+     * - sshPort;
+     * - usuario SSH;
+     * - passwordEnc.
+     *
+     * Solo necesitamos conocer el routerId.
+     */
     const cliente = await this.prisma.clienteInternet.findUnique({
-      where: { id: dto.clienteId },
+      where: {
+        id: dto.clienteId,
+      },
+
       select: {
         id: true,
+
         nombre: true,
+
         apellidos: true,
+
+        mikrotikRouterId: true,
+
         IP: {
           select: {
             id: true,
             direccionIp: true,
             mascara: true,
             gateway: true,
-          },
-        },
-        MikrotikRouter: {
-          select: {
-            id: true,
-            host: true,
-            sshPort: true,
-            usuario: true,
-            passwordEnc: true,
           },
         },
       },
@@ -117,19 +184,23 @@ export class SshMikrotikConnectionService {
       throw new NotFoundException('Cliente no encontrado');
     }
 
-    // ─── 2. VALIDACIONES ─────────────────────────────────────────────────────
-    if (!cliente.MikrotikRouter) {
-      throw new BadRequestException(
-        'El cliente no tiene Mikrotik asociado (MikrotikRouter nulo)',
-      );
+    if (!cliente.mikrotikRouterId) {
+      throw new BadRequestException('El cliente no tiene MikroTik asociado.');
     }
 
     if (!cliente.IP?.direccionIp) {
       throw new BadRequestException('El cliente no tiene IP asignada');
     }
 
-    // ─── 3. VERIFICAR CREDENCIALES ───────────────────────────────────────────
-    const isValidPassword = await bycrypt.compare(
+    /**
+     * 3. Reautenticación administrativa.
+     *
+     * Esto NO tiene relación con la contraseña SSH.
+     *
+     * Aquí bcrypt verifica la contraseña del usuario
+     * del CRM.
+     */
+    const isValidPassword = await bcrypt.compare(
       dto.password,
       usuarioAdmin.contrasena,
     );
@@ -138,56 +209,92 @@ export class SshMikrotikConnectionService {
       throw new BadRequestException('CREDENCIALES NO VÁLIDAS');
     }
 
-    // ─── 4. CONSTRUIR CONFIG SSH ──────────────────────────────────────────────
-    const password = this.mkCrypto.decrypt(cliente.MikrotikRouter.passwordEnc);
-    const config: MkConfig = {
-      host: cliente.MikrotikRouter.host,
-      port: cliente.MikrotikRouter.sshPort,
-      username: cliente.MikrotikRouter.usuario,
-      password,
-    };
+    const routerId = cliente.mikrotikRouterId;
 
     const ip = cliente.IP.direccionIp;
 
-    // ─── 5. LIMPIAR LISTAS EN MIKROTIK (internet_ok + suspendidos) ───────────
-    this.logger.log(`[suspendCustomer] Limpiando IP ${ip} de todas las listas`);
-    await this.clearIpFromAllLists(cliente.MikrotikRouter.id, ip);
+    /**
+     * 4. Resolver configuración SSH.
+     *
+     * routerContext:
+     *
+     * - consulta el MikroTik;
+     * - comprueba que esté activo;
+     * - obtiene passwordEnc;
+     * - detecta formato nuevo/legacy;
+     * - descifra;
+     * - devuelve password plano temporal.
+     */
+    const config = await this.buildConfigFromRouterId(routerId);
 
-    // ─── 6. AGREGAR A LISTA DE SUSPENDIDOS EN MIKROTIK ───────────────────────
+    /**
+     * 5. Quitar IP de listas anteriores.
+     */
+    this.logger.log(`[suspendCustomer] Limpiando IP ${ip} de todas las listas`);
+
+    await this.clearIpFromAllLists(routerId, ip);
+
+    /**
+     * 6. Agregar a suspendidos.
+     */
     const addressList =
       this.config.get<string>('SUSPENDED_LIST') ?? 'clientes_suspendidos';
-    const comment = `crm-suspendido-${cliente.id}-${cliente.nombre ?? ''} ${cliente.apellidos ?? ''}`;
-    const cmd = `/ip firewall address-list add list=${addressList} address=${ip} comment="${comment}"`;
+
+    const comment =
+      `crm-suspendido-${cliente.id}-` +
+      `${cliente.nombre ?? ''} ${cliente.apellidos ?? ''}`;
+
+    const cmd =
+      `/ip firewall address-list add ` +
+      `list=${addressList} ` +
+      `address=${ip} ` +
+      `comment="${comment}"`;
 
     this.logger.log(
       `[suspendCustomer] Agregando IP ${ip} a lista ${addressList}`,
     );
+
     const { stdout, stderr } = await this.runCommand(cmd, config);
 
     if (stderr) {
       throw new InternalServerErrorException(
-        `Error suspendiendo cliente en Mikrotik: ${stderr}`,
+        `Error suspendiendo cliente en MikroTik: ${stderr}`,
       );
     }
 
-    // ─── 7. ACTUALIZAR ESTADO EN BASE DE DATOS ────────────────────────────────
+    /**
+     * 7. Actualizar CRM.
+     */
     await this.prisma.clienteInternet.update({
-      where: { id: cliente.id },
-      data: { estadoServicioMikrotik: 'SUSPENDIDO' },
+      where: {
+        id: cliente.id,
+      },
+
+      data: {
+        estadoServicioMikrotik: 'SUSPENDIDO',
+      },
     });
 
     this.logger.log(
       `[suspendCustomer] Cliente ${cliente.id} suspendido correctamente`,
     );
-    return { ok: true, stdout };
+
+    return {
+      ok: true,
+      stdout,
+    };
   }
 
-  // ACTIVAR
-
+  /**
+   * ============================================================
+   * ACTIVAR CLIENTE
+   * ============================================================
+   */
   async activateCustomer(dto: ActivateCustomerDto) {
-    // ─── 1. OBTENER DATOS ────────────────────────────────────────────────────
     const usuarioAdmin = await this.prisma.usuario.findUnique({
-      where: { id: dto.userId },
+      where: {
+        id: dto.userId,
+      },
     });
 
     if (!usuarioAdmin) {
@@ -195,26 +302,25 @@ export class SshMikrotikConnectionService {
     }
 
     const cliente = await this.prisma.clienteInternet.findUnique({
-      where: { id: dto.clienteId },
+      where: {
+        id: dto.clienteId,
+      },
+
       select: {
         id: true,
+
         nombre: true,
+
         apellidos: true,
+
+        mikrotikRouterId: true,
+
         IP: {
           select: {
             id: true,
             direccionIp: true,
             mascara: true,
             gateway: true,
-          },
-        },
-        MikrotikRouter: {
-          select: {
-            id: true,
-            host: true,
-            sshPort: true,
-            usuario: true,
-            passwordEnc: true,
           },
         },
       },
@@ -224,20 +330,20 @@ export class SshMikrotikConnectionService {
       throw new NotFoundException('Cliente no encontrado');
     }
 
-    // ─── 2. VALIDACIONES ─────────────────────────────────────────────────────
-    if (!cliente.MikrotikRouter) {
-      throw new BadRequestException(
-        'El cliente no tiene Mikrotik asociado (MikrotikRouter nulo)',
-      );
+    if (!cliente.mikrotikRouterId) {
+      throw new BadRequestException('El cliente no tiene MikroTik asociado.');
     }
 
     if (!cliente.IP?.direccionIp) {
       throw new BadRequestException('El cliente no tiene IP asignada');
     }
 
-    // ─── 3. VERIFICAR CREDENCIALES (condicional) ──────────────────────────────
+    /**
+     * Reautenticación administrativa
+     * solamente cuando el flujo lo exige.
+     */
     if (dto.isPasswordRequired === true) {
-      const isValidPassword = await bycrypt.compare(
+      const isValidPassword = await bcrypt.compare(
         dto.password,
         usuarioAdmin.contrasena,
       );
@@ -247,50 +353,65 @@ export class SshMikrotikConnectionService {
       }
     }
 
-    // ─── 4. CONSTRUIR CONFIG SSH ──────────────────────────────────────────────
-    const password = this.mkCrypto.decrypt(cliente.MikrotikRouter.passwordEnc);
-    const config: MkConfig = {
-      host: cliente.MikrotikRouter.host,
-      port: cliente.MikrotikRouter.sshPort,
-      username: cliente.MikrotikRouter.usuario,
-      password,
-    };
+    const routerId = cliente.mikrotikRouterId;
 
     const ip = cliente.IP.direccionIp;
 
-    // ─── 5. LIMPIAR LISTAS EN MIKROTIK (internet_ok + suspendidos) ───────────
+    /**
+     * Resuelve la contraseña SSH usando
+     * el mecanismo central.
+     */
+    await this.buildConfigFromRouterId(routerId);
+
+    /**
+     * Quitar la IP de cualquier lista
+     * previa antes de autorizarla.
+     */
     this.logger.log(
       `[activateCustomer] Limpiando IP ${ip} de todas las listas`,
     );
-    await this.clearIpFromAllLists(cliente.MikrotikRouter.id, ip);
 
-    // ─── 6. AGREGAR A LISTA DE INTERNET OK EN MIKROTIK ───────────────────────
+    await this.clearIpFromAllLists(routerId, ip);
+
+    /**
+     * Agregar a internet_ok.
+     */
     this.logger.log(
       `[activateCustomer] Agregando IP ${ip} a lista internet_ok`,
     );
+
     await this.addIpToInternetListByRouterId(
-      cliente.MikrotikRouter.id,
+      routerId,
       ip,
       `crm-activo-${cliente.id}-${cliente.nombre ?? ''} ${cliente.apellidos ?? ''}`,
     );
 
-    // ─── 7. ACTUALIZAR ESTADO EN BASE DE DATOS ────────────────────────────────
+    /**
+     * Actualizar CRM.
+     */
     await this.prisma.clienteInternet.update({
-      where: { id: cliente.id },
-      data: { estadoServicioMikrotik: 'ACTIVO' },
+      where: {
+        id: cliente.id,
+      },
+
+      data: {
+        estadoServicioMikrotik: 'ACTIVO',
+      },
     });
 
     this.logger.log(
       `[activateCustomer] Cliente ${cliente.id} activado correctamente`,
     );
-    return { ok: true };
+
+    return {
+      ok: true,
+    };
   }
 
   /**
-   * Metodo para cuando sea una instalacion
-   * @param routerId
-   * @param ip
-   * @param comment
+   * ============================================================
+   * AGREGAR IP A INTERNET_OK
+   * ============================================================
    */
   async addIpToInternetListByRouterId(
     routerId: number,
@@ -302,7 +423,11 @@ export class SshMikrotikConnectionService {
     const addressList =
       this.config.get<string>('LISTA_INTERNET_OK') ?? 'internet_ok';
 
-    const cmd = `/ip firewall address-list add list=${addressList} address=${ip} comment="${comment}"`;
+    const cmd =
+      `/ip firewall address-list add ` +
+      `list=${addressList} ` +
+      `address=${ip} ` +
+      `comment="${comment}"`;
 
     const { stderr } = await this.runCommand(cmd, config);
 
@@ -310,8 +435,9 @@ export class SshMikrotikConnectionService {
       this.logger.error(
         `Error agregando IP ${ip} a lista ${addressList} en router ${routerId}: ${stderr}`,
       );
+
       throw new InternalServerErrorException(
-        'Error autorizando IP en Mikrotik',
+        'Error autorizando IP en MikroTik',
       );
     }
 
@@ -320,9 +446,20 @@ export class SshMikrotikConnectionService {
     );
   }
 
-  // VERIFICAR QUE ESTE EN LISTA
-  async isCustomerSuspendedInMikrotik(config: MkConfig, ip: string) {
+  /**
+   * ============================================================
+   * VERIFICAR SUSPENSIÓN
+   * ============================================================
+   *
+   * Conservamos este método porque puede existir
+   * código externo que ya construye MkConfig.
+   */
+  async isCustomerSuspendedInMikrotik(
+    config: MkConfig,
+    ip: string,
+  ): Promise<boolean> {
     const ssh = new NodeSSH();
+
     try {
       await ssh.connect({
         host: config.host,
@@ -335,90 +472,98 @@ export class SshMikrotikConnectionService {
       const addressList =
         this.config.get<string>('SUSPENDED_LIST') ?? 'clientes_suspendidos';
 
-      const cmd = `/ip firewall address-list print where list=${addressList} and address=${ip}`;
+      const cmd =
+        `/ip firewall address-list print ` +
+        `where list=${addressList} and address=${ip}`;
+
       const result = await ssh.execCommand(cmd);
 
       if (result.stderr) {
         this.logger.error(
-          `Error consultando lista en Mikrotik: ${result.stderr}`,
+          `Error consultando lista en MikroTik: ${result.stderr}`,
         );
-        // según tu criterio: o lanzar error o asumir "no suspendido"
       }
 
-      // Si stdout tiene algo, es que encontró una entrada
-      const isSuspended = !!result.stdout && result.stdout.trim().length > 0;
-
-      return isSuspended;
+      return Boolean(result.stdout && result.stdout.trim().length > 0);
     } finally {
       ssh.dispose();
     }
   }
 
-  // QUITAR IP DE MK
-  // helpers para suspensión "baja nivel", sin DTO de usuario/admin
-  async removeIpFromSuspendedList(config: MkConfig, ip: string) {
-    const ssh = new NodeSSH();
-    try {
-      await ssh.connect({
-        host: config.host,
-        port: config.port,
-        username: config.username,
-        password: config.password,
-        tryKeyboard: false,
-      });
+  /**
+   * ============================================================
+   * REMOVER IP DE SUSPENDIDOS
+   * ============================================================
+   */
+  async removeIpFromSuspendedList(config: MkConfig, ip: string): Promise<void> {
+    const addressList =
+      this.config.get<string>('SUSPENDED_LIST') ?? 'clientes_suspendidos';
 
-      const addressList =
-        this.config.get<string>('SUSPENDED_LIST') ?? 'clientes_suspendidos';
+    const cmd =
+      `/ip firewall address-list remove ` +
+      `[find list=${addressList} address=${ip}]`;
 
-      const cmd = `/ip firewall address-list remove [find list=${addressList} address=${ip}]`;
-      const { stdout, stderr } = await ssh.execCommand(cmd);
+    const { stdout, stderr } = await this.runCommand(cmd, config);
 
-      if (stderr) {
-        this.logger.error(
-          `Error removiendo IP de lista de suspendidos en Mikrotik: ${stderr}`,
-        );
-      } else {
-        this.logger.log(
-          `IP ${ip} removida de lista ${addressList}. Respuesta: ${stdout}`,
-        );
-      }
-    } catch (error) {
-      throwFatalError(
-        error,
-        this.logger,
-        'Ssh-mikrotik -removeIpFromSuspendedList',
+    if (stderr) {
+      this.logger.error(
+        `Error removiendo IP de lista de suspendidos en MikroTik: ${stderr}`,
       );
-    } finally {
-      ssh.dispose();
+
+      return;
     }
+
+    this.logger.log(
+      `IP ${ip} removida de lista ${addressList}. Respuesta: ${stdout}`,
+    );
   }
 
-  // GENERICOS
+  /**
+   * ============================================================
+   * CONFIGURACIÓN DEL ROUTER
+   * ============================================================
+   *
+   * Este es ahora el ÚNICO punto de este servicio
+   * que resuelve las credenciales de un MikroTik.
+   *
+   * Pero incluso aquí este servicio NO descifra nada.
+   *
+   * Toda la responsabilidad queda delegada a:
+   *
+   * ResolverContextoConexionMikrotikUseCase
+   *     ↓
+   * MIKROTIK_ROUTER_SECRET_CIPHER
+   */
   private async buildConfigFromRouterId(routerId: number): Promise<MkConfig> {
-    const router = await this.prisma.mikrotikRouter.findUnique({
-      where: { id: routerId },
-      select: {
-        host: true,
-        sshPort: true,
-        usuario: true,
-        passwordEnc: true,
-      },
-    });
+    const router = await this.routerContext.resolve(routerId);
 
-    if (!router) {
-      throw new Error(`MikrotikRouter ${routerId} no encontrado`);
-    }
+    return this.toMkConfig(router);
+  }
 
-    const password = this.mkCrypto.decrypt(router.passwordEnc);
-
+  /**
+   * Adaptador puramente interno:
+   *
+   * Contexto hexagonal
+   *      ↓
+   * configuración legacy de NodeSSH.
+   */
+  private toMkConfig(router: MikrotikRouterConnectionContext): MkConfig {
     return {
       host: router.host,
-      port: router.sshPort,
-      username: router.usuario,
-      password,
+
+      port: router.port,
+
+      username: router.username,
+
+      password: router.password,
     };
   }
 
+  /**
+   * ============================================================
+   * AGREGAR IP A SUSPENDIDOS
+   * ============================================================
+   */
   async addIpToSuspendedListByRouterId(
     routerId: number,
     ip: string,
@@ -428,9 +573,15 @@ export class SshMikrotikConnectionService {
 
     const addressList =
       this.config.get<string>('SUSPENDED_LIST') ?? 'clientes_suspendidos';
-    const cmd = `/ip firewall address-list add list=${addressList} address=${ip} comment="${comment}"`;
+
+    const cmd =
+      `/ip firewall address-list add ` +
+      `list=${addressList} ` +
+      `address=${ip} ` +
+      `comment="${comment}"`;
 
     const { stderr } = await this.runCommand(cmd, config);
+
     if (stderr) {
       this.logger.error(
         `Error agregando IP ${ip} a lista ${addressList} en router ${routerId}: ${stderr}`,
@@ -439,9 +590,9 @@ export class SshMikrotikConnectionService {
   }
 
   /**
-   * Limpiar de la lista de suspendidos
-   * @param routerId
-   * @param ip
+   * ============================================================
+   * QUITAR IP DE SUSPENDIDOS POR ROUTER ID
+   * ============================================================
    */
   async removeIpFromSuspendedListByRouterId(
     routerId: number,
@@ -449,22 +600,13 @@ export class SshMikrotikConnectionService {
   ): Promise<void> {
     const config = await this.buildConfigFromRouterId(routerId);
 
-    const addressList =
-      this.config.get<string>('SUSPENDED_LIST') ?? 'clientes_suspendidos';
-    const cmd = `/ip firewall address-list remove [find list=${addressList} address=${ip}]`;
-
-    const { stderr } = await this.runCommand(cmd, config);
-    if (stderr) {
-      this.logger.error(
-        `Error removiendo IP ${ip} de lista ${addressList} en router ${routerId}: ${stderr}`,
-      );
-    }
+    await this.removeIpFromSuspendedList(config, ip);
   }
 
   /**
-   * Limpiar de la lista de internet ok
-   * @param routerId
-   * @param ip
+   * ============================================================
+   * QUITAR IP DE INTERNET_OK POR ROUTER ID
+   * ============================================================
    */
   async removeIpFromListarInternetOkByRouterId(
     routerId: number,
@@ -472,24 +614,48 @@ export class SshMikrotikConnectionService {
   ): Promise<void> {
     const config = await this.buildConfigFromRouterId(routerId);
 
+    await this.removeIpFromInternetList(config, ip);
+  }
+
+  /**
+   * ============================================================
+   * REMOVER IP DE INTERNET_OK
+   * ============================================================
+   */
+  private async removeIpFromInternetList(
+    config: MkConfig,
+    ip: string,
+  ): Promise<void> {
     const addressList =
       this.config.get<string>('LISTA_INTERNET_OK') ?? 'internet_ok';
-    const cmd = `/ip firewall address-list remove [find list=${addressList} address=${ip}]`;
+
+    const cmd =
+      `/ip firewall address-list remove ` +
+      `[find list=${addressList} address=${ip}]`;
 
     const { stderr } = await this.runCommand(cmd, config);
+
     if (stderr) {
       this.logger.error(
-        `Error removiendo IP ${ip} de lista ${addressList} en router ${routerId}: ${stderr}`,
+        `Error removiendo IP ${ip} de lista ${addressList}: ${stderr}`,
       );
     }
   }
 
+  /**
+   * ============================================================
+   * VERIFICAR IP SUSPENDIDA POR ROUTER ID
+   * ============================================================
+   */
   async isIpSuspendedInRouter(routerId: number, ip: string): Promise<boolean> {
     const config = await this.buildConfigFromRouterId(routerId);
 
     const addressList =
       this.config.get<string>('SUSPENDED_LIST') ?? 'clientes_suspendidos';
-    const cmd = `/ip firewall address-list print where list=${addressList} and address=${ip}`;
+
+    const cmd =
+      `/ip firewall address-list print ` +
+      `where list=${addressList} and address=${ip}`;
 
     const { stdout, stderr } = await this.runCommand(cmd, config);
 
@@ -497,9 +663,10 @@ export class SshMikrotikConnectionService {
       this.logger.error(
         `Error consultando lista ${addressList} en router ${routerId}: ${stderr}`,
       );
+
       return false;
     }
 
-    return !!stdout && stdout.trim().length > 0;
+    return Boolean(stdout && stdout.trim().length > 0);
   }
 }

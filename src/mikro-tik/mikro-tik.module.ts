@@ -23,6 +23,8 @@ import { EliminarMikrotikRouterUseCase } from './application/use-cases/eliminar-
 
 import { ResolverContextoConexionMikrotikUseCase } from './application/use-cases/resolver-contexto-conexion-mikrotik.use-case';
 import { MikrotikRouterPrismaRepository } from './infra/mikrotik-router-prisma.repository';
+import { RetirarMikrotikRouterUseCase } from './application/use-cases/retirar-mikrotik-router.use-case';
+import { ReactivarMikrotikRouterUseCase } from './application/use-cases/reactivar-mikrotik-router.use-case';
 
 const useCases = [
   CrearMikrotikRouterUseCase,
@@ -36,6 +38,9 @@ const useCases = [
   EliminarMikrotikRouterUseCase,
 
   ResolverContextoConexionMikrotikUseCase,
+
+  RetirarMikrotikRouterUseCase,
+  ReactivarMikrotikRouterUseCase,
 ];
 
 @Module({
