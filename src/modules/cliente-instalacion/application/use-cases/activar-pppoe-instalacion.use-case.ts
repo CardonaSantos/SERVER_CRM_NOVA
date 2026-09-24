@@ -334,7 +334,8 @@ export class ActivarPppoeInstalacionUseCase {
     if (
       rolNormalizado === 'OFICINA' ||
       rolNormalizado === 'ADMIN' ||
-      rolNormalizado === 'SUPER_ADMIN'
+      rolNormalizado === 'SUPER_ADMIN' ||
+      rolNormalizado === 'COORDINADOR_OPERACIONES'
     ) {
       return;
     }
