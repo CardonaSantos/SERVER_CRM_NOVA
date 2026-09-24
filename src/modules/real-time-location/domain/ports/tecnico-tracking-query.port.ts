@@ -229,10 +229,24 @@ export type TecnicoTrackingRealtimeView = {
     // NUEVO
     asistenciaId: number;
 
+    minutosSesionActual: number;
+
     estado: EstadoTrackingTecnico;
 
     iniciadoEn: Date;
     ultimoHeartbeatEn: Date;
+  };
+
+  jornada: {
+    fecha: Date;
+    horaEntrada: Date;
+    horaSalida: Date;
+    sesionesTotal: number;
+    sesionesFinalizadas: number;
+    sesionesExpiradas: number;
+    minutosTracking: number;
+    minutosJornadaConfirmados: number;
+    minutosSinTrackingConfirmados: number;
   };
 
   ubicacion: {

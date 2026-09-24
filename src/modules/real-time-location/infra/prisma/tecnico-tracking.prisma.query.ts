@@ -775,6 +775,50 @@ export class TecnicoTrackingPrismaQuery implements TecnicoTrackingQueryPort {
 
         ultimoHeartbeatEn: true,
 
+        // =====================================================
+        // ASISTENCIA / JORNADA ACTUAL
+        // =====================================================
+
+        asistencia: {
+          select: {
+            fecha: true,
+
+            horaEntrada: true,
+
+            horaSalida: true,
+
+            /**
+             * Necesitamos todas las sesiones de la jornada
+             * para construir el resumen realtime:
+             *
+             * - sesiones totales
+             * - finalizadas
+             * - expiradas
+             * - minutos de tracking
+             * - minutos sin tracking
+             */
+            sesionesTracking: {
+              select: {
+                estado: true,
+
+                iniciadoEn: true,
+
+                finalizadoEn: true,
+
+                ultimoHeartbeatEn: true,
+              },
+
+              orderBy: {
+                iniciadoEn: 'asc',
+              },
+            },
+          },
+        },
+
+        // =====================================================
+        // TÉCNICO
+        // =====================================================
+
         tecnico: {
           select: {
             id: true,
@@ -809,11 +853,16 @@ export class TecnicoTrackingPrismaQuery implements TecnicoTrackingQueryPort {
           },
         },
 
-        /*
+        // =====================================================
+        // ÚLTIMA UBICACIÓN DE ESTA SESIÓN
+        // =====================================================
+
+        /**
          * Última evidencia histórica de ESTA sesión.
          *
-         * No necesitamos mezclar aquí la proyección
-         * UbicacionActual para obtener capturadoEn.
+         * No mezclamos aquí UbicacionActual porque necesitamos
+         * conservar la relación exacta con la sesión activa y
+         * disponer también de capturadoEn.
          */
         ubicaciones: {
           take: 1,
@@ -822,6 +871,7 @@ export class TecnicoTrackingPrismaQuery implements TecnicoTrackingQueryPort {
             {
               capturadoEn: 'desc',
             },
+
             {
               id: 'desc',
             },
@@ -829,9 +879,11 @@ export class TecnicoTrackingPrismaQuery implements TecnicoTrackingQueryPort {
 
           select: {
             latitud: true,
+
             longitud: true,
 
             precision: true,
+
             velocidad: true,
 
             bateria: true,
@@ -844,6 +896,10 @@ export class TecnicoTrackingPrismaQuery implements TecnicoTrackingQueryPort {
       },
     });
 
+    // =====================================================
+    // VALIDACIONES
+    // =====================================================
+
     if (!session) {
       return null;
     }
@@ -854,7 +910,49 @@ export class TecnicoTrackingPrismaQuery implements TecnicoTrackingQueryPort {
       );
     }
 
+    if (!session.asistencia) {
+      throw new Error(
+        'La sesión realtime activa no posee una asistencia cargada.',
+      );
+    }
+
+    // =====================================================
+    // ESTADO / MÉTRICAS DE SESIÓN
+    // =====================================================
+
+    const estado = TecnicoTrackingSesionPrismaMapper.toDomainEstado(
+      session.estado,
+    );
+
+    const minutosSesionActual = calculateConfirmedTrackingMinutes({
+      estado,
+
+      iniciadoEn: session.iniciadoEn,
+
+      finalizadoEn: null,
+
+      ultimoHeartbeatEn: session.ultimoHeartbeatEn,
+    });
+
+    // =====================================================
+    // RESUMEN DE JORNADA
+    // =====================================================
+
+    const jornada = this.buildRealtimeJourneySummary({
+      asistencia: session.asistencia,
+
+      ultimoHeartbeatEn: session.ultimoHeartbeatEn,
+    });
+
+    // =====================================================
+    // ÚLTIMA UBICACIÓN
+    // =====================================================
+
     const ubicacion = session.ubicaciones[0] ?? null;
+
+    // =====================================================
+    // RESPONSE REALTIME
+    // =====================================================
 
     return {
       tecnico: {
@@ -874,14 +972,16 @@ export class TecnicoTrackingPrismaQuery implements TecnicoTrackingQueryPort {
 
         asistenciaId: session.asistenciaId,
 
-        estado: TecnicoTrackingSesionPrismaMapper.toDomainEstado(
-          session.estado,
-        ),
+        estado,
 
         iniciadoEn: session.iniciadoEn,
 
         ultimoHeartbeatEn: session.ultimoHeartbeatEn,
+
+        minutosSesionActual,
       },
+
+      jornada,
 
       ubicacion: ubicacion
         ? {
@@ -940,6 +1040,40 @@ export class TecnicoTrackingPrismaQuery implements TecnicoTrackingQueryPort {
 
         ultimoHeartbeatEn: true,
 
+        // =====================================================
+        // ASISTENCIA / JORNADA ACTUAL
+        // =====================================================
+
+        asistencia: {
+          select: {
+            fecha: true,
+
+            horaEntrada: true,
+
+            horaSalida: true,
+
+            sesionesTracking: {
+              select: {
+                estado: true,
+
+                iniciadoEn: true,
+
+                finalizadoEn: true,
+
+                ultimoHeartbeatEn: true,
+              },
+
+              orderBy: {
+                iniciadoEn: 'asc',
+              },
+            },
+          },
+        },
+
+        // =====================================================
+        // TÉCNICO
+        // =====================================================
+
         tecnico: {
           select: {
             id: true,
@@ -974,10 +1108,10 @@ export class TecnicoTrackingPrismaQuery implements TecnicoTrackingQueryPort {
           },
         },
 
-        /**
-         * Solo necesitamos la última ubicación
-         * registrada dentro de esta sesión activa.
-         */
+        // =====================================================
+        // ÚLTIMA UBICACIÓN DE LA SESIÓN ACTIVA
+        // =====================================================
+
         ubicaciones: {
           take: 1,
 
@@ -985,6 +1119,7 @@ export class TecnicoTrackingPrismaQuery implements TecnicoTrackingQueryPort {
             {
               capturadoEn: 'desc',
             },
+
             {
               id: 'desc',
             },
@@ -992,9 +1127,11 @@ export class TecnicoTrackingPrismaQuery implements TecnicoTrackingQueryPort {
 
           select: {
             latitud: true,
+
             longitud: true,
 
             precision: true,
+
             velocidad: true,
 
             bateria: true,
@@ -1008,13 +1145,59 @@ export class TecnicoTrackingPrismaQuery implements TecnicoTrackingQueryPort {
     });
 
     return sessions.map((session) => {
+      // =====================================================
+      // VALIDACIONES
+      // =====================================================
+
       if (!session.asistenciaId) {
         throw new Error(
           `La sesión realtime activa ${session.id} no posee una asistencia asociada.`,
         );
       }
 
+      if (!session.asistencia) {
+        throw new Error(
+          `La sesión realtime activa ${session.id} no posee una asistencia cargada.`,
+        );
+      }
+
+      // =====================================================
+      // ESTADO / MÉTRICAS DE SESIÓN
+      // =====================================================
+
+      const estado = TecnicoTrackingSesionPrismaMapper.toDomainEstado(
+        session.estado,
+      );
+
+      const minutosSesionActual = calculateConfirmedTrackingMinutes({
+        estado,
+
+        iniciadoEn: session.iniciadoEn,
+
+        finalizadoEn: null,
+
+        ultimoHeartbeatEn: session.ultimoHeartbeatEn,
+      });
+
+      // =====================================================
+      // RESUMEN DE JORNADA
+      // =====================================================
+
+      const jornada = this.buildRealtimeJourneySummary({
+        asistencia: session.asistencia,
+
+        ultimoHeartbeatEn: session.ultimoHeartbeatEn,
+      });
+
+      // =====================================================
+      // ÚLTIMA UBICACIÓN
+      // =====================================================
+
       const ubicacion = session.ubicaciones[0] ?? null;
+
+      // =====================================================
+      // RESPONSE REALTIME
+      // =====================================================
 
       return {
         tecnico: {
@@ -1034,14 +1217,16 @@ export class TecnicoTrackingPrismaQuery implements TecnicoTrackingQueryPort {
 
           asistenciaId: session.asistenciaId,
 
-          estado: TecnicoTrackingSesionPrismaMapper.toDomainEstado(
-            session.estado,
-          ),
+          estado,
 
           iniciadoEn: session.iniciadoEn,
 
           ultimoHeartbeatEn: session.ultimoHeartbeatEn,
+
+          minutosSesionActual,
         },
+
+        jornada,
 
         ubicacion: ubicacion
           ? {
@@ -1075,7 +1260,6 @@ export class TecnicoTrackingPrismaQuery implements TecnicoTrackingQueryPort {
       };
     });
   }
-
   // =====================================================
   // HELPERS
   // =====================================================
@@ -1111,6 +1295,72 @@ export class TecnicoTrackingPrismaQuery implements TecnicoTrackingQueryPort {
       avatarUrl: usuario.perfil?.avatarUrl ?? null,
 
       activo: usuario.activo,
+    };
+  }
+
+  private buildRealtimeJourneySummary(params: {
+    asistencia: {
+      fecha: Date;
+      horaEntrada: Date;
+      horaSalida: Date | null;
+
+      sesionesTracking: Array<{
+        estado: PrismaEstadoTrackingTecnico;
+        iniciadoEn: Date;
+        finalizadoEn: Date | null;
+        ultimoHeartbeatEn: Date;
+      }>;
+    };
+
+    ultimoHeartbeatEn: Date;
+  }) {
+    const metricSessions = params.asistencia.sesionesTracking.map(
+      (session) => ({
+        estado: TecnicoTrackingSesionPrismaMapper.toDomainEstado(
+          session.estado,
+        ),
+        iniciadoEn: session.iniciadoEn,
+        finalizadoEn: session.finalizadoEn,
+        ultimoHeartbeatEn: session.ultimoHeartbeatEn,
+      }),
+    );
+
+    const minutosTracking =
+      calculateTotalConfirmedTrackingMinutes(metricSessions);
+
+    const minutosJornadaConfirmados = Math.max(
+      0,
+      Math.floor(
+        (params.ultimoHeartbeatEn.getTime() -
+          params.asistencia.horaEntrada.getTime()) /
+          60_000,
+      ),
+    );
+
+    const minutosSinTrackingConfirmados = Math.max(
+      0,
+      minutosJornadaConfirmados - minutosTracking,
+    );
+
+    return {
+      fecha: params.asistencia.fecha,
+
+      horaEntrada: params.asistencia.horaEntrada,
+      horaSalida: params.asistencia.horaSalida,
+
+      sesionesTotal: params.asistencia.sesionesTracking.length,
+
+      sesionesFinalizadas: params.asistencia.sesionesTracking.filter(
+        (session) => session.estado === PrismaEstadoTrackingTecnico.FINALIZADA,
+      ).length,
+
+      sesionesExpiradas: params.asistencia.sesionesTracking.filter(
+        (session) => session.estado === PrismaEstadoTrackingTecnico.EXPIRADA,
+      ).length,
+
+      minutosTracking,
+      minutosJornadaConfirmados,
+      minutosSinTrackingConfirmados,
     };
   }
 }
