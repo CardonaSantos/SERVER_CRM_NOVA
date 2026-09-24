@@ -215,7 +215,12 @@ export class PppoeCuentaProvisionamientoAdminService {
   private assertOfficeRole(actorRol: string): void {
     const rol = actorRol.trim().toUpperCase();
 
-    if (rol === 'OFICINA' || rol === 'ADMIN' || rol === 'SUPER_ADMIN') {
+    if (
+      rol === 'OFICINA' ||
+      rol === 'ADMIN' ||
+      rol === 'SUPER_ADMIN' ||
+      rol === 'COORDINADOR_OPERACIONES'
+    ) {
       return;
     }
 
