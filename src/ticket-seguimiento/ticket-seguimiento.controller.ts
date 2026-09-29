@@ -1,15 +1,69 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { TicketSeguimientoService } from './ticket-seguimiento.service';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UnauthorizedException,
+  UseGuards,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
+import type { Request } from 'express';
+
+import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
+
 import { CreateTicketSeguimientoDto } from './dto/create-ticket-seguimiento.dto';
 import { UpdateTicketSeguimientoDto } from './dto/update-ticket-seguimiento.dto';
+import { TicketSeguimientoService } from './ticket-seguimiento.service';
+
+type AuthenticatedRequest = Request & {
+  user?: {
+    id?: number | string;
+    sub?: number | string;
+    userId?: number | string;
+    nombre?: string;
+    rol?: string;
+    empresaId?: number | string;
+  };
+};
 
 @Controller('ticket-seguimiento')
 export class TicketSeguimientoController {
-  constructor(private readonly ticketSeguimientoService: TicketSeguimientoService) {}
+  constructor(
+    private readonly ticketSeguimientoService: TicketSeguimientoService,
+  ) {}
 
   @Post()
-  create(@Body() createTicketSeguimientoDto: CreateTicketSeguimientoDto) {
-    return this.ticketSeguimientoService.create(createTicketSeguimientoDto);
+  @UseGuards(JwtAuthGuard)
+  @UsePipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+    }),
+  )
+  create(
+    @Req() req: AuthenticatedRequest,
+    @Body() createTicketSeguimientoDto: CreateTicketSeguimientoDto,
+  ) {
+    const rawUsuarioId =
+      req.user?.id ?? req.user?.sub ?? req.user?.userId;
+
+    const usuarioId = Number(rawUsuarioId);
+
+    if (!Number.isInteger(usuarioId) || usuarioId <= 0) {
+      throw new UnauthorizedException(
+        'No fue posible identificar al usuario autenticado.',
+      );
+    }
+
+    return this.ticketSeguimientoService.create(
+      createTicketSeguimientoDto,
+      usuarioId,
+    );
   }
 
   @Get()
@@ -23,8 +77,14 @@ export class TicketSeguimientoController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateTicketSeguimientoDto: UpdateTicketSeguimientoDto) {
-    return this.ticketSeguimientoService.update(+id, updateTicketSeguimientoDto);
+  update(
+    @Param('id') id: string,
+    @Body() updateTicketSeguimientoDto: UpdateTicketSeguimientoDto,
+  ) {
+    return this.ticketSeguimientoService.update(
+      +id,
+      updateTicketSeguimientoDto,
+    );
   }
 
   @Delete(':id')
