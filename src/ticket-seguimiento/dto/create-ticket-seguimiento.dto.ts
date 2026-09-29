@@ -1,13 +1,16 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsInt, IsString, MaxLength, Min, MinLength } from 'class-validator';
 
 export class CreateTicketSeguimientoDto {
-  @IsNumber()
-  @IsNotEmpty()
+  @IsInt()
+  @Min(1)
   ticketId: number;
-  @IsNumber()
-  @IsNotEmpty()
-  usuarioId: number;
+
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString()
-  @IsOptional()
+  @MinLength(1)
+  @MaxLength(2000)
   descripcion: string;
 }

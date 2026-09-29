@@ -666,13 +666,60 @@ export class DashboardService {
     try {
       const rawTicket = await this.prisma.ticketSoporte.findUnique({
         where: { id: ticketId },
+
         select: {
           id: true,
           titulo: true,
           fechaApertura: true,
+          fechaAsignacion: true,
+          fechaInicioAtencion: true,
+          fechaResolucionTecnico: true,
+          fechaCierre: true,
+          actualizadoEn: true,
           estado: true,
           prioridad: true,
           descripcion: true,
+          fijado: true,
+
+          creadoPor: {
+            select: {
+              id: true,
+              nombre: true,
+              rol: true,
+              perfil: { select: { avatarUrl: true } },
+            },
+          },
+
+          tecnico: {
+            select: {
+              id: true,
+              nombre: true,
+              rol: true,
+              perfil: { select: { avatarUrl: true } },
+            },
+          },
+
+          asignaciones: {
+            orderBy: { id: 'asc' },
+            select: {
+              tecnico: {
+                select: {
+                  id: true,
+                  nombre: true,
+                  rol: true,
+                  perfil: { select: { avatarUrl: true } },
+                },
+              },
+            },
+          },
+
+          etiquetas: {
+            orderBy: { id: 'asc' },
+            select: {
+              etiqueta: { select: { id: true, nombre: true } },
+            },
+          },
+
           cliente: {
             select: {
               id: true,
@@ -681,33 +728,13 @@ export class DashboardService {
               direccion: true,
               telefono: true,
               contactoReferenciaTelefono: true,
-              ubicacion: { select: { latitud: true, longitud: true } },
-              sector: {
-                select: {
-                  id: true,
-                  nombre: true,
-                },
-              },
-              municipio: {
-                select: {
-                  id: true,
-                  nombre: true,
-                },
-              },
-              departamento: {
-                select: {
-                  id: true,
-                  nombre: true,
-                },
-              },
               observaciones: true,
-
+              ubicacion: { select: { latitud: true, longitud: true } },
+              sector: { select: { id: true, nombre: true } },
+              municipio: { select: { id: true, nombre: true } },
+              departamento: { select: { id: true, nombre: true } },
               medias: {
-                where: {
-                  categoria: {
-                    notIn: ['SOPORTE_TICKET'],
-                  },
-                },
+                where: { categoria: { notIn: ['SOPORTE_TICKET'] } },
                 select: {
                   id: true,
                   cdnUrl: true,
@@ -720,6 +747,59 @@ export class DashboardService {
               },
             },
           },
+
+          SeguimientoTicket: {
+            orderBy: [{ fechaRegistro: 'asc' }, { id: 'asc' }],
+            select: {
+              id: true,
+              descripcion: true,
+              fechaRegistro: true,
+              actualizadoEn: true,
+              usuario: {
+                select: {
+                  id: true,
+                  nombre: true,
+                  rol: true,
+                  perfil: { select: { avatarUrl: true } },
+                },
+              },
+            },
+          },
+
+          historialCambios: {
+            orderBy: [{ creadoEn: 'asc' }, { id: 'asc' }],
+            select: {
+              id: true,
+              tipo: true,
+              descripcion: true,
+              usuarioId: true,
+              usuarioNombre: true,
+              creadoEn: true,
+              usuario: {
+                select: {
+                  id: true,
+                  nombre: true,
+                  perfil: { select: { avatarUrl: true } },
+                },
+              },
+            },
+          },
+
+          resumen: {
+            select: {
+              id: true,
+              resueltoComo: true,
+              notasInternas: true,
+              tiempoTotalMinutos: true,
+              tiempoTecnicoMinutos: true,
+              reabierto: true,
+              numeroReaperturas: true,
+              intentos: true,
+              solucion: {
+                select: { id: true, solucion: true, descripcion: true },
+              },
+            },
+          },
         },
       });
 
@@ -727,35 +807,16 @@ export class DashboardService {
         throw new NotFoundException(`Ticket con id ${ticketId} no encontrado`);
       }
 
-      /*
-       * =====================================================
-       * CLIENTE
-       * =====================================================
-       *
-       * Un TicketSoporte puede existir sin ClienteInternet.
-       *
-       * El listado de tickets asignados ya soporta este caso,
-       * así que el detalle debe conservar el mismo contrato.
-       * =====================================================
-       */
-
       const cliente = rawTicket.cliente;
-
       const loc = cliente?.ubicacion ?? null;
 
       const medias = (cliente?.medias ?? []).map((media) => ({
         id: media.id,
-
         titulo: media.titulo,
-
         descripcion: media.descripcion,
-
         notas: media.notas,
-
         creadoEn: media.creadoEn,
-
         actualizadoEn: media.actualizadoEn,
-
         cdnUrl: media.cdnUrl,
       }));
 
@@ -764,61 +825,124 @@ export class DashboardService {
           'Cliente sin nombre'
         : 'SIN CLIENTE';
 
-      /*
-       * =====================================================
-       * RESPONSE
-       * =====================================================
-       *
-       * direccion permanece como objeto estable porque así lo
-       * consume Android.
-       *
-       * Cuando no existe cliente o dato geográfico utilizamos
-       * string vacío; la UI es quien presenta el fallback
-       * "Sin dirección", "Sin sector", etc.
-       * =====================================================
-       */
-
       return {
+        // Contrato actual de Android: se conserva.
         id: rawTicket.id,
-
         titulo: rawTicket.titulo,
-
         abiertoEn: rawTicket.fechaApertura,
-
         estado: rawTicket.estado,
-
         prioridad: rawTicket.prioridad,
-
         descripcion: rawTicket.descripcion,
-
         clientId: cliente?.id ?? null,
-
         clienteNombre,
-
         clienteTel: cliente?.telefono ?? null,
-
         referenciaContacto: cliente?.contactoReferenciaTelefono ?? null,
-
         direccion: {
           direccion: cliente?.direccion ?? '',
-
           sector: cliente?.sector?.nombre ?? '',
-
           municipio: cliente?.municipio?.nombre ?? '',
+          departamento: cliente?.departamento?.nombre ?? '',
         },
-
         observaciones: cliente?.observaciones ?? '',
-
         ubicacionMaps:
           loc?.latitud != null && loc?.longitud != null
-            ? {
-                lat: loc.latitud,
-
-                lng: loc.longitud,
-              }
+            ? { lat: loc.latitud, lng: loc.longitud }
             : null,
-
         medias,
+
+        // Información operativa nueva.
+        fijado: rawTicket.fijado,
+
+        creador: rawTicket.creadoPor
+          ? {
+              id: rawTicket.creadoPor.id,
+              nombre: rawTicket.creadoPor.nombre,
+              rol: rawTicket.creadoPor.rol,
+              avatarUrl: rawTicket.creadoPor.perfil?.avatarUrl ?? null,
+            }
+          : null,
+
+        tecnico: rawTicket.tecnico
+          ? {
+              id: rawTicket.tecnico.id,
+              nombre: rawTicket.tecnico.nombre,
+              rol: rawTicket.tecnico.rol,
+              avatarUrl: rawTicket.tecnico.perfil?.avatarUrl ?? null,
+            }
+          : null,
+
+        tecnicosAdicionales: rawTicket.asignaciones
+          .map((asignacion) => asignacion.tecnico)
+          .filter(
+            (tecnico) =>
+              !rawTicket.tecnico || tecnico.id !== rawTicket.tecnico.id,
+          )
+          .map((tecnico) => ({
+            id: tecnico.id,
+            nombre: tecnico.nombre,
+            rol: tecnico.rol,
+            avatarUrl: tecnico.perfil?.avatarUrl ?? null,
+          })),
+
+        etiquetas: rawTicket.etiquetas.map(({ etiqueta }) => ({
+          id: etiqueta.id,
+          nombre: etiqueta.nombre,
+        })),
+
+        fechas: {
+          abiertoEn: rawTicket.fechaApertura.toISOString(),
+          asignadoEn: rawTicket.fechaAsignacion?.toISOString() ?? null,
+          iniciadoEn: rawTicket.fechaInicioAtencion?.toISOString() ?? null,
+          resueltoTecnicoEn:
+            rawTicket.fechaResolucionTecnico?.toISOString() ?? null,
+          cerradoEn: rawTicket.fechaCierre?.toISOString() ?? null,
+          actualizadoEn: rawTicket.actualizadoEn?.toISOString() ?? null,
+        },
+
+        comentarios: rawTicket.SeguimientoTicket.map((comentario) => ({
+          id: comentario.id,
+          descripcion: comentario.descripcion,
+          fechaRegistro: comentario.fechaRegistro.toISOString(),
+          actualizadoEn: comentario.actualizadoEn.toISOString(),
+          usuario: {
+            id: comentario.usuario.id,
+            nombre: comentario.usuario.nombre,
+            rol: comentario.usuario.rol,
+            avatarUrl: comentario.usuario.perfil?.avatarUrl ?? null,
+          },
+        })),
+
+        historial: rawTicket.historialCambios.map((cambio) => ({
+          id: cambio.id,
+          tipo: cambio.tipo,
+          descripcion: cambio.descripcion,
+          creadoEn: cambio.creadoEn.toISOString(),
+          actor: {
+            usuarioId: cambio.usuarioId,
+            nombre: cambio.usuarioNombre ?? cambio.usuario?.nombre ?? 'Sistema',
+            avatarUrl: cambio.usuario?.perfil?.avatarUrl ?? null,
+          },
+        })),
+
+        resumen: rawTicket.resumen
+          ? {
+              id: rawTicket.resumen.id,
+              resueltoComo: rawTicket.resumen.resueltoComo,
+              notasInternas: rawTicket.resumen.notasInternas,
+              tiempoTotalMinutos: rawTicket.resumen.tiempoTotalMinutos,
+              tiempoTecnicoMinutos: rawTicket.resumen.tiempoTecnicoMinutos,
+              reabierto: rawTicket.resumen.reabierto,
+              numeroReaperturas: rawTicket.resumen.numeroReaperturas,
+              intentos: rawTicket.resumen.intentos,
+              solucion: rawTicket.resumen.solucion
+                ? {
+                    id: rawTicket.resumen.solucion.id,
+                    nombre: rawTicket.resumen.solucion.solucion,
+                    descripcion: rawTicket.resumen.solucion.descripcion,
+                  }
+                : null,
+            }
+          : null,
       };
     } catch (error) {
       console.error('Error en ticketDetailsAsignado:', error);
