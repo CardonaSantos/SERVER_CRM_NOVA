@@ -13,6 +13,7 @@ import { ClientePppoeCuentaProtegidaInstalacion } from '../../domain/read-models
 
 import { EstadoCuentaPppoe } from '../../domain/enums/pppoe-cliente-cuenta.enum';
 import { ClientePppoeCuentaEntity } from '../../domain/entities/ppoe-cliente-cuenta.entity';
+import { EstadoAccesoInternet } from 'src/modules/pppoe-acceso-internet/domain/enums/ppoe-acceso-internet.enum';
 
 @Injectable()
 export class ClientePppoeCuentaPrismaRepository
@@ -80,6 +81,35 @@ export class ClientePppoeCuentaPrismaRepository
     const record = await this.prisma.clientePppoeCuenta.findFirst({
       where: {
         usuario,
+      },
+
+      orderBy: {
+        id: 'desc',
+      },
+    });
+
+    return record ? ClientePppoeCuentaPrismaMapper.toDomain(record) : null;
+  }
+
+  async findByUsuarioValido(
+    usuario: string,
+  ): Promise<ClientePppoeCuentaEntity | null> {
+    const record = await this.prisma.clientePppoeCuenta.findFirst({
+      where: {
+        usuario,
+        estado: {
+          notIn: [
+            'ACTIVA',
+            'PENDIENTE_ACTIVACION',
+            'PENDIENTE_CREACION',
+            'SUSPENDIDA',
+            'EN_ACTIVACION',
+            'EN_DESINSTALACION',
+            'EN_INSTALACION',
+            'EN_SUSPENSION',
+            'ERROR',
+          ],
+        },
       },
 
       orderBy: {

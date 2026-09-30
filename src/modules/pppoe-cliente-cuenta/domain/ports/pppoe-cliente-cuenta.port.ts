@@ -12,6 +12,11 @@ export type BuscarCuentaPppoeVigentePorUsuarioParams = {
 
 export interface ClientePppoeCuentaRepositoryPort {
   /**
+   * Verificar un usuario que tenga una cuenta: valida para reemplazo
+   * @param usuario
+   */
+  findByUsuarioValido(usuario: string): Promise<ClientePppoeCuentaEntity>;
+  /**
    * Persiste una cuenta PPPoE nueva.
    *
    * La cuenta inicia en:

@@ -138,12 +138,13 @@ export class VerificarAdopcionPppoeUseCase {
      *
      * El repositorio ya posee findByUsuario(), así que
      * evitamos adoptar un secret asociado previamente.
+     *
+     * Evitar usar un usuario existente operando, pero poder adoptar otro suspendido o eliminado, etc.
      */
-    const cuentaConMismoUsuario = await this.cuentaRepository.findByUsuario(
-      normalized.usuarioPppoe,
-    );
+    const cuentaConMismoUsuarioYOperando =
+      await this.cuentaRepository.findByUsuarioValido(normalized.usuarioPppoe);
 
-    if (cuentaConMismoUsuario) {
+    if (cuentaConMismoUsuarioYOperando) {
       throw new ConflictException(
         `El usuario PPPoE "${normalized.usuarioPppoe}" ya está asociado a una cuenta dentro del CRM.`,
       );
