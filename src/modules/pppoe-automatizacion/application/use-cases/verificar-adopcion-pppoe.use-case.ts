@@ -115,11 +115,17 @@ export class VerificarAdopcionPppoeUseCase {
      * 1. COMPROBAR QUE EL CLIENTE TODAVÍA NO ESTÉ ADMINISTRADO
      * ==========================================================
      */
-    const accesoExistente = await this.accesoRepository.findPppoeByClienteId({
-      empresaId: normalized.empresaId,
+    // const accesoExistente = await this.accesoRepository.findPppoeByClienteId({
+    //   empresaId: normalized.empresaId,
 
-      clienteId: normalized.clienteId,
-    });
+    //   clienteId: normalized.clienteId,
+    // });
+
+    const accesoExistente =
+      await this.accesoRepository.findPppoeVigenteByClienteId({
+        empresaId: input.empresaId,
+        clienteId: input.clienteId,
+      });
 
     if (accesoExistente) {
       throw new ConflictException(
