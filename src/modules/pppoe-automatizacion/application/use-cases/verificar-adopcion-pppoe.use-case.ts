@@ -115,16 +115,18 @@ export class VerificarAdopcionPppoeUseCase {
      * 1. COMPROBAR QUE EL CLIENTE TODAVÍA NO ESTÉ ADMINISTRADO
      * ==========================================================
      */
-    // const accesoExistente = await this.accesoRepository.findPppoeByClienteId({
-    //   empresaId: normalized.empresaId,
-
-    //   clienteId: normalized.clienteId,
-    // });
+    /**
+     * Un username histórico puede volver a utilizarse cuando
+     * su ciclo anterior terminó en ELIMINADA o CANCELADA.
+     *
+     * Solo bloqueamos si existe actualmente una cuenta vigente
+     * con el mismo username dentro de la misma empresa.
+     */
 
     const accesoExistente =
       await this.accesoRepository.findPppoeVigenteByClienteId({
-        empresaId: input.empresaId,
-        clienteId: input.clienteId,
+        empresaId: normalized.empresaId,
+        clienteId: normalized.clienteId,
       });
 
     if (accesoExistente) {
@@ -141,12 +143,15 @@ export class VerificarAdopcionPppoeUseCase {
      *
      * Evitar usar un usuario existente operando, pero poder adoptar otro suspendido o eliminado, etc.
      */
-    const cuentaConMismoUsuarioYOperando =
-      await this.cuentaRepository.findByUsuarioValido(normalized.usuarioPppoe);
+    const cuentaVigenteConMismoUsuario =
+      await this.cuentaRepository.findVigenteByEmpresaYUsuario({
+        empresaId: normalized.empresaId,
+        usuario: normalized.usuarioPppoe,
+      });
 
-    if (cuentaConMismoUsuarioYOperando) {
+    if (cuentaVigenteConMismoUsuario) {
       throw new ConflictException(
-        `El usuario PPPoE "${normalized.usuarioPppoe}" ya está asociado a una cuenta dentro del CRM.`,
+        `El usuario PPPoE "${normalized.usuarioPppoe}" ya está asociado a una cuenta vigente dentro del CRM.`,
       );
     }
 

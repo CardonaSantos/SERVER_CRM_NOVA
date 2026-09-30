@@ -6,6 +6,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { ClienteAccesoInternetEntity } from 'src/modules/pppoe-acceso-internet/domain/entities/ppoe-acceso-internet.entity';
 
 import {
+  EstadoAccesoInternet,
   MetodoAutenticacionInternet,
   TecnologiaAccesoInternet,
 } from 'src/modules/pppoe-acceso-internet/domain/enums/ppoe-acceso-internet.enum';
@@ -31,6 +32,7 @@ import {
   PppoeAdopcionPersistencePort,
 } from '../../domain/ports/pppoe-adopcion-persistence.port';
 import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/ppoe-cliente-cuenta.entity';
+import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
 
 @Injectable()
 export class PppoeAdopcionPrismaPersistence
@@ -53,43 +55,90 @@ export class PppoeAdopcionPrismaPersistence
          * dentro de la transacción.
          */
 
-        const cuentaClienteExistente = await tx.clientePppoeCuenta.findFirst({
+        /**
+         * =====================================================
+         * 1. PROTECCIÓN CONTRA CARRERAS
+         * =====================================================
+         *
+         * Las mismas reglas funcionales del caso de uso se
+         * vuelven a comprobar dentro de la transacción.
+         *
+         * Esto evita que dos adopciones concurrentes puedan
+         * crear un nuevo ciclo PPPoE para el mismo cliente
+         * o para el mismo username.
+         */
+
+        /**
+         * El cliente solamente queda bloqueado cuando tiene
+         * un acceso PPPoE vigente.
+         *
+         * BAJA representa un ciclo histórico terminado.
+         */
+        const accesoClienteVigente = await tx.clienteAccesoInternet.findFirst({
           where: {
             empresaId: params.empresaId,
 
-            accesoInternet: {
-              is: {
-                clienteId: params.clienteId,
-              },
+            clienteId: params.clienteId,
+
+            metodoAutenticacion: MetodoAutenticacionInternet.PPPOE,
+
+            estado: {
+              in: [
+                EstadoAccesoInternet.PENDIENTE,
+                EstadoAccesoInternet.CONFIGURANDO,
+                EstadoAccesoInternet.ACTIVO,
+                EstadoAccesoInternet.SUSPENDIDO,
+              ],
             },
           },
 
           select: {
             id: true,
+            estado: true,
+          },
+
+          orderBy: {
+            id: 'desc',
           },
         });
 
-        if (cuentaClienteExistente) {
+        if (accesoClienteVigente) {
           throw new Error(
-            'El cliente ya posee una cuenta PPPoE registrada en el CRM.',
+            `El cliente ya posee un acceso PPPoE vigente en estado ${accesoClienteVigente.estado}.`,
           );
         }
 
-        const cuentaUsuarioExistente = await tx.clientePppoeCuenta.findFirst({
+        /**
+         * El mismo username puede aparecer en ciclos históricos
+         * ELIMINADOS o CANCELADOS.
+         *
+         * Solo impedimos crear una nueva cuenta si todavía existe
+         * otra cuenta vigente con el mismo username.
+         */
+        const cuentaUsuarioVigente = await tx.clientePppoeCuenta.findFirst({
           where: {
             empresaId: params.empresaId,
 
             usuario: params.usuarioPppoe,
+
+            estado: {
+              notIn: [EstadoCuentaPppoe.ELIMINADA, EstadoCuentaPppoe.CANCELADA],
+            },
           },
 
           select: {
             id: true,
+            estado: true,
+          },
+
+          orderBy: {
+            id: 'desc',
           },
         });
 
-        if (cuentaUsuarioExistente) {
+        if (cuentaUsuarioVigente) {
           throw new Error(
-            `El usuario PPPoE "${params.usuarioPppoe}" ya se encuentra registrado en el CRM.`,
+            `El usuario PPPoE "${params.usuarioPppoe}" ya se encuentra asociado a una cuenta vigente en estado ${cuentaUsuarioVigente.estado}.`,
           );
         }
 

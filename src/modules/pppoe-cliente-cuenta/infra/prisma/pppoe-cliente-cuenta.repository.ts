@@ -91,35 +91,6 @@ export class ClientePppoeCuentaPrismaRepository
     return record ? ClientePppoeCuentaPrismaMapper.toDomain(record) : null;
   }
 
-  async findByUsuarioValido(
-    usuario: string,
-  ): Promise<ClientePppoeCuentaEntity | null> {
-    const record = await this.prisma.clientePppoeCuenta.findFirst({
-      where: {
-        usuario,
-        estado: {
-          notIn: [
-            'ACTIVA',
-            'PENDIENTE_ACTIVACION',
-            'PENDIENTE_CREACION',
-            'SUSPENDIDA',
-            'EN_ACTIVACION',
-            'EN_DESINSTALACION',
-            'EN_INSTALACION',
-            'EN_SUSPENSION',
-            'ERROR',
-          ],
-        },
-      },
-
-      orderBy: {
-        id: 'desc',
-      },
-    });
-
-    return record ? ClientePppoeCuentaPrismaMapper.toDomain(record) : null;
-  }
-
   async findVigenteByEmpresaYUsuario(
     params: BuscarCuentaPppoeVigentePorUsuarioParams,
   ): Promise<ClientePppoeCuentaEntity | null> {
