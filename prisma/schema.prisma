@@ -8,7 +8,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL_CRM")
+  // url      = env("DATABASE_URL_CRM")
 }
 
 // comentario nuevo
@@ -477,53 +477,51 @@ model ServicioInternet {
   perfilesPppoeHomologados PppoePerfilHomologacion[]
 }
 
-/// [05] Clientes Internet y Relacionados
 model ClienteInternet {
   // Identidad
   id                         Int                    @id @default(autoincrement())
   empresaId                  Int?
   asesorId                   Int?
-  // Información personal
+
   nombre                     String
   apellidos                  String?
   dpi                        String?
   observaciones              String?
   nota                       String?
-  // Información de contacto
+  
   telefono                   String?
   direccion                  String?
   contactoReferenciaNombre   String?
   contactoReferenciaTelefono String?
-  // Servicio y red
+
   contrasenaWifi             String?
   ssidRouter                 String?
   fechaInstalacion           DateTime?
   servicioInternetId         Int?
   sectorId                   Int?
-  // Opciones y flags
+
   enviarRecordatorio         Boolean                @default(true)
   isEliminado                Boolean                @default(false)
   eliminadoEn                DateTime?
-  // ESTADO DE SERVICIO-CLIENTE Y COBRANZA =>
+
   estadoCliente              EstadoCliente
   estadoCobranza             EstadoCobranzaCliente  @default(AL_DIA)
-  // Geografía
+
   municipioId                Int?
   departamentoId             Int?
   facturacionZonaId          Int?
-  //Optico
+
   mikrotikRouterId           Int?
   MikrotikRouter             MikrotikRouter?        @relation(fields: [mikrotikRouterId], references: [id])
   estadoServicioMikrotik     EstadoServicioMikrotik @default(SIN_MIKROTIK)
 
-  //BUSQUEDA
   searchNombre   String?
+
   // Metadatos
   creadoEn       DateTime  @default(now())
   actualizadoEn  DateTime  @updatedAt
   desinstaladoEn DateTime?
 
-  // Relaciones principales
   empresa                  Empresa?                  @relation(fields: [empresaId], references: [id])
   asesor                   Usuario?                  @relation(fields: [asesorId], references: [id])
   departamento             Departamento?             @relation(fields: [departamentoId], references: [id])
@@ -531,7 +529,7 @@ model ClienteInternet {
   facturacionZona          FacturacionZona?          @relation(fields: [facturacionZonaId], references: [id])
   sector                   Sector?                   @relation(fields: [sectorId], references: [id])
   servicioInternet         ServicioInternet?         @relation(fields: [servicioInternetId], references: [id])
-  // Relaciones de datos / hijos
+
   albumClientes            AlbumCliente[]
   clienteServicios         ClienteServicio[]
   CobroRuta                CobroRuta[]
@@ -554,7 +552,7 @@ model ClienteInternet {
   eliminadoPor             Usuario?                  @relation("ClienteEliminadoPor", fields: [eliminadoPorId], references: [id], onDelete: SetNull)
 
   creditos          Credito[]
-  expediente        ClienteExpediente? //DE CREDITO
+  expediente        ClienteExpediente?
   documentosCredito DocumentoCredito[]
 
   serialProductos SerialProducto[]
@@ -562,16 +560,15 @@ model ClienteInternet {
   instalaciones         ClienteInstalacion[]
   desinstalaciones      ClienteDesinstalacion[]
   historialEstados      ClienteEstadoHistorial[]
-  // ACCESOS A INTERNET Y CONFIGS
+
   accesosInternet       ClienteAccesoInternet[]
-  // Soft delete / restauración
+
   motivoEliminacion     String?
   comentarioEliminacion String?
   restauradoEn          DateTime?
   restauradoPorId       Int?
   restauradoPor         Usuario?                 @relation("ClienteRestauradoPor", fields: [restauradoPorId], references: [id], onDelete: SetNull)
 
-  // WhatsApp
   whatsappActivo            Boolean   @default(true)
   whatsappDesactivadoEn     DateTime?
   whatsappDesactivadoPorId  Int?
