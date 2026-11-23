@@ -21,6 +21,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { authThrottlerOptions } from './auth/throttling/auth-throttling';
 import { PasswordModule } from './auth/password/password.module';
 import { SesionesModule } from './auth/sesiones/sesiones.module';
+import { ValidacionModule } from './common/validacion/validacion.module';
 import { ZonaFacturacionCronModule } from './zona-facturacion-cron/zona-facturacion-cron.module';
 import { IdContratoModule } from './id-contrato/id-contrato.module';
 import { RutaCobroModule } from './ruta-cobro/ruta-cobro.module';
@@ -105,6 +106,8 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     PasswordModule,
     // Global: sesiones y bitácora de auth (JwtAuthGuard y gateway WS).
     SesionesModule,
+    // ValidationPipe global (VALIDACION_MODO: observacion | estricto).
+    ValidacionModule,
     // TerminusModule,
     ZonaFacturacionCronModule,
     IdContratoModule,
