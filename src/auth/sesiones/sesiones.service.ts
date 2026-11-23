@@ -399,6 +399,45 @@ export class SesionesService {
     return revocadas;
   }
 
+  /**
+   * Si el usuario quedó inactivo en la BD, revoca todas sus sesiones (y,
+   * vía evento, desconecta sus sockets). Se mira el estado final y no el
+   * dato de entrada: hay varios caminos para desactivar (perfil multipart,
+   * edición, deactivate). Nunca lanza: la revocación no debe tumbar la
+   * operación que la disparó (el guard ya rechaza a inactivos igual).
+   */
+  async revocarSiUsuarioInactivo(usuarioId: number): Promise<number> {
+    try {
+      const usuario = await this.prisma.usuario.findUnique({
+        where: { id: usuarioId },
+        select: { activo: true },
+      });
+
+      if (!usuario || usuario.activo) return 0;
+
+      const revocadas = await this.revocarOtras(
+        usuarioId,
+        null,
+        MOTIVO_REVOCACION.USUARIO_INACTIVO,
+      );
+
+      if (revocadas > 0) {
+        this.logger.log(
+          `Usuario ${usuarioId} desactivado: ${revocadas} sesión(es) revocada(s).`,
+        );
+      }
+
+      return revocadas;
+    } catch (error) {
+      this.logger.warn(
+        `No se pudieron revocar las sesiones del usuario ${usuarioId}: ${
+          error instanceof Error ? error.message : 'error desconocido'
+        }`,
+      );
+      return 0;
+    }
+  }
+
   /** El usuario solo puede revocar sus propias sesiones. */
   async revocarPropia(usuarioId: number, sesionId: string): Promise<void> {
     const sesion = await this.prisma.sesionUsuario.findFirst({

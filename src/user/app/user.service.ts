@@ -10,6 +10,7 @@ import { SoftDeleteUserUseCase } from './use-cases/soft-delete-user.use-case';
 import { UpdateUserProfileUseCase } from './use-cases/update-user-profile.use-case';
 import { UpdateUserUseCase } from './use-cases/update-user.use-case';
 import { ValidateUserPasswordUseCase } from './use-cases/validate-user-password.use-case';
+import { SesionesService } from 'src/auth/sesiones/sesiones.service';
 
 @Injectable()
 export class UserService {
@@ -21,7 +22,22 @@ export class UserService {
     private readonly restoreUserUseCase: RestoreUserUseCase,
     private readonly validateUserPasswordUseCase: ValidateUserPasswordUseCase,
     private readonly queries: UsuarioQueries,
+    private readonly sesionesService: SesionesService,
   ) {}
+
+  /*
+   * Auth (etapa 7): si una actualización deja al usuario inactivo, se
+   * revocan sus sesiones y se desconectan sus sockets. Antes, desactivar
+   * a alguien no lo sacaba del sistema hasta que su token venciera.
+   */
+  private async conRevocacionSiInactivo<T>(
+    usuarioId: number,
+    operacion: Promise<T>,
+  ): Promise<T> {
+    const resultado = await operacion;
+    await this.sesionesService.revocarSiUsuarioInactivo(usuarioId);
+    return resultado;
+  }
 
   create(dto: CreateUserDto) {
     return this.createUserUseCase.execute(dto);
@@ -57,11 +73,17 @@ export class UserService {
     avatar?: Express.Multer.File,
     portada?: Express.Multer.File,
   ) {
-    return this.updateUserProfileUseCase.execute(id, data, avatar, portada);
+    return this.conRevocacionSiInactivo(
+      id,
+      this.updateUserProfileUseCase.execute(id, data, avatar, portada),
+    );
   }
 
   updateOneUser(id: number, dto: UpdateOneUserDto) {
-    return this.updateUserUseCase.execute(id, dto);
+    return this.conRevocacionSiInactivo(
+      id,
+      this.updateUserUseCase.execute(id, dto),
+    );
   }
 
   async deleteUser(id: number, eliminadoPorId?: number): Promise<void> {
@@ -77,7 +99,10 @@ export class UserService {
   }
 
   deactivateUser(id: number) {
-    return this.updateUserUseCase.execute(id, { activo: false });
+    return this.conRevocacionSiInactivo(
+      id,
+      this.updateUserUseCase.execute(id, { activo: false }),
+    );
   }
 
   getUsersToCreateTickets(userAuth?: UserTokenAuth) {

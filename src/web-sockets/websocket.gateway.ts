@@ -9,13 +9,16 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { Server, Socket } from 'socket.io';
+import { Namespace, Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { BroadCastNewMessage } from './websocket.controller';
 import { RealTimeLocation } from 'src/real-time-location/entities/real-time.entity';
 import { RealTimeLocationMapDto } from 'src/real-time-location/dto/dto-shape';
-import { SesionesService } from 'src/auth/sesiones/sesiones.service';
+import {
+  EVENTO_SESIONES_REVOCADAS,
+  SesionesService,
+} from 'src/auth/sesiones/sesiones.service';
 
 interface JwtUserPayload {
   nombre: string;
@@ -67,6 +70,41 @@ export class CrmGateway
   //Cuando el módulo que contiene este gateway ha sido inicializado
   onModuleInit() {
     this.logger.log('CrmGateway registrado en el módulo (onModuleInit)');
+
+    this.sesionesService.eventos.on(
+      EVENTO_SESIONES_REVOCADAS,
+      (sesionIds: string[]) => this.desconectarSesiones(sesionIds),
+    );
+  }
+
+  /**
+   * Al revocar una sesión (logout, reutilización de refresh, usuario
+   * desactivado...) sus sockets abiertos se cierran de inmediato con
+   * SESSION_REVOKED: dejan de recibir eventos aunque el token siga vigente.
+   */
+  private desconectarSesiones(sesionIds: string[]) {
+    if (!this.server || sesionIds.length === 0) return;
+
+    const revocadas = new Set(sesionIds);
+    let cerrados = 0;
+
+    // Gateway con namespace ('/ws'): Nest inyecta un Namespace, no el
+    // Server raíz; su `.sockets` es el Map de sockets conectados.
+    const namespace = this.server as unknown as Namespace;
+
+    for (const socket of namespace.sockets.values()) {
+      const sid = (socket as CrmSocket).data?.user?.sid;
+
+      if (sid && revocadas.has(sid)) {
+        socket.emit('error', { code: 'SESSION_REVOKED' });
+        socket.disconnect(true);
+        cerrados++;
+      }
+    }
+
+    if (cerrados > 0) {
+      this.logger.log(`WS: ${cerrados} socket(s) cerrados por sesión revocada`);
+    }
   }
 
   // Cuando el servidor WS (Socket.IO) ya está listo
