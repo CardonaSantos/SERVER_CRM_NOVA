@@ -1,3 +1,5 @@
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 import {
   Controller,
   Get,
@@ -22,6 +24,7 @@ import {
 import { IniciarPagoDto } from './dto/operation.dto';
 import { IniciarPagoResponse } from './utils/interfacesOperation.interface';
 
+@UseGuards(JwtAuthGuard)
 @Controller('banrural-integration')
 export class BanruralIntegrationController {
   constructor(

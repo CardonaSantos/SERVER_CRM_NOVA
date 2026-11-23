@@ -1,3 +1,5 @@
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 import {
   Controller,
   Get,
@@ -24,6 +26,7 @@ import {
   StateFacturaInternet,
 } from '@prisma/client';
 
+@UseGuards(JwtAuthGuard)
 @Controller('facturacion')
 export class FacturacionController {
   constructor(private readonly facturacionService: FacturacionService) {}

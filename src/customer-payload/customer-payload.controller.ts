@@ -1,8 +1,11 @@
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 import { Controller, Get } from '@nestjs/common';
 import { CustomerPayloadService } from './customer-payload.service';
 
 import { join } from 'path';
 
+@UseGuards(JwtAuthGuard)
 @Controller('customer-payload')
 export class CustomerPayloadController {
   constructor(

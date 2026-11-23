@@ -1,3 +1,5 @@
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 import {
   Controller,
   Get,
@@ -11,6 +13,7 @@ import { PppoeAutomatizacionService } from '../application/services/pppoe-automa
 import { CreatePppoeAutomatizacionDto } from '../application/dto/create-pppoe-automatizacion.dto';
 import { UpdatePppoeAutomatizacionDto } from '../application/dto/update-pppoe-automatizacion.dto';
 
+@UseGuards(JwtAuthGuard)
 @Controller('pppoe-automatizacion')
 export class PppoeAutomatizacionController {
   constructor(

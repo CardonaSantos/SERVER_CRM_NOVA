@@ -1,3 +1,5 @@
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 import {
   Controller,
   Get,
@@ -11,6 +13,7 @@ import { SuspendCustomerDto } from '../dto/create-ssh-mikrotik-connection.dto';
 import { SshMikrotikConnectionService } from '../application/ssh-mikrotik-connection.service';
 import { ActivateCustomerDto } from '../dto/activate-ssh-mikrotik.dto';
 
+@UseGuards(JwtAuthGuard)
 @Controller('ssh-mikrotik-connection')
 export class SshMikrotikConnectionController {
   constructor(private readonly mikrotikService: SshMikrotikConnectionService) {}

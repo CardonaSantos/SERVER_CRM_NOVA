@@ -1,3 +1,5 @@
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 import {
   Body,
   Controller,
@@ -24,6 +26,7 @@ import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateOneUserDto } from '../dto/update-one-user.dto';
 import { UpdateUserDto } from '../dto/updateProfile';
 
+@UseGuards(JwtAuthGuard)
 @Controller('user')
 @UsePipes(
   new ValidationPipe({

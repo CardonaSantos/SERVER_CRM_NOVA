@@ -1,3 +1,5 @@
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 import {
   Controller,
   Get,
@@ -21,6 +23,7 @@ import { NetworkServiceService } from 'src/network-service/network-service.servi
 import { GetCustomersQueryDto } from './dto/query-table';
 import { CustomersCampaingQuery } from './query/customers-campaing-query.dto';
 
+@UseGuards(JwtAuthGuard)
 @Controller('internet-customer')
 export class ClienteInternetController {
   private readonly logger = new Logger(ClienteInternetService.name);
