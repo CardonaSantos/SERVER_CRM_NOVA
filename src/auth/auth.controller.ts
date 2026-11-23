@@ -28,8 +28,10 @@ import { MOTIVO_REVOCACION } from './sesiones/sesion.constants';
 import { SesionesService } from './sesiones/sesiones.service';
 import {
   LimitarIntentosLogin,
+  LimitarIntentosReautenticacion,
   LimitarIntentosRefresh,
 } from './throttling/auth-throttling';
+import { ReautenticarDto } from './dto/reautenticar.dto';
 
 type AuthenticatedRequest = Request & { user?: UsuarioAutenticado };
 
@@ -108,6 +110,27 @@ export class AuthController {
   refresh(@Body() body: RefreshDto, @Req() request: Request) {
     return this.sesionesService.refrescar(
       body?.refresh_token,
+      contextoCliente(request),
+    );
+  }
+
+  /**
+   * Step-up (D8): confirma la contraseña una vez y devuelve un access token
+   * con amr ['pwd','reauth'] de la misma sesión. Con él, durante 5 min, las
+   * operaciones sensibles (cortes, reactivaciones, bajas, provisionamiento,
+   * autorizaciones) no piden la contraseña en el body.
+   */
+  @Post('/reautenticar')
+  @UseGuards(JwtAuthGuard)
+  @LimitarIntentosReautenticacion()
+  @HttpCode(HttpStatus.OK)
+  reautenticar(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: ReautenticarDto,
+  ) {
+    return this.authService.reautenticarSesion(
+      usuarioDe(request),
+      body?.contrasena,
       contextoCliente(request),
     );
   }

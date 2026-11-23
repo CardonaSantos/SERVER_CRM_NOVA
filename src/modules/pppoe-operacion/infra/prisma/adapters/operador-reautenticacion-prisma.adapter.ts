@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { PasswordService } from 'src/auth/password/password.service';
+import { stepUpVigentePara } from 'src/auth/step-up/contexto-reautenticacion';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 import {
@@ -44,6 +45,15 @@ export class OperadorReautenticacionPrismaAdapter
 
     if (!usuario?.contrasena) {
       return false;
+    }
+
+    /**
+     * Step-up vigente del mismo operador (D8, transición): el usuario ya
+     * confirmó su contraseña en POST /auth/reautenticar. Sigue exigiéndose
+     * que exista, esté activo y pertenezca a la empresa (consulta de arriba).
+     */
+    if (stepUpVigentePara(params.operadorId)) {
+      return true;
     }
 
     /**

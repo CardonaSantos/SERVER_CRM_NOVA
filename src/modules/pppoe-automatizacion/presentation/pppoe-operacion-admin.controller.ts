@@ -18,7 +18,7 @@ import {
 import type { Request } from 'express';
 
 import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
-import { LimitarIntentosReautenticacion } from 'src/auth/throttling/auth-throttling';
+import { OperacionSensible } from 'src/auth/step-up/operacion-sensible.decorator';
 
 import { PppoeOperacionAdminService } from '../application/services/pppoe-operacion-admin.service';
 
@@ -158,6 +158,7 @@ export class PppoeOperacionAdminController {
    * protegida que continúa en estado PENDIENTE.
    */
   @Post(':operacionId/autorizar')
+  @OperacionSensible({ campoContrasena: 'password' })
   @HttpCode(HttpStatus.OK)
   autorizar(
     @Param('operacionId', ParseIntPipe)
@@ -202,7 +203,7 @@ export class PppoeOperacionAdminController {
    * puede omitirse.
    */
   @Post(':operacionId/reintentar')
-  @LimitarIntentosReautenticacion()
+  @OperacionSensible()
   @HttpCode(HttpStatus.OK)
   reintentar(
     @Param('operacionId', ParseIntPipe)

@@ -40,7 +40,7 @@ import { ClienteDesinstalacionPresenter } from './cliente-desinstalacion.present
 import { ClienteDesinstalacionTecnicoPresenter } from './cliente-desinstalacion-tecnico.presenter';
 import { MarcarFallidaClienteDesinstalacionDto } from '../application/dto/marcar-fallida-cliente-desinstalacion.dto';
 import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
-import { LimitarIntentosReautenticacion } from 'src/auth/throttling/auth-throttling';
+import { OperacionSensible } from 'src/auth/step-up/operacion-sensible.decorator';
 import { SubirEvidenciaDesinstalacionDto } from '../application/dto/subir-evidencia-desinstalacion.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FiltrarAutorizacionesPendientesDto } from '../application/dto/filtrar-autorizaciones-pendientes.dto';
@@ -76,7 +76,7 @@ export class ClienteDesinstalacionController {
   }
 
   @Patch('autorizaciones/:id/aprobar')
-  @LimitarIntentosReautenticacion()
+  @OperacionSensible()
   async aprobarAutorizacion(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AprobarDesinstalacionAutorizacionDto,

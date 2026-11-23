@@ -12,6 +12,8 @@ import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { PasswordService } from './password/password.service';
 import { SesionesService } from './sesiones/sesiones.service';
+import { VIGENCIA_REAUTENTICACION_SEGUNDOS } from './sesiones/sesion.constants';
+import { stepUpVigentePara } from './step-up/contexto-reautenticacion';
 import {
   AuditoriaAuthService,
   ContextoCliente,
@@ -124,10 +126,21 @@ export class AuthService {
     return { resultado: 'OK', usuarioId: usuario.id };
   }
 
+  /**
+   * Confirma la identidad antes de una operación sensible. Camino doble
+   * (D8, transición): si la petición trae un step-up vigente de este mismo
+   * usuario (POST /auth/reautenticar hace ≤ 5 min) no se pide contraseña;
+   * si no, se verifica `contrasenaActual` como siempre.
+   */
   async reautenticarUsuarioPorId(
     usuarioId: number,
     contrasenaActual: string,
   ): Promise<void> {
+    if (Number.isInteger(usuarioId) && stepUpVigentePara(usuarioId)) {
+      this.logger.log(`Usuario ${usuarioId} confirmado por step-up vigente.`);
+      return;
+    }
+
     if (
       !Number.isInteger(usuarioId) ||
       usuarioId <= 0 ||
@@ -153,6 +166,61 @@ export class AuthService {
     }
 
     this.logger.log(`Usuario ${usuarioId} reautenticado correctamente.`);
+  }
+
+  /**
+   * POST /auth/reautenticar (step-up, D8): verifica la contraseña una vez y
+   * emite un access token de la MISMA sesión con amr ['pwd','reauth'] y
+   * auth_time = ahora. Durante 5 min las operaciones sensibles no piden la
+   * contraseña en el body.
+   */
+  async reautenticarSesion(
+    usuario: { id: number; sesionId: string },
+    contrasena: unknown,
+    contexto: ContextoCliente,
+  ) {
+    const valida =
+      typeof contrasena === 'string' &&
+      contrasena.length > 0 &&
+      (await this.userService.validarContrasenaActual(usuario.id, contrasena));
+
+    this.auditoria.registrar({
+      tipo: 'REAUTENTICACION',
+      exitoso: !!valida,
+      motivo: valida ? null : 'CREDENCIALES_INVALIDAS',
+      usuarioId: usuario.id,
+      ...contexto,
+    });
+
+    if (!valida) {
+      this.logger.warn(
+        `Reautenticación fallida para el usuario ${usuario.id}.`,
+      );
+      throw new UnauthorizedException(
+        'No se pudo confirmar la identidad del usuario.',
+      );
+    }
+
+    const datos = await this.sesionesService.usuarioDeSesion(usuario.sesionId);
+
+    if (!datos) {
+      throw new UnauthorizedException('La sesión expiró o fue revocada.');
+    }
+
+    const ahora = new Date();
+    const tokens = this.sesionesService.firmarAccess(
+      datos,
+      usuario.sesionId,
+      ['pwd', 'reauth'],
+      ahora,
+    );
+
+    return {
+      ...tokens,
+      reautenticacion_vigente_hasta: new Date(
+        ahora.getTime() + VIGENCIA_REAUTENTICACION_SEGUNDOS * 1000,
+      ).toISOString(),
+    };
   }
 
   /**

@@ -36,7 +36,7 @@ import type { Request } from 'express';
 import { UseGuards } from '@nestjs/common';
 
 import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
-import { LimitarIntentosReautenticacion } from 'src/auth/throttling/auth-throttling';
+import { OperacionSensible } from 'src/auth/step-up/operacion-sensible.decorator';
 import { FiltrarMisInstalacionesAsignadasDto } from '../application/dto/instalaciones-asignadas';
 import {
   AuthenticatedActor,
@@ -289,7 +289,7 @@ export class ClienteInstalacionController {
   // ACTIVAR EL PPPOE
 
   @Post(':instalacionId/pppoe/activar')
-  @LimitarIntentosReautenticacion()
+  @OperacionSensible()
   @HttpCode(HttpStatus.OK)
   async activarPppoeInstalacion(
     @Param('instalacionId', ParseIntPipe)
