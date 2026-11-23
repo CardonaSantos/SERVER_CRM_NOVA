@@ -6,7 +6,10 @@ import { configurarSwagger } from './swagger/configurar-swagger';
 const port = process.env.PORT || 3000;
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // rawBody: el webhook de Meta firma los bytes exactos del body (HMAC).
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
+  });
 
   /*
    * Cabeceras de seguridad nativas de Nest 12 (mismos defaults que Helmet 8,

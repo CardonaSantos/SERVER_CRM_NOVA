@@ -11,7 +11,14 @@ import {
   Query,
   HttpStatus,
   Res,
+  Req,
+  RawBodyRequest,
 } from '@nestjs/common';
+import type { Request } from 'express';
+import {
+  firmaMetaValida,
+  secretoCoincide,
+} from 'src/common/secretos/comparar-secreto';
 import { WhatsappApiMetaService } from '../application/whatsapp-api-meta.service';
 import { CreateWhatsappApiMetaDto } from '../dto/create-whatsapp-api-meta.dto';
 import { UpdateWhatsappApiMetaDto } from '../dto/update-whatsapp-api-meta.dto';
@@ -57,21 +64,50 @@ export class WhatsappApiMetaController {
     @Query('hub.challenge') challenge: string,
     @Res() res: Response,
   ) {
-    const VERIFY_TOKEN = this.config.get<string>('WHATSAPP_VERIFY_TOKEN');
-    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+    // Falla cerrado si WHATSAPP_VERIFY_TOKEN no está configurado.
+    if (
+      mode === 'subscribe' &&
+      secretoCoincide(token, this.config.get<string>('WHATSAPP_VERIFY_TOKEN'))
+    ) {
       this.logger.log(' Webhook de WhatsApp verificado correctamente');
       return res.status(HttpStatus.OK).send(challenge);
     }
 
-    this.logger.warn(
-      ` Falló la verificación del webhook: mode=${mode}, token=${token}`,
-    );
+    // Nunca registrar el token recibido.
+    this.logger.warn(` Falló la verificación del webhook: mode=${mode}`);
     return res.sendStatus(HttpStatus.FORBIDDEN);
   }
 
+  /**
+   * Webhook de Meta. Es público (@Public) pero exige la firma de Meta:
+   * X-Hub-Signature-256 = HMAC-SHA256(body crudo, META_APP_SECRET).
+   * Sin firma válida (o sin META_APP_SECRET configurado) responde 403 y no
+   * procesa nada: antes cualquiera podía hacer que el servidor llamara a la
+   * IA y enviara WhatsApp al número que quisiera.
+   */
   @Post('webhook')
   @Public()
-  async handleWebhook(@Body() body: any, @Res() res: Response) {
+  async handleWebhook(
+    @Body() body: any,
+    @Res() res: Response,
+    @Req() req: RawBodyRequest<Request>,
+  ) {
+    const secreto = this.config.get<string>('META_APP_SECRET');
+
+    if (!secreto) {
+      this.logger.error(
+        'META_APP_SECRET no está configurado: webhook de Meta rechazado.',
+      );
+      return res.sendStatus(HttpStatus.FORBIDDEN);
+    }
+
+    if (
+      !firmaMetaValida(req.rawBody, req.headers['x-hub-signature-256'], secreto)
+    ) {
+      this.logger.warn('Webhook de Meta rechazado: firma ausente o inválida.');
+      return res.sendStatus(HttpStatus.FORBIDDEN);
+    }
+
     // WhatsApp Cloud API suele enviar object = "whatsapp_business_account"
     if (body.object !== 'whatsapp_business_account') {
       return res.sendStatus(HttpStatus.OK);
