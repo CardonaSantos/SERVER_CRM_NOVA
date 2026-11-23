@@ -8,6 +8,7 @@ import { AuthController } from './auth.controller';
 import { JwtAuthGuard } from './JwtGuard/jwt-auth.guard';
 
 import { UserModule } from 'src/user/user.module';
+import { PrismaModule } from 'src/prisma/prisma.module';
 
 @Module({
   controllers: [AuthController],
@@ -16,6 +17,8 @@ import { UserModule } from 'src/user/user.module';
 
   imports: [
     UserModule,
+
+    PrismaModule,
 
     JwtModule.registerAsync({
       /*

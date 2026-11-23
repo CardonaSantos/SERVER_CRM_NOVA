@@ -19,6 +19,7 @@ import { TicketSeguimientoModule } from './ticket-seguimiento/ticket-seguimiento
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { authThrottlerOptions } from './auth/throttling/auth-throttling';
+import { PasswordModule } from './auth/password/password.module';
 import { ZonaFacturacionCronModule } from './zona-facturacion-cron/zona-facturacion-cron.module';
 import { IdContratoModule } from './id-contrato/id-contrato.module';
 import { RutaCobroModule } from './ruta-cobro/ruta-cobro.module';
@@ -99,6 +100,8 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     ScheduleModule.forRoot(),
     // Solo se aplica donde se usa LimitarIntentos*; no es un guard global.
     ThrottlerModule.forRoot(authThrottlerOptions),
+    // Global: hash/verificación de contraseñas (scrypt + bcrypt heredado).
+    PasswordModule,
     // TerminusModule,
     ZonaFacturacionCronModule,
     IdContratoModule,

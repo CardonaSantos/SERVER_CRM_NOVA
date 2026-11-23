@@ -8,8 +8,9 @@ import {
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { UserService } from 'src/user/app/user.service';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcryptjs'; // Asegúrate de usar siempre bcryptjs
 import { throwFatalError } from 'src/Utils/CommonFatalError';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { PasswordService } from './password/password.service';
 
 @Injectable()
 export class AuthService {
@@ -18,7 +19,38 @@ export class AuthService {
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
+    private readonly passwordService: PasswordService,
+    private readonly prisma: PrismaService,
   ) {}
+
+  /**
+   * Migración por needsRehash (D9): tras un login correcto, si el hash es
+   * bcrypt o scrypt con parámetros viejos, se reemplaza por uno vigente.
+   * Un fallo aquí no bloquea el login: se reintenta en el próximo.
+   */
+  private async rehashSiHaceFalta(
+    usuarioId: number,
+    contrasena: string,
+    hashActual: string,
+  ): Promise<void> {
+    if (!this.passwordService.needsRehash(hashActual)) return;
+
+    try {
+      await this.prisma.usuario.update({
+        where: { id: usuarioId },
+        data: { contrasena: await this.passwordService.hash(contrasena) },
+      });
+      this.logger.log(
+        `Hash de contraseña migrado a scrypt: usuario ${usuarioId}`,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `No se pudo migrar el hash del usuario ${usuarioId}: ${
+          error instanceof Error ? error.message : 'error desconocido'
+        }`,
+      );
+    }
+  }
 
   // Helper para limpiar entradas (CRÍTICO PARA PRODUCCIÓN)
   private sanitizeEmail(email: string): string {
@@ -45,8 +77,11 @@ export class AuthService {
       throw new UnauthorizedException('Este usuario está desactivado');
     }
 
-    // Comparamos contraseña
-    const isMatch = await bcrypt.compare(contrasena, usuario.contrasena);
+    // scrypt o bcrypt heredado
+    const isMatch = await this.passwordService.verify(
+      contrasena,
+      usuario.contrasena,
+    );
 
     if (!isMatch) {
       this.logger.warn(
@@ -56,6 +91,8 @@ export class AuthService {
     }
 
     this.logger.log(`Usuario validado correctamente: ${usuario.id}`);
+
+    await this.rehashSiHaceFalta(usuario.id, contrasena, usuario.contrasena);
 
     // Eliminamos la contraseña del objeto retornado por seguridad
     const { contrasena: _, ...result } = usuario;
@@ -192,9 +229,8 @@ export class AuthService {
         throw new ConflictException('El correo ya está registrado');
       }
 
-      // 2. Hashear contraseña
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(contrasena, salt);
+      // 2. Hashear contraseña (scrypt)
+      const hashedPassword = await this.passwordService.hash(contrasena);
 
       // 3. Crear usuario
       const obj = {

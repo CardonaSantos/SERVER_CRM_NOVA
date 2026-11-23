@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import bcrypt from 'bcryptjs';
 
+import { PasswordService } from 'src/auth/password/password.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 import {
@@ -16,7 +16,10 @@ import {
 export class OperadorReautenticacionPrismaAdapter
   implements OperadorReautenticacionPort
 {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly passwordService: PasswordService,
+  ) {}
 
   async validar(
     params: ValidarReautenticacionOperadorParams,
@@ -43,15 +46,11 @@ export class OperadorReautenticacionPrismaAdapter
       return false;
     }
 
-    try {
-      return await bcrypt.compare(params.password, usuario.contrasena);
-    } catch {
-      /**
-       * Un hash inválido o corrupto se trata como
-       * una autenticación rechazada.
-       */
-      return false;
-    }
+    /**
+     * scrypt o bcrypt heredado. Un hash inválido o corrupto se trata
+     * como una autenticación rechazada (verify nunca lanza).
+     */
+    return this.passwordService.verify(params.password, usuario.contrasena);
   }
 
   /**

@@ -16,7 +16,7 @@ import {
   USUARIO_PROFILE_PORT,
 } from './domain/ports/usuario-profile.port';
 import { USUARIO_REPOSITORY } from './domain/user-repository';
-import { BcryptPasswordHasherAdapter } from './infraestructure/bcrypt-password-hasher.adapter';
+import { PasswordService } from 'src/auth/password/password.service';
 import { PerfilServiceAdapter } from './infraestructure/perfil-service.adapter';
 import { PrismaUsuarioRepository } from './infraestructure/prisma-user.repository';
 import { UserController } from './presentation/user.controller';
@@ -39,8 +39,9 @@ import { UserController } from './presentation/user.controller';
       useClass: PrismaUsuarioRepository,
     },
     {
+      // scrypt para hashes nuevos; verifica también bcrypt heredado (D9).
       provide: PASSWORD_HASHER,
-      useClass: BcryptPasswordHasherAdapter,
+      useExisting: PasswordService,
     },
     {
       provide: USUARIO_PROFILE_PORT,

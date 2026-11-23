@@ -9,7 +9,8 @@ import {
 
 import { ConfigService } from '@nestjs/config';
 import { NodeSSH } from 'node-ssh';
-import * as bcrypt from 'bcryptjs';
+
+import { PasswordService } from 'src/auth/password/password.service';
 
 import { SuspendCustomerDto } from '../dto/create-ssh-mikrotik-connection.dto';
 import { ActivateCustomerDto } from '../dto/activate-ssh-mikrotik.dto';
@@ -42,6 +43,8 @@ export class SshMikrotikConnectionService {
 
     @Inject(MIKROTIK_ROUTER_CONNECTION_CONTEXT)
     private readonly routerContext: MikrotikRouterConnectionContextPort,
+
+    private readonly passwordService: PasswordService,
   ) {}
 
   /**
@@ -197,10 +200,10 @@ export class SshMikrotikConnectionService {
      *
      * Esto NO tiene relación con la contraseña SSH.
      *
-     * Aquí bcrypt verifica la contraseña del usuario
-     * del CRM.
+     * Aquí PasswordService (scrypt o bcrypt heredado) verifica la
+     * contraseña del usuario del CRM.
      */
-    const isValidPassword = await bcrypt.compare(
+    const isValidPassword = await this.passwordService.verify(
       dto.password,
       usuarioAdmin.contrasena,
     );
@@ -343,7 +346,7 @@ export class SshMikrotikConnectionService {
      * solamente cuando el flujo lo exige.
      */
     if (dto.isPasswordRequired === true) {
-      const isValidPassword = await bcrypt.compare(
+      const isValidPassword = await this.passwordService.verify(
         dto.password,
         usuarioAdmin.contrasena,
       );
