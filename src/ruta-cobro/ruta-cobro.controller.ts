@@ -1,3 +1,5 @@
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 import {
   Controller,
   Get,
@@ -21,6 +23,7 @@ import { CreateNewRutaDto } from './dto/create-new-ruta.dto';
 import { Response } from 'express';
 import { queryRutasDto } from './dto/query';
 
+@UseGuards(JwtAuthGuard)
 @Controller('ruta-cobro')
 export class RutaCobroController {
   private logger = new Logger(RutaCobroController.name);

@@ -1,3 +1,5 @@
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 import {
   Controller,
   Get,
@@ -19,6 +21,7 @@ import { Response } from 'express';
 import { QueryCobranzaReport } from '../dto/cobranza-query-report';
 import { QueryTicketsDailyReportDto } from '../dto/ticket-metricas.dto';
 
+@UseGuards(JwtAuthGuard)
 @Controller('generate-reports')
 export class GenerateReportsController {
   constructor(
