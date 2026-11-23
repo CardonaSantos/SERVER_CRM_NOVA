@@ -1,3 +1,4 @@
+import { EndpointRetirado } from 'src/common/endpoint-retirado/endpoint-retirado.decorator';
 import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 import { Controller, Get } from '@nestjs/common';
@@ -13,6 +14,7 @@ export class CustomerPayloadController {
   ) {}
 
   @Get('/importar-excel')
+  @EndpointRetirado()
   async importarDesdeRutaLocal() {
     // const ruta = join(process.cwd(), 'assets', 'ClientesIntegrados.xlsx');
 
@@ -24,6 +26,7 @@ export class CustomerPayloadController {
 
   // Ejemplo de controlador que usa la función:
   @Get('/importar-csv')
+  @EndpointRetirado()
   async importarDesdeCSV() {
     const ruta = join(
       process.cwd(),

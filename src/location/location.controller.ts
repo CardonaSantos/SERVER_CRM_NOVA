@@ -1,3 +1,4 @@
+import { EndpointRetirado } from 'src/common/endpoint-retirado/endpoint-retirado.decorator';
 import {
   Controller,
   Get,
@@ -46,6 +47,7 @@ export class LocationController {
   }
 
   @Get('/delete-all')
+  @EndpointRetirado()
   deleteAll() {
     return this.locationService.deleteAllMunicipios();
   }

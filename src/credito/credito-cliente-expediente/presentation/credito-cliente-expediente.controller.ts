@@ -1,3 +1,4 @@
+import { EndpointRetirado } from 'src/common/endpoint-retirado/endpoint-retirado.decorator';
 import {
   Controller,
   Post,
@@ -72,6 +73,7 @@ export class CreditoClienteExpedienteController {
   }
 
   @Delete('delete-all-archivo')
+  @EndpointRetirado()
   async deleteAllArchivos() {
     return this.creditoClienteExpedienteService.deleteAllArchivos();
   }

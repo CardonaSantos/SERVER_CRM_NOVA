@@ -1,3 +1,4 @@
+import { EndpointRetirado } from 'src/common/endpoint-retirado/endpoint-retirado.decorator';
 import {
   Controller,
   Get,
@@ -74,6 +75,7 @@ export class TicketsSoporteController {
   }
 
   @Delete('/delete-all')
+  @EndpointRetirado()
   removeAll() {
     return this.ticketsSoporteService.removeAll();
   }

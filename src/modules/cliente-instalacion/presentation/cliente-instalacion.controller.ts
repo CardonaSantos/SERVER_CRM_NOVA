@@ -1,3 +1,4 @@
+import { EndpointRetirado } from 'src/common/endpoint-retirado/endpoint-retirado.decorator';
 import {
   Body,
   Controller,
@@ -444,6 +445,7 @@ export class ClienteInstalacionController {
   }
 
   @Delete('delete-all')
+  @EndpointRetirado()
   async deleteAll() {
     const detalle = await this.clienteInstalacionService.deleteAll();
     return detalle;

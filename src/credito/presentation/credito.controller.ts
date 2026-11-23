@@ -1,3 +1,4 @@
+import { EndpointRetirado } from 'src/common/endpoint-retirado/endpoint-retirado.decorator';
 import {
   Controller,
   Get,
@@ -76,6 +77,7 @@ export class CreditoController {
    * @returns
    */
   @Delete('delete-all')
+  @EndpointRetirado()
   async deleteAll() {
     return await this.creditoService.deleteAll();
   }

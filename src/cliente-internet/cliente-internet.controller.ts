@@ -1,3 +1,4 @@
+import { EndpointRetirado } from 'src/common/endpoint-retirado/endpoint-retirado.decorator';
 import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 import {
@@ -110,6 +111,7 @@ export class ClienteInternetController {
   }
 
   @Delete('/delete-all')
+  @EndpointRetirado()
   deleteAllClientesInternet() {
     return this.clienteInternetService.deleteClientsWithRelations();
   }

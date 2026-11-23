@@ -1,3 +1,4 @@
+import { EndpointRetirado } from 'src/common/endpoint-retirado/endpoint-retirado.decorator';
 import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 import {
@@ -152,6 +153,7 @@ export class FacturacionController {
   }
 
   @Delete('/delete-all-march')
+  @EndpointRetirado()
   removeAllFacturasMarzo() {
     return this.facturacionService.removeManyFacturasMarch();
   }
