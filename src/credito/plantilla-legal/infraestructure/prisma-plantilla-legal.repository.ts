@@ -161,7 +161,6 @@ export class PrismaPlantillaLegalRepository
       });
 
       // LOG DE CONTROL
-      this.logger.debug(`Datos de Prisma: ${JSON.stringify(credito)}`);
 
       if (!credito) throw new Error('Crédito no encontrado');
 

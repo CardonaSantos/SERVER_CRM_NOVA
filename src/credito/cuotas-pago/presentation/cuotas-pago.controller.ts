@@ -39,7 +39,6 @@ export class CuotasPagoController {
     }),
   )
   async deletePagoCuota(@Body() dto: DeletePagoCuotaDto) {
-    this.logger.log(`DTO recibido:\n${JSON.stringify(dto, null, 2)}`);
     return this.cuotasPagoService.deletePago(dto.pagoCuotaId);
   }
 
@@ -52,8 +51,6 @@ export class CuotasPagoController {
     }),
   )
   async pagoMoraCuota(@Body() dto: PayMoraCuotaDto) {
-    this.logger.log(`DTO recibido:\n${JSON.stringify(dto, null, 2)}`);
-
     return this.cuotasPagoService.papagoMoraCuotay(dto);
   }
 }

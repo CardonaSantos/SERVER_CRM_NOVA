@@ -52,7 +52,6 @@ export class PrismaVerifyCustomerRepository
 
       if (!customer) throw new NotFoundException('Cliente no encontrado');
 
-      this.logger.log(`USUARIO:\n${JSON.stringify(customer, null, 2)}`);
       const facturas = customer.facturaInternet;
       this.logger.log(`Facturas encontradas: ${facturas.length}`);
 

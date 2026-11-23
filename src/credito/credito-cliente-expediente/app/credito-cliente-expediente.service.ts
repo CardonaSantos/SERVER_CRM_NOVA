@@ -190,8 +190,6 @@ export class CreditoClienteExpedienteService {
       },
     });
 
-    this.logger.log(`El expediente: \n${JSON.stringify(expediente, null, 2)}`);
-
     if (!expediente) {
       return {
         mensaje: 'El cliente aún no tiene expediente',

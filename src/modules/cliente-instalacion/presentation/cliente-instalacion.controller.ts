@@ -81,8 +81,6 @@ export class ClienteInstalacionController {
     @Req()
     req: AuthenticatedRequest,
   ) {
-    this.logger.log(`DTO recibido:\n${JSON.stringify(dto, null, 2)}`);
-
     const actor = this.getAuthenticatedActor(req);
 
     const result = await this.clienteInstalacionService.crear(
@@ -180,7 +178,6 @@ export class ClienteInstalacionController {
   @Get()
   async listar(@Query() query: FiltrarClienteInstalacionesDto) {
     const result = await this.clienteInstalacionService.listar(query);
-    this.logger.log(`result recibido:\n${JSON.stringify(result, null, 2)}`);
     return ClienteInstalacionPresenter.paginatedToHttp(result);
   }
 

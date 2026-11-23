@@ -60,7 +60,7 @@ export class CloudApiMetaService {
           },
         }),
       );
-      this.logger.log(`Mensaje enviado a ${payload.to}: ${response.status}`);
+      this.logger.log(`Mensaje enviado: ${response.status}`);
       return response.data;
     } catch (error) {
       if (error instanceof AxiosError) {
@@ -88,7 +88,7 @@ export class CloudApiMetaService {
         }),
       );
 
-      this.logger.log(`Mensaje enviado a ${payload.to}: ${response.status}`);
+      this.logger.log(`Mensaje enviado: ${response.status}`);
 
       return response.data;
     } catch (error) {
@@ -96,7 +96,7 @@ export class CloudApiMetaService {
         const metaError = error.response?.data;
 
         this.logger.error(
-          `Error enviando a Meta para ${payload.to}. Status: ${error.response?.status}`,
+          `Error enviando a Meta. Status: ${error.response?.status}`,
         );
 
         this.logger.error(

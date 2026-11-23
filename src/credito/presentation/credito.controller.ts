@@ -34,7 +34,6 @@ export class CreditoController {
     }),
   )
   create(@Body() dto: CrearCreditoDto) {
-    this.logger.log(`DTO recibido:\n${JSON.stringify(dto, null, 2)}`);
     return this.creditoService.create(dto);
   }
 

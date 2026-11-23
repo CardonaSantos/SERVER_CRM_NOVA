@@ -363,7 +363,6 @@ export class MetasTicketsService {
       },
     });
     this.logger.debug(`Tickets resueltos encontrados: ${tickets.length}`);
-    this.logger.debug('Detalle de tickets:', JSON.stringify(tickets, null, 2));
 
     // 3) Construir mapa [nombreTecnico] -> { dia: cantidad }
     const mapa = tickets.reduce<Record<string, Record<number, number>>>(

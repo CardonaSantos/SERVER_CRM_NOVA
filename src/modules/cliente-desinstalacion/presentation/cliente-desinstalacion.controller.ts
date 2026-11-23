@@ -120,8 +120,6 @@ export class ClienteDesinstalacionController {
       creadoPorId,
     );
 
-    this.logger.log(`DTO recibido:\n${JSON.stringify(dto, null, 2)}`);
-
     return ClienteDesinstalacionPresenter.crearToHttp(result);
   }
 

@@ -59,8 +59,6 @@ export class ClienteInternetService {
 
   async create(dto: CreateClienteInternetDto) {
     try {
-      this.logger.log(`DTO recibido:\n${JSON.stringify(dto, null, 2)}`);
-
       const result = await this.createClienteTransactional(dto);
 
       await this.handlePostCreationProcesses(dto, result.cliente.id);
@@ -1413,8 +1411,6 @@ export class ClienteInternetService {
       zonasFacturacionSelected,
       estadoCobranzaSelected,
     } = dto;
-
-    this.logger.log(`DTO en tabla:\n${JSON.stringify(dto, null, 2)}`);
 
     const skip = (page - 1) * limite;
 

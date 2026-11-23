@@ -40,7 +40,6 @@ export class CreditoClienteExpedienteController {
   ) {
     this.logger.log(`--- Debug Upload Cliente ${clienteId} ---`);
     this.logger.log(`Archivos recibidos: ${files?.length || 0}`);
-    this.logger.log(`Cuerpo del DTO (Raw): ${JSON.stringify(dto, null, 2)}`);
 
     if (!files || files.length === 0) {
       throw new BadRequestException('No se enviaron archivos');

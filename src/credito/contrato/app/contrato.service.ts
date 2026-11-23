@@ -17,8 +17,6 @@ export class ContratoService {
   ) {}
 
   async create(dto: CreateContratoDto) {
-    this.logger.log(`DTO recibido:\n${JSON.stringify(dto, null, 2)}`);
-
     const contrato = Contrato.crear({
       contenido: dto.contenido,
       creditoId: dto.creditoId,

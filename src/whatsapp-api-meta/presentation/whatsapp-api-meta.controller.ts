@@ -69,8 +69,6 @@ export class WhatsappApiMetaController {
 
   @Post('webhook')
   async handleWebhook(@Body() body: any, @Res() res: Response) {
-    this.logger.debug(`📩 Webhook recibido: ${JSON.stringify(body)}`);
-
     // WhatsApp Cloud API suele enviar object = "whatsapp_business_account"
     if (body.object !== 'whatsapp_business_account') {
       return res.sendStatus(HttpStatus.OK);

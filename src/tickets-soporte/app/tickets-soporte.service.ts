@@ -487,7 +487,6 @@ export class TicketsSoporteService {
     ];
 
     const telefonos = formatearTelefonosMeta(telefonosRaw).filter(Boolean);
-    this.logger.log('Los telefonos a usar son: ', telefonos);
     try {
       for (const telefono of telefonos) {
         const payload = this.cloudApi.crearPayloadTicket(
@@ -524,7 +523,6 @@ export class TicketsSoporteService {
         });
       });
 
-      this.logger.log(`Ticket creado:\n${JSON.stringify(ticket, null, 2)}`);
       return ticket;
     } catch (error) {
       throwFatalError(error, this.logger, 'TicketSoporte -createBotTicket');
@@ -2190,8 +2188,6 @@ export class TicketsSoporteService {
   // ===================== CLOSE =====================
   async closeTickets(id: number, dto: CloseTicketDto) {
     try {
-      this.logger.log(`DTO CIERRE DE TICKET:\n${JSON.stringify(dto, null, 2)}`);
-
       // =====================================================
       // INSTANTE ÚNICO DE CIERRE
       // =====================================================

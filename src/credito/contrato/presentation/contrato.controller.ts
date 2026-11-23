@@ -30,7 +30,6 @@ export class ContratoController {
     }),
   )
   async create(@Body() dto: CreateContratoDto) {
-    this.logger.log(`DTO recibido:\n${JSON.stringify(dto, null, 2)}`);
     return await this.contratoService.create(dto);
   }
 
