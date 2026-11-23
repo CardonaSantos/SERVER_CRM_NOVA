@@ -1,13 +1,6 @@
-import {
-  Body,
-  Controller,
-  Headers,
-  Post,
-  UnauthorizedException,
-  Logger, // Opcional: para loguear si falta la config
-} from '@nestjs/common';
+import { Body, Controller, Post } from '@nestjs/common';
 import { WebSocketServices } from './websocket.service';
-import { ConfigService } from '@nestjs/config';
+import { RequiereSecretoInterno } from 'src/common/secretos/secreto-interno.guard';
 
 export interface BroadCastNewMessage {
   event: string;
@@ -16,32 +9,17 @@ export interface BroadCastNewMessage {
 
 @Controller('internal/server')
 export class WebSocketController {
-  private readonly logger = new Logger(WebSocketController.name);
+  constructor(private readonly gatewayService: WebSocketServices) {}
 
-  constructor(
-    private readonly gatewayService: WebSocketServices,
-    private readonly config: ConfigService,
-  ) {}
-
+  /**
+   * Integración servidor a servidor (Nuvia): sin JWT, autenticada con
+   * x-internal-secret en un guard (falla cerrado si INTERNAL_SECRET no está
+   * configurado). El body es una interfaz a propósito: lo envía otro
+   * servidor y no se valida para no romperlo.
+   */
   @Post('broadcast')
-  async broadcastEvent(
-    @Body() body: BroadCastNewMessage,
-    @Headers('x-internal-secret') secret: string,
-  ) {
-    const configSecret = this.config.get<string>('INTERNAL_SECRET');
-
-    // 1. Seguridad: Si el servidor no tiene configurada la clave, bloqueamos todo por precaución.
-    if (!configSecret) {
-      this.logger.error(
-        'CRITICAL: INTERNAL_SECRET no está configurado en el .env',
-      );
-      throw new UnauthorizedException('Server misconfiguration');
-    }
-
-    if (secret !== configSecret) {
-      throw new UnauthorizedException();
-    }
-
+  @RequiereSecretoInterno()
+  broadcastEvent(@Body() body: BroadCastNewMessage) {
     this.gatewayService.emitNewMessageNuvia(body);
 
     return { ok: true };

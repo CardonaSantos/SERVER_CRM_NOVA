@@ -1,40 +1,19 @@
-import { Public } from 'src/auth/decoradores/public.decorator';
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  Headers,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Body, Controller, Post } from '@nestjs/common';
 import { CreateBotFunctionDto } from '../dto/create-bot-function.dto';
-import { UpdateBotFunctionDto } from '../dto/update-bot-function.dto';
 import { BotFunctionsService } from '../app/bot-functions.service';
-import { ConfigService } from '@nestjs/config';
-import { secretoCoincide } from 'src/common/secretos/comparar-secreto';
+import { RequiereSecretoInterno } from 'src/common/secretos/secreto-interno.guard';
 
 @Controller('crm-bot-functions')
 export class BotFunctionsController {
-  constructor(
-    private readonly botFunctionsService: BotFunctionsService,
+  constructor(private readonly botFunctionsService: BotFunctionsService) {}
 
-    private readonly config: ConfigService,
-  ) {}
-
+  /**
+   * Bot externo. Sin JWT: se autentica con x-internal-secret en un guard,
+   * antes de validar el body (sin secreto válido → 401).
+   */
   @Post('create-ticket')
-  @Public()
-  create(
-    @Body() createBotFunctionDto: CreateBotFunctionDto,
-    @Headers('x-internal-secret') secretKey: string,
-  ) {
-    // Falla cerrado si INTERNAL_SECRET no está configurado; tiempo constante.
-    if (!secretoCoincide(secretKey, this.config.get('INTERNAL_SECRET'))) {
-      throw new UnauthorizedException('TOKEN NO AUTORIZADO');
-    }
-
+  @RequiereSecretoInterno()
+  create(@Body() createBotFunctionDto: CreateBotFunctionDto) {
     return this.botFunctionsService.create(createBotFunctionDto);
   }
 }
