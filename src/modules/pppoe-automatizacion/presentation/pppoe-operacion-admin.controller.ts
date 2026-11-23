@@ -18,6 +18,7 @@ import {
 import type { Request } from 'express';
 
 import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
+import { LimitarIntentosReautenticacion } from 'src/auth/throttling/auth-throttling';
 
 import { PppoeOperacionAdminService } from '../application/services/pppoe-operacion-admin.service';
 
@@ -201,6 +202,7 @@ export class PppoeOperacionAdminController {
    * puede omitirse.
    */
   @Post(':operacionId/reintentar')
+  @LimitarIntentosReautenticacion()
   @HttpCode(HttpStatus.OK)
   reintentar(
     @Param('operacionId', ParseIntPipe)

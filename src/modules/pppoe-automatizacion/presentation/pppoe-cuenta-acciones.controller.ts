@@ -16,6 +16,7 @@ import {
 import type { Request } from 'express';
 
 import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
+import { LimitarIntentosReautenticacion } from 'src/auth/throttling/auth-throttling';
 
 import { PppoeOperacionAdminService } from '../application/services/pppoe-operacion-admin.service';
 
@@ -81,6 +82,7 @@ export class PppoeCuentaAccionesController {
    *
    */
   @Post(':cuentaPppoeId/suspender')
+  @LimitarIntentosReautenticacion()
   @HttpCode(HttpStatus.OK)
   suspender(
     @Param('cuentaPppoeId', ParseIntPipe)
@@ -134,6 +136,7 @@ export class PppoeCuentaAccionesController {
    * - la instalación que originó el acceso.
    */
   @Post(':cuentaPppoeId/reactivar')
+  @LimitarIntentosReautenticacion()
   @HttpCode(HttpStatus.OK)
   reactivar(
     @Param('cuentaPppoeId', ParseIntPipe)
@@ -193,6 +196,7 @@ export class PppoeCuentaAccionesController {
    * en la fachada administrativa.
    */
   @Post(':cuentaPppoeId/dar-de-baja')
+  @LimitarIntentosReautenticacion()
   @HttpCode(HttpStatus.OK)
   darDeBaja(
     @Param('cuentaPppoeId', ParseIntPipe)

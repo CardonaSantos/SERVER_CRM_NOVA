@@ -16,6 +16,7 @@ import {
 import type { Request } from 'express';
 
 import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
+import { LimitarIntentosReautenticacion } from 'src/auth/throttling/auth-throttling';
 
 import { PppoeCuentaProvisionamientoAdminService } from '../application/services/pppoe-cuenta-provisionamiento-admin.service';
 
@@ -146,6 +147,7 @@ export class PppoeCuentaProvisionamientoController {
    * antes de ejecutar cualquier operación técnica.
    */
   @Post(':cuentaPppoeId/provisionar')
+  @LimitarIntentosReautenticacion()
   @HttpCode(HttpStatus.OK)
   provisionar(
     @Param('cuentaPppoeId', ParseIntPipe)

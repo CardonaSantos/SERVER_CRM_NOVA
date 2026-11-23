@@ -19,6 +19,7 @@ import { AuthService } from './auth.service';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { LoginDto } from './dto/login.dto'; // Asumo que tienes este DTO
 import { JwtAuthGuard } from './JwtGuard/jwt-auth.guard';
+import { LimitarIntentosLogin } from './throttling/auth-throttling';
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -67,6 +68,7 @@ export class AuthController {
   }
 
   @Post('/login-user')
+  @LimitarIntentosLogin()
   @HttpCode(HttpStatus.OK)
   async loginUserWithAuth(@Body() loginUserDto: LoginDto) {
     console.log(`Intento de login para: ${loginUserDto.correo}`);

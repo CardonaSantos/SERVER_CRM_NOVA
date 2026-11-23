@@ -17,6 +17,8 @@ import { TagsTicketModule } from './tags-ticket/tags-ticket.module';
 import { TicketsSoporteModule } from './tickets-soporte/tickets-soporte.module';
 import { TicketSeguimientoModule } from './ticket-seguimiento/ticket-seguimiento.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { authThrottlerOptions } from './auth/throttling/auth-throttling';
 import { ZonaFacturacionCronModule } from './zona-facturacion-cron/zona-facturacion-cron.module';
 import { IdContratoModule } from './id-contrato/id-contrato.module';
 import { RutaCobroModule } from './ruta-cobro/ruta-cobro.module';
@@ -95,6 +97,8 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     TicketSeguimientoModule,
     //PARA EL CRON
     ScheduleModule.forRoot(),
+    // Solo se aplica donde se usa LimitarIntentos*; no es un guard global.
+    ThrottlerModule.forRoot(authThrottlerOptions),
     // TerminusModule,
     ZonaFacturacionCronModule,
     IdContratoModule,
