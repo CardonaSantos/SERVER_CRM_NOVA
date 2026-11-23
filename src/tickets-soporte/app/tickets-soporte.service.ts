@@ -32,7 +32,6 @@ import { dayjs } from '../../Utils/dayjs.config';
 import { TicketResumenService } from 'src/ticket-resumen/app/ticket-resumen.service';
 import { CreateTicketResumenDto } from 'src/ticket-resumen/dto/create-ticket-resuman.dto';
 import { QuerySearchTickets } from '../dto/querySearch';
-import { query } from 'express';
 import { TZ } from 'src/Utils/tzgt';
 import { TicketFirmaTipo } from 'src/modules/ticket-soporte-conformidad/domain/enums/ticket-firma-tipo.enum';
 import { FirebasePushService } from 'src/push-notifications/infra/firebase-push.service';
