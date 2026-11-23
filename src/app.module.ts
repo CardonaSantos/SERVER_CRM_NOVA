@@ -22,6 +22,7 @@ import { authThrottlerOptions } from './auth/throttling/auth-throttling';
 import { PasswordModule } from './auth/password/password.module';
 import { SesionesModule } from './auth/sesiones/sesiones.module';
 import { ValidacionModule } from './common/validacion/validacion.module';
+import { ExcepcionesModule } from './common/excepciones/excepciones.module';
 import { ZonaFacturacionCronModule } from './zona-facturacion-cron/zona-facturacion-cron.module';
 import { IdContratoModule } from './id-contrato/id-contrato.module';
 import { RutaCobroModule } from './ruta-cobro/ruta-cobro.module';
@@ -108,6 +109,8 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     SesionesModule,
     // ValidationPipe global (VALIDACION_MODO: observacion | estricto).
     ValidacionModule,
+    // Filtro global: los 500 nunca exponen stack ni detalle interno.
+    ExcepcionesModule,
     // TerminusModule,
     ZonaFacturacionCronModule,
     IdContratoModule,
