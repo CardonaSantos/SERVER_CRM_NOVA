@@ -15,30 +15,32 @@ const PRIMITIVOS: unknown[] = [String, Number, Boolean, Array, Object];
 const MAX_CAMPOS_LOG = 15;
 
 /**
- * ValidationPipe global (etapa 7), mismo esquema que el guard global:
+ * ValidationPipe global, mismo esquema que el guard global:
  *
- * - 'observacion' (por omisión): NO transforma ni rechaza. Para cada
- *   @Body()/@Query() con DTO calcula qué haría el pipe estricto y lo
- *   registra: campos que `whitelist` borraría y reglas que fallarían.
- *   Solo nombres de campo y de regla, nunca valores. Deduplicado por DTO.
- *   Con ese log se corrigen los DTOs legacy antes de encenderlo.
- * - 'estricto' (VALIDACION_MODO=estricto): ValidationPipe con transform,
- *   conversión implícita de tipos y whitelist (forbidNonWhitelisted se
- *   decide módulo por módulo, no aquí). Se activa en la etapa 8.
+ * - 'estricto' (por omisión desde la etapa 8, decisión del dueño):
+ *   transform + whitelist + forbidNonWhitelisted. Un campo no declarado en
+ *   el DTO responde 400 en vez de perderse en silencio.
+ *   SIN conversión implícita (decisión del dueño, se aparta de la guía):
+ *   enableImplicitConversion rompía en silencio las @Transform existentes
+ *   ("false" llegaba como true) y convertía "" en 0. Las conversiones van
+ *   explícitas en cada DTO con @Type / @Transform.
+ * - 'observacion' (solo con VALIDACION_MODO=observacion): no transforma ni
+ *   rechaza; registra qué haría el modo estricto (solo nombres de campo y
+ *   regla, nunca valores; deduplicado por DTO).
  *
- * Las rutas que ya tienen su propio ValidationPipe siguen validando igual.
+ * Las rutas con ValidationPipe propio lo aplican después de este.
  */
 @Injectable()
 export class ValidacionGlobalPipe implements PipeTransform {
   private readonly logger = new Logger('ValidacionGlobal');
 
   readonly modo: ModoValidacion =
-    process.env.VALIDACION_MODO === 'estricto' ? 'estricto' : 'observacion';
+    process.env.VALIDACION_MODO === 'observacion' ? 'observacion' : 'estricto';
 
   private readonly estricto = new ValidationPipe({
     transform: true,
     whitelist: true,
-    transformOptions: { enableImplicitConversion: true },
+    forbidNonWhitelisted: true,
   });
 
   private readonly vistos = new Map<
@@ -49,7 +51,7 @@ export class ValidacionGlobalPipe implements PipeTransform {
   constructor() {
     this.logger.log(
       this.modo === 'estricto'
-        ? 'ValidationPipe global en modo ESTRICTO (transform + whitelist).'
+        ? 'ValidationPipe global en modo ESTRICTO (transform + whitelist + forbidNonWhitelisted).'
         : 'ValidationPipe global en modo OBSERVACIÓN: registra, no transforma ni rechaza.',
     );
   }
@@ -82,9 +84,8 @@ export class ValidacionGlobalPipe implements PipeTransform {
       return;
     }
 
-    const instancia = plainToInstance(metatype, value, {
-      enableImplicitConversion: true,
-    }) as object;
+    // Misma conversión que el modo estricto (sin conversión implícita).
+    const instancia = plainToInstance(metatype, value) as object;
 
     const errores = await validate(instancia, {
       whitelist: true,
