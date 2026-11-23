@@ -1,4 +1,4 @@
-import { PartialType } from '@nestjs/mapped-types';
+import { PartialType } from '@nestjs/swagger';
 import { CreateMetasTicketDto } from './create-metas-ticket.dto';
 import { EstadoMetaTicket } from '@prisma/client';
 

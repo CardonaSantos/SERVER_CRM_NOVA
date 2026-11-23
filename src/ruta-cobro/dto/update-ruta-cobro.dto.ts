@@ -1,4 +1,4 @@
-import { PartialType } from '@nestjs/mapped-types';
+import { PartialType } from '@nestjs/swagger';
 import { ClienteInternet, Empresa, EstadoRuta, Usuario } from '@prisma/client';
 import { IsArray, IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
 

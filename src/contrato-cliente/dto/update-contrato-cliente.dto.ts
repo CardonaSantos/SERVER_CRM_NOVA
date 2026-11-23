@@ -1,4 +1,4 @@
-import { PartialType } from '@nestjs/mapped-types';
+import { PartialType } from '@nestjs/swagger';
 import { CreateContratoClienteDto } from './create-contrato-cliente.dto';
 import { IsInt } from 'class-validator';
 
