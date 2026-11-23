@@ -1,10 +1,30 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 const port = process.env.PORT || 3000;
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  /*
+   * Railway pone un proxy delante: sin esto req.ip es la IP del proxy y el
+   * throttler limitaría a todos los clientes como si fueran uno solo.
+   * 1 = confiar solo en el primer salto (el proxy de Railway).
+   */
+  app.set('trust proxy', 1);
+
+  /*
+   * Cabeceras de seguridad. CORP en cross-origin: el front vive en otro
+   * dominio y carga medios servidos por la API (p. ej. twilio-api).
+   * En la etapa 4 se reemplaza por app.useSecurityHeaders() de Nest 12.
+   */
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
 
   const allowlist = new Set<string>([
     'http://localhost:5173',
