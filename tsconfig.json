@@ -18,6 +18,10 @@
 
     "incremental": true,
     "skipLibCheck": true,
+
+    "strict": false,
+    "types": ["node", "jest", "multer"],
+
     "strictNullChecks": false,
     "noImplicitAny": false,
     "strictBindCallApply": false,
