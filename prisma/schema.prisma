@@ -183,6 +183,109 @@ model Usuario {
   pushDispositivos UsuarioPushDispositivo[]
 
   ticketHistorialCambios TicketSoporteHistorial[] @relation("TicketHistorialUsuario")
+
+  sesiones              SesionUsuario[]
+  intentosAutenticacion IntentoAutenticacion[]
+}
+
+// =====================================================================
+// AUTENTICACIÓN: sesiones, refresh tokens e intentos
+// =====================================================================
+
+enum PlataformaSesion {
+  WEB
+  ANDROID
+}
+
+/// Una sesión por login. Su id viaja en el access token (claim `sid`) y el
+/// guard la consulta en cada petición: revocarla corta el acceso aunque el
+/// JWT siga vigente. Doble TTL: inactividad (deslizante) y absoluto.
+/// Es también la "familia" de refresh tokens: reutilizar un refresh ya
+/// rotado revoca la sesión completa.
+model SesionUsuario {
+  id String @id @default(uuid())
+
+  usuarioId Int
+
+  plataforma PlataformaSesion @default(WEB)
+
+  /// Android: UsuarioPushDispositivo.instalacionId (estable por instalación).
+  instalacionId String?
+
+  ip        String?
+  userAgent String?
+
+  creadaEn          DateTime @default(now())
+  ultimaActividadEn DateTime @default(now())
+
+  /// Se extiende con cada refresh, nunca más allá de expiraAbsolutaEn.
+  expiraInactividadEn DateTime
+  expiraAbsolutaEn    DateTime
+
+  revocadaEn DateTime?
+
+  /// LOGOUT, REVOCADA_POR_USUARIO, REUTILIZACION_REFRESH,
+  /// USUARIO_DESACTIVADO, CONTRASENA_CAMBIADA... (texto libre a propósito:
+  /// agregar motivos no requiere migración).
+  motivoRevocacion String?
+
+  usuario       Usuario        @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  refreshTokens RefreshToken[]
+
+  @@index([usuarioId, revocadaEn])
+}
+
+/// Refresh token opaco. Solo se guarda su hash SHA-256: el valor en claro
+/// existe únicamente en la respuesta al cliente.
+model RefreshToken {
+  id Int @id @default(autoincrement())
+
+  sesionId String
+
+  tokenHash String @unique
+
+  creadoEn DateTime @default(now())
+  expiraEn DateTime
+
+  /// Momento en que se canjeó (rotación). Volver a presentarlo después de
+  /// esto es reutilización: se revoca la sesión.
+  usadoEn DateTime?
+
+  reemplazadoPorId Int?
+
+  revocadoEn DateTime?
+
+  sesion SesionUsuario @relation(fields: [sesionId], references: [id], onDelete: Cascade)
+
+  @@index([sesionId])
+}
+
+/// Bitácora de intentos de autenticación (login, refresh, reautenticación).
+/// El correo intentado se guarda como hash SHA-256, nunca en claro.
+model IntentoAutenticacion {
+  id Int @id @default(autoincrement())
+
+  usuarioId Int?
+
+  correoHash String?
+
+  /// LOGIN, REFRESH, REAUTENTICACION
+  tipo String
+
+  exitoso Boolean
+
+  /// CREDENCIALES_INVALIDAS, USUARIO_INACTIVO, REFRESH_REUTILIZADO, ...
+  motivo String?
+
+  ip        String?
+  userAgent String?
+
+  creadoEn DateTime @default(now())
+
+  usuario Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([usuarioId, creadoEn])
+  @@index([ip, creadoEn])
 }
 
 model UsuarioPushDispositivo {
