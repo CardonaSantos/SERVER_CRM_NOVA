@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
+import { configurarSwagger } from './swagger/configurar-swagger';
 
 const port = process.env.PORT || 3000;
 
@@ -64,6 +65,9 @@ async function bootstrap() {
 
     optionsSuccessStatus: 204,
   });
+
+  // Solo si SWAGGER_HABILITADO=true (apagado por omisión).
+  configurarSwagger(app);
 
   await app.listen(port);
 }
