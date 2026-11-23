@@ -10,7 +10,7 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 
 import { GetUserAuthToken } from 'src/CustomDecoratorAuthToken/GetUserAuthToken';
 
@@ -21,7 +21,7 @@ import {
 } from '../dto/push-dispositivo.dto';
 
 @Controller('push-dispositivos')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(JwtAuthGuard)
 @UsePipes(
   new ValidationPipe({
     transform: true,
@@ -54,7 +54,7 @@ export class PushDispositivosController {
    * }
    *
    * usuarioId NO viene del cliente.
-   * Sale del JWT validado por Passport.
+   * Sale del JWT validado por JwtAuthGuard.
    * =========================================================
    */
 
@@ -112,10 +112,10 @@ export class PushDispositivosController {
    * AUTH INVARIANT
    * =========================================================
    *
-   * AuthGuard('jwt') debería garantizar esto.
+   * JwtAuthGuard debería garantizar esto.
    *
    * Aun así lo verificamos porque no queremos permitir que
-   * un cambio accidental en JwtStrategy termine produciendo
+   * un cambio accidental en el guard termine produciendo
    * consultas Prisma con usuarioId undefined/null.
    * =========================================================
    */
