@@ -9,10 +9,12 @@ import {
   UseGuards,
   Req,
   UnauthorizedException,
+  ForbiddenException,
   Patch,
   Param,
   ParseIntPipe,
 } from '@nestjs/common';
+import { RolUsuario } from '@prisma/client';
 import { AuthService } from './auth.service';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { LoginDto } from './dto/login.dto'; // Asumo que tienes este DTO
@@ -43,9 +45,24 @@ export class AuthController {
   private readonly logger = new Logger(AuthController.name);
   constructor(private readonly authService: AuthService) {}
 
+  /*
+   * Solo un SUPER_ADMIN autenticado puede crear usuarios.
+   * Antes era público: cualquiera podía crearse un SUPER_ADMIN.
+   * Provisional hasta que exista RolesGuard + @Roles (etapa 7).
+   */
   @Post('/regist-user')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
-  createUserWithAuth(@Body() createAuthDto: CreateAuthDto) {
+  createUserWithAuth(
+    @Req() request: AuthenticatedRequest,
+    @Body() createAuthDto: CreateAuthDto,
+  ) {
+    if (request.user?.rol !== RolUsuario.SUPER_ADMIN) {
+      throw new ForbiddenException(
+        'No tiene permisos para registrar usuarios.',
+      );
+    }
+
     return this.authService.register(createAuthDto);
   }
 
