@@ -23,6 +23,7 @@ interface JwtUserPayload {
   activo: boolean;
   empresaId: number;
   id: number;
+  exp?: number;
 }
 
 interface CrmSocketData {
@@ -142,6 +143,13 @@ export class CrmGateway
       this.logger.error(
         `Error verify: ${err instanceof Error ? err.message : err}`,
       );
+      return client.disconnect(true);
+    }
+
+    // Tokens emitidos antes de expiresIn no traen `exp`: nunca vencerían.
+    if (typeof user.exp !== 'number') {
+      this.logger.warn('WS conexión rechazada: token sin expiración');
+      client.emit('error', { code: 'TOKEN_EXPIRED' });
       return client.disconnect(true);
     }
 

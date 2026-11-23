@@ -16,6 +16,8 @@ interface JwtPayload {
   activo: boolean;
 
   empresaId: number;
+
+  exp?: number;
 }
 
 @Injectable()
@@ -31,6 +33,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   validate(payload: JwtPayload) {
+    /*
+     * jsonwebtoken solo revisa la expiración si el claim `exp` existe.
+     * Los tokens emitidos antes de expiresIn no lo traen y serían válidos
+     * para siempre: se rechazan.
+     */
+    if (typeof payload.exp !== 'number') {
+      throw new UnauthorizedException('Token sin expiración.');
+    }
+
     const id = Number(payload.id ?? payload.sub);
 
     if (!Number.isInteger(id) || id <= 0) {

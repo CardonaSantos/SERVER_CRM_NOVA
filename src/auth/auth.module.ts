@@ -27,6 +27,12 @@ import { UserModule } from 'src/user/user.module';
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('MY_SECRET_TOKEN_KEY_CRM'),
+        /*
+         * Provisional: 12 h (un turno) mientras no exista refresh token.
+         * En la etapa 7 baja a 20 min con refresh. JwtStrategy ya rechaza
+         * tokens vencidos (ignoreExpiration: false), igual que el gateway WS.
+         */
+        signOptions: { expiresIn: '12h' },
       }),
       inject: [ConfigService],
     }),
