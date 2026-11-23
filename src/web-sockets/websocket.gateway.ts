@@ -15,6 +15,7 @@ import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { BroadCastNewMessage } from './websocket.controller';
 import { RealTimeLocation } from 'src/real-time-location/entities/real-time.entity';
 import { RealTimeLocationMapDto } from 'src/real-time-location/dto/dto-shape';
+import { SesionesService } from 'src/auth/sesiones/sesiones.service';
 
 interface JwtUserPayload {
   nombre: string;
@@ -24,6 +25,8 @@ interface JwtUserPayload {
   empresaId: number;
   id: number;
   exp?: number;
+  /** Id de SesionUsuario (etapa 7). */
+  sid?: string;
 }
 
 interface CrmSocketData {
@@ -51,7 +54,10 @@ export class CrmGateway
 
   private userSockets = new Map<number, Set<string>>();
 
-  constructor(private readonly jwtService: JwtService) {
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly sesionesService: SesionesService,
+  ) {
     // Esto se ejecuta cuando Nest crea la instancia del gateway
     this.logger.log('Constructor CrmGateway llamado');
   }
@@ -147,6 +153,31 @@ export class CrmGateway
       client.emit('error', { code: 'TOKEN_EXPIRED' });
       return client.disconnect(true);
     }
+
+    /*
+     * Igual que JwtAuthGuard: la sesión debe existir y estar vigente.
+     * Socket.IO ya aceptó el CONNECT antes de esta validación asíncrona;
+     * hasta pasarla el socket no está en ninguna sala, así que no recibe
+     * eventos (nadie usa emitToAll). Se mantiene este esquema, y no un
+     * middleware, para conservar los códigos `error` que ya maneja el front.
+     */
+    const sesion =
+      typeof user.sid === 'string' && user.sid.length > 0
+        ? await this.sesionesService.validarSesionActiva(
+            user.sid,
+            Number(user.id),
+          )
+        : null;
+
+    if (!sesion) {
+      this.logger.warn('WS conexión rechazada: sesión inválida o revocada');
+      client.emit('error', { code: 'SESSION_INVALID' });
+      return client.disconnect(true);
+    }
+
+    // Rol/empresa actuales de la BD, no los congelados en el token.
+    user.rol = sesion.usuario.rol;
+    user.empresaId = sesion.usuario.empresaId;
 
     client.data.user = user;
 

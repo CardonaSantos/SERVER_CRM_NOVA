@@ -7,6 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import type { Request } from 'express';
 
+import { SesionesService } from '../sesiones/sesiones.service';
 import {
   construirUsuarioAutenticado,
   JwtPayload,
@@ -40,10 +41,17 @@ function extraerTokenBearer(header: unknown): string | null {
  * Respuestas idénticas a las de Passport: 401 "Unauthorized" genérico si
  * falta el token o no verifica; los mensajes propios de
  * construirUsuarioAutenticado se devuelven tal cual.
+ *
+ * Etapa 7: además consulta la sesión (`sid`) en la BD. Revocarla, que
+ * expire o desactivar al usuario corta el acceso aunque el JWT siga
+ * vigente. rol/activo/empresaId de req.user salen de la BD.
  */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly sesionesService: SesionesService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context
@@ -64,7 +72,22 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException();
     }
 
-    request.user = construirUsuarioAutenticado(payload);
+    const usuario = construirUsuarioAutenticado(payload);
+
+    const sesion = await this.sesionesService.validarSesionActiva(
+      usuario.sesionId,
+      usuario.id,
+    );
+
+    if (!sesion) {
+      throw new UnauthorizedException('La sesión expiró o fue revocada.');
+    }
+
+    usuario.rol = sesion.usuario.rol;
+    usuario.activo = sesion.usuario.activo;
+    usuario.empresaId = sesion.usuario.empresaId;
+
+    request.user = usuario;
 
     return true;
   }

@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 
 import { JwtAuthGuard } from './JwtGuard/jwt-auth.guard';
+import { ACCESS_TOKEN_TTL_SEGUNDOS } from './sesiones/sesion.constants';
 
 import { UserModule } from 'src/user/user.module';
 import { PrismaModule } from 'src/prisma/prisma.module';
@@ -30,11 +31,14 @@ import { PrismaModule } from 'src/prisma/prisma.module';
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('MY_SECRET_TOKEN_KEY_CRM'),
         /*
-         * Provisional: 12 h (un turno) mientras no exista refresh token.
-         * En la etapa 7 baja a 20 min con refresh. JwtAuthGuard y el
-         * gateway WS rechazan tokens vencidos o sin `exp`.
+         * §3.1: access token de 20 min; la sesión vive en BD y se extiende
+         * con el refresh token (SesionesService). JwtAuthGuard y el gateway
+         * WS rechazan tokens vencidos, sin `exp` o sin sesión (`sid`).
          */
-        signOptions: { expiresIn: '12h', algorithm: 'HS256' },
+        signOptions: {
+          expiresIn: ACCESS_TOKEN_TTL_SEGUNDOS,
+          algorithm: 'HS256',
+        },
         // Solo el algoritmo con el que firmamos.
         verifyOptions: { algorithms: ['HS256'] },
       }),

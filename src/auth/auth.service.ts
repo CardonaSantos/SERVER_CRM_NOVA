@@ -5,12 +5,17 @@ import {
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
+import { PlataformaSesion } from '@prisma/client';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { UserService } from 'src/user/app/user.service';
-import { JwtService } from '@nestjs/jwt';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { PasswordService } from './password/password.service';
+import { SesionesService } from './sesiones/sesiones.service';
+import {
+  AuditoriaAuthService,
+  ContextoCliente,
+} from './sesiones/auditoria-auth.service';
 
 @Injectable()
 export class AuthService {
@@ -18,9 +23,10 @@ export class AuthService {
 
   constructor(
     private readonly userService: UserService,
-    private readonly jwtService: JwtService,
     private readonly passwordService: PasswordService,
     private readonly prisma: PrismaService,
+    private readonly sesionesService: SesionesService,
+    private readonly auditoria: AuditoriaAuthService,
   ) {}
 
   /**
@@ -57,24 +63,38 @@ export class AuthService {
     return email.toLowerCase().trim();
   }
 
-  async validarUsuario(correo: string, contrasena: string): Promise<any> {
-    const cleanEmail = this.sanitizeEmail(correo);
+  /** Hash scrypt de relleno para igualar tiempos cuando el correo no existe. */
+  private hashRelleno: Promise<string> | null = null;
 
-    // Nunca registrar el correo: es dato personal y ayuda a enumerar cuentas.
-    const usuario = await this.userService.findByGmail(cleanEmail);
-
-    if (!usuario) {
-      this.logger.warn('Intento de login fallido: usuario no encontrado');
-      // Retornamos null para manejar el error genérico abajo y no dar pistas al hacker
-      return null;
+  /**
+   * Verifica correo y contraseña. Orden deliberado:
+   * 1. Si el correo no existe se verifica igual contra un hash de relleno:
+   *    el tiempo de respuesta no revela qué correos existen.
+   * 2. La contraseña se verifica ANTES de mirar `activo`: sin la contraseña
+   *    correcta nadie distingue "desactivado" de "credenciales inválidas".
+   */
+  private async verificarCredenciales(
+    correo: unknown,
+    contrasena: unknown,
+  ): Promise<
+    | { resultado: 'OK'; usuarioId: number }
+    | { resultado: 'CREDENCIALES_INVALIDAS'; usuarioId: number | null }
+    | { resultado: 'USUARIO_INACTIVO'; usuarioId: number }
+  > {
+    if (typeof correo !== 'string' || typeof contrasena !== 'string') {
+      return { resultado: 'CREDENCIALES_INVALIDAS', usuarioId: null };
     }
 
-    if (!usuario.activo) {
-      this.logger.warn(
-        `Intento de login de usuario desactivado: ${usuario.id}`,
-      );
+    // Nunca registrar el correo: es dato personal y ayuda a enumerar cuentas.
+    const usuario = await this.userService.findByGmail(
+      this.sanitizeEmail(correo),
+    );
 
-      throw new UnauthorizedException('Este usuario está desactivado');
+    if (!usuario) {
+      this.hashRelleno ??= this.passwordService.hash('relleno-sin-usuario');
+      await this.passwordService.verify(contrasena, await this.hashRelleno);
+      this.logger.warn('Intento de login fallido: usuario no encontrado');
+      return { resultado: 'CREDENCIALES_INVALIDAS', usuarioId: null };
     }
 
     // scrypt o bcrypt heredado
@@ -87,16 +107,21 @@ export class AuthService {
       this.logger.warn(
         `Intento de login fallido: contraseña incorrecta para usuario ${usuario.id}`,
       );
-      return null;
+      return { resultado: 'CREDENCIALES_INVALIDAS', usuarioId: usuario.id };
+    }
+
+    if (!usuario.activo) {
+      this.logger.warn(
+        `Intento de login de usuario desactivado: ${usuario.id}`,
+      );
+      return { resultado: 'USUARIO_INACTIVO', usuarioId: usuario.id };
     }
 
     this.logger.log(`Usuario validado correctamente: ${usuario.id}`);
 
     await this.rehashSiHaceFalta(usuario.id, contrasena, usuario.contrasena);
 
-    // Eliminamos la contraseña del objeto retornado por seguridad
-    const { contrasena: _, ...result } = usuario;
-    return result;
+    return { resultado: 'OK', usuarioId: usuario.id };
   }
 
   async reautenticarUsuarioPorId(
@@ -130,48 +155,130 @@ export class AuthService {
     this.logger.log(`Usuario ${usuarioId} reautenticado correctamente.`);
   }
 
-  async login(correo: string, contrasena: string) {
-    try {
-      const usuario = await this.validarUsuario(correo, contrasena);
+  /**
+   * Login: verifica credenciales, abre una SesionUsuario y devuelve
+   * access_token (20 min) + refresh_token (opaco). Contrato: se conservan
+   * `access_token` y `user`; se agregan refresh_token, token_type y
+   * expires_in.
+   */
+  async login(
+    correo: unknown,
+    contrasena: unknown,
+    opciones: {
+      plataforma?: unknown;
+      instalacionId?: unknown;
+    } & ContextoCliente,
+  ) {
+    const contexto: ContextoCliente = {
+      ip: opciones.ip,
+      userAgent: opciones.userAgent,
+    };
+    const correoTexto = typeof correo === 'string' ? correo : null;
 
-      if (!usuario) {
-        throw new UnauthorizedException('Credenciales inválidas');
+    try {
+      const { plataforma, instalacionId } = this.validarPlataforma(opciones);
+
+      const verificacion = await this.verificarCredenciales(correo, contrasena);
+
+      if (verificacion.resultado !== 'OK') {
+        this.auditoria.registrar({
+          tipo: 'LOGIN',
+          exitoso: false,
+          motivo: verificacion.resultado,
+          usuarioId: verificacion.usuarioId,
+          correo: correoTexto,
+          ...contexto,
+        });
+
+        throw new UnauthorizedException(
+          verificacion.resultado === 'USUARIO_INACTIVO'
+            ? 'Este usuario está desactivado'
+            : 'Credenciales inválidas',
+        );
       }
 
       /*
        * El login y GET /auth/profile deben
        * compartir el mismo contrato público.
        */
-      const publicUser = await this.getAuthenticatedProfile(usuario.id);
+      const publicUser = await this.getAuthenticatedProfile(
+        verificacion.usuarioId,
+      );
 
-      const payload = {
-        sub: publicUser.id,
+      const { access_token, refresh_token, token_type, expires_in } =
+        await this.sesionesService.crearSesion(publicUser, {
+          plataforma,
+          instalacionId,
+          ...contexto,
+        });
 
-        id: publicUser.id,
-
-        nombre: publicUser.nombre,
-
-        correo: publicUser.correo,
-
-        rol: publicUser.rol,
-
-        activo: publicUser.activo,
-
-        empresaId: publicUser.empresaId,
-      };
+      this.auditoria.registrar({
+        tipo: 'LOGIN',
+        exitoso: true,
+        usuarioId: publicUser.id,
+        correo: correoTexto,
+        ...contexto,
+      });
 
       return {
-        access_token: this.jwtService.sign(payload),
+        access_token,
+
+        refresh_token,
+
+        token_type,
+
+        expires_in,
 
         user: publicUser,
       };
     } catch (error) {
-      if (error instanceof UnauthorizedException) {
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof BadRequestException
+      ) {
         throw error;
       }
 
       throwFatalError(error, this.logger, 'auth-login');
     }
+  }
+
+  /**
+   * `plataforma` es opcional (WEB por omisión: el front actual no la
+   * envía). ANDROID exige `instalacionId` (UsuarioPushDispositivo).
+   */
+  private validarPlataforma(opciones: {
+    plataforma?: unknown;
+    instalacionId?: unknown;
+  }): { plataforma: PlataformaSesion; instalacionId: string | null } {
+    const { plataforma, instalacionId } = opciones;
+
+    if (
+      plataforma === undefined ||
+      plataforma === null ||
+      plataforma === 'WEB'
+    ) {
+      return { plataforma: PlataformaSesion.WEB, instalacionId: null };
+    }
+
+    if (plataforma !== 'ANDROID') {
+      throw new BadRequestException("plataforma debe ser 'WEB' o 'ANDROID'.");
+    }
+
+    if (
+      typeof instalacionId !== 'string' ||
+      instalacionId.trim().length < 8 ||
+      instalacionId.length > 200
+    ) {
+      throw new BadRequestException(
+        'instalacionId es obligatorio para la plataforma ANDROID.',
+      );
+    }
+
+    return {
+      plataforma: PlataformaSesion.ANDROID,
+      instalacionId: instalacionId.trim(),
+    };
   }
 
   async getAuthenticatedProfile(usuarioId: number) {
@@ -244,20 +351,14 @@ export class AuthService {
 
       const nuevoUsuario = await this.userService.create(obj);
 
-      // 4. Login automático (Generar token)
-      const payload = {
-        sub: nuevoUsuario.id,
-        nombre: nuevoUsuario.nombre,
-        correo: nuevoUsuario.correo,
-        rol: nuevoUsuario.rol,
-        activo: nuevoUsuario.activo,
-        empresaId: nuevoUsuario.empresaId,
-        id: nuevoUsuario.id,
-      };
-
+      /*
+       * Ya no se emite un access_token para el usuario creado: quien llama
+       * es un SUPER_ADMIN y no debe recibir una sesión de otra persona.
+       * El usuario nuevo inicia sesión por su cuenta (el front no usaba
+       * este token).
+       */
       return {
         usuario: { ...nuevoUsuario, contrasena: undefined }, // No devolver pass
-        access_token: this.jwtService.sign(payload),
       };
     } catch (error) {
       if (error instanceof ConflictException) throw error;

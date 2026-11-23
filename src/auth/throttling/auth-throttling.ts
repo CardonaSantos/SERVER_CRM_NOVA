@@ -71,6 +71,22 @@ export function LimitarIntentosLogin() {
 }
 
 /**
+ * POST /auth/refresh: 60/min por IP en ambos contadores (sin usuario ni
+ * correo, `identidad` cae en la IP). Holgado a propósito: una oficina
+ * entera refresca cada 20 min detrás de una sola IP. El refresh token
+ * es de 256 bits, el límite solo frena abuso.
+ */
+export function LimitarIntentosRefresh() {
+  return applyDecorators(
+    UseGuards(ThrottlerGuard),
+    Throttle({
+      [IP]: { limit: 60, ttl: MINUTO_MS },
+      [IDENTIDAD]: { limit: 60, ttl: MINUTO_MS },
+    }),
+  );
+}
+
+/**
  * Endpoints que verifican `contrasenaActual`: 10/min por usuario
  * (bloqueo de 5 min al pasarse), 20/min por IP.
  */
