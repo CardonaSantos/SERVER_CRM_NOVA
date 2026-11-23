@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 
 import { JwtAuthGuard } from './JwtGuard/jwt-auth.guard';
+import { GuardGlobalAuth } from './JwtGuard/guard-global-auth';
 import { ACCESS_TOKEN_TTL_SEGUNDOS } from './sesiones/sesion.constants';
 
 import { UserModule } from 'src/user/user.module';
@@ -14,7 +16,12 @@ import { PrismaModule } from 'src/prisma/prisma.module';
 @Module({
   controllers: [AuthController],
 
-  providers: [AuthService, JwtAuthGuard],
+  providers: [
+    AuthService,
+    JwtAuthGuard,
+    // D6: toda ruta exige JWT salvo @Public(). D7: arranca en observación.
+    { provide: APP_GUARD, useClass: GuardGlobalAuth },
+  ],
 
   imports: [
     UserModule,

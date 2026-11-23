@@ -21,6 +21,9 @@ import {
  */
 const AUTH_HEADER = /(\S+)\s+(\S+)/;
 
+/** Marca en la request: ya pasó por JwtAuthGuard (global o de ruta). */
+const YA_AUTENTICADO = Symbol('jwtAutenticado');
+
 function extraerTokenBearer(header: unknown): string | null {
   if (typeof header !== 'string') return null;
 
@@ -56,7 +59,14 @@ export class JwtAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context
       .switchToHttp()
-      .getRequest<Request & { user?: UsuarioAutenticado }>();
+      .getRequest<
+        Request & { user?: UsuarioAutenticado; [YA_AUTENTICADO]?: true }
+      >();
+
+    // El guard global ya autenticó esta petición: no repetir la consulta.
+    if (request[YA_AUTENTICADO] && request.user) {
+      return true;
+    }
 
     const token = extraerTokenBearer(request.headers.authorization);
 
@@ -88,6 +98,7 @@ export class JwtAuthGuard implements CanActivate {
     usuario.empresaId = sesion.usuario.empresaId;
 
     request.user = usuario;
+    request[YA_AUTENTICADO] = true;
 
     return true;
   }

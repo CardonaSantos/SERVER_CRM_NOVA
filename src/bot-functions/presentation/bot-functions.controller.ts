@@ -1,3 +1,4 @@
+import { Public } from 'src/auth/decoradores/public.decorator';
 import {
   Controller,
   Get,
@@ -23,6 +24,7 @@ export class BotFunctionsController {
   ) {}
 
   @Post('create-ticket')
+  @Public()
   create(
     @Body() createBotFunctionDto: CreateBotFunctionDto,
     @Headers('x-internal-secret') secretKey: string,

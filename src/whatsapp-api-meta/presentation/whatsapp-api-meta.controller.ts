@@ -1,3 +1,4 @@
+import { Public } from 'src/auth/decoradores/public.decorator';
 import {
   Controller,
   Get,
@@ -49,6 +50,7 @@ export class WhatsappApiMetaController {
    * @returns
    */
   @Get('webhook')
+  @Public()
   verifyWebhook(
     @Query('hub.mode') mode: string,
     @Query('hub.verify_token') token: string,
@@ -68,6 +70,7 @@ export class WhatsappApiMetaController {
   }
 
   @Post('webhook')
+  @Public()
   async handleWebhook(@Body() body: any, @Res() res: Response) {
     // WhatsApp Cloud API suele enviar object = "whatsapp_business_account"
     if (body.object !== 'whatsapp_business_account') {

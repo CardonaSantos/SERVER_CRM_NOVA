@@ -1,3 +1,4 @@
+import { Public } from 'src/auth/decoradores/public.decorator';
 import {
   BadRequestException,
   Body,
@@ -31,6 +32,7 @@ import { RegistrarFirmaClienteDto } from '../application/dto/registrar-firma-cli
   }),
 )
 @Controller('ticket-soporte-conformidad/public')
+@Public()
 export class TicketConformidadPublicController {
   constructor(private readonly service: TicketConformidadApplicationService) {}
 

@@ -20,6 +20,7 @@ import { AuthService } from './auth.service';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
+import { Public } from './decoradores/public.decorator';
 import { JwtAuthGuard } from './JwtGuard/jwt-auth.guard';
 import { UsuarioAutenticado } from './JwtGuard/jwt-payload';
 import { ContextoCliente } from './sesiones/auditoria-auth.service';
@@ -90,6 +91,7 @@ export class AuthController {
    * opcionales: sin ellos la sesión es WEB.
    */
   @Post('/login-user')
+  @Public()
   @LimitarIntentosLogin()
   @HttpCode(HttpStatus.OK)
   loginUserWithAuth(@Body() loginUserDto: LoginDto, @Req() request: Request) {
@@ -109,6 +111,7 @@ export class AuthController {
    * canjeado no vuelve a servir; presentarlo de nuevo revoca la sesión.
    */
   @Post('/refresh')
+  @Public()
   @LimitarIntentosRefresh()
   @HttpCode(HttpStatus.OK)
   refresh(@Body() body: RefreshDto, @Req() request: Request) {
