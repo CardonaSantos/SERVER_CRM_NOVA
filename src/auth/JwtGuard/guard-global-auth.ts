@@ -21,18 +21,19 @@ const INTERVALO_RESUMEN_MS = 10 * 60 * 1000;
  * JWT salvo las marcadas con @Public(). Un controlador nuevo nace protegido.
  *
  * Modo (variable AUTH_GUARD_MODO):
- * - 'observacion' (por omisión, D7): NO rechaza. Registra qué habría
- *   rechazado (método + patrón de ruta, sin query ni datos) para saber qué
- *   consume de verdad el front antes de cerrar. Las rutas que ya tienen
- *   @UseGuards(JwtAuthGuard) siguen rechazando igual que antes.
- * - 'estricto': rechaza con 401. Se activa en la etapa 8.
+ * - 'estricto' (por omisión desde la etapa 8, decisión del dueño): rechaza
+ *   con 401. No depende de que el entorno tenga la variable: si falta,
+ *   todo queda cerrado.
+ * - 'observacion' (solo con AUTH_GUARD_MODO=observacion, D7): NO rechaza.
+ *   Registra qué habría rechazado (método + patrón de ruta, sin query ni
+ *   datos). Las rutas con @UseGuards(JwtAuthGuard) siguen rechazando.
  */
 @Injectable()
 export class GuardGlobalAuth implements CanActivate {
   private readonly logger = new Logger('AuthGuardGlobal');
 
   readonly modo: ModoGuardGlobal =
-    process.env.AUTH_GUARD_MODO === 'estricto' ? 'estricto' : 'observacion';
+    process.env.AUTH_GUARD_MODO === 'observacion' ? 'observacion' : 'estricto';
 
   private readonly vistos = new Map<
     string,
