@@ -10,7 +10,6 @@ import {
   UseGuards,
   Req,
   UnauthorizedException,
-  ForbiddenException,
   Param,
   ParseUUIDPipe,
 } from '@nestjs/common';
@@ -21,6 +20,7 @@ import { CreateAuthDto } from './dto/create-auth.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { Public } from './decoradores/public.decorator';
+import { Roles } from './decoradores/roles.decorator';
 import { JwtAuthGuard } from './JwtGuard/jwt-auth.guard';
 import { UsuarioAutenticado } from './JwtGuard/jwt-payload';
 import { ContextoCliente } from './sesiones/auditoria-auth.service';
@@ -67,21 +67,12 @@ export class AuthController {
   /*
    * Solo un SUPER_ADMIN autenticado puede crear usuarios.
    * Antes era público: cualquiera podía crearse un SUPER_ADMIN.
-   * Provisional hasta que exista RolesGuard + @Roles (etapa 7).
    */
   @Post('/regist-user')
   @UseGuards(JwtAuthGuard)
+  @Roles(RolUsuario.SUPER_ADMIN)
   @HttpCode(HttpStatus.CREATED)
-  createUserWithAuth(
-    @Req() request: AuthenticatedRequest,
-    @Body() createAuthDto: CreateAuthDto,
-  ) {
-    if (request.user?.rol !== RolUsuario.SUPER_ADMIN) {
-      throw new ForbiddenException(
-        'No tiene permisos para registrar usuarios.',
-      );
-    }
-
+  createUserWithAuth(@Body() createAuthDto: CreateAuthDto) {
     return this.authService.register(createAuthDto);
   }
 

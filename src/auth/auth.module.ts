@@ -8,6 +8,7 @@ import { AuthController } from './auth.controller';
 
 import { JwtAuthGuard } from './JwtGuard/jwt-auth.guard';
 import { GuardGlobalAuth } from './JwtGuard/guard-global-auth';
+import { RolesGuard } from './JwtGuard/roles.guard';
 import { ACCESS_TOKEN_TTL_SEGUNDOS } from './sesiones/sesion.constants';
 
 import { UserModule } from 'src/user/user.module';
@@ -21,6 +22,8 @@ import { PrismaModule } from 'src/prisma/prisma.module';
     JwtAuthGuard,
     // D6: toda ruta exige JWT salvo @Public(). D7: arranca en observación.
     { provide: APP_GUARD, useClass: GuardGlobalAuth },
+    // Corre después del anterior (orden de registro): @Roles(...).
+    { provide: APP_GUARD, useClass: RolesGuard },
   ],
 
   imports: [
