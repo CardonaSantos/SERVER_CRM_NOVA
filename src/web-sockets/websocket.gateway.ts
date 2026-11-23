@@ -111,16 +111,11 @@ export class CrmGateway
 
     const token = this.extractToken(client);
 
-    this.logger.log(`Token recibido WS: ${token?.slice(0, 30)}...`);
-
     if (!token) {
       this.logger.warn('WS conexión rechazada: token ausente');
       client.emit('error', { code: 'NO_TOKEN' });
       return client.disconnect(true);
     }
-
-    const decoded: any = this.jwtService.decode(token);
-    this.logger.log(`Payload decodificado WS: ${JSON.stringify(decoded)}`);
 
     if (!token) {
       this.logger.warn('WS conexión rechazada: token ausente');

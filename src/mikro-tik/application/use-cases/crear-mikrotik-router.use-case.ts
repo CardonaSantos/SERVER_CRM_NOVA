@@ -31,8 +31,7 @@ export class CrearMikrotikRouterUseCase {
   async execute(
     command: CreateMikroTikDto,
   ): Promise<MikrotikRouterPublicoReadModel> {
-    this.logger.log(`DTO recibido:\n${JSON.stringify(command, null, 2)}`);
-
+    // No registrar `command`: trae la contraseña del router en texto plano.
     const nombre = command.nombre.trim();
 
     const duplicated = await this.repository.findByName({

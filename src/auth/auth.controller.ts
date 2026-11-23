@@ -71,8 +71,6 @@ export class AuthController {
   @LimitarIntentosLogin()
   @HttpCode(HttpStatus.OK)
   async loginUserWithAuth(@Body() loginUserDto: LoginDto) {
-    console.log(`Intento de login para: ${loginUserDto.correo}`);
-
     let resultado = await this.authService.login(
       loginUserDto.correo,
       loginUserDto.contrasena,

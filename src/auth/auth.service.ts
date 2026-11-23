@@ -28,22 +28,18 @@ export class AuthService {
   async validarUsuario(correo: string, contrasena: string): Promise<any> {
     const cleanEmail = this.sanitizeEmail(correo);
 
-    // Log para depuración en Railway
-    this.logger.log(`Intentando validar usuario: "${cleanEmail}"`);
-
+    // Nunca registrar el correo: es dato personal y ayuda a enumerar cuentas.
     const usuario = await this.userService.findByGmail(cleanEmail);
 
     if (!usuario) {
-      this.logger.warn(
-        `Intento de login fallido: Usuario no encontrado con email ${cleanEmail}`,
-      );
+      this.logger.warn('Intento de login fallido: usuario no encontrado');
       // Retornamos null para manejar el error genérico abajo y no dar pistas al hacker
       return null;
     }
 
     if (!usuario.activo) {
       this.logger.warn(
-        `El usuario con el Email ${cleanEmail} está desactivado`,
+        `Intento de login de usuario desactivado: ${usuario.id}`,
       );
 
       throw new UnauthorizedException('Este usuario está desactivado');
@@ -54,7 +50,7 @@ export class AuthService {
 
     if (!isMatch) {
       this.logger.warn(
-        `Intento de login fallido: Contraseña incorrecta para ${cleanEmail}`,
+        `Intento de login fallido: contraseña incorrecta para usuario ${usuario.id}`,
       );
       return null;
     }
