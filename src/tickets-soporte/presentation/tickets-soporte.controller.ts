@@ -13,7 +13,7 @@ import {
 import { TicketsSoporteService } from '../app/tickets-soporte.service';
 import { CreateTicketsSoporteDto } from '../dto/create-tickets-soporte.dto';
 import { UpdateTicketsSoporteDto } from '../dto/update-tickets-soporte.dto';
-import { CloseTicketDto } from '../dto/CloseTicketDto .dto';
+import { CloseTicketDto } from '../dto/close-ticket.dto';
 import { QuerySearchTickets } from '../dto/querySearch';
 
 @Controller('tickets-soporte')
