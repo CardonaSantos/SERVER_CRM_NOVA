@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import {
   IsDateString,
   IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -92,6 +93,11 @@ export class ListarPppoeAuditoriasQueryDto {
   @IsDateString()
   fechaHasta?: string;
 
+  @IsOptional()
+  @IsIn(['creadoEn', 'id'])
   ordenPor?: 'creadoEn' | 'id';
+
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
   ordenDireccion?: 'asc' | 'desc';
 }

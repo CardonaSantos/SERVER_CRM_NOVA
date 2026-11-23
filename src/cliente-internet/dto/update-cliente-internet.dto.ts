@@ -9,6 +9,7 @@ import {
   IsArray,
   IsEnum,
   IsNumber,
+  IsBoolean,
 } from 'class-validator';
 
 export class UpdateClienteInternetDto {
@@ -17,7 +18,9 @@ export class UpdateClienteInternetDto {
   @IsNotEmpty()
   nombre: string;
 
-  enviarRecordatorio: boolean;
+  @IsOptional()
+  @IsBoolean()
+  enviarRecordatorio?: boolean;
 
   @IsEnum(EstadoCliente)
   @IsNotEmpty()

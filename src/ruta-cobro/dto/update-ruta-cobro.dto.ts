@@ -3,8 +3,10 @@ import { ClienteInternet, Empresa, EstadoRuta, Usuario } from '@prisma/client';
 import { IsArray, IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
 
 export class UpdateRutaDto {
+  /** El id viaja en la URL (/update-one-ruta/:id); en el body es opcional. */
+  @IsOptional()
   @IsInt()
-  id: number;
+  id?: number;
 
   @IsOptional()
   @IsString()

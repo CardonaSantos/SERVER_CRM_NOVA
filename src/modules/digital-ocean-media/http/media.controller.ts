@@ -1,3 +1,4 @@
+import { IsInt, IsPositive } from 'class-validator';
 import {
   Controller,
   Post,
@@ -17,7 +18,13 @@ import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { SubirMediaUseCase } from '../application/use-cases/subir-media.usecase';
 import { CategoriaMedia, TipoMedia } from '@prisma/client';
 import { EliminarMediaUseCase } from '../application/use-cases/eliminar-media.usecase';
-interface DeleteMediaDto {
+/**
+ * Era una interfaz: el ValidationPipe no puede validar interfaces, así que
+ * este borrado (hard delete en DigitalOcean) aceptaba cualquier body.
+ */
+class DeleteMediaDto {
+  @IsInt()
+  @IsPositive()
   id: number;
 }
 
