@@ -16,6 +16,13 @@ async function bootstrap() {
   app.set('trust proxy', 1);
 
   /*
+   * Express 5 (Nest 11) cambió el parser por defecto a 'simple', que no
+   * entiende `zonas[]=1&zonas[]=2` (formato de arreglos de axios) ni objetos
+   * anidados. 'extended' (qs) es el comportamiento que siempre tuvo la API.
+   */
+  app.set('query parser', 'extended');
+
+  /*
    * Cabeceras de seguridad. CORP en cross-origin: el front vive en otro
    * dominio y carga medios servidos por la API (p. ej. twilio-api).
    * En la etapa 4 se reemplaza por app.useSecurityHeaders() de Nest 12.
