@@ -4,6 +4,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
@@ -13,6 +14,7 @@ import {
   Patch,
   Post,
   Put,
+  Req,
   UploadedFiles,
   UseInterceptors,
   UsePipes,
@@ -25,6 +27,44 @@ import { UserService } from '../app/user.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateOneUserDto } from '../dto/update-one-user.dto';
 import { UpdateUserDto } from '../dto/updateProfile';
+import { RolUsuario } from '@prisma/client';
+import type { Request } from 'express';
+import { Roles } from 'src/auth/decoradores/roles.decorator';
+import { UsuarioAutenticado } from 'src/auth/JwtGuard/jwt-payload';
+
+/**
+ * SUPER_ADMIN edita a cualquiera. Los demás, solo su propio perfil y sin
+ * cambiar rol ni activo: si el formulario reenvía el valor actual se
+ * descarta en silencio; si intenta cambiarlo, 403. Se compara como texto
+ * porque el perfil llega por multipart.
+ */
+function autorizarEdicionDeUsuario(
+  usuario: UsuarioAutenticado | undefined,
+  idObjetivo: number,
+  dto: { rol?: unknown; activo?: unknown },
+): void {
+  if (!usuario) {
+    throw new ForbiddenException('No tiene permisos para esta operación.');
+  }
+
+  if (usuario.rol === RolUsuario.SUPER_ADMIN) return;
+
+  if (usuario.id !== idObjetivo) {
+    throw new ForbiddenException('Solo puede editar su propio perfil.');
+  }
+
+  const actuales = { rol: usuario.rol, activo: usuario.activo };
+
+  for (const campo of ['rol', 'activo'] as const) {
+    if (dto[campo] === undefined || dto[campo] === null) continue;
+
+    if (String(dto[campo]) !== String(actuales[campo])) {
+      throw new ForbiddenException(`No tiene permisos para cambiar ${campo}.`);
+    }
+
+    delete dto[campo];
+  }
+}
 
 @UseGuards(JwtAuthGuard)
 @Controller('user')
@@ -40,7 +80,14 @@ export class UserController {
 
   constructor(private readonly userService: UserService) {}
 
+  /*
+   * Gestión de usuarios (etapa 8): solo SUPER_ADMIN crea, activa,
+   * desactiva, restaura y borra; los demás solo editan su propio perfil y
+   * no cambian rol ni activo. Antes cualquier usuario con sesión podía
+   * cambiar rol/contraseña de cualquiera (escalar a SUPER_ADMIN).
+   */
   @Post()
+  @Roles(RolUsuario.SUPER_ADMIN)
   create(@Body() dto: CreateUserDto) {
     return this.userService.create(dto);
   }
@@ -102,7 +149,10 @@ export class UserController {
     @Body() dto: UpdateUserDto,
     @UploadedFiles()
     files: { avatar?: Express.Multer.File[]; portada?: Express.Multer.File[] },
+    @Req() request: Request & { user?: UsuarioAutenticado },
   ) {
+    autorizarEdicionDeUsuario(request.user, id, dto);
+
     const avatar = files?.avatar?.[0];
     const portada = files?.portada?.[0];
 
@@ -114,21 +164,27 @@ export class UserController {
   updateOneUserProfile(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateOneUserDto,
+    @Req() request: Request & { user?: UsuarioAutenticado },
   ) {
+    autorizarEdicionDeUsuario(request.user, id, dto);
+
     return this.userService.updateOneUser(id, dto);
   }
 
   @Patch('/user-profile/:id/activate')
+  @Roles(RolUsuario.SUPER_ADMIN)
   activateUser(@Param('id', ParseIntPipe) id: number) {
     return this.userService.activateUser(id);
   }
 
   @Patch('/user-profile/:id/deactivate')
+  @Roles(RolUsuario.SUPER_ADMIN)
   deactivateUser(@Param('id', ParseIntPipe) id: number) {
     return this.userService.deactivateUser(id);
   }
 
   @Patch('/user-profile/:id/restore')
+  @Roles(RolUsuario.SUPER_ADMIN)
   restoreUser(@Param('id', ParseIntPipe) id: number) {
     return this.userService.restoreUser(id);
   }
@@ -142,6 +198,7 @@ export class UserController {
   // }
 
   @Delete('/user-profile/:id')
+  @Roles(RolUsuario.SUPER_ADMIN)
   async deleteUserProfile(
     @Param('id', ParseIntPipe) id: number,
     @GetUserAuthToken() userAuth?: UserTokenAuth,
