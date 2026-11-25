@@ -11,7 +11,7 @@
 > | Prioridad | Si choca con §5 de `guia-desarrollo-cobranza-corte-crm-nova.md` o §8.3 de `guia-post-auth-refactor-hexagonal-crm-nova.md`, **manda este documento** |
 > | Cambios | Cambiar una regla = editar este archivo en un commit propio, con autorización del dueño |
 >
-> 🆕 = pieza compartida que **todavía no existe**; se crea en el paso H0 (§14).
+> 🆕 = pieza compartida creada en H0 (§14). **Ya existen todas** desde `refactorizacion comun #1–#5`.
 
 ---
 
@@ -739,7 +739,10 @@ verificar con §12 al final.
 
 ---
 
-## 14. Piezas compartidas a crear en H0 🆕
+## 14. Piezas compartidas (H0 — terminado)
+
+Todas creadas y con pruebas en `refactorizacion comun #1–#5`. La de ESLint queda pendiente
+(opcional).
 
 | Pieza | Ubicación | Qué es |
 |---|---|---|

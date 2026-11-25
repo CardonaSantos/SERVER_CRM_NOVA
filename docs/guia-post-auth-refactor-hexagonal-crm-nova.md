@@ -355,13 +355,13 @@ ejecuta. Reactivar uno exige quitar el decorador en su propio commit.
 | # | Hueco | Gravedad |
 |---|---|---|
 | G1 | **Roles solo en 6 rutas.** Un usuario autenticado de cualquier rol puede hacer casi todo (pagos, facturas, zonas, borrados unitarios, corte legacy) | 🔴 |
-| G2 | **Aislamiento por empresa no forzado globalmente.** `req.user.empresaId` sale de la BD, pero cada servicio legacy decide si filtra por empresa; no hay guard ni política común | 🟠 |
+| G2 | ~~Aislamiento por empresa~~ **Cerrado (24-nov):** una empresa por base de datos; `empresaId` no es filtro de seguridad (estándar §4.8) | ✅ |
 | G3 | `POST ssh-mikrotik-connection/suspend-customer` y `activate-customer` (corte legacy por IP) reciben la contraseña en el body **sin** `@OperacionSensible` ni límite de intentos | 🟠 |
 | G4 | `banrural-integration` exige JWT desde el commit auth #6. **Confirmar quién lo llama:** si es el banco directo, los pagos Banrural dejan de entrar al desplegar | 🟠 (bloqueante de deploy si aplica) |
 | G5 | Throttler en memoria: correcto solo con **una** instancia (C13) | 🟡 |
 | G6 | Nadie limpia `SesionUsuario`, `RefreshToken` ni `IntentoAutenticacion` vencidos: crecen sin límite | 🟡 |
 | G7 | No se validan variables de entorno al arrancar (`ConfigModule.forRoot` sin esquema). Si falta `MY_SECRET_TOKEN_KEY_CRM` no truena al inicio; los secretos de Meta/bot fallan cerrado por endpoint | 🟡 |
-| G8 | Formato de error: el filtro da `{statusCode, message, errorCode, requestId}`; el contrato del front Angular (§16.2 de su guía) pide `{estado, codigo, mensaje, campos?, trazaId?}`. Hay que decidir cuál manda para los endpoints nuevos | 🟡 |
+| G8 | ~~Formato de error~~ **Cerrado (24-nov, `refactorizacion comun #2`):** contrato único `{statusCode, codigo, message, campos?, requestId}` para todas las rutas (estándar §7.5; cambios en `docs/cambios-contrato-ui.md`) | ✅ |
 | G9 | Sin red de pruebas automatizadas: Jest corre, pero 11 de 15 suites siguen siendo boilerplate roto; las verificaciones de la etapa no quedaron en el repo | 🟡 |
 
 ---
