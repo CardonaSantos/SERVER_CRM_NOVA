@@ -1,33 +1,24 @@
 import {
   Body,
   Controller,
-  ParseIntPipe,
   Post,
-  Query,
   UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import { IsInt, IsPositive } from 'class-validator';
+
+import { Actor, ActorHttp } from 'src/auth/decoradores/actor.decorator';
 
 import { EliminarMediaUseCase } from '../../application/use-cases/eliminar-media.use-case';
 import { SubirMediaUseCase } from '../../application/use-cases/subir-media.use-case';
-import { CategoriaMedia, TipoMedia } from '../../domain/enums/media.enum';
+import { TipoMedia } from '../../domain/enums/media.enum';
 import {
   MetadatosArchivosInvalidosError,
   SinArchivosError,
 } from '../../domain/errors/almacenamiento-media.errors';
+import { EliminarMediaDto } from '../dto/eliminar-media.dto';
+import { SubirMediaLoteDto } from '../dto/subir-media-lote.dto';
 import { MediaPresenter } from '../presenters/media.presenter';
-
-/**
- * Era una interfaz: el ValidationPipe no puede validar interfaces, así que
- * este borrado (hard delete en DigitalOcean) aceptaba cualquier body.
- */
-class DeleteMediaDto {
-  @IsInt()
-  @IsPositive()
-  id: number;
-}
 
 type MetadatosArchivo = {
   titulo?: string;
@@ -42,44 +33,38 @@ export class MediaController {
     private readonly eliminarMedia: EliminarMediaUseCase,
   ) {}
 
+  /** Sube varios archivos y los registra en `Media`. */
   @UseInterceptors(FilesInterceptor('files'))
   @Post('batch')
   async subirMultiples(
     @UploadedFiles() files: Express.Multer.File[],
-    @Body('empresaId') empresaId: string,
-    @Body('clienteId') clienteId?: string,
-    @Body('albumId') albumId?: string,
-    @Body('subidoPorId') subidoPorId?: string,
-    @Body('publico') publico?: string,
-    @Body('categoria') categoria?: string,
-    @Body('tipo') tipo?: TipoMedia,
-    @Body('basePrefix') basePrefix?: string,
-    @Body('items') itemsJson?: string,
+    @Body() dto: SubirMediaLoteDto,
+    @Actor() actor: ActorHttp,
   ) {
     if (!files?.length) throw new SinArchivosError();
 
-    const items = leerMetadatos(itemsJson);
+    const items = leerMetadatos(dto.items);
 
     const resultados = await Promise.all(
       files.map((file, idx) => {
         const meta = items[idx] ?? {};
 
         return this.subirMedia.execute({
-          empresaId: Number(empresaId),
-          clienteId: clienteId ? Number(clienteId) : undefined,
-          albumId: albumId ? Number(albumId) : undefined,
-          subidoPorId: subidoPorId ? Number(subidoPorId) : undefined,
-          publico: publico ? publico === 'true' : true,
-          categoria: categoria as CategoriaMedia,
+          empresaId: actor.empresaId,
+          subidoPorId: actor.usuarioId,
+          clienteId: dto.clienteId,
+          albumId: dto.albumId,
+          publico: dto.publico ?? true,
+          categoria: dto.categoria,
           tipo:
-            tipo ??
+            dto.tipo ??
             (file.mimetype.startsWith('video/')
               ? TipoMedia.VIDEO
               : TipoMedia.IMAGEN),
           buffer: file.buffer,
           fileName: file.originalname,
           mime: file.mimetype,
-          basePrefix,
+          basePrefix: dto.basePrefix,
           titulo: meta.titulo,
           descripcion: meta.descripcion,
           etiqueta: meta.etiqueta,
@@ -90,14 +75,12 @@ export class MediaController {
     return MediaPresenter.lote(resultados);
   }
 
+  /** Borra el archivo del almacenamiento y su fila en `Media`. */
   @Post('delete')
-  async deleteMedia(
-    @Query('empresaId', ParseIntPipe) empresaId: number,
-    @Body() body: DeleteMediaDto,
-  ) {
+  async deleteMedia(@Body() dto: EliminarMediaDto, @Actor() actor: ActorHttp) {
     const resultado = await this.eliminarMedia.execute({
-      id: body.id,
-      empresaId,
+      id: dto.id,
+      empresaId: actor.empresaId,
     });
 
     return MediaPresenter.eliminado(resultado);
