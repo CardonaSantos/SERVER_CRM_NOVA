@@ -15,7 +15,7 @@ import { PppoePrealtaPort } from '../../domain/ports/pppoe-prealta.port';
 import {
   CLIENTE_PPPOE_CUENTA_REPOSITORY,
   ClientePppoeCuentaRepositoryPort,
-} from 'src/modules/pppoe-cliente-cuenta/domain/ports/pppoe-cliente-cuenta.port';
+} from 'src/modules/pppoe-cliente-cuenta/domain/ports/cliente-pppoe-cuenta-repository.port';
 
 import {
   PPPOE_SECRET_CIPHER,
@@ -42,7 +42,7 @@ import {
   PPPOE_PERFIL_HOMOLOGACION,
   PppoePerfilHomologacionFacadePort,
 } from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.facade.port';
-import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/ppoe-cliente-cuenta.entity';
+import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/cliente-pppoe-cuenta.entity';
 
 @Injectable()
 export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {

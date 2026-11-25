@@ -1,4 +1,4 @@
-import { EstadoCuentaPppoe } from '../enums/pppoe-cliente-cuenta.enum';
+import { EstadoCuentaPppoe } from '../enums/estado-cuenta-pppoe.enum';
 
 export type ClientePppoeCuentaProtegidaInstalacion = {
   cuentaPppoeId: number;

@@ -1,4 +1,4 @@
-import { ClientePppoeCuentaEntity } from '../entities/ppoe-cliente-cuenta.entity';
+import { ClientePppoeCuentaEntity } from '../entities/cliente-pppoe-cuenta.entity';
 import { ClientePppoeCuentaProtegidaInstalacion } from '../read-models/cliente-pppoe-cuenta-protegida-instalacion.read-model';
 
 export const CLIENTE_PPPOE_CUENTA_REPOSITORY = Symbol(

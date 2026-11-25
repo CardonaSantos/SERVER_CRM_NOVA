@@ -69,7 +69,7 @@ import { ClienteDesinstalacionModule } from './modules/cliente-desinstalacion/cl
 import { PppoeAccesoInternetModule } from './modules/pppoe-acceso-internet/pppoe-acceso-internet.module';
 import { PppoeInstalacionAccesoModule } from './modules/ppoe-instalacion-acceso/ppoe-instalacion-acceso.module';
 import { PppoePerfilHomologacionModule } from './modules/pppoe-perfil-homologacion/pppoe-perfil-homologacion.module';
-import { PppoeClienteCuentaModule } from './modules/pppoe-cliente-cuenta/ppoe-cliente-cuenta.module';
+import { PppoeClienteCuentaModule } from './modules/pppoe-cliente-cuenta/pppoe-cliente-cuenta.module';
 import { PppoeCredentialsModule } from './modules/pppoe-credentials/pppoe-credentials.module';
 import { PppoeAuditoriaModule } from './modules/pppoe-auditoria/pppoe-auditoria.module';
 import { PppoeAutomatizacionModule } from './modules/pppoe-automatizacion/pppoe-automatizacion.module';

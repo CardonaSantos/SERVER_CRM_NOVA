@@ -14,13 +14,13 @@ import {
 
 import type { Request } from 'express';
 
-import { ListarCuentasPppoeUseCase } from '../application/use-cases/listar-cuentas-pppoe.use-case';
+import { ListarCuentasPppoeUseCase } from '../../application/use-cases/listar-cuentas-pppoe.use-case';
 
-import { ListarCuentasPppoeQueryDto } from './dto/listar-cuentas-pppoe-query.dto';
+import { ListarCuentasPppoeQueryDto } from '../dto/listar-cuentas-pppoe-query.dto';
 
-import { ObtenerDetalleCuentaPppoeUseCase } from '../application/use-cases/obtener-detalle-cuenta-pppoe.use-case';
+import { ObtenerDetalleCuentaPppoeUseCase } from '../../application/use-cases/obtener-detalle-cuenta-pppoe.use-case';
 
-import { ConsultarCredencialesPppoeCuentaUseCase } from '../application/use-cases/consultar-credenciales-pppoe-cuenta.use-case';
+import { ConsultarCredencialesPppoeCuentaUseCase } from '../../application/use-cases/consultar-credenciales-pppoe-cuenta.use-case';
 
 type AuthenticatedRequest = Request & {
   user?: {
@@ -37,7 +37,7 @@ type AuthenticatedRequest = Request & {
 };
 
 @Controller('pppoe-cuentas')
-export class PppoeCuentaConsultaController {
+export class CuentaPppoeController {
   constructor(
     private readonly listarCuentasPppoe: ListarCuentasPppoeUseCase,
 

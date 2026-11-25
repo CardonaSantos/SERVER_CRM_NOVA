@@ -11,7 +11,7 @@ import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe
 import {
   CLIENTE_PPPOE_CUENTA_REPOSITORY,
   ClientePppoeCuentaRepositoryPort,
-} from 'src/modules/pppoe-cliente-cuenta/domain/ports/pppoe-cliente-cuenta.port';
+} from 'src/modules/pppoe-cliente-cuenta/domain/ports/cliente-pppoe-cuenta-repository.port';
 
 import { FinalizarPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/finalizar-pppoe-operacion.use-case';
 
@@ -49,7 +49,7 @@ import { EjecutarOperacionPppoeResult } from '../../domain/props/pppoe-provision
 import { PppoeOperacionStepRunnerService } from '../services/pppoe-operacion-step-runner.service';
 import { SuspenderServicioPppoeExecutor } from '../executors/suspender-servicio-pppoe.executor';
 import { ResolverContextoEjecucionPppoeService } from '../services/resolver-contexto-ejecucion-pppoe.service';
-import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/ppoe-cliente-cuenta.entity';
+import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/cliente-pppoe-cuenta.entity';
 import { ActivarSecretPppoeExecutor } from '../executors/activar-secret-pppoe.executor';
 import { PppoeOperacionResultado } from 'src/modules/pppoe-operacion/domain/props/pppoe-operacion.props';
 import {

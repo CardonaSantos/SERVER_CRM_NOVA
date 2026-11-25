@@ -1,16 +1,11 @@
-import { EstadoCuentaPppoe } from '../enums/pppoe-cliente-cuenta.enum';
+import { SecretoPppoeProtegido } from 'src/modules/pppoe-credentials/public/pppoe-secret-cipher.port';
+
+import { EstadoCuentaPppoe } from '../enums/estado-cuenta-pppoe.enum';
 import {
   AdoptarClientePppoeCuentaEntityProps,
   ClientePppoeCuentaEntityProps,
   CrearClientePppoeCuentaEntityProps,
-} from '../props/ppoe-cliente-cuenta.props';
-
-export type SecretoPppoeProtegidoProps = {
-  secretoCifrado: string;
-  secretoIv: string;
-  secretoAuthTag: string;
-  versionClave: number;
-};
+} from '../props/cliente-pppoe-cuenta.props';
 
 export class ClientePppoeCuentaEntity {
   private constructor(private readonly props: ClientePppoeCuentaEntityProps) {}
@@ -326,7 +321,7 @@ export class ClientePppoeCuentaEntity {
     return this.props.versionClave;
   }
 
-  get secretoProtegido(): SecretoPppoeProtegidoProps {
+  get secretoProtegido(): SecretoPppoeProtegido {
     return {
       secretoCifrado: this.props.secretoCifrado,
 
@@ -667,7 +662,7 @@ export class ClientePppoeCuentaEntity {
    */
 
   rotarSecretoProtegido(
-    secreto: SecretoPppoeProtegidoProps,
+    secreto: SecretoPppoeProtegido,
     fecha: Date = new Date(),
   ): void {
     this.assertPersisted();

@@ -5,14 +5,14 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import {
   BuscarCuentaPppoeVigentePorUsuarioParams,
   ClientePppoeCuentaRepositoryPort,
-} from '../../domain/ports/pppoe-cliente-cuenta.port';
+} from '../../domain/ports/cliente-pppoe-cuenta-repository.port';
 
-import { ClientePppoeCuentaPrismaMapper } from './pppoe-cliente-cuenta.mapper';
+import { ClientePppoeCuentaPrismaMapper } from './cliente-pppoe-cuenta-prisma.mapper';
 
 import { ClientePppoeCuentaProtegidaInstalacion } from '../../domain/read-models/cliente-pppoe-cuenta-protegida-instalacion.read-model';
 
-import { EstadoCuentaPppoe } from '../../domain/enums/pppoe-cliente-cuenta.enum';
-import { ClientePppoeCuentaEntity } from '../../domain/entities/ppoe-cliente-cuenta.entity';
+import { EstadoCuentaPppoe } from '../../domain/enums/estado-cuenta-pppoe.enum';
+import { ClientePppoeCuentaEntity } from '../../domain/entities/cliente-pppoe-cuenta.entity';
 import { EstadoAccesoInternet } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
 
 @Injectable()

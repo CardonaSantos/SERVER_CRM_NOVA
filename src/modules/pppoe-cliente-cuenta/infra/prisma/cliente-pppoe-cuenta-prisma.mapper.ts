@@ -4,8 +4,8 @@ import {
   Prisma,
 } from '@prisma/client';
 
-import { EstadoCuentaPppoe } from '../../domain/enums/pppoe-cliente-cuenta.enum';
-import { ClientePppoeCuentaEntity } from '../../domain/entities/ppoe-cliente-cuenta.entity';
+import { EstadoCuentaPppoe } from '../../domain/enums/estado-cuenta-pppoe.enum';
+import { ClientePppoeCuentaEntity } from '../../domain/entities/cliente-pppoe-cuenta.entity';
 
 export class ClientePppoeCuentaPrismaMapper {
   static toDomain(record: ClientePppoeCuenta): ClientePppoeCuentaEntity {

@@ -12,7 +12,7 @@ import { PPPOE_PREALTA } from './domain/ports/pppoe-prealta.port';
 
 import { PPPOE_CREDENCIALES_INSTALACION } from './domain/ports/pppoe-credenciales-instalacion.port';
 import { PppoePerfilHomologacionModule } from '../pppoe-perfil-homologacion/pppoe-perfil-homologacion.module';
-import { PppoeClienteCuentaModule } from '../pppoe-cliente-cuenta/ppoe-cliente-cuenta.module';
+import { PppoeClienteCuentaModule } from '../pppoe-cliente-cuenta/pppoe-cliente-cuenta.module';
 import { MikroTikModule } from 'src/mikro-tik/mikro-tik.module';
 import { ConsultarCredencialesPppoeInstalacionUseCase } from '../pppoe-cliente-cuenta/application/use-cases/consultar-credenciales-pppoe-instalacion.use-case';
 import { CrearYEjecutarActivacionPppoeUseCase } from './application/use-cases/crear-y-ejecutar-activacion-pppoe.use-case';

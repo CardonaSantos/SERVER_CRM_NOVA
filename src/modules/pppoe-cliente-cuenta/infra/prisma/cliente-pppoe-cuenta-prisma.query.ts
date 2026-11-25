@@ -17,7 +17,7 @@ import {
   TipoOperacionPppoe,
 } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
-import { EstadoCuentaPppoe } from '../../domain/enums/pppoe-cliente-cuenta.enum';
+import { EstadoCuentaPppoe } from '../../domain/enums/estado-cuenta-pppoe.enum';
 
 import {
   ClientePppoeCuentaFindManyFilters,
@@ -30,10 +30,10 @@ import { ClientePppoeCuentaDetalleReadModel } from '../../domain/read-models/cli
 import {
   BuscarDetalleCuentaPppoeParams,
   ClientePppoeCuentaQueryPort,
-} from '../../domain/ports/pppoe-cliente-cuenta-query.port';
+} from '../../domain/ports/cliente-pppoe-cuenta-query.port';
 
 @Injectable()
-export class ClientePppoeCuentaPrismaQueryRepository
+export class ClientePppoeCuentaPrismaQuery
   implements ClientePppoeCuentaQueryPort
 {
   constructor(private readonly prisma: PrismaService) {}

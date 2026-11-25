@@ -2,12 +2,12 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 
 import { EstadoAccesoInternet } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
 
-import { EstadoCuentaPppoe } from '../../domain/enums/pppoe-cliente-cuenta.enum';
+import { EstadoCuentaPppoe } from '../../domain/enums/estado-cuenta-pppoe.enum';
 
 import {
   CLIENTE_PPPOE_CUENTA_QUERY,
   ClientePppoeCuentaQueryPort,
-} from '../../domain/ports/pppoe-cliente-cuenta-query.port';
+} from '../../domain/ports/cliente-pppoe-cuenta-query.port';
 
 import {
   ClientePppoeCuentaFindManyFilters,

@@ -8,13 +8,13 @@ import { PppoeCredentialsModule } from '../pppoe-credentials/pppoe-credentials.m
 
 import { PppoeAuditoriaModule } from '../pppoe-auditoria/pppoe-auditoria.module';
 
-import { CLIENTE_PPPOE_CUENTA_REPOSITORY } from './domain/ports/pppoe-cliente-cuenta.port';
+import { CLIENTE_PPPOE_CUENTA_REPOSITORY } from './domain/ports/cliente-pppoe-cuenta-repository.port';
 
-import { CLIENTE_PPPOE_CUENTA_QUERY } from './domain/ports/pppoe-cliente-cuenta-query.port';
+import { CLIENTE_PPPOE_CUENTA_QUERY } from './domain/ports/cliente-pppoe-cuenta-query.port';
 
-import { ClientePppoeCuentaPrismaRepository } from './infra/prisma/pppoe-cliente-cuenta.repository';
+import { ClientePppoeCuentaPrismaRepository } from './infra/prisma/cliente-pppoe-cuenta-prisma.repository';
 
-import { ClientePppoeCuentaPrismaQueryRepository } from './infra/prisma/pppoe-cliente-cuenta-query.repository';
+import { ClientePppoeCuentaPrismaQuery } from './infra/prisma/cliente-pppoe-cuenta-prisma.query';
 
 import { ListarCuentasPppoeUseCase } from './application/use-cases/listar-cuentas-pppoe.use-case';
 
@@ -22,7 +22,7 @@ import { ObtenerDetalleCuentaPppoeUseCase } from './application/use-cases/obtene
 
 import { ConsultarCredencialesPppoeCuentaUseCase } from './application/use-cases/consultar-credenciales-pppoe-cuenta.use-case';
 
-import { PppoeCuentaConsultaController } from './presentation/pppoe-cuenta-consulta.controller';
+import { CuentaPppoeController } from './presentation/http/cuenta-pppoe.controller';
 
 @Module({
   imports: [
@@ -35,7 +35,7 @@ import { PppoeCuentaConsultaController } from './presentation/pppoe-cuenta-consu
     PppoeAuditoriaModule,
   ],
 
-  controllers: [PppoeCuentaConsultaController],
+  controllers: [CuentaPppoeController],
 
   providers: [
     ListarCuentasPppoeUseCase,
@@ -53,7 +53,7 @@ import { PppoeCuentaConsultaController } from './presentation/pppoe-cuenta-consu
     {
       provide: CLIENTE_PPPOE_CUENTA_QUERY,
 
-      useClass: ClientePppoeCuentaPrismaQueryRepository,
+      useClass: ClientePppoeCuentaPrismaQuery,
     },
   ],
 

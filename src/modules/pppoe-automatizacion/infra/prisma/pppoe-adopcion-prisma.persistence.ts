@@ -15,7 +15,7 @@ import { ClienteAccesoInternetPrismaMapper } from 'src/modules/pppoe-acceso-inte
 
 // import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/pppoe-cliente-cuenta.entity';
 
-import { ClientePppoeCuentaPrismaMapper } from 'src/modules/pppoe-cliente-cuenta/infra/prisma/pppoe-cliente-cuenta.mapper';
+import { ClientePppoeCuentaPrismaMapper } from 'src/modules/pppoe-cliente-cuenta/infra/prisma/cliente-pppoe-cuenta-prisma.mapper';
 
 import { PppoeAuditoriaEntity } from 'src/modules/pppoe-auditoria/domain/entities/pppoe-auditoria.entity';
 
@@ -31,7 +31,7 @@ import {
   PersistirAdopcionPppoeResult,
   PppoeAdopcionPersistencePort,
 } from '../../domain/ports/pppoe-adopcion-persistence.port';
-import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/ppoe-cliente-cuenta.entity';
+import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/cliente-pppoe-cuenta.entity';
 import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 @Injectable()

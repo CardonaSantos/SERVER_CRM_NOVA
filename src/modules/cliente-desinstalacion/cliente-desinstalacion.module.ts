@@ -35,7 +35,7 @@ import { PppoeAccesoInternetModule } from '../pppoe-acceso-internet/pppoe-acceso
 import { ValidarAutorizacionDesinstalacionService } from './application/services/validar-autorizacion-desinstalacion.service';
 import { AuthModule } from 'src/auth/auth.module';
 import { PppoeAutomatizacionModule } from '../pppoe-automatizacion/pppoe-automatizacion.module';
-import { PppoeClienteCuentaModule } from '../pppoe-cliente-cuenta/ppoe-cliente-cuenta.module';
+import { PppoeClienteCuentaModule } from '../pppoe-cliente-cuenta/pppoe-cliente-cuenta.module';
 import { TipoEvidenciaClienteOperacion } from '../cliente-instalacion/domain/enums/tipo-evidencia-cliente-operacion.enum';
 import { SubirEvidenciaDesinstalacionUseCase } from './application/use-cases/subir-evidencia-desinstalacion.use-case';
 import { ClienteDesinstalacionMediaPrismaRepository } from './infra/prisma/cliente-desinstalacion-media.prisma.repository';

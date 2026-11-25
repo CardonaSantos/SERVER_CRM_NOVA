@@ -5,7 +5,7 @@ import {
   TipoOperacionPppoe,
 } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
-import { EstadoCuentaPppoe } from '../enums/pppoe-cliente-cuenta.enum';
+import { EstadoCuentaPppoe } from '../enums/estado-cuenta-pppoe.enum';
 
 import { FlujoActivacionCuentaPppoe } from '../enums/flujo-activacion-cuenta-pppoe.enum';
 

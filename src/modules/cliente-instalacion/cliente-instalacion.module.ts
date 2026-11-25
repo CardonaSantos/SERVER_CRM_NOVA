@@ -26,7 +26,7 @@ import { ClienteInstalacionMediaPrismaRepository } from './infra/prisma/cliente-
 import { ClienteInstalacionAccesoPrismaRepository } from '../ppoe-instalacion-acceso/infra/prisma/cliente-instalacion-acceso.repository.prisma';
 import { PppoeAutomatizacionModule } from '../pppoe-automatizacion/pppoe-automatizacion.module';
 import { ReintentarPrealtaPppoeInstalacionUseCase } from './application/use-cases/reintentar-prealta-pppoe-instalacion.use-case';
-import { PppoeClienteCuentaModule } from '../pppoe-cliente-cuenta/ppoe-cliente-cuenta.module';
+import { PppoeClienteCuentaModule } from '../pppoe-cliente-cuenta/pppoe-cliente-cuenta.module';
 import { ResolverPppoeInstalacionService } from './application/services/resolver-pppoe-instalacion.service';
 import { AuthModule } from 'src/auth/auth.module';
 import { ListarMisInstalacionesAsignadasUseCase } from './application/use-cases/listar-mis-instalaciones-asignadas.use-case';

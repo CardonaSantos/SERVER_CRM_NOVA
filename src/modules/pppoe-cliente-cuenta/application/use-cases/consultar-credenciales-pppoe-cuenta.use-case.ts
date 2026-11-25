@@ -8,12 +8,12 @@ import {
 import {
   CLIENTE_PPPOE_CUENTA_REPOSITORY,
   ClientePppoeCuentaRepositoryPort,
-} from '../../domain/ports/pppoe-cliente-cuenta.port';
+} from '../../domain/ports/cliente-pppoe-cuenta-repository.port';
 
 import {
   CLIENTE_PPPOE_CUENTA_QUERY,
   ClientePppoeCuentaQueryPort,
-} from '../../domain/ports/pppoe-cliente-cuenta-query.port';
+} from '../../domain/ports/cliente-pppoe-cuenta-query.port';
 
 import {
   PPPOE_SECRET_CIPHER,

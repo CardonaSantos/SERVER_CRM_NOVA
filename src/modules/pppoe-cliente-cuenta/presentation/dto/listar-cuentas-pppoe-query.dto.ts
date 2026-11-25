@@ -12,7 +12,7 @@ import {
 
 import { EstadoAccesoInternet } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
 
-import { EstadoCuentaPppoe } from '../../domain/enums/pppoe-cliente-cuenta.enum';
+import { EstadoCuentaPppoe } from '../../domain/enums/estado-cuenta-pppoe.enum';
 
 import { OrigenCuentaPppoe } from '../../domain/read-models/cliente-pppoe-cuenta-listado.read-model';
 
