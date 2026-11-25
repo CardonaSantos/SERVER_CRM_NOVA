@@ -737,7 +737,7 @@ sus consumidores:
 | Tanda | Módulos | Nota |
 |---|---|---|
 | C0 ✅ | Arreglos rápidos en todos: IP desde `req.ip`, borrar código muerto y archivos vacíos, quitar guards/pipes redundantes | **Hecho** en `refactorizacion conformidad #1–#5`: 8 lecturas de `x-forwarded-for` → `req.ip`; 97 archivos inalcanzables borrados (incluida la carpeta huérfana `pppoe-instalacion-acceso/`); `.ts.ts` renombrado; guards JWT y `ValidationPipe` locales fuera de 16 controladores. Lint 410 → 368. El paso a `@Actor()` y `new Date()` van en C1–C5 |
-| C1 | `mikrotik-ssh` ✅, `mikrotik-router-credentials` ✅, `pppoe-credentials` ✅, `digital-ocean-media` (pendiente: nombre y fachada) | Hojas: nadie del grupo depende de otros. Hecho en `refactorizacion mikrotik-router-credentials #1–#2`, `pppoe-credentials #1–#2`, `mikrotik-ssh #1–#3` |
+| C1 ✅ | `mikrotik-ssh`, `mikrotik-router-credentials`, `pppoe-credentials`, `digital-ocean-media` → **`almacenamiento-media`** | **Hecho**: `mikrotik-router-credentials #1–#2`, `pppoe-credentials #1–#3`, `mikrotik-ssh #1–#3`, `almacenamiento-media #1–#4` (renombre, fachada `ALMACENAMIENTO_MEDIA`, `@Actor()` en `/media`). Lint 368 → 361 |
 | C2 | `pppoe-auditoria`, `pppoe-operacion`, `pppoe-acceso-internet`, `pppoe-perfil-homologacion`, `pppoe-cliente-cuenta` | Núcleo PPPoE: aquí se rompen los ciclos con fachadas |
 | C3 | `pppoe-automatizacion` | El más grande y el más acoplado |
 | C4 | `cliente-instalacion`, `cliente-desinstalacion` | Consumidores del núcleo PPPoE |
@@ -815,5 +815,4 @@ Todas creadas y con pruebas en `refactorizacion comun #1–#5`. La de ESLint que
 
 Los módulos hexagonales actuales conservan su nombre salvo `ppoe-instalacion-acceso` (error de
 escritura), `pppoe-instalacion-acceso` (huérfano) y `reports` (casi vacío), que se resuelven en
-C0/C1. `digital-ocean-media` pasaría a `almacenamiento-media` cuando se re-conforme (nombre de
-proveedor).
+C0/C1. `digital-ocean-media` ya se renombró a `almacenamiento-media` (C1).
