@@ -14,11 +14,12 @@ Lee antes de escribir código:
 
 La etapa de auth y NestJS 12 está terminada en código (aún no desplegada). Ahora:
 
-1. **H0**: piezas compartidas del estándar (§14): `DomainError`, contrato único de error,
+1. ✅ **H0**: piezas compartidas del estándar (§14): `DomainError`, contrato único de error,
    paginación común, `RELOJ`, `@Actor()`.
-2. **C0**: arreglos rápidos en los módulos de `src/modules` (IP vía `@Actor()`, código
-   muerto, guards/pipes redundantes), sin cambiar estructura ni respuestas.
-3. Después: plan H1–H12 de la guía post-auth y re-conformar módulos (tandas C1–C5 del estándar).
+2. ✅ **C0**: arreglos rápidos en `src/modules` (IP desde `req.ip`, código muerto, guards/pipes
+   redundantes).
+3. **C1**: re-conformar `mikrotik-ssh`, `mikrotik-router-credentials`, `pppoe-credentials`,
+   `digital-ocean-media` al estándar completo. Luego C2–C5 y el plan H1–H12.
 
 **No empieces un paso hasta que el dueño diga que se empieza.**
 
@@ -62,8 +63,9 @@ npm run start:dev
 npx prisma migrate status
 ```
 
-Node 24 (`.nvmrc`). Línea base: lint ≤ 410 errores (sin errores nuevos en archivos tocados);
-Jest 4/15 suites en verde (las otras 11 son boilerplate roto).
+Node 24 (`.nvmrc`). Línea base: lint ≤ 368 errores (tras C0; sin errores nuevos en archivos
+tocados); Jest: las suites de `src/common` y `src/auth/decoradores` en verde; 11 suites legacy
+siguen siendo boilerplate roto.
 
 ## Seguridad que ya existe (no la rehagas ni la rodees)
 

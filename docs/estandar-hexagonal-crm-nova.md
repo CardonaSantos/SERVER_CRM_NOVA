@@ -724,7 +724,7 @@ sus consumidores:
 
 | Tanda | Módulos | Nota |
 |---|---|---|
-| C0 | Arreglos rápidos en todos: IP desde `req.ip` (vía `@Actor()`), borrar código muerto y archivos vacíos, quitar guards/pipes redundantes | Sin cambio de estructura ni de respuestas. Un commit por tipo de arreglo. `new Date()` **no** entra aquí: se corrige en el camino (§5.7) |
+| C0 ✅ | Arreglos rápidos en todos: IP desde `req.ip`, borrar código muerto y archivos vacíos, quitar guards/pipes redundantes | **Hecho** en `refactorizacion conformidad #1–#5`: 8 lecturas de `x-forwarded-for` → `req.ip`; 97 archivos inalcanzables borrados (incluida la carpeta huérfana `pppoe-instalacion-acceso/`); `.ts.ts` renombrado; guards JWT y `ValidationPipe` locales fuera de 16 controladores. Lint 410 → 368. El paso a `@Actor()` y `new Date()` van en C1–C5 |
 | C1 | `mikrotik-ssh`, `mikrotik-router-credentials`, `pppoe-credentials`, `digital-ocean-media` | Hojas: nadie del grupo depende de otros |
 | C2 | `pppoe-auditoria`, `pppoe-operacion`, `pppoe-acceso-internet`, `pppoe-perfil-homologacion`, `pppoe-cliente-cuenta` | Núcleo PPPoE: aquí se rompen los ciclos con fachadas |
 | C3 | `pppoe-automatizacion` | El más grande y el más acoplado |
