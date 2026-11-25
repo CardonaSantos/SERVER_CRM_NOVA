@@ -6,8 +6,10 @@ import {
 } from '../../infra/tokens/cliente-instalacion.tokens';
 import { ClienteInstalacionRepositoryPort } from '../../domain/ports/cliente-instalacion.repository.port';
 import { ClienteInstalacionMediaRepositoryPort } from '../../domain/ports/cliente-instalacion-media.repository.port';
-import { SubirMediaUseCase } from 'src/modules/almacenamiento-media/application/use-cases/subir-media.usecase';
-import { SUBIR_MEDIA_USECASE } from 'src/modules/almacenamiento-media/tokens/tokens';
+import {
+  ALMACENAMIENTO_MEDIA,
+  AlmacenamientoMediaFacadePort,
+} from 'src/modules/almacenamiento-media/public/almacenamiento-media.facade.port';
 import { ClienteInstalacionMediaEntity } from '../../domain/entities/cliente-instalacion-media.entity';
 
 export type SubirEvidenciaInstalacionCommand = {
@@ -31,8 +33,8 @@ export class SubirEvidenciaInstalacionUseCase {
     @Inject(CLIENTE_INSTALACION_MEDIA_REPOSITORY)
     private readonly evidenciaRepository: ClienteInstalacionMediaRepositoryPort,
 
-    @Inject(SUBIR_MEDIA_USECASE)
-    private readonly subirMediaUseCase: SubirMediaUseCase,
+    @Inject(ALMACENAMIENTO_MEDIA)
+    private readonly almacenamiento: AlmacenamientoMediaFacadePort,
   ) {}
 
   async execute(command: SubirEvidenciaInstalacionCommand) {
@@ -48,7 +50,7 @@ export class SubirEvidenciaInstalacionUseCase {
       throw new NotFoundException('Instalación no encontrada.');
     }
 
-    const media = await this.subirMediaUseCase.execute({
+    const media = await this.almacenamiento.subirMedia({
       empresaId: command.empresaId,
       clienteId: instalacion.clienteId,
       subidoPorId: command.subidoPorId ?? undefined,

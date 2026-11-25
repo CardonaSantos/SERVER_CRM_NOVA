@@ -1,8 +1,21 @@
-import { Media, Prisma } from '@prisma/client';
-import { MediaAsset } from '../../domain/file-aset';
+import {
+  CategoriaMedia as CategoriaMediaPrisma,
+  EstadoMedia as EstadoMediaPrisma,
+  Media,
+  Prisma,
+  TipoMedia as TipoMediaPrisma,
+} from '@prisma/client';
 
-export const MediaMapper = {
-  toDomain(row: Media): MediaAsset {
+import {
+  CategoriaMedia,
+  EstadoMedia,
+  TipoMedia,
+} from '../../domain/enums/media.enum';
+import { MediaAsset } from '../../domain/props/media-asset.props';
+
+/** Único lugar donde se traducen filas de Prisma ↔ MediaAsset. */
+export class MediaPrismaMapper {
+  static toDomain(row: Media): MediaAsset {
     return {
       id: row.id,
       empresaId: row.empresaId,
@@ -21,11 +34,11 @@ export const MediaMapper = {
       alto: row.alto ?? undefined,
       duracionSeg: row.duracionSeg ?? undefined,
       checksumSha256: row.checksumSha256 ?? undefined,
-      metadatos: (row.metadatos as any) ?? undefined,
-      categoria: row.categoria as any,
-      tipo: row.tipo as any,
+      metadatos: (row.metadatos as Record<string, unknown> | null) ?? undefined,
+      categoria: row.categoria as CategoriaMedia,
+      tipo: row.tipo as TipoMedia,
       publico: row.publico,
-      estado: row.estado as any,
+      estado: row.estado as EstadoMedia,
       titulo: row.titulo ?? undefined,
       descripcion: row.descripcion ?? undefined,
       etiqueta: row.etiqueta ?? undefined,
@@ -35,28 +48,27 @@ export const MediaMapper = {
       actualizadoEn: row.actualizadoEn,
       eliminadoEn: row.eliminadoEn ?? undefined,
     };
-  },
+  }
 
-  toCreateData(asset: MediaAsset): Prisma.MediaUncheckedCreateInput {
+  static toCreateData(asset: MediaAsset): Prisma.MediaUncheckedCreateInput {
     return {
-      // FKs crudos (unchecked)
       empresaId: asset.empresaId,
       clienteId: asset.clienteId ?? null,
       albumId: asset.albumId ?? null,
       subidoPorId: asset.subidoPorId ?? null,
 
-      // Enums (castea a enum de Prisma si tus tipos de dominio difieren)
-      categoria: asset.categoria as any,
-      tipo: asset.tipo as any,
-      estado: asset.estado as any,
+      // Sin categoría, la BD aplica su valor por defecto (CLIENTE_GENERAL).
+      ...(asset.categoria
+        ? { categoria: asset.categoria as CategoriaMediaPrisma }
+        : {}),
+      tipo: asset.tipo as TipoMediaPrisma,
+      estado: asset.estado as EstadoMediaPrisma,
 
-      // Storage
       bucket: asset.bucket ?? null,
       region: asset.region ?? null,
       key: asset.key,
       cdnUrl: asset.cdnUrl ?? null,
 
-      // Metadatos
       mimeType: asset.mimeType ?? null,
       extension: asset.extension ?? null,
       tamanioBytes:
@@ -66,7 +78,6 @@ export const MediaMapper = {
       duracionSeg: asset.duracionSeg ?? null,
       checksumSha256: asset.checksumSha256 ?? null,
 
-      // Campos de negocio/organización
       titulo: asset.titulo ?? null,
       descripcion: asset.descripcion ?? null,
       etiqueta: asset.etiqueta ?? null,
@@ -74,14 +85,12 @@ export const MediaMapper = {
       tomadoEn: asset.tomadoEn ?? null,
       publico: asset.publico,
 
-      // JSON: ¡IMPORTANTE! Tipar como InputJsonValue u omitir si no hay valor
       ...(asset.metadatos !== undefined
         ? { metadatos: asset.metadatos as unknown as Prisma.InputJsonValue }
         : {}),
 
-      // Auditoría
       eliminadoEn: asset.eliminadoEn ?? null,
-      // creadoEn/actualizadoEn los deja Prisma (defaults/updatedAt)
+      // creadoEn/actualizadoEn: defaults de Prisma
     };
-  },
-};
+  }
+}

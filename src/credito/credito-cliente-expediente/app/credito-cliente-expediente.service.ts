@@ -11,20 +11,15 @@ import {
   CreditoClienteExpedienteRepository,
 } from '../domain/credito-cliente-expediente.repository';
 import {
-  ELIMINAR_MEDIA_USECASE,
-  STORAGE_PORT,
-  UPLOAD_FILE_USECASE,
-} from 'src/modules/almacenamiento-media/tokens/tokens';
-import { UploadFileUseCase } from 'src/modules/almacenamiento-media/application/use-cases/upload-file.usecase';
+  ALMACENAMIENTO_MEDIA,
+  AlmacenamientoMediaFacadePort,
+} from 'src/modules/almacenamiento-media/public/almacenamiento-media.facade.port';
 import { ClienteArchivo } from '../entities/cliente-archivo.entity';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ClienteExpediente } from '../entities/credito-cliente-expediente.entity';
 import { ClienteReferencia } from '../entities/cliente-referencia.entity';
 import { Prisma } from '@prisma/client';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
-import { EliminarMediaUseCase } from 'src/modules/almacenamiento-media/application/use-cases/eliminar-media.usecase';
-import { EliminarMediaCommand } from 'src/modules/almacenamiento-media/dto/eliminar-media.dto';
-import { FileStoragePort } from 'src/modules/almacenamiento-media/domain/ports/file-storage.port';
 
 interface DtoCargarFile {
   buffer: Buffer;
@@ -43,14 +38,8 @@ export class CreditoClienteExpedienteService {
   constructor(
     private readonly prisma: PrismaService,
 
-    @Inject(ELIMINAR_MEDIA_USECASE)
-    private readonly deleteFile: EliminarMediaUseCase,
-
-    @Inject(STORAGE_PORT)
-    private readonly storage: FileStoragePort,
-
-    @Inject(UPLOAD_FILE_USECASE)
-    private readonly uploadFile: UploadFileUseCase,
+    @Inject(ALMACENAMIENTO_MEDIA)
+    private readonly almacenamiento: AlmacenamientoMediaFacadePort,
 
     @Inject(CLIENTE_EXPEDIENTE_REPOSITORY)
     private readonly clienteExpedienteRepo: CreditoClienteExpedienteRepository,
@@ -136,7 +125,7 @@ export class CreditoClienteExpedienteService {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
 
-      const uploaded = await this.uploadFile.execute({
+      const uploaded = await this.almacenamiento.subirArchivo({
         empresaId: 1,
         clienteId,
         buffer: file.buffer,
@@ -214,7 +203,7 @@ export class CreditoClienteExpedienteService {
 
     for (const archivo of archivos) {
       if (archivo.key && archivo.bucket) {
-        await this.storage.delete({
+        await this.almacenamiento.eliminarArchivo({
           key: archivo.key,
           bucket: archivo.bucket,
         });

@@ -1,23 +1,24 @@
-import { IsInt, IsPositive } from 'class-validator';
 import {
-  Controller,
-  Post,
-  UploadedFile,
-  UseInterceptors,
   Body,
-  Inject,
-  UploadedFiles,
-  Delete,
-  Param,
-  Query,
-  Logger,
+  Controller,
   ParseIntPipe,
+  Post,
+  Query,
+  UploadedFiles,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ELIMINAR_MEDIA_USECASE, SUBIR_MEDIA_USECASE } from '../tokens/tokens';
-import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
-import { SubirMediaUseCase } from '../application/use-cases/subir-media.usecase';
-import { CategoriaMedia, TipoMedia } from '@prisma/client';
-import { EliminarMediaUseCase } from '../application/use-cases/eliminar-media.usecase';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { IsInt, IsPositive } from 'class-validator';
+
+import { EliminarMediaUseCase } from '../../application/use-cases/eliminar-media.use-case';
+import { SubirMediaUseCase } from '../../application/use-cases/subir-media.use-case';
+import { CategoriaMedia, TipoMedia } from '../../domain/enums/media.enum';
+import {
+  MetadatosArchivosInvalidosError,
+  SinArchivosError,
+} from '../../domain/errors/almacenamiento-media.errors';
+import { MediaPresenter } from '../presenters/media.presenter';
+
 /**
  * Era una interfaz: el ValidationPipe no puede validar interfaces, así que
  * este borrado (hard delete en DigitalOcean) aceptaba cualquier body.
@@ -28,13 +29,16 @@ class DeleteMediaDto {
   id: number;
 }
 
+type MetadatosArchivo = {
+  titulo?: string;
+  descripcion?: string;
+  etiqueta?: string;
+};
+
 @Controller('media')
 export class MediaController {
-  private readonly logger = new Logger(MediaController.name);
   constructor(
-    @Inject(SUBIR_MEDIA_USECASE) private readonly subirMedia: SubirMediaUseCase,
-
-    @Inject(ELIMINAR_MEDIA_USECASE)
+    private readonly subirMedia: SubirMediaUseCase,
     private readonly eliminarMedia: EliminarMediaUseCase,
   ) {}
 
@@ -52,15 +56,11 @@ export class MediaController {
     @Body('basePrefix') basePrefix?: string,
     @Body('items') itemsJson?: string,
   ) {
-    const items: {
-      titulo?: string;
-      descripcion?: string;
-      etiqueta?: string;
-    }[] = JSON.parse(itemsJson ?? '[]');
+    if (!files?.length) throw new SinArchivosError();
 
-    if (!files.length) throw new Error('No hay archivos');
+    const items = leerMetadatos(itemsJson);
 
-    const results = await Promise.all(
+    const resultados = await Promise.all(
       files.map((file, idx) => {
         const meta = items[idx] ?? {};
 
@@ -87,7 +87,7 @@ export class MediaController {
       }),
     );
 
-    return { count: results.length, items: results };
+    return MediaPresenter.lote(resultados);
   }
 
   @Post('delete')
@@ -95,14 +95,20 @@ export class MediaController {
     @Query('empresaId', ParseIntPipe) empresaId: number,
     @Body() body: DeleteMediaDto,
   ) {
-    console.log('POST /media/delete');
-    console.log('empresaId:', empresaId);
-    console.log('body:', body);
-
-    return this.eliminarMedia.execute({
+    const resultado = await this.eliminarMedia.execute({
       id: body.id,
       empresaId,
-      hardDelete: true,
     });
+
+    return MediaPresenter.eliminado(resultado);
+  }
+}
+
+function leerMetadatos(itemsJson?: string): MetadatosArchivo[] {
+  try {
+    const items: unknown = JSON.parse(itemsJson ?? '[]');
+    return Array.isArray(items) ? (items as MetadatosArchivo[]) : [];
+  } catch {
+    throw new MetadatosArchivosInvalidosError();
   }
 }

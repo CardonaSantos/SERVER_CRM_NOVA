@@ -1,164 +1,49 @@
 import { Module } from '@nestjs/common';
-import { S3Client, HeadBucketCommand } from '@aws-sdk/client-s3';
-import { MediaController } from './http/media.controller';
-import { SubirMediaUseCase } from './application/use-cases/subir-media.usecase';
-import { SpacesAdapter } from './infraestructure/storage/spaces.adapter';
-import { PrismaMediaRepository } from './infraestructure/persistence/prisma-media.repository';
 
-import {
-  ELIMINAR_MEDIA_USECASE,
-  MEDIA_REPOSITORY,
-  SPACES_CFG,
-  SPACES_S3,
-  STORAGE_PORT,
-  SUBIR_MEDIA_USECASE,
-} from './tokens/tokens';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { FileStoragePort } from './domain/ports/file-storage.port';
-import { MediaRepositoryPort } from './domain/ports/media-repository.port';
-import { EliminarMediaUseCase } from './application/use-cases/eliminar-media.usecase';
-import { UploadFileUseCase } from './application/use-cases/upload-file.usecase';
-import { UPLOAD_FILE_USECASE } from './tokens/tokens';
+import { PrismaModule } from 'src/prisma/prisma.module';
 
+import { AlmacenamientoMediaFacade } from './application/facade/almacenamiento-media.facade';
+import { FILE_STORAGE } from './application/ports/file-storage.port';
+import { MediaKeyService } from './application/services/media-key.service';
+import { EliminarArchivoUseCase } from './application/use-cases/eliminar-archivo.use-case';
+import { EliminarMediaUseCase } from './application/use-cases/eliminar-media.use-case';
+import { SubirArchivoUseCase } from './application/use-cases/subir-archivo.use-case';
+import { SubirMediaUseCase } from './application/use-cases/subir-media.use-case';
+import { MEDIA_REPOSITORY } from './domain/ports/media-repository.port';
+import { almacenamientoMediaConfigProvider } from './infra/config/almacenamiento-media-config.provider';
+import { MediaPrismaRepository } from './infra/prisma/media-prisma.repository';
+import { MediaStorageSpacesAdapter } from './infra/spaces/media-storage-spaces.adapter';
+import { MediaController } from './presentation/http/media.controller';
+import { ALMACENAMIENTO_MEDIA } from './public/almacenamiento-media.facade.port';
+
+/**
+ * Almacenamiento de archivos (hoy DigitalOcean Spaces) y registro en `Media`.
+ *
+ * API pública (`public/`): ALMACENAMIENTO_MEDIA (fachada) y los enums de
+ * `almacenamiento-media.types.ts`. ConfigService y RELOJ son globales.
+ */
 @Module({
+  imports: [PrismaModule],
   controllers: [MediaController],
   providers: [
-    PrismaService,
-    // 1) Config desde .env (DO_SPACES_*)
-    {
-      provide: SPACES_CFG,
-      useFactory: () => {
-        const cfg = {
-          region: process.env.DO_SPACES_REGION,
-          endpoint: process.env.DO_SPACES_ENDPOINT,
-          accessKeyId: process.env.DO_SPACES_KEY,
-          secretAccessKey: process.env.DO_SPACES_SECRET,
-          defaultBucket: process.env.DO_SPACES_BUCKET,
-          cdnBase: process.env.DO_SPACES_CDN_BASE,
-        };
-        for (const [k, v] of Object.entries(cfg)) {
-          if (!v) throw new Error(`Falta variable de entorno: ${k}`);
-        }
-        // console.log('SPACES CFG ->', cfg); // <- descomenta si deseas depurar
-        return cfg;
-      },
-    },
+    // Casos de uso
+    SubirMediaUseCase,
+    SubirArchivoUseCase,
+    EliminarMediaUseCase,
+    EliminarArchivoUseCase,
 
-    //  Eliminar media
-    {
-      provide: ELIMINAR_MEDIA_USECASE,
-      useFactory: (storage: FileStoragePort, repo: MediaRepositoryPort) =>
-        new EliminarMediaUseCase(storage, repo),
-      inject: [STORAGE_PORT, MEDIA_REPOSITORY],
-    },
+    // Servicios
+    MediaKeyService,
 
-    // 2) Cliente S3 apuntando a DO (path-style recomendado)
-    {
-      provide: SPACES_S3,
-      useFactory: (cfg: any) =>
-        new S3Client({
-          region: cfg.region, // ej. "sfo3"
-          endpoint: cfg.endpoint, // ej. "https://sfo3.digitaloceanspaces.com"
-          forcePathStyle: true, // evita problemas de NoSuchBucket
-          credentials: {
-            accessKeyId: cfg.accessKeyId,
-            secretAccessKey: cfg.secretAccessKey,
-          },
-        }),
-      inject: [SPACES_CFG],
-    },
+    // Fachada
+    AlmacenamientoMediaFacade,
+    { provide: ALMACENAMIENTO_MEDIA, useExisting: AlmacenamientoMediaFacade },
 
-    // 3) Pre-flight: valida bucket/región/credenciales al boot
-    // {
-    //   provide: 'SPACES_BOOT_CHECK',
-    //   useFactory: async (s3: S3Client, cfg: any) => {
-    //     await s3.send(new HeadBucketCommand({ Bucket: cfg.defaultBucket }));
-    //     return true;
-    //   },
-    //   inject: [SPACES_S3, SPACES_CFG],
-    // },
-    {
-      provide: 'SPACES_BOOT_CHECK',
-      useFactory: async (s3: S3Client, cfg: any) => {
-        try {
-          await s3.send(
-            new HeadBucketCommand({
-              Bucket: cfg.defaultBucket,
-            }),
-          );
-
-          console.log('[Spaces] Bucket validado correctamente');
-
-          return {
-            ok: true,
-          };
-        } catch (error) {
-          const err = error as any;
-
-          console.error('[Spaces] No se pudo validar el bucket al iniciar', {
-            name: err?.name,
-            message: err?.message,
-            statusCode: err?.$metadata?.httpStatusCode,
-            requestId: err?.$metadata?.requestId,
-            bucket: cfg.defaultBucket,
-            endpoint: cfg.endpoint,
-          });
-
-          return {
-            ok: false,
-            error: err?.name ?? 'UNKNOWN_SPACES_ERROR',
-            statusCode: err?.$metadata?.httpStatusCode,
-          };
-        }
-      },
-      inject: [SPACES_S3, SPACES_CFG],
-    },
-
-    // 4) Adapter de storage (FileStoragePort)
-    {
-      provide: STORAGE_PORT,
-      useFactory: (s3: S3Client, cfg: any) =>
-        new SpacesAdapter(s3, {
-          defaultBucket: cfg.defaultBucket,
-          cdnBase: cfg.cdnBase,
-        }),
-      inject: [SPACES_S3, SPACES_CFG],
-    },
-
-    // 5) Repo Prisma
-    {
-      provide: MEDIA_REPOSITORY,
-      useClass: PrismaMediaRepository,
-    },
-    // CASO ESPECIAL SOLO SUBIDA UTILITARIA
-    {
-      provide: UPLOAD_FILE_USECASE,
-      useFactory: (storage, cfg) =>
-        new UploadFileUseCase(storage, {
-          bucket: cfg.defaultBucket,
-          cdnBase: cfg.cdnBase,
-          provider: 'do-spaces',
-        }),
-      inject: [STORAGE_PORT, SPACES_CFG],
-    },
-
-    // 6) Caso de uso: Subir media
-    {
-      provide: SUBIR_MEDIA_USECASE,
-      useFactory: (storage, repo, cfg) =>
-        new SubirMediaUseCase(storage, repo, {
-          bucket: cfg.defaultBucket,
-          cdnBase: cfg.cdnBase,
-          provider: 'do-spaces',
-        }),
-      inject: [STORAGE_PORT, MEDIA_REPOSITORY, SPACES_CFG],
-    },
+    // Configuración y adaptadores
+    almacenamientoMediaConfigProvider,
+    { provide: FILE_STORAGE, useClass: MediaStorageSpacesAdapter },
+    { provide: MEDIA_REPOSITORY, useClass: MediaPrismaRepository },
   ],
-  exports: [
-    SUBIR_MEDIA_USECASE,
-    UPLOAD_FILE_USECASE,
-    ELIMINAR_MEDIA_USECASE,
-    STORAGE_PORT,
-  ],
+  exports: [ALMACENAMIENTO_MEDIA],
 })
 export class AlmacenamientoMediaModule {}

@@ -1,21 +1,14 @@
-// src/modules/media/domain/ports/media-repository.port.ts
+import { MediaAsset } from '../props/media-asset.props';
 
-import { MediaAsset } from '../file-aset';
-
-export type ListarMediaFiltro = {
-  empresaId: number;
-  clienteId?: number;
-  albumId?: number;
-  tipo?: MediaAsset['tipo'];
-  skip?: number;
-  take?: number;
-};
+export const MEDIA_REPOSITORY = Symbol('MEDIA_REPOSITORY');
 
 export interface MediaRepositoryPort {
+  /** Registra un archivo ya subido al almacenamiento. */
   guardar(asset: MediaAsset): Promise<MediaAsset>;
+
+  /** Busca un archivo por id dentro de la empresa. */
   buscarPorId(id: number, empresaId: number): Promise<MediaAsset | null>;
-  listar(f: ListarMediaFiltro): Promise<MediaAsset[]>;
-  marcarEliminado(id: number, empresaId: number, fecha: Date): Promise<void>;
-  existePorBucketKey(bucket: string, key: string): Promise<boolean>;
-  eliminar(id: number, empresaId: number): Promise<void>;
+
+  /** Borra la fila del archivo. */
+  eliminar(id: number): Promise<void>;
 }

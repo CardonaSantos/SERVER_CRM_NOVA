@@ -5,11 +5,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { CategoriaMedia, TipoMedia } from '@prisma/client';
+import {
+  CategoriaMedia,
+  TipoMedia,
+} from 'src/modules/almacenamiento-media/public/almacenamiento-media.types';
 
-import { SubirMediaUseCase } from 'src/modules/almacenamiento-media/application/use-cases/subir-media.usecase';
-
-import { SUBIR_MEDIA_USECASE } from 'src/modules/almacenamiento-media/tokens/tokens';
+import {
+  ALMACENAMIENTO_MEDIA,
+  AlmacenamientoMediaFacadePort,
+} from 'src/modules/almacenamiento-media/public/almacenamiento-media.facade.port';
 
 import { TipoEvidenciaClienteOperacion } from 'src/modules/cliente-instalacion/domain/enums/tipo-evidencia-cliente-operacion.enum';
 
@@ -47,8 +51,8 @@ export class SubirEvidenciaDesinstalacionUseCase {
     @Inject(CLIENTE_DESINSTALACION_MEDIA_REPOSITORY)
     private readonly evidenciaRepository: ClienteDesinstalacionMediaRepositoryPort,
 
-    @Inject(SUBIR_MEDIA_USECASE)
-    private readonly subirMediaUseCase: SubirMediaUseCase,
+    @Inject(ALMACENAMIENTO_MEDIA)
+    private readonly almacenamiento: AlmacenamientoMediaFacadePort,
   ) {}
 
   async execute(command: SubirEvidenciaDesinstalacionCommand) {
@@ -64,7 +68,7 @@ export class SubirEvidenciaDesinstalacionUseCase {
 
     const props = desinstalacion.toPrimitives();
 
-    const media = await this.subirMediaUseCase.execute({
+    const media = await this.almacenamiento.subirMedia({
       empresaId: props.empresaId,
 
       clienteId: props.clienteId,
@@ -75,7 +79,7 @@ export class SubirEvidenciaDesinstalacionUseCase {
 
       /**
        * Enviamos el MIME declarado por Multer.
-       * SubirMediaUseCase comprobará después la firma
+       * almacenamiento-media comprobará después la firma
        * binaria real y lo corregirá cuando sea necesario.
        */
       mime: command.file.mimetype,

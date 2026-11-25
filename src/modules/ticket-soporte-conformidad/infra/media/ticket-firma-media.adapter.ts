@@ -1,5 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { CategoriaMedia, TipoMedia } from '@prisma/client';
 import {
   EliminarTicketFirmaMediaInput,
   GuardarTicketFirmaMediaInput,
@@ -7,26 +6,25 @@ import {
   TicketFirmaMediaPort,
 } from '../../application/port/ticket-firma-media.port';
 import {
-  ELIMINAR_MEDIA_USECASE,
-  SUBIR_MEDIA_USECASE,
-} from 'src/modules/almacenamiento-media/tokens/tokens';
-import { SubirMediaUseCase } from 'src/modules/almacenamiento-media/application/use-cases/subir-media.usecase';
-import { EliminarMediaUseCase } from 'src/modules/almacenamiento-media/application/use-cases/eliminar-media.usecase';
+  ALMACENAMIENTO_MEDIA,
+  AlmacenamientoMediaFacadePort,
+} from 'src/modules/almacenamiento-media/public/almacenamiento-media.facade.port';
+import {
+  CategoriaMedia,
+  TipoMedia,
+} from 'src/modules/almacenamiento-media/public/almacenamiento-media.types';
 
 @Injectable()
 export class TicketFirmaMediaAdapter implements TicketFirmaMediaPort {
   constructor(
-    @Inject(SUBIR_MEDIA_USECASE)
-    private readonly subirMedia: SubirMediaUseCase,
-
-    @Inject(ELIMINAR_MEDIA_USECASE)
-    private readonly eliminarMedia: EliminarMediaUseCase,
+    @Inject(ALMACENAMIENTO_MEDIA)
+    private readonly almacenamiento: AlmacenamientoMediaFacadePort,
   ) {}
 
   async guardarFirma(
     input: GuardarTicketFirmaMediaInput,
   ): Promise<GuardarTicketFirmaMediaOutput> {
-    const result = await this.subirMedia.execute({
+    const result = await this.almacenamiento.subirMedia({
       empresaId: input.empresaId,
 
       clienteId: input.clienteId,
@@ -68,12 +66,10 @@ export class TicketFirmaMediaAdapter implements TicketFirmaMediaPort {
   }
 
   async eliminarFirma(input: EliminarTicketFirmaMediaInput): Promise<void> {
-    await this.eliminarMedia.execute({
+    await this.almacenamiento.eliminarMedia({
       id: input.mediaId,
 
       empresaId: input.empresaId,
-
-      hardDelete: true,
     });
   }
 }

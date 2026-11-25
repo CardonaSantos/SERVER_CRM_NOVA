@@ -2,13 +2,9 @@ import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 import {
-  ELIMINAR_MEDIA_USECASE,
-  UPLOAD_FILE_USECASE,
-} from 'src/modules/almacenamiento-media/tokens/tokens';
-
-import { UploadFileUseCase } from 'src/modules/almacenamiento-media/application/use-cases/upload-file.usecase';
-import { EliminarMediaUseCase } from 'src/modules/almacenamiento-media/application/use-cases/eliminar-media.usecase';
-import { EliminarMediaCommand } from 'src/modules/almacenamiento-media/dto/eliminar-media.dto';
+  ALMACENAMIENTO_MEDIA,
+  AlmacenamientoMediaFacadePort,
+} from 'src/modules/almacenamiento-media/public/almacenamiento-media.facade.port';
 
 import {
   PERFIL_REPOSITORY,
@@ -22,11 +18,8 @@ import { UpsertPerfilDto } from '../dto/upser.dto';
 @Injectable()
 export class PerfilService {
   constructor(
-    @Inject(ELIMINAR_MEDIA_USECASE)
-    private readonly deleteFile: EliminarMediaUseCase,
-
-    @Inject(UPLOAD_FILE_USECASE)
-    private readonly uploadFile: UploadFileUseCase,
+    @Inject(ALMACENAMIENTO_MEDIA)
+    private readonly almacenamiento: AlmacenamientoMediaFacadePort,
 
     @Inject(PERFIL_REPOSITORY)
     private readonly perfilRepo: PerfilRepository,
@@ -78,19 +71,13 @@ export class PerfilService {
     const currentAvatar = perfil.getAvatar();
 
     if (currentAvatar) {
-      const cmd: EliminarMediaCommand = {
-        empresaId: 1,
-        id: parseInt(currentAvatar.getKey()), // tu repo debe mapear id↔key si usas media table
-        hardDelete: true,
-      };
-
       await this.safeDeleteMedia(
         currentAvatar.getBucket(),
         currentAvatar.getKey(),
       );
     }
 
-    const uploaded = await this.uploadFile.execute({
+    const uploaded = await this.almacenamiento.subirArchivo({
       buffer: file.buffer,
       mime: file.mimetype,
       empresaId: 1,
@@ -128,7 +115,7 @@ export class PerfilService {
       );
     }
 
-    const uploaded = await this.uploadFile.execute({
+    const uploaded = await this.almacenamiento.subirArchivo({
       buffer: file.buffer,
       mime: file.mimetype,
       empresaId: 1,
@@ -155,7 +142,7 @@ export class PerfilService {
 
   private async safeDeleteMedia(bucket: string, key: string) {
     try {
-      await this.uploadFile['storage'].delete({
+      await this.almacenamiento.eliminarArchivo({
         bucket,
         key,
       });
