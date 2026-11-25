@@ -240,16 +240,8 @@ export class PppoeCuentaProvisionamientoController {
   }
 
   private getClientIp(req: AuthenticatedRequest): string | null {
-    const forwardedFor = req.headers['x-forwarded-for'];
-
-    if (typeof forwardedFor === 'string') {
-      return forwardedFor.split(',')[0]?.trim() || null;
-    }
-
-    if (Array.isArray(forwardedFor) && forwardedFor.length > 0) {
-      return forwardedFor[0]?.split(',')[0]?.trim() || null;
-    }
-
+    // IP real: req.ip con trust proxy 1 (Railway). No se lee x-forwarded-for a
+    // mano: su primer valor lo puede inventar el cliente.
     return req.ip?.trim() || null;
   }
 }
