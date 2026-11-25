@@ -10,6 +10,7 @@ import {
   AdoptarCuentaPppoeExistenteDto,
   VerificarAdopcionPppoeDto,
 } from '../dto/adopcion-pppoe.dto';
+import { PppoeCuentaPresenter } from '../presenters/pppoe-cuenta.presenter';
 
 /**
  * Registra en el CRM cuentas PPPoE que ya existían en el MikroTik. Solo lee
@@ -29,8 +30,11 @@ export class PppoeCuentaAdopcionController {
   @Post('verificar')
   @Roles(...ROLES_OFICINA)
   @HttpCode(HttpStatus.OK)
-  verificar(@Body() dto: VerificarAdopcionPppoeDto, @Actor() actor: ActorHttp) {
-    return this.verificarAdopcion.execute({
+  async verificar(
+    @Body() dto: VerificarAdopcionPppoeDto,
+    @Actor() actor: ActorHttp,
+  ) {
+    const resultado = await this.verificarAdopcion.execute({
       empresaId: actor.empresaId,
       clienteId: dto.clienteId,
       perfilHomologacionId: dto.perfilHomologacionId,
@@ -38,6 +42,7 @@ export class PppoeCuentaAdopcionController {
       // La contraseña va tal como llegó: sin trim.
       passwordPppoe: dto.passwordPppoe,
     });
+    return PppoeCuentaPresenter.verificacionAdopcion(resultado);
   }
 
   /**
@@ -47,11 +52,11 @@ export class PppoeCuentaAdopcionController {
   @Post()
   @Roles(...ROLES_OFICINA)
   @HttpCode(HttpStatus.CREATED)
-  adoptar(
+  async adoptar(
     @Body() dto: AdoptarCuentaPppoeExistenteDto,
     @Actor() actor: ActorHttp,
   ) {
-    return this.adoptarCuenta.execute({
+    const resultado = await this.adoptarCuenta.execute({
       empresaId: actor.empresaId,
       clienteId: dto.clienteId,
       perfilHomologacionId: dto.perfilHomologacionId,
@@ -59,5 +64,6 @@ export class PppoeCuentaAdopcionController {
       passwordPppoe: dto.passwordPppoe,
       operadorId: actor.usuarioId,
     });
+    return PppoeCuentaPresenter.adopcion(resultado);
   }
 }

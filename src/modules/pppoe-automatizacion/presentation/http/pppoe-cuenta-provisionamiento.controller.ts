@@ -16,6 +16,7 @@ import { OperacionSensible } from 'src/auth/step-up/operacion-sensible.decorator
 import { PppoeCuentaProvisionamientoAdminService } from '../../application/services/pppoe-cuenta-provisionamiento-admin.service';
 import { CrearPrealtaPppoeClienteManualDto } from '../dto/crear-prealta-pppoe-cliente-manual.dto';
 import { ProvisionarPppoeClienteManualDto } from '../dto/provisionar-pppoe-cliente-manual.dto';
+import { PppoeCuentaPresenter } from '../presenters/pppoe-cuenta.presenter';
 
 /** Alta PPPoE de clientes existentes, fuera del flujo de instalación. */
 @Controller('pppoe-cuentas')
@@ -28,17 +29,18 @@ export class PppoeCuentaProvisionamientoController {
   @Post('prealta')
   @Roles(...ROLES_OFICINA)
   @HttpCode(HttpStatus.OK)
-  crearPrealta(
+  async crearPrealta(
     @Body() dto: CrearPrealtaPppoeClienteManualDto,
     @Actor() actor: ActorHttp,
   ) {
-    return this.provisionamientoAdmin.crearPrealta({
+    const resultado = await this.provisionamientoAdmin.crearPrealta({
       empresaId: actor.empresaId,
       clienteId: dto.clienteId,
       servicioInternetId: dto.servicioInternetId,
       mikrotikRouterId: dto.mikrotikRouterId,
       actor: operador(actor),
     });
+    return PppoeCuentaPresenter.prealta(resultado);
   }
 
   /** Primera activación en el router de una cuenta creada por alta manual. */
@@ -46,12 +48,12 @@ export class PppoeCuentaProvisionamientoController {
   @Roles(...ROLES_OFICINA)
   @OperacionSensible()
   @HttpCode(HttpStatus.OK)
-  provisionar(
+  async provisionar(
     @Param('cuentaPppoeId', ParseIntPipe) cuentaPppoeId: number,
     @Body() dto: ProvisionarPppoeClienteManualDto,
     @Actor() actor: ActorHttp,
   ) {
-    return this.provisionamientoAdmin.provisionar({
+    const resultado = await this.provisionamientoAdmin.provisionar({
       empresaId: actor.empresaId,
       cuentaPppoeId,
       // Sin trim: es una contraseña.
@@ -59,6 +61,7 @@ export class PppoeCuentaProvisionamientoController {
       motivo: dto.motivo?.trim() || null,
       actor: operador(actor),
     });
+    return PppoeCuentaPresenter.provisionamiento(resultado);
   }
 }
 

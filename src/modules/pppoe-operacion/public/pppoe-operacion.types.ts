@@ -14,6 +14,7 @@ export type {
 } from '../domain/read-models/pppoe-operacion-agregado.read-model';
 export type {
   PppoeOperacionDetalle,
+  PppoeOperacionListItem,
   PppoeOperacionPaginatedResult,
 } from '../domain/read-models/pppoe-operacion.read-model';
 export {

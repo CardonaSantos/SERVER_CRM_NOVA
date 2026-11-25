@@ -1,4 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { ContextoEliminacionPppoe } from '../../domain/enums/contexto-eliminacion-pppoe.enum';
+import { resolverContextoEliminacion } from '../../domain/policies/contexto-eliminacion-pppoe.policy';
 import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 import {
   PPPOE_PROVISIONAMIENTO,
@@ -8,43 +10,31 @@ import {
 import { EjecutarPppoeOperacionUseCase } from '../use-cases/ejecutar-pppoe-operacion.use-case';
 import { RecuperarPppoeOperacionInterrumpidaUseCase } from '../use-cases/recuperar-pppoe-operacion-interrumpida.use-case';
 import { AuthService } from 'src/auth/auth.service';
-import { TipoOperacionPppoe } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 import {
   PPPOE_OPERACION,
   PppoeOperacionFacadePort,
   ListarPppoeOperacionesInput,
 } from 'src/modules/pppoe-operacion/public/pppoe-operacion.facade.port';
-import { PppoeOperacionReadModel } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
+import {
+  PppoeOperacionDetalle,
+  PppoeOperacionListItem,
+  PppoeOperacionReadModel,
+} from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
+import { ResultadoPaginado } from 'src/common/hexagonal/paginacion';
+
+/** Operación del listado administrativo, con su contexto de eliminación. */
+export type PppoeOperacionAdminItem = PppoeOperacionListItem & {
+  contextoEliminacion: ContextoEliminacionPppoe | null;
+};
+
+/** Detalle administrativo de una operación, con su contexto de eliminación. */
+export type PppoeOperacionAdminDetalle = PppoeOperacionDetalle & {
+  contextoEliminacion: ContextoEliminacionPppoe | null;
+};
 import {
   ProvisionamientoPppoeDatosInvalidosError,
   ProvisionamientoPppoeEstadoInvalidoError,
 } from '../../domain/errors/pppoe-automatizacion.errors';
-
-/**
- * Contexto funcional de una operación ELIMINAR_SECRET.
- *
- * No se persiste en base de datos.
- *
- * Se deriva de las relaciones ya existentes:
- *
- * DESINSTALACION
- *   desinstalacionId != null
- *
- * BAJA_MANUAL
- *   instalacionId = null
- *   desinstalacionId = null
- *
- * CONTEXTO_INVALIDO
- *   combinación que no corresponde a ninguno
- *   de los flujos soportados.
- */
-export enum ContextoEliminacionPppoe {
-  DESINSTALACION = 'DESINSTALACION',
-
-  BAJA_MANUAL = 'BAJA_MANUAL',
-
-  CONTEXTO_INVALIDO = 'CONTEXTO_INVALIDO',
-}
 
 export type ActorAdministrativoPppoe = {
   operadorId: number;
@@ -200,32 +190,33 @@ export class PppoeOperacionAdminService {
    * contextoEliminacion es un dato derivado y no
    * requiere persistencia adicional.
    */
-  async listar(input: ListarPppoeOperacionesInput) {
-    const result = await this.operaciones.listar(input);
+  async listar(
+    input: ListarPppoeOperacionesInput,
+  ): Promise<ResultadoPaginado<PppoeOperacionAdminItem>> {
+    const { data, meta } = await this.operaciones.listar(input);
 
     return {
-      ...result,
-
-      data: result.data.map((operacion) => ({
+      items: data.map((operacion) => ({
         ...operacion,
-
-        contextoEliminacion: this.resolveDeletionContext(operacion),
+        contextoEliminacion: resolverContextoEliminacion(operacion),
       })),
+      total: meta.total,
+      page: meta.page,
+      limit: meta.limit,
     };
   }
 
-  /**
-   * Obtiene el detalle administrativo enriquecido.
-   */
-  async obtenerDetalle(params: { operacionId: number }) {
+  /** Detalle con pasos y reintentos, más el contexto de eliminación. */
+  async obtenerDetalle(params: {
+    operacionId: number;
+  }): Promise<PppoeOperacionAdminDetalle> {
     const operacion = await this.operaciones.obtenerDetalle({
       operacionId: params.operacionId,
     });
 
     return {
       ...operacion,
-
-      contextoEliminacion: this.resolveDeletionContext(operacion),
+      contextoEliminacion: resolverContextoEliminacion(operacion),
     };
   }
 
@@ -261,23 +252,18 @@ export class PppoeOperacionAdminService {
   /**
    * Cancela una operación que todavía no comenzó.
    */
-  async cancelar(params: CancelarPppoeAdminParams) {
+  async cancelar(
+    params: CancelarPppoeAdminParams,
+  ): Promise<PppoeOperacionAdminDetalle> {
     this.validateActor(params.actor);
 
     const aggregate = await this.operaciones.cancelar({
       operacionId: params.operacionId,
-
       motivo: params.motivo,
     });
 
-    const operacionId = this.requireOperationId(aggregate.operacion);
-
-    /*
-     * Se devuelve el read model enriquecido,
-     * no la entidad de dominio directamente.
-     */
-    return this.operaciones.obtenerDetalle({
-      operacionId,
+    return this.obtenerDetalle({
+      operacionId: this.requireOperationId(aggregate.operacion),
     });
   }
 
@@ -321,7 +307,7 @@ export class PppoeOperacionAdminService {
       operacionId: params.operacionId,
     });
 
-    const contextoEliminacion = this.resolveDeletionContext(operacion);
+    const contextoEliminacion = resolverContextoEliminacion(operacion);
 
     /*
      * No dejamos continuar datos históricos o futuros
@@ -682,55 +668,6 @@ export class PppoeOperacionAdminService {
         'actor.operadorId debe ser un entero positivo.',
       );
     }
-  }
-
-  /**
-   * Determina el contexto funcional de
-   * ELIMINAR_SECRET sin depender:
-   *
-   * - del motivo;
-   * - de la clave idempotente;
-   * - de nombres;
-   * - de convenciones del frontend.
-   *
-   * Se utilizan únicamente datos estructurados
-   * persistidos en PppoeOperacion.
-   */
-  private resolveDeletionContext(params: {
-    tipo: TipoOperacionPppoe;
-
-    instalacionId: number | null;
-
-    desinstalacionId: number | null;
-  }): ContextoEliminacionPppoe | null {
-    if (params.tipo !== TipoOperacionPppoe.ELIMINAR_SECRET) {
-      return null;
-    }
-
-    /*
-     * Flujo formal de desinstalación.
-     */
-    if (params.instalacionId === null && params.desinstalacionId !== null) {
-      return ContextoEliminacionPppoe.DESINSTALACION;
-    }
-
-    /*
-     * Baja administrativa independiente.
-     */
-    if (params.instalacionId === null && params.desinstalacionId === null) {
-      return ContextoEliminacionPppoe.BAJA_MANUAL;
-    }
-
-    /*
-     * Por ejemplo:
-     *
-     * instalacionId != null
-     * desinstalacionId == null
-     *
-     * Una instalación por sí sola nunca debe
-     * originar ELIMINAR_SECRET.
-     */
-    return ContextoEliminacionPppoe.CONTEXTO_INVALIDO;
   }
 
   /**

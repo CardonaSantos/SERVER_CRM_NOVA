@@ -17,6 +17,7 @@ import { PppoeOperacionAdminService } from '../../application/services/pppoe-ope
 import { DarDeBajaPppoeManualDto } from '../dto/dar-de-baja-pppoe-manual.dto';
 import { ReactivarPppoeManualDto } from '../dto/reactivar-pppoe-manual.dto';
 import { SuspenderPppoeManualDto } from '../dto/suspender-pppoe-manual.dto';
+import { PppoeOperacionPresenter } from '../presenters/pppoe-operacion.presenter';
 
 /**
  * Acciones manuales sobre una cuenta PPPoE. Cambian el router y el estado
@@ -31,12 +32,12 @@ export class PppoeCuentaAccionesController {
   @Roles(...ROLES_OFICINA)
   @OperacionSensible()
   @HttpCode(HttpStatus.OK)
-  suspender(
+  async suspender(
     @Param('cuentaPppoeId', ParseIntPipe) cuentaPppoeId: number,
     @Body() dto: SuspenderPppoeManualDto,
     @Actor() actor: ActorHttp,
   ) {
-    return this.adminService.suspenderManual({
+    const resultado = await this.adminService.suspenderManual({
       empresaId: actor.empresaId,
       cuentaPppoeId,
       claveIdempotencia: dto.claveIdempotencia.trim(),
@@ -44,6 +45,7 @@ export class PppoeCuentaAccionesController {
       contrasenaActual: dto.contrasenaActual,
       actor: operador(actor),
     });
+    return PppoeOperacionPresenter.ejecucion(resultado);
   }
 
   /** Cuenta y acceso a ACTIVO; el cliente queda ACTIVO en su historial. */
@@ -51,12 +53,12 @@ export class PppoeCuentaAccionesController {
   @Roles(...ROLES_OFICINA)
   @OperacionSensible()
   @HttpCode(HttpStatus.OK)
-  reactivar(
+  async reactivar(
     @Param('cuentaPppoeId', ParseIntPipe) cuentaPppoeId: number,
     @Body() dto: ReactivarPppoeManualDto,
     @Actor() actor: ActorHttp,
   ) {
-    return this.adminService.reactivarManual({
+    const resultado = await this.adminService.reactivarManual({
       empresaId: actor.empresaId,
       cuentaPppoeId,
       claveIdempotencia: dto.claveIdempotencia.trim(),
@@ -64,6 +66,7 @@ export class PppoeCuentaAccionesController {
       contrasenaActual: dto.contrasenaActual,
       actor: operador(actor),
     });
+    return PppoeOperacionPresenter.ejecucion(resultado);
   }
 
   /**
@@ -74,18 +77,19 @@ export class PppoeCuentaAccionesController {
   @Roles(...ROLES_OFICINA)
   @OperacionSensible()
   @HttpCode(HttpStatus.OK)
-  darDeBaja(
+  async darDeBaja(
     @Param('cuentaPppoeId', ParseIntPipe) cuentaPppoeId: number,
     @Body() dto: DarDeBajaPppoeManualDto,
     @Actor() actor: ActorHttp,
   ) {
-    return this.adminService.darDeBajaManual({
+    const resultado = await this.adminService.darDeBajaManual({
       empresaId: actor.empresaId,
       cuentaPppoeId,
       motivo: dto.motivo.trim(),
       contrasenaActual: dto.contrasenaActual,
       actor: operador(actor),
     });
+    return PppoeOperacionPresenter.ejecucion(resultado);
   }
 }
 

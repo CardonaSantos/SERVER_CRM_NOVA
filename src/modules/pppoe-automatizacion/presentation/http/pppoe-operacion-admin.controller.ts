@@ -21,14 +21,15 @@ import { CancelarPppoeOperacionDto } from '../dto/cancelar-pppoe-operacion.dto';
 import { ListarPppoeOperacionesQueryDto } from '../dto/listar-pppoe-operaciones-query.dto';
 import { RecuperarPppoeOperacionDto } from '../dto/recuperar-pppoe-operacion.dto';
 import { ReintentarPppoeOperacionDto } from '../dto/reintentar-pppoe-operacion.dto';
+import { PppoeOperacionPresenter } from '../presenters/pppoe-operacion.presenter';
 
 @Controller('pppoe-operaciones')
 export class PppoeOperacionAdminController {
   constructor(private readonly adminService: PppoeOperacionAdminService) {}
 
   @Get()
-  listar(@Query() query: ListarPppoeOperacionesQueryDto) {
-    return this.adminService.listar({
+  async listar(@Query() query: ListarPppoeOperacionesQueryDto) {
+    const resultado = await this.adminService.listar({
       page: query.page,
       limit: query.limit,
       search: query.search,
@@ -51,11 +52,15 @@ export class PppoeOperacionAdminController {
       ordenPor: query.ordenPor,
       ordenDireccion: query.ordenDireccion,
     });
+    return PppoeOperacionPresenter.listado(resultado);
   }
 
   @Get(':operacionId')
-  obtenerDetalle(@Param('operacionId', ParseIntPipe) operacionId: number) {
-    return this.adminService.obtenerDetalle({ operacionId });
+  async obtenerDetalle(
+    @Param('operacionId', ParseIntPipe) operacionId: number,
+  ) {
+    const resultado = await this.adminService.obtenerDetalle({ operacionId });
+    return PppoeOperacionPresenter.detalle(resultado);
   }
 
   /** Reautentica al operador, autoriza la operación PENDIENTE y la ejecuta. */
@@ -63,17 +68,18 @@ export class PppoeOperacionAdminController {
   @Roles(...ROLES_OFICINA)
   @OperacionSensible({ campoContrasena: 'password' })
   @HttpCode(HttpStatus.OK)
-  autorizar(
+  async autorizar(
     @Param('operacionId', ParseIntPipe) operacionId: number,
     @Body() dto: AutorizarPppoeOperacionDto,
     @Actor() actor: ActorHttp,
   ) {
-    return this.adminService.autorizarYEjecutar({
+    const resultado = await this.adminService.autorizarYEjecutar({
       empresaId: actor.empresaId,
       operacionId,
       password: dto.password,
       actor: operador(actor),
     });
+    return PppoeOperacionPresenter.ejecucion(resultado);
   }
 
   /**
@@ -84,12 +90,12 @@ export class PppoeOperacionAdminController {
   @Roles(...ROLES_OFICINA)
   @OperacionSensible()
   @HttpCode(HttpStatus.OK)
-  reintentar(
+  async reintentar(
     @Param('operacionId', ParseIntPipe) operacionId: number,
     @Body() dto: ReintentarPppoeOperacionDto,
     @Actor() actor: ActorHttp,
   ) {
-    return this.adminService.reintentar({
+    const resultado = await this.adminService.reintentar({
       empresaId: actor.empresaId,
       operacionId,
       claveIdempotencia: dto.claveIdempotencia.trim(),
@@ -97,41 +103,44 @@ export class PppoeOperacionAdminController {
       contrasenaActual: dto.contrasenaActual ?? null,
       actor: operador(actor),
     });
+    return PppoeOperacionPresenter.ejecucion(resultado);
   }
 
   /** Cierra una operación que quedó EJECUTANDO tras una caída; no repite comandos SSH. */
   @Post(':operacionId/recuperar')
   @Roles(...ROLES_OFICINA)
   @HttpCode(HttpStatus.OK)
-  recuperar(
+  async recuperar(
     @Param('operacionId', ParseIntPipe) operacionId: number,
     @Body() dto: RecuperarPppoeOperacionDto,
     @Actor() actor: ActorHttp,
   ) {
-    return this.adminService.recuperar({
+    const resultado = await this.adminService.recuperar({
       empresaId: actor.empresaId,
       operacionId,
       confirmarAbandono: dto.confirmarAbandono,
       fecha: dto.fecha ? new Date(dto.fecha) : undefined,
       actor: operador(actor),
     });
+    return PppoeOperacionPresenter.ejecucion(resultado);
   }
 
   /** Solo PENDIENTE o AUTORIZADA, antes de ejecutar pasos. */
   @Post(':operacionId/cancelar')
   @Roles(...ROLES_OFICINA)
   @HttpCode(HttpStatus.OK)
-  cancelar(
+  async cancelar(
     @Param('operacionId', ParseIntPipe) operacionId: number,
     @Body() dto: CancelarPppoeOperacionDto,
     @Actor() actor: ActorHttp,
   ) {
-    return this.adminService.cancelar({
+    const resultado = await this.adminService.cancelar({
       empresaId: actor.empresaId,
       operacionId,
       motivo: dto.motivo,
       actor: operador(actor),
     });
+    return PppoeOperacionPresenter.detalle(resultado);
   }
 }
 
