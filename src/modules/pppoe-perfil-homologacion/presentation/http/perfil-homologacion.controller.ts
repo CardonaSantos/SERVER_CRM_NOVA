@@ -2,164 +2,122 @@ import {
   Body,
   Controller,
   Get,
-  Logger,
   Param,
   ParseIntPipe,
   Patch,
   Post,
   Query,
-  Req,
 } from '@nestjs/common';
-import { PpoePerfilHomologacionService } from '../../application/services/ppoe-perfil-homologacion.service';
-import { ListarPpoePerfilesHomologacionQueryDto } from '../dto/listar-perfiles-homologacion-query.dto';
-import { CreatePpoePerfilHomologacionDto } from '../dto/crear-perfil-homologacion.dto';
-import { PpoePerfilHomologacionPresenter } from '../presenters/perfil-homologacion.presenter';
-import {
-  AuthenticatedPppoeRequest,
-  getAuthenticatedPppoeActor,
-} from '../../../pppoe-automatizacion/presentation/http/pppoe-authenticated-actor.http';
-import { UpdatePpoePerfilHomologacionDto } from '../dto/actualizar-codigo-perfil-homologacion.dto';
-import { ListarPerfilesHomologacionSeleccionablesQuery } from '../dto/listar-perfiles-homologacion-seleccionables-query.dto';
 
+import { Actor, ActorHttp } from 'src/auth/decoradores/actor.decorator';
+
+import { ActivarPerfilHomologacionUseCase } from '../../application/use-cases/activar-perfil-homologacion.use-case';
+import { ActualizarCodigoPerfilHomologacionUseCase } from '../../application/use-cases/actualizar-codigo-perfil-homologacion.use-case';
+import { CrearPerfilHomologacionUseCase } from '../../application/use-cases/crear-perfil-homologacion.use-case';
+import { DesactivarPerfilHomologacionUseCase } from '../../application/use-cases/desactivar-perfil-homologacion.use-case';
+import { ListarPerfilesHomologacionSeleccionablesUseCase } from '../../application/use-cases/listar-perfiles-homologacion-seleccionables.use-case';
+import { ListarPerfilesHomologacionUseCase } from '../../application/use-cases/listar-perfiles-homologacion.use-case';
+import { ObtenerPerfilHomologacionUseCase } from '../../application/use-cases/obtener-perfil-homologacion.use-case';
+import { ActualizarCodigoPerfilHomologacionDto } from '../dto/actualizar-codigo-perfil-homologacion.dto';
+import { CrearPerfilHomologacionDto } from '../dto/crear-perfil-homologacion.dto';
+import { ListarPerfilesHomologacionSeleccionablesQueryDto } from '../dto/listar-perfiles-homologacion-seleccionables-query.dto';
+import { ListarPerfilesHomologacionQueryDto } from '../dto/listar-perfiles-homologacion-query.dto';
+import { PerfilHomologacionPresenter } from '../presenters/perfil-homologacion.presenter';
+
+/** Homologación servicio de internet ↔ profile de MikroTik. */
 @Controller('ppoe-perfil-homologacion')
-export class PpoePerfilHomologacionController {
-  private readonly logger = new Logger(PpoePerfilHomologacionController.name);
+export class PerfilHomologacionController {
   constructor(
-    private readonly ppoePerfilHomologacionService: PpoePerfilHomologacionService,
+    private readonly crearPerfil: CrearPerfilHomologacionUseCase,
+    private readonly listarPerfiles: ListarPerfilesHomologacionUseCase,
+    private readonly listarSeleccionables: ListarPerfilesHomologacionSeleccionablesUseCase,
+    private readonly obtenerPerfil: ObtenerPerfilHomologacionUseCase,
+    private readonly actualizarCodigo: ActualizarCodigoPerfilHomologacionUseCase,
+    private readonly activarPerfil: ActivarPerfilHomologacionUseCase,
+    private readonly desactivarPerfil: DesactivarPerfilHomologacionUseCase,
   ) {}
 
-  /**
-   * Crea una homologación nueva.
-   *
-   * empresaId y creadoPorId se obtienen del JWT.
-   */
   @Post()
   async create(
-    @Body()
-    dto: CreatePpoePerfilHomologacionDto,
-
-    @Req()
-    req: AuthenticatedPppoeRequest,
+    @Body() dto: CrearPerfilHomologacionDto,
+    @Actor() actor: ActorHttp,
   ) {
-    const actor = getAuthenticatedPppoeActor(req);
-
-    const perfil = await this.ppoePerfilHomologacionService.create({
-      ...dto,
-
+    const perfil = await this.crearPerfil.execute({
       empresaId: actor.empresaId,
-      creadoPorId: actor.operadorId,
+      creadoPorId: actor.usuarioId,
+      mikrotikRouterId: dto.mikrotikRouterId,
+      servicioInternetId: dto.servicioInternetId,
+      codigoPerfil: dto.codigoPerfil,
     });
-
-    return PpoePerfilHomologacionPresenter.toHttp(perfil);
+    return PerfilHomologacionPresenter.item(perfil);
   }
 
-  /**
-   * Lista homologaciones con paginación, filtros
-   * y relaciones enriquecidas.
-   */
   @Get()
-  async findAll(
-    @Query()
-    query: ListarPpoePerfilesHomologacionQueryDto,
-  ) {
-    const result = await this.ppoePerfilHomologacionService.findAll(query);
-
-    return PpoePerfilHomologacionPresenter.paginatedToHttp(result);
+  async findAll(@Query() query: ListarPerfilesHomologacionQueryDto) {
+    const resultado = await this.listarPerfiles.execute({
+      page: query.page,
+      limit: query.limit,
+      search: query.search,
+      activo: query.activo,
+      mikrotikRouterId: query.mikrotikRouterId,
+      servicioInternetId: query.servicioInternetId,
+    });
+    return PerfilHomologacionPresenter.listado(resultado);
   }
 
-  // conseguir registros para selects
+  /** Opciones para el combo: homologaciones activas de routers y servicios activos. */
   @Get('select')
   async getHomologacionesSelect(
-    @Query()
-    query: ListarPerfilesHomologacionSeleccionablesQuery,
+    @Query() query: ListarPerfilesHomologacionSeleccionablesQueryDto,
   ) {
-    const homologaciones =
-      await this.ppoePerfilHomologacionService.get_homologaciones_select(query);
-
-    return homologaciones;
+    const opciones = await this.listarSeleccionables.execute({
+      search: query.search,
+    });
+    return opciones.map((o) => PerfilHomologacionPresenter.opcion(o));
   }
 
-  /**
-   * Obtiene una homologación por id.
-   */
   @Get(':id')
-  async findOne(
-    @Param('id', ParseIntPipe)
-    id: number,
-  ) {
-    const perfil = await this.ppoePerfilHomologacionService.findOne(id);
-
-    return PpoePerfilHomologacionPresenter.toHttp(perfil);
+  async findOne(@Param('id', ParseIntPipe) id: number) {
+    return PerfilHomologacionPresenter.item(
+      await this.obtenerPerfil.execute({ id }),
+    );
   }
 
-  /**
-   * Actualiza únicamente el código real del perfil MikroTik.
-   *
-   * actualizadoPorId se obtiene del JWT.
-   */
   @Patch(':id/codigo-perfil')
   async updateCodigoPerfil(
-    @Param('id', ParseIntPipe)
-    id: number,
-
-    @Body()
-    dto: UpdatePpoePerfilHomologacionDto,
-
-    @Req()
-    req: AuthenticatedPppoeRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ActualizarCodigoPerfilHomologacionDto,
+    @Actor() actor: ActorHttp,
   ) {
-    const actor = getAuthenticatedPppoeActor(req);
-
-    const perfil = await this.ppoePerfilHomologacionService.update(id, {
-      ...dto,
-
-      actualizadoPorId: actor.operadorId,
+    const perfil = await this.actualizarCodigo.execute({
+      id,
+      codigoPerfil: dto.codigoPerfil,
+      actualizadoPorId: actor.usuarioId,
     });
-
-    return PpoePerfilHomologacionPresenter.toHttp(perfil);
+    return PerfilHomologacionPresenter.item(perfil);
   }
 
-  /**
-   * Activa una homologación existente.
-   *
-   * actualizadoPorId se obtiene del JWT.
-   */
   @Patch(':id/activar')
   async activar(
-    @Param('id', ParseIntPipe)
-    id: number,
-
-    @Req()
-    req: AuthenticatedPppoeRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Actor() actor: ActorHttp,
   ) {
-    const actor = getAuthenticatedPppoeActor(req);
-
-    const perfil = await this.ppoePerfilHomologacionService.activar(id, {
-      actualizadoPorId: actor.operadorId,
+    const perfil = await this.activarPerfil.execute({
+      id,
+      actualizadoPorId: actor.usuarioId,
     });
-
-    return PpoePerfilHomologacionPresenter.toHttp(perfil);
+    return PerfilHomologacionPresenter.item(perfil);
   }
 
-  /**
-   * Desactiva una homologación existente.
-   *
-   * actualizadoPorId se obtiene del JWT.
-   */
   @Patch(':id/desactivar')
   async desactivar(
-    @Param('id', ParseIntPipe)
-    id: number,
-
-    @Req()
-    req: AuthenticatedPppoeRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Actor() actor: ActorHttp,
   ) {
-    const actor = getAuthenticatedPppoeActor(req);
-
-    const perfil = await this.ppoePerfilHomologacionService.desactivar(id, {
-      actualizadoPorId: actor.operadorId,
+    const perfil = await this.desactivarPerfil.execute({
+      id,
+      actualizadoPorId: actor.usuarioId,
     });
-
-    return PpoePerfilHomologacionPresenter.toHttp(perfil);
+    return PerfilHomologacionPresenter.item(perfil);
   }
 }

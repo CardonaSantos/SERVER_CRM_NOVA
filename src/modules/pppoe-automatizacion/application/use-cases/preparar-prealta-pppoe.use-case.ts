@@ -39,16 +39,16 @@ import {
   OrigenOperacionPppoe,
 } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 import {
-  PERFIL_HOMOLOGACION_REPOSITORY,
-  PerfilHomologacionRepositoryPort,
-} from 'src/modules/pppoe-perfil-homologacion/domain/ports/perfil-homologacion-repository.port';
+  PPPOE_PERFIL_HOMOLOGACION,
+  PppoePerfilHomologacionFacadePort,
+} from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.facade.port';
 import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/ppoe-cliente-cuenta.entity';
 
 @Injectable()
 export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
   constructor(
-    @Inject(PERFIL_HOMOLOGACION_REPOSITORY)
-    private readonly perfilRepository: PerfilHomologacionRepositoryPort,
+    @Inject(PPPOE_PERFIL_HOMOLOGACION)
+    private readonly perfilesHomologacion: PppoePerfilHomologacionFacadePort,
 
     @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
     private readonly cuentaRepository: ClientePppoeCuentaRepositoryPort,
@@ -68,10 +68,11 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
   ): Promise<PrepararPrealtaPppoeResult> {
     this.validateInput(input);
 
-    const perfil = await this.perfilRepository.findActiveByRouterAndService({
-      mikrotikRouterId: input.mikrotikRouterId,
-      servicioInternetId: input.servicioInternetId,
-    });
+    const perfil =
+      await this.perfilesHomologacion.buscarActivoPorRouterYServicio({
+        mikrotikRouterId: input.mikrotikRouterId,
+        servicioInternetId: input.servicioInternetId,
+      });
 
     if (!perfil || perfil.id === null) {
       throw new NotFoundException(

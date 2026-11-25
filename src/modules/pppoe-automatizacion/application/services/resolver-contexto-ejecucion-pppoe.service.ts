@@ -10,12 +10,12 @@ import {
   PppoeSecretCipherPort,
 } from 'src/modules/pppoe-credentials/public/pppoe-secret-cipher.port';
 import {
-  PerfilHomologacionRepositoryPort,
-  PERFIL_HOMOLOGACION_REPOSITORY,
-} from 'src/modules/pppoe-perfil-homologacion/domain/ports/perfil-homologacion-repository.port';
+  PPPOE_PERFIL_HOMOLOGACION,
+  PppoePerfilHomologacionFacadePort,
+} from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.facade.port';
 import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/ppoe-cliente-cuenta.entity';
 
-import { PerfilHomologacionEntity } from 'src/modules/pppoe-perfil-homologacion/domain/entities/perfil-homologacion.entity';
+import { PerfilHomologacionReadModel } from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.types';
 /**
  * Ajusta únicamente esta ruta a la ubicación real
  * del token que ya utilizas en el módulo de homologación.
@@ -42,8 +42,8 @@ export class ResolverContextoEjecucionPppoeService {
     @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
     private readonly cuentaRepository: ClientePppoeCuentaRepositoryPort,
 
-    @Inject(PERFIL_HOMOLOGACION_REPOSITORY)
-    private readonly perfilRepository: PerfilHomologacionRepositoryPort,
+    @Inject(PPPOE_PERFIL_HOMOLOGACION)
+    private readonly perfilesHomologacion: PppoePerfilHomologacionFacadePort,
 
     @Inject(PPPOE_SECRET_CIPHER)
     private readonly secretCipher: PppoeSecretCipherPort,
@@ -78,7 +78,7 @@ export class ResolverContextoEjecucionPppoeService {
       cuenta,
     });
 
-    const perfil = await this.perfilRepository.findById(
+    const perfil = await this.perfilesHomologacion.buscarPorId(
       cuenta.perfilHomologacionId,
     );
 
@@ -174,15 +174,11 @@ export class ResolverContextoEjecucionPppoeService {
       ? Exclude<T, null>
       : never;
 
-    perfil: Awaited<
-      ReturnType<PerfilHomologacionRepositoryPort['findById']>
-    > extends infer T
-      ? Exclude<T, null>
-      : never;
+    perfil: PerfilHomologacionReadModel;
   }): void {
     const { operacion, cuenta, perfil } = params;
 
-    const perfilProps = perfil.toPrimitives();
+    const perfilProps = perfil;
 
     if (perfilProps.empresaId !== operacion.empresaId) {
       throw new ConflictException(

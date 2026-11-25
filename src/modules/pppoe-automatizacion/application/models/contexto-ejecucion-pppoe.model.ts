@@ -1,6 +1,6 @@
 import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/ppoe-cliente-cuenta.entity';
 
-import { PerfilHomologacionEntity } from 'src/modules/pppoe-perfil-homologacion/domain/entities/perfil-homologacion.entity';
+import { PerfilHomologacionReadModel } from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.types';
 
 import { PppoeOperacionEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion.entity';
 import { MikrotikRouterConnectionContext } from 'src/mikro-tik/domain/ports/mikrotik-router-connection-context.port';
@@ -23,7 +23,7 @@ export type ContextoEjecucionPppoe = {
 
   cuenta: ClientePppoeCuentaEntity;
 
-  perfil: PerfilHomologacionEntity;
+  perfil: PerfilHomologacionReadModel;
 
   router: MikrotikRouterConnectionContext;
 

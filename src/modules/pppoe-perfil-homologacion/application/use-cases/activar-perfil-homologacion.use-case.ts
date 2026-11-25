@@ -1,43 +1,41 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
-import { PerfilHomologacionEntity } from '../../domain/entities/perfil-homologacion.entity';
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
 
+import { PerfilHomologacionNoEncontradoError } from '../../domain/errors/pppoe-perfil-homologacion.errors';
 import {
-  PerfilHomologacionRepositoryPort,
   PERFIL_HOMOLOGACION_REPOSITORY,
+  PerfilHomologacionRepositoryPort,
 } from '../../domain/ports/perfil-homologacion-repository.port';
+import {
+  PerfilHomologacionReadModel,
+  aPerfilHomologacionReadModel,
+} from '../../domain/read-models/perfil-homologacion.read-model';
 
-import { CambiarEstadoPpoePerfilHomologacionDto } from '../dto/cambiar-estado-ppoe-perfil-homologacion.dto';
+export type ActivarPerfilHomologacionInput = {
+  id: number;
+  actualizadoPorId: number;
+};
 
-export type ActivarPerfilHomologacionCommand =
-  CambiarEstadoPpoePerfilHomologacionDto & {
-    id: number;
-  };
-
+/** Habilita la homologación para prealtas nuevas. Si ya está activa, no escribe. */
 @Injectable()
 export class ActivarPerfilHomologacionUseCase {
   constructor(
     @Inject(PERFIL_HOMOLOGACION_REPOSITORY)
-    private readonly perfilRepository: PerfilHomologacionRepositoryPort,
+    private readonly perfiles: PerfilHomologacionRepositoryPort,
+    @Inject(RELOJ) private readonly reloj: RelojPort,
   ) {}
 
   async execute(
-    command: ActivarPerfilHomologacionCommand,
-  ): Promise<PerfilHomologacionEntity> {
-    const perfil = await this.perfilRepository.findById(command.id);
+    input: ActivarPerfilHomologacionInput,
+  ): Promise<PerfilHomologacionReadModel> {
+    const perfil = await this.perfiles.findById(input.id);
+    if (!perfil) throw new PerfilHomologacionNoEncontradoError();
 
-    if (!perfil) {
-      throw new NotFoundException(
-        `No existe una homologación PPPoE con id ${command.id}.`,
-      );
-    }
+    if (perfil.activo) return aPerfilHomologacionReadModel(perfil);
 
-    if (perfil.estaActiva) {
-      return perfil;
-    }
+    perfil.activar(input.actualizadoPorId, this.reloj.ahora());
 
-    perfil.activar(command.actualizadoPorId);
-
-    return this.perfilRepository.update(perfil);
+    return aPerfilHomologacionReadModel(await this.perfiles.update(perfil));
   }
 }

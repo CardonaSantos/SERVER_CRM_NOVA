@@ -1,64 +1,62 @@
-import {
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
-import { PerfilHomologacionEntity } from '../../domain/entities/perfil-homologacion.entity';
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
+
 import {
-  PerfilHomologacionRepositoryPort,
+  PerfilHomologacionCodigoDuplicadoError,
+  PerfilHomologacionNoEncontradoError,
+} from '../../domain/errors/pppoe-perfil-homologacion.errors';
+import {
   PERFIL_HOMOLOGACION_REPOSITORY,
+  PerfilHomologacionRepositoryPort,
 } from '../../domain/ports/perfil-homologacion-repository.port';
-import { UpdatePpoePerfilHomologacionDto } from '../../presentation/dto/actualizar-codigo-perfil-homologacion.dto';
+import {
+  PerfilHomologacionReadModel,
+  aPerfilHomologacionReadModel,
+} from '../../domain/read-models/perfil-homologacion.read-model';
 
-export type ActualizarCodigoPerfilHomologacionCommand =
-  UpdatePpoePerfilHomologacionDto & {
-    id: number;
-  };
+export type ActualizarCodigoPerfilHomologacionInput = {
+  id: number;
+  codigoPerfil: string;
+  actualizadoPorId: number;
+};
 
+/** Cambia solo el código del profile de MikroTik; router y servicio no cambian. */
 @Injectable()
 export class ActualizarCodigoPerfilHomologacionUseCase {
   constructor(
     @Inject(PERFIL_HOMOLOGACION_REPOSITORY)
-    private readonly perfilRepository: PerfilHomologacionRepositoryPort,
+    private readonly perfiles: PerfilHomologacionRepositoryPort,
+    @Inject(RELOJ) private readonly reloj: RelojPort,
   ) {}
 
   async execute(
-    command: ActualizarCodigoPerfilHomologacionCommand,
-  ): Promise<PerfilHomologacionEntity> {
-    const perfil = await this.perfilRepository.findById(command.id);
+    input: ActualizarCodigoPerfilHomologacionInput,
+  ): Promise<PerfilHomologacionReadModel> {
+    const perfil = await this.perfiles.findById(input.id);
+    if (!perfil) throw new PerfilHomologacionNoEncontradoError();
 
-    if (!perfil) {
-      throw new NotFoundException(
-        `No existe una homologación PPPoE con id ${command.id}.`,
-      );
-    }
+    const codigoPerfil = input.codigoPerfil.trim();
 
-    const codigoPerfil = command.codigoPerfil.trim();
-
-    /*
-     * Si el código no cambió, evitamos una escritura innecesaria
-     * y no modificamos actualizadoEn.
-     */
+    // Sin cambio no se escribe, para no mover actualizadoEn.
     if (codigoPerfil === perfil.codigoPerfil) {
-      return perfil;
+      return aPerfilHomologacionReadModel(perfil);
     }
 
-    const perfilConMismoCodigo =
-      await this.perfilRepository.findByRouterAndCode({
-        mikrotikRouterId: perfil.mikrotikRouterId,
-        codigoPerfil,
-      });
-
-    if (perfilConMismoCodigo && perfilConMismoCodigo.id !== perfil.id) {
-      throw new ConflictException(
-        'El código de perfil ya está homologado para otro servicio en este MikroTik.',
-      );
+    const mismoCodigo = await this.perfiles.findByRouterAndCode({
+      mikrotikRouterId: perfil.mikrotikRouterId,
+      codigoPerfil,
+    });
+    if (mismoCodigo && mismoCodigo.id !== perfil.id) {
+      throw new PerfilHomologacionCodigoDuplicadoError();
     }
 
-    perfil.actualizarCodigoPerfil(codigoPerfil, command.actualizadoPorId);
+    perfil.actualizarCodigoPerfil(
+      codigoPerfil,
+      input.actualizadoPorId,
+      this.reloj.ahora(),
+    );
 
-    return this.perfilRepository.update(perfil);
+    return aPerfilHomologacionReadModel(await this.perfiles.update(perfil));
   }
 }

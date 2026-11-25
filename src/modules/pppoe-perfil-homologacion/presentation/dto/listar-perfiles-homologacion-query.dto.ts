@@ -1,4 +1,4 @@
-import { Transform, Type } from 'class-transformer';
+import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsInt,
@@ -9,32 +9,35 @@ import {
   Min,
 } from 'class-validator';
 
-export class ListarPpoePerfilesHomologacionQueryDto {
+import { LIMITE_MAXIMO } from 'src/common/hexagonal/paginacion';
+import { ComoBooleano, Recortar } from 'src/common/http/transformaciones-query';
+
+export class ListarPerfilesHomologacionQueryDto {
+  /** Página, desde 1. Por defecto 1. */
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  page: number = 1;
+  page?: number;
 
+  /** Registros por página. Por defecto 10, máximo 100. */
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(100)
-  limit: number = 10;
+  @Max(LIMITE_MAXIMO)
+  limit?: number;
 
+  /** Busca en código, router (nombre, host, descripción) y servicio. */
   @IsOptional()
+  @Recortar()
   @IsString()
   @MaxLength(100)
   search?: string;
 
+  /** Solo activas (`true`) o solo inactivas (`false`). */
   @IsOptional()
-  @Transform(({ value }) => {
-    if (value === true || value === 'true') return true;
-    if (value === false || value === 'false') return false;
-
-    return value;
-  })
+  @ComoBooleano()
   @IsBoolean()
   activo?: boolean;
 

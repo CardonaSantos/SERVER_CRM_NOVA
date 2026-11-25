@@ -1,15 +1,11 @@
-import { Type } from 'class-transformer';
-import {
-  IsInt,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  MaxLength,
-  Min,
-} from 'class-validator';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 
-export class ListarPerfilesHomologacionSeleccionablesQuery {
+import { Recortar } from 'src/common/http/transformaciones-query';
+
+export class ListarPerfilesHomologacionSeleccionablesQueryDto {
+  /** Busca en código, nombre del router y nombre del servicio. */
   @IsOptional()
+  @Recortar()
   @IsString()
   @MaxLength(100)
   search?: string;

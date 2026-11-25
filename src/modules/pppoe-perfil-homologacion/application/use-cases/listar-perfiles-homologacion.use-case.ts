@@ -1,33 +1,43 @@
 import { Inject, Injectable } from '@nestjs/common';
+
 import {
-  PerfilHomologacionRepositoryPort,
-  PERFIL_HOMOLOGACION_REPOSITORY,
-} from '../../domain/ports/perfil-homologacion-repository.port';
-import { ListarPpoePerfilesHomologacionQueryDto } from '../../presentation/dto/listar-perfiles-homologacion-query.dto';
-import { PerfilHomologacionPaginatedResult } from '../../domain/read-models/perfil-homologacion.read-model';
+  ResultadoPaginado,
+  normalizarPaginacion,
+} from 'src/common/hexagonal/paginacion';
+
+import {
+  PERFIL_HOMOLOGACION_QUERY,
+  PerfilHomologacionQueryPort,
+} from '../../domain/ports/perfil-homologacion-query.port';
+import { PerfilHomologacionListItem } from '../../domain/read-models/perfil-homologacion.read-model';
+
+export type ListarPerfilesHomologacionInput = {
+  page?: number;
+  limit?: number;
+  search?: string;
+  activo?: boolean;
+  mikrotikRouterId?: number;
+  servicioInternetId?: number;
+};
 
 @Injectable()
 export class ListarPerfilesHomologacionUseCase {
   constructor(
-    @Inject(PERFIL_HOMOLOGACION_REPOSITORY)
-    private readonly perfilRepository: PerfilHomologacionRepositoryPort,
+    @Inject(PERFIL_HOMOLOGACION_QUERY)
+    private readonly consulta: PerfilHomologacionQueryPort,
   ) {}
 
   execute(
-    query: ListarPpoePerfilesHomologacionQueryDto,
-  ): Promise<PerfilHomologacionPaginatedResult> {
-    return this.perfilRepository.findMany({
-      page: query.page ?? 1,
-
-      limit: query.limit ?? 10,
-
-      search: query.search?.trim() || null,
-
-      activo: typeof query.activo === 'boolean' ? query.activo : null,
-
-      mikrotikRouterId: query.mikrotikRouterId ?? null,
-
-      servicioInternetId: query.servicioInternetId ?? null,
-    });
+    input: ListarPerfilesHomologacionInput,
+  ): Promise<ResultadoPaginado<PerfilHomologacionListItem>> {
+    return this.consulta.findMany(
+      {
+        search: input.search?.trim() || null,
+        activo: typeof input.activo === 'boolean' ? input.activo : null,
+        mikrotikRouterId: input.mikrotikRouterId ?? null,
+        servicioInternetId: input.servicioInternetId ?? null,
+      },
+      normalizarPaginacion(input),
+    );
   }
 }

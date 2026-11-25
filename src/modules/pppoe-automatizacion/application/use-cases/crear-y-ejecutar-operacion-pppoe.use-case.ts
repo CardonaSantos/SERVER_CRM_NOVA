@@ -19,9 +19,9 @@ import {
 } from 'src/modules/pppoe-cliente-cuenta/domain/ports/pppoe-cliente-cuenta.port';
 
 import {
-  PERFIL_HOMOLOGACION_REPOSITORY,
-  PerfilHomologacionRepositoryPort,
-} from 'src/modules/pppoe-perfil-homologacion/domain/ports/perfil-homologacion-repository.port';
+  PPPOE_PERFIL_HOMOLOGACION,
+  PppoePerfilHomologacionFacadePort,
+} from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.facade.port';
 
 import {
   CrearSecretPppoeInput,
@@ -97,8 +97,8 @@ export class CrearYEjecutarOperacionPppoeUseCase {
     @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
     private readonly cuentaRepository: ClientePppoeCuentaRepositoryPort,
 
-    @Inject(PERFIL_HOMOLOGACION_REPOSITORY)
-    private readonly perfilRepository: PerfilHomologacionRepositoryPort,
+    @Inject(PPPOE_PERFIL_HOMOLOGACION)
+    private readonly perfilesHomologacion: PppoePerfilHomologacionFacadePort,
 
     @Inject(MIKROTIK_ROUTER_REPOSITORY)
     private readonly routerRepository: MikrotikRouterRepositoryPort,
@@ -141,7 +141,7 @@ export class CrearYEjecutarOperacionPppoeUseCase {
      * ========================================================
      */
 
-    const perfil = await this.perfilRepository.findById(
+    const perfil = await this.perfilesHomologacion.buscarPorId(
       cuenta.perfilHomologacionId,
     );
 
@@ -151,7 +151,7 @@ export class CrearYEjecutarOperacionPppoeUseCase {
       );
     }
 
-    const perfilProps = perfil.toPrimitives();
+    const perfilProps = perfil;
 
     if (perfilProps.id !== cuenta.perfilHomologacionId) {
       throw new ConflictException(

@@ -96,7 +96,7 @@ export class CrearSecretPppoeExecutor {
       );
     }
 
-    const perfilProps = contexto.perfil.toPrimitives();
+    const perfilProps = contexto.perfil;
 
     const codigoPerfil = perfilProps.codigoPerfil;
 
@@ -545,7 +545,7 @@ export class CrearSecretPppoeExecutor {
 //       );
 //     }
 
-//     const perfilProps = contexto.perfil.toPrimitives();
+//     const perfilProps = contexto.perfil;
 
 //     const codigoPerfil = perfilProps.codigoPerfil;
 

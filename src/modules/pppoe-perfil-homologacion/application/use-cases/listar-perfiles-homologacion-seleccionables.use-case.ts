@@ -1,25 +1,25 @@
 import { Inject, Injectable } from '@nestjs/common';
 
 import {
-  PerfilHomologacionRepositoryPort,
-  PERFIL_HOMOLOGACION_REPOSITORY,
-} from '../../domain/ports/perfil-homologacion-repository.port';
+  PERFIL_HOMOLOGACION_QUERY,
+  PerfilHomologacionQueryPort,
+} from '../../domain/ports/perfil-homologacion-query.port';
 import { PerfilHomologacionSeleccionable } from '../../domain/read-models/perfil-homologacion.read-model';
-import { ListarPerfilesHomologacionSeleccionablesQuery } from '../../presentation/dto/listar-perfiles-homologacion-seleccionables-query.dto';
+
+export type ListarPerfilesHomologacionSeleccionablesInput = {
+  search?: string;
+};
 
 @Injectable()
 export class ListarPerfilesHomologacionSeleccionablesUseCase {
   constructor(
-    @Inject(PERFIL_HOMOLOGACION_REPOSITORY)
-    private readonly perfilRepository: PerfilHomologacionRepositoryPort,
+    @Inject(PERFIL_HOMOLOGACION_QUERY)
+    private readonly consulta: PerfilHomologacionQueryPort,
   ) {}
 
   execute(
-    query: ListarPerfilesHomologacionSeleccionablesQuery,
+    input: ListarPerfilesHomologacionSeleccionablesInput,
   ): Promise<PerfilHomologacionSeleccionable[]> {
-    return this.perfilRepository.findSeleccionables({
-      //   empresaId: query.empresaId,
-      search: query.search?.trim() || null,
-    });
+    return this.consulta.findSeleccionables(input.search?.trim() || null);
   }
 }

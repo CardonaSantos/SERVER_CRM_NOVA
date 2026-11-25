@@ -1,61 +1,58 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
-
-import { CreatePpoePerfilHomologacionDto } from '../../presentation/dto/crear-perfil-homologacion.dto';
+import { Inject, Injectable } from '@nestjs/common';
 
 import { PerfilHomologacionEntity } from '../../domain/entities/perfil-homologacion.entity';
-
 import {
-  PerfilHomologacionRepositoryPort,
+  PerfilHomologacionCodigoDuplicadoError,
+  PerfilHomologacionDuplicadoError,
+} from '../../domain/errors/pppoe-perfil-homologacion.errors';
+import {
   PERFIL_HOMOLOGACION_REPOSITORY,
+  PerfilHomologacionRepositoryPort,
 } from '../../domain/ports/perfil-homologacion-repository.port';
+import {
+  PerfilHomologacionReadModel,
+  aPerfilHomologacionReadModel,
+} from '../../domain/read-models/perfil-homologacion.read-model';
 
+export type CrearPerfilHomologacionInput = {
+  empresaId: number;
+  creadoPorId: number;
+  mikrotikRouterId: number;
+  servicioInternetId: number;
+  codigoPerfil: string;
+};
+
+/** Un router + servicio tiene una sola homologación y un código no se repite en el router. */
 @Injectable()
 export class CrearPerfilHomologacionUseCase {
   constructor(
     @Inject(PERFIL_HOMOLOGACION_REPOSITORY)
-    private readonly perfilRepository: PerfilHomologacionRepositoryPort,
+    private readonly perfiles: PerfilHomologacionRepositoryPort,
   ) {}
 
   async execute(
-    command: CreatePpoePerfilHomologacionDto,
-  ): Promise<PerfilHomologacionEntity> {
-    const perfilExistente = await this.perfilRepository.findByRouterAndService({
-      mikrotikRouterId: command.mikrotikRouterId,
-      servicioInternetId: command.servicioInternetId,
+    input: CrearPerfilHomologacionInput,
+  ): Promise<PerfilHomologacionReadModel> {
+    const existente = await this.perfiles.findByRouterAndService({
+      mikrotikRouterId: input.mikrotikRouterId,
+      servicioInternetId: input.servicioInternetId,
+    });
+    if (existente) throw new PerfilHomologacionDuplicadoError();
+
+    const perfil = PerfilHomologacionEntity.create({
+      empresaId: input.empresaId,
+      mikrotikRouterId: input.mikrotikRouterId,
+      servicioInternetId: input.servicioInternetId,
+      codigoPerfil: input.codigoPerfil,
+      creadoPorId: input.creadoPorId,
     });
 
-    if (perfilExistente) {
-      throw new ConflictException(
-        'Ya existe una homologación para este MikroTik y servicio de internet.',
-      );
-    }
-
-    const entity = PerfilHomologacionEntity.create({
-      empresaId: command.empresaId,
-
-      mikrotikRouterId: command.mikrotikRouterId,
-
-      servicioInternetId: command.servicioInternetId,
-
-      codigoPerfil: command.codigoPerfil,
-
-      creadoPorId: command.creadoPorId,
+    const mismoCodigo = await this.perfiles.findByRouterAndCode({
+      mikrotikRouterId: perfil.mikrotikRouterId,
+      codigoPerfil: perfil.codigoPerfil,
     });
+    if (mismoCodigo) throw new PerfilHomologacionCodigoDuplicadoError();
 
-    const codigoPerfil = command.codigoPerfil.trim();
-
-    const perfilConMismoCodigo =
-      await this.perfilRepository.findByRouterAndCode({
-        mikrotikRouterId: command.mikrotikRouterId,
-        codigoPerfil,
-      });
-
-    if (perfilConMismoCodigo) {
-      throw new ConflictException(
-        'El código de perfil ya está homologado para otro servicio en este MikroTik.',
-      );
-    }
-
-    return this.perfilRepository.create(entity);
+    return aPerfilHomologacionReadModel(await this.perfiles.create(perfil));
   }
 }

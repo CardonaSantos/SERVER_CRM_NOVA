@@ -41,9 +41,9 @@ import {
   PppoeAccesoInternetFacadePort,
 } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.facade.port';
 import {
-  PERFIL_HOMOLOGACION_REPOSITORY,
-  PerfilHomologacionRepositoryPort,
-} from 'src/modules/pppoe-perfil-homologacion/domain/ports/perfil-homologacion-repository.port';
+  PPPOE_PERFIL_HOMOLOGACION,
+  PppoePerfilHomologacionFacadePort,
+} from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.facade.port';
 import { EstadoAccesoInternet } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
 
 export type AdoptarCuentaPppoeExistenteInput = {
@@ -105,8 +105,8 @@ export class AdoptarCuentaPppoeExistenteUseCase {
     @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
     private readonly cuentaRepository: ClientePppoeCuentaRepositoryPort,
 
-    @Inject(PERFIL_HOMOLOGACION_REPOSITORY)
-    private readonly perfilRepository: PerfilHomologacionRepositoryPort,
+    @Inject(PPPOE_PERFIL_HOMOLOGACION)
+    private readonly perfilesHomologacion: PppoePerfilHomologacionFacadePort,
 
     @Inject(MIKROTIK_ROUTER_CONNECTION_CONTEXT)
     private readonly routerContext: MikrotikRouterConnectionContextPort,
@@ -149,7 +149,7 @@ export class AdoptarCuentaPppoeExistenteUseCase {
       );
     }
 
-    const perfil = await this.perfilRepository.findById(
+    const perfil = await this.perfilesHomologacion.buscarPorId(
       normalized.perfilHomologacionId,
     );
 
@@ -165,7 +165,7 @@ export class AdoptarCuentaPppoeExistenteUseCase {
       );
     }
 
-    if (!perfil.estaActiva) {
+    if (!perfil.activo) {
       throw new ConflictException(
         'La homologación PPPoE seleccionada se encuentra inactiva.',
       );
