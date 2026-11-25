@@ -7,36 +7,6 @@ import {
 export type PppoeAuditoriaPaginatedResult =
   PaginatedResult<PppoeAuditoriaListItem>;
 
-export type PppoeAuditoriaFindManyFilters = {
-  empresaId: number;
-
-  page: number;
-  limit: number;
-
-  search?: string | null;
-
-  accion?: AccionAuditoriaPppoe | null;
-
-  origen?: OrigenOperacionPppoe | null;
-
-  clienteId?: number | null;
-
-  instalacionId?: number | null;
-
-  accesoInternetId?: number | null;
-
-  cuentaPppoeId?: number | null;
-
-  perfilHomologacionId?: number | null;
-
-  operadorId?: number | null;
-
-  fechaDesde?: Date | null;
-
-  fechaHasta?: Date | null;
-};
-
-// RESUMENES TIPOS
 export type PppoeAuditoriaUsuarioResumen = {
   id: number;
 

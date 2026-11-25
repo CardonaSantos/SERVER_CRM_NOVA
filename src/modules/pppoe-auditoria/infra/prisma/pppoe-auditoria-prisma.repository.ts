@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import {
   AccionAuditoriaPppoe as PrismaAccionAuditoriaPppoe,
@@ -20,7 +20,6 @@ import {
   OrigenOperacionPppoe,
 } from '../../domain/enums/pppoe-auditoria.enum';
 import {
-  PppoeAuditoriaFindManyFilters,
   PppoeAuditoriaListItem,
   PppoeAuditoriaPaginatedResult,
 } from '../../domain/read-models/pppoe-auditoria-list.read-model';
@@ -228,7 +227,6 @@ type PppoeAuditoriaListRecord = Prisma.PppoeAuditoriaGetPayload<{
 export class PppoeAuditoriaPrismaRepository
   implements PppoeAuditoriaRepositoryPort
 {
-  private readonly logger = new Logger(PppoeAuditoriaPrismaRepository.name);
   private static readonly DEFAULT_PAGE = 1;
   private static readonly DEFAULT_LIMIT = 25;
   private static readonly MAX_LIMIT = 100;
@@ -249,18 +247,6 @@ export class PppoeAuditoriaPrismaRepository
     return PppoeAuditoriaPrismaMapper.toDomain(record);
   }
 
-  async findById(id: number): Promise<PppoeAuditoriaEntity | null> {
-    this.assertPositiveInteger(id, 'id');
-
-    const record = await this.prisma.pppoeAuditoria.findUnique({
-      where: {
-        id,
-      },
-    });
-
-    return record ? PppoeAuditoriaPrismaMapper.toDomain(record) : null;
-  }
-
   /**
    * Consulta administrativa general.
    *
@@ -270,10 +256,6 @@ export class PppoeAuditoriaPrismaRepository
   async findPaginated(
     params: BuscarAuditoriasPppoeParams,
   ): Promise<PppoeAuditoriaPaginatedResult> {
-    this.logger.log(
-      `params recibido en paginated:\n${JSON.stringify(params, null, 2)}`,
-    );
-
     const page = this.normalizePage(params.page);
 
     const limit = this.normalizeLimit(params.limit);
@@ -314,340 +296,6 @@ export class PppoeAuditoriaPrismaRepository
         totalPages: total === 0 ? 0 : Math.ceil(total / limit),
       },
     };
-  }
-
-  /**
-   * Línea de tiempo completa de una cuenta PPPoE.
-   */
-  async findByCuentaPppoeId(
-    cuentaPppoeId: number,
-  ): Promise<PppoeAuditoriaEntity[]> {
-    this.assertPositiveInteger(cuentaPppoeId, 'cuentaPppoeId');
-
-    return this.findManyByContext({
-      cuentaPppoeId,
-    });
-  }
-
-  /**
-   * Eventos funcionales registrados para una
-   * PppoeOperacion concreta.
-   */
-  async findByOperacionId(
-    operacionId: number,
-  ): Promise<PppoeAuditoriaEntity[]> {
-    this.assertPositiveInteger(operacionId, 'operacionId');
-
-    return this.findManyByContext({
-      operacionId,
-    });
-  }
-
-  /**
-   * Bitácora generada durante una instalación.
-   */
-  async findByInstalacionId(
-    instalacionId: number,
-  ): Promise<PppoeAuditoriaEntity[]> {
-    this.assertPositiveInteger(instalacionId, 'instalacionId');
-
-    return this.findManyByContext({
-      instalacionId,
-    });
-  }
-
-  /**
-   * Bitácora generada durante una desinstalación.
-   */
-  async findByDesinstalacionId(
-    desinstalacionId: number,
-  ): Promise<PppoeAuditoriaEntity[]> {
-    this.assertPositiveInteger(desinstalacionId, 'desinstalacionId');
-
-    return this.findManyByContext({
-      desinstalacionId,
-    });
-  }
-
-  /**
-   * Historial PPPoE general de un cliente.
-   *
-   * Puede contener varios accesos, cuentas,
-   * instalaciones y desinstalaciones.
-   */
-  async findByClienteId(clienteId: number): Promise<PppoeAuditoriaEntity[]> {
-    this.assertPositiveInteger(clienteId, 'clienteId');
-
-    return this.findManyByContext({
-      clienteId,
-    });
-  }
-
-  /**
-   * Historial de un acceso de internet concreto.
-   */
-  async findByAccesoInternetId(
-    accesoInternetId: number,
-  ): Promise<PppoeAuditoriaEntity[]> {
-    this.assertPositiveInteger(accesoInternetId, 'accesoInternetId');
-
-    return this.findManyByContext({
-      accesoInternetId,
-    });
-  }
-
-  /**
-   * Historial de creación y mantenimiento
-   * de una homologación.
-   */
-  async findByPerfilHomologacionId(
-    perfilHomologacionId: number,
-  ): Promise<PppoeAuditoriaEntity[]> {
-    this.assertPositiveInteger(perfilHomologacionId, 'perfilHomologacionId');
-
-    return this.findManyByContext({
-      perfilHomologacionId,
-    });
-  }
-
-  async findMany(
-    filters: PppoeAuditoriaFindManyFilters,
-  ): Promise<PppoeAuditoriaPaginatedResult> {
-    const page = Math.max(filters.page || 1, 1);
-
-    const limit = Math.min(Math.max(filters.limit || 10, 1), 100);
-
-    const skip = (page - 1) * limit;
-
-    const where: Prisma.PppoeAuditoriaWhereInput = {
-      empresaId: filters.empresaId,
-    };
-    if (filters.accion) {
-      where.accion = this.mapAccionToPrisma(filters.accion);
-    }
-
-    if (filters.origen) {
-      where.origen = this.mapOrigenToPrisma(filters.origen);
-    }
-
-    if (filters.clienteId) {
-      where.clienteId = filters.clienteId;
-    }
-
-    if (filters.instalacionId) {
-      where.instalacionId = filters.instalacionId;
-    }
-
-    if (filters.accesoInternetId) {
-      where.accesoInternetId = filters.accesoInternetId;
-    }
-
-    if (filters.cuentaPppoeId) {
-      where.cuentaPppoeId = filters.cuentaPppoeId;
-    }
-
-    if (filters.perfilHomologacionId) {
-      where.perfilHomologacionId = filters.perfilHomologacionId;
-    }
-
-    if (filters.operadorId) {
-      where.operadorId = filters.operadorId;
-    }
-
-    if (filters.fechaDesde || filters.fechaHasta) {
-      where.creadoEn = {
-        ...(filters.fechaDesde
-          ? {
-              gte: filters.fechaDesde,
-            }
-          : {}),
-
-        ...(filters.fechaHasta
-          ? {
-              lte: filters.fechaHasta,
-            }
-          : {}),
-      };
-    }
-
-    const search = filters.search?.trim();
-
-    if (search) {
-      where.OR = [
-        {
-          descripcion: {
-            contains: search,
-            mode: 'insensitive',
-          },
-        },
-
-        {
-          usuarioPppoeSnapshot: {
-            contains: search,
-            mode: 'insensitive',
-          },
-        },
-
-        {
-          perfilCodigoSnapshot: {
-            contains: search,
-            mode: 'insensitive',
-          },
-        },
-
-        {
-          operadorNombreSnapshot: {
-            contains: search,
-            mode: 'insensitive',
-          },
-        },
-
-        {
-          ipOrigen: {
-            contains: search,
-            mode: 'insensitive',
-          },
-        },
-
-        {
-          cliente: {
-            is: {
-              OR: [
-                {
-                  nombre: {
-                    contains: search,
-                    mode: 'insensitive',
-                  },
-                },
-                {
-                  apellidos: {
-                    contains: search,
-                    mode: 'insensitive',
-                  },
-                },
-                {
-                  telefono: {
-                    contains: search,
-                    mode: 'insensitive',
-                  },
-                },
-                {
-                  dpi: {
-                    contains: search,
-                    mode: 'insensitive',
-                  },
-                },
-              ],
-            },
-          },
-        },
-
-        {
-          operador: {
-            is: {
-              OR: [
-                {
-                  nombre: {
-                    contains: search,
-                    mode: 'insensitive',
-                  },
-                },
-                {
-                  correo: {
-                    contains: search,
-                    mode: 'insensitive',
-                  },
-                },
-              ],
-            },
-          },
-        },
-
-        {
-          cuentaPppoe: {
-            is: {
-              usuario: {
-                contains: search,
-                mode: 'insensitive',
-              },
-            },
-          },
-        },
-
-        {
-          perfilHomologacion: {
-            is: {
-              codigoPerfil: {
-                contains: search,
-                mode: 'insensitive',
-              },
-            },
-          },
-        },
-      ];
-    }
-
-    const [records, total] = await this.prisma.$transaction([
-      this.prisma.pppoeAuditoria.findMany({
-        where,
-
-        skip,
-        take: limit,
-
-        orderBy: [
-          {
-            creadoEn: 'desc',
-          },
-          {
-            id: 'desc',
-          },
-        ],
-
-        select: pppoeAuditoriaListSelect,
-      }),
-
-      this.prisma.pppoeAuditoria.count({
-        where,
-      }),
-    ]);
-
-    return {
-      data: records.map((record) => this.mapListItem(record)),
-
-      meta: {
-        total,
-
-        page,
-
-        limit,
-
-        totalPages: total === 0 ? 0 : Math.ceil(total / limit),
-      },
-    };
-  }
-
-  private mapAccionToPrisma(
-    value: AccionAuditoriaPppoe,
-  ): PrismaAccionAuditoriaPppoe {
-    const prismaValues = Object.values(PrismaAccionAuditoriaPppoe) as string[];
-
-    if (!prismaValues.includes(value)) {
-      throw new Error(`La acción de auditoría "${value}" no existe en Prisma.`);
-    }
-
-    return value as PrismaAccionAuditoriaPppoe;
-  }
-
-  private mapOrigenToPrisma(
-    value: OrigenOperacionPppoe,
-  ): PrismaOrigenOperacionPppoe {
-    const prismaValues = Object.values(PrismaOrigenOperacionPppoe) as string[];
-
-    if (!prismaValues.includes(value)) {
-      throw new Error(`El origen de auditoría "${value}" no existe en Prisma.`);
-    }
-
-    return value as PrismaOrigenOperacionPppoe;
   }
 
   private mapRouter(router: {
@@ -957,32 +605,6 @@ export class PppoeAuditoriaPrismaRepository
     };
   }
 
-  /**
-   * Ejecuta las consultas especializadas de historial.
-   *
-   * Se ordena por fecha y luego por id para mantener
-   * un resultado determinista cuando dos eventos tienen
-   * la misma marca de tiempo.
-   */
-  private async findManyByContext(
-    where: Prisma.PppoeAuditoriaWhereInput,
-  ): Promise<PppoeAuditoriaEntity[]> {
-    const records = await this.prisma.pppoeAuditoria.findMany({
-      where,
-
-      orderBy: [
-        {
-          creadoEn: 'desc',
-        },
-        {
-          id: 'desc',
-        },
-      ],
-    });
-
-    return records.map((record) => PppoeAuditoriaPrismaMapper.toDomain(record));
-  }
-
   private buildWhere(
     params: BuscarAuditoriasPppoeParams,
   ): Prisma.PppoeAuditoriaWhereInput {
@@ -1057,34 +679,6 @@ export class PppoeAuditoriaPrismaRepository
     }
 
     return where;
-  }
-
-  /**
-   * Resuelve los filtros accion y acciones sin crear
-   * una condición ambigua.
-   *
-   * Cuando accion está presente, representa un filtro
-   * exacto. Si también se envía acciones, la acción
-   * exacta debe estar incluida en la colección.
-   */
-  private resolveAcciones(
-    accion: AccionAuditoriaPppoe | undefined,
-
-    acciones: AccionAuditoriaPppoe[] | undefined,
-  ): AccionAuditoriaPppoe[] {
-    const uniqueActions = [...new Set(acciones ?? [])];
-
-    if (accion === undefined) {
-      return uniqueActions;
-    }
-
-    if (uniqueActions.length > 0 && !uniqueActions.includes(accion)) {
-      throw new Error(
-        'El filtro accion no coincide con el conjunto indicado en acciones.',
-      );
-    }
-
-    return [accion];
   }
 
   private buildOrderBy(

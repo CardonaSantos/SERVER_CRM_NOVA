@@ -1,81 +1,42 @@
-import {
-  Controller,
-  Get,
-  HttpCode,
-  HttpStatus,
-  NotFoundException,
-  Param,
-  ParseIntPipe,
-  Query,
-  Req,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
 
-import { RequestWithAuthenticatedUser } from 'src/auth/interfaces/request-with-authenticated-user.interface';
+import { Actor, ActorHttp } from 'src/auth/decoradores/actor.decorator';
+import { Roles } from 'src/auth/decoradores/roles.decorator';
+import { ROLES_OFICINA } from 'src/auth/roles/grupos-roles';
 
+import { ListarAuditoriaPppoeInstalacionUseCase } from '../../application/use-cases/listar-auditoria-pppoe-instalacion.use-case';
 import { ListarAuditoriaPppoeInstalacionQueryDto } from '../dto/listar-auditoria-pppoe-instalacion-query.dto';
-
-import { PppoeAuditoriaService } from '../../application/services/pppoe-auditoria.service';
-
 import { PppoeAuditoriaInstalacionPresenter } from '../presenters/pppoe-auditoria-instalacion.presenter';
 
 @Controller('cliente-instalaciones')
 export class PppoeAuditoriaInstalacionController {
-  constructor(private readonly pppoeAuditoriaService: PppoeAuditoriaService) {}
+  constructor(
+    private readonly listarTimeline: ListarAuditoriaPppoeInstalacionUseCase,
+  ) {}
 
+  /** Línea de tiempo PPPoE de una instalación (solo oficina/administración). */
   @Get(':instalacionId/auditoria-pppoe')
-  @HttpCode(HttpStatus.OK)
+  @Roles(...ROLES_OFICINA)
   async findTimelineByInstalacion(
-    @Param('instalacionId', ParseIntPipe)
-    instalacionId: number,
-
-    @Query()
-    query: ListarAuditoriaPppoeInstalacionQueryDto,
-
-    @Req()
-    req: RequestWithAuthenticatedUser,
+    @Param('instalacionId', ParseIntPipe) instalacionId: number,
+    @Query() query: ListarAuditoriaPppoeInstalacionQueryDto,
+    @Actor() actor: ActorHttp,
   ) {
-    const actor = this.getAdministrativeActor(req);
-
-    const result = await this.pppoeAuditoriaService.findTimelineByInstalacion({
-      instalacionId,
+    const resultado = await this.listarTimeline.execute({
       empresaId: actor.empresaId,
-      actorRol: actor.rol,
-      query,
+      instalacionId,
+      page: query.page,
+      limit: query.limit,
+      search: query.search,
+      tipoOperacion: query.tipoOperacion,
+      estadoOperacion: query.estadoOperacion,
+      accion: query.accion,
+      origen: query.origen,
+      fechaDesde: query.fechaDesde,
+      fechaHasta: query.fechaHasta,
+      ordenDireccion: query.ordenDireccion,
     });
 
-    if (!result) {
-      throw new NotFoundException(
-        `No se encontró la instalación ${instalacionId}.`,
-      );
-    }
-
-    return PppoeAuditoriaInstalacionPresenter.paginatedToHttp(result);
-  }
-
-  private getAdministrativeActor(req: RequestWithAuthenticatedUser): {
-    empresaId: number;
-    rol: string;
-  } {
-    const empresaId = Number(req.user?.empresaId);
-
-    if (!Number.isInteger(empresaId) || empresaId <= 0) {
-      throw new UnauthorizedException(
-        'No fue posible identificar la empresa del operador.',
-      );
-    }
-
-    const rol = req.user?.rol?.trim().toUpperCase();
-
-    if (!rol) {
-      throw new UnauthorizedException(
-        'No fue posible identificar el rol del operador.',
-      );
-    }
-
-    return {
-      empresaId,
-      rol,
-    };
+    return PppoeAuditoriaInstalacionPresenter.paginatedToHttp(resultado);
   }
 }

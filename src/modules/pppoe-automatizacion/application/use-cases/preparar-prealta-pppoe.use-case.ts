@@ -6,8 +6,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { PppoeAuditoriaEntity } from '../../../pppoe-auditoria/domain/entities/pppoe-auditoria.entity';
-
 import { PrepararPrealtaPppoeInput } from '../inputs/preparar-prealta-pppoe.input';
 
 import { PrepararPrealtaPppoeResult } from '../results/preparar-prealta-pppoe.result';
@@ -30,9 +28,9 @@ import {
 } from 'src/modules/pppoe-credentials/public/pppoe-credential-generator.port';
 
 import {
-  PPPOE_AUDITORIA_REPOSITORY,
-  PppoeAuditoriaRepositoryPort,
-} from 'src/modules/pppoe-auditoria/domain/ports/pppoe-auditoria-repository.port';
+  PPPOE_AUDITORIA,
+  PppoeAuditoriaFacadePort,
+} from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.facade.port';
 
 import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
@@ -59,8 +57,8 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
     @Inject(PPPOE_SECRET_CIPHER)
     private readonly secretCipher: PppoeSecretCipherPort,
 
-    @Inject(PPPOE_AUDITORIA_REPOSITORY)
-    private readonly auditoriaRepository: PppoeAuditoriaRepositoryPort,
+    @Inject(PPPOE_AUDITORIA)
+    private readonly auditoria: PppoeAuditoriaFacadePort,
   ) {}
 
   async preparar(
@@ -216,7 +214,7 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
       generadoEn,
     } = params;
 
-    const auditoriaContrasena = PppoeAuditoriaEntity.registrarEventoCuenta({
+    await this.auditoria.registrarEventoCuenta({
       empresaId: input.empresaId,
 
       clienteId: input.clienteId,
@@ -256,9 +254,7 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
       creadoEn: generadoEn,
     });
 
-    await this.auditoriaRepository.create(auditoriaContrasena);
-
-    const auditoriaPrealta = PppoeAuditoriaEntity.registrarTransicionCuenta({
+    await this.auditoria.registrarTransicionCuenta({
       empresaId: input.empresaId,
 
       clienteId: input.clienteId,
@@ -303,8 +299,6 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
 
       creadoEn: generadoEn,
     });
-
-    await this.auditoriaRepository.create(auditoriaPrealta);
   }
 
   private toResult(

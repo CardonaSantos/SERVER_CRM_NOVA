@@ -3,10 +3,7 @@ import {
   AccionAuditoriaPppoe,
   OrigenOperacionPppoe,
 } from '../enums/pppoe-auditoria.enum';
-import {
-  PppoeAuditoriaFindManyFilters,
-  PppoeAuditoriaPaginatedResult,
-} from '../read-models/pppoe-auditoria-list.read-model';
+import { PppoeAuditoriaPaginatedResult } from '../read-models/pppoe-auditoria-list.read-model';
 
 export const PPPOE_AUDITORIA_REPOSITORY = Symbol('PPPOE_AUDITORIA_REPOSITORY');
 
@@ -60,77 +57,10 @@ export interface PppoeAuditoriaRepositoryPort {
   create(entity: PppoeAuditoriaEntity): Promise<PppoeAuditoriaEntity>;
 
   /**
-   * Recupera una auditoría concreta.
-   */
-  findById(id: number): Promise<PppoeAuditoriaEntity | null>;
-
-  /**
    * Consulta general para pantallas administrativas,
    * reportes y bitácoras.
    */
   findPaginated(
     params: BuscarAuditoriasPppoeParams,
-  ): Promise<PppoeAuditoriaPaginatedResult>;
-
-  /**
-   * Historial completo de una cuenta PPPoE.
-   *
-   * Se usará para mostrar:
-   * - prealta
-   * - creación del secret
-   * - activación
-   * - suspensión
-   * - reactivación
-   * - eliminación
-   */
-  findByCuentaPppoeId(cuentaPppoeId: number): Promise<PppoeAuditoriaEntity[]>;
-
-  /**
-   * Historial funcional asociado a una ejecución
-   * de PppoeOperacion.
-   */
-  findByOperacionId(operacionId: number): Promise<PppoeAuditoriaEntity[]>;
-
-  /**
-   * Eventos generados dentro de una instalación.
-   */
-  findByInstalacionId(instalacionId: number): Promise<PppoeAuditoriaEntity[]>;
-
-  /**
-   * Eventos generados dentro de una desinstalación.
-   */
-  findByDesinstalacionId(
-    desinstalacionId: number,
-  ): Promise<PppoeAuditoriaEntity[]>;
-
-  /**
-   * Historial PPPoE general del cliente.
-   *
-   * Puede incluir varios accesos, instalaciones,
-   * desinstalaciones y cuentas históricas.
-   */
-  findByClienteId(clienteId: number): Promise<PppoeAuditoriaEntity[]>;
-
-  /**
-   * Historial de un acceso concreto.
-   */
-  findByAccesoInternetId(
-    accesoInternetId: number,
-  ): Promise<PppoeAuditoriaEntity[]>;
-
-  /**
-   * Historial de creación, actualización,
-   * activación y desactivación de una homologación.
-   */
-  findByPerfilHomologacionId(
-    perfilHomologacionId: number,
-  ): Promise<PppoeAuditoriaEntity[]>;
-
-  /**
-   * CONSEGUIR DATOS PAGINADOS
-   * @param filters
-   */
-  findMany(
-    filters: PppoeAuditoriaFindManyFilters,
   ): Promise<PppoeAuditoriaPaginatedResult>;
 }

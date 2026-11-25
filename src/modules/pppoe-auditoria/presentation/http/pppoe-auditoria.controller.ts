@@ -1,26 +1,40 @@
-import { Controller, Get, Logger, Query } from '@nestjs/common';
-import { PppoeAuditoriaService } from '../../application/services/pppoe-auditoria.service';
+import { Controller, Get, Query } from '@nestjs/common';
+
+import { Actor, ActorHttp } from 'src/auth/decoradores/actor.decorator';
+
+import { ListarPppoeAuditoriasUseCase } from '../../application/use-cases/listar-pppoe-auditorias.use-case';
 import { ListarPppoeAuditoriasQueryDto } from '../dto/listar-pppoe-auditorias-query.dto';
 import { PppoeAuditoriaPresenter } from '../presenters/pppoe-auditoria.presenter';
 
 @Controller('pppoe-auditoria')
 export class PppoeAuditoriaController {
-  private logger = new Logger(PppoeAuditoriaController.name);
-  constructor(private readonly pppoeAuditoriaService: PppoeAuditoriaService) {}
+  constructor(
+    private readonly listarAuditorias: ListarPppoeAuditoriasUseCase,
+  ) {}
 
-  /**
-   * Listado administrativo paginado y enriquecido
-   * de eventos de auditoría PPPoE.
-   */
+  /** Listado administrativo paginado de la bitácora PPPoE. */
   @Get()
   async findAll(
-    @Query()
-    query: ListarPppoeAuditoriasQueryDto,
+    @Query() query: ListarPppoeAuditoriasQueryDto,
+    @Actor() actor: ActorHttp,
   ) {
-    this.logger.log(`Query:\n${JSON.stringify(query, null, 2)}`);
+    const resultado = await this.listarAuditorias.execute({
+      empresaId: actor.empresaId,
+      page: query.page,
+      limit: query.limit,
+      search: query.search,
+      accion: query.accion,
+      origen: query.origen,
+      clienteId: query.clienteId,
+      instalacionId: query.instalacionId,
+      accesoInternetId: query.accesoInternetId,
+      cuentaPppoeId: query.cuentaPppoeId,
+      perfilHomologacionId: query.perfilHomologacionId,
+      operadorId: query.operadorId,
+      fechaDesde: query.fechaDesde,
+      fechaHasta: query.fechaHasta,
+    });
 
-    const result = await this.pppoeAuditoriaService.findAll(query);
-
-    return PppoeAuditoriaPresenter.paginatedToHttp(result);
+    return PppoeAuditoriaPresenter.paginatedToHttp(resultado);
   }
 }

@@ -1,102 +1,68 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
-import { dayjs } from 'src/Utils/dayjs.config';
-
+import {
+  AccionAuditoriaPppoe,
+  OrigenOperacionPppoe,
+} from '../../domain/enums/pppoe-auditoria.enum';
 import {
   PPPOE_AUDITORIA_REPOSITORY,
   PppoeAuditoriaRepositoryPort,
 } from '../../domain/ports/pppoe-auditoria-repository.port';
-
 import { PppoeAuditoriaPaginatedResult } from '../../domain/read-models/pppoe-auditoria-list.read-model';
+import { RangoFechasAuditoriaService } from '../services/rango-fechas-auditoria.service';
 
-import { ListarPppoeAuditoriasQueryDto } from '../../presentation/dto/listar-pppoe-auditorias-query.dto';
+export type ListarPppoeAuditoriasInput = {
+  empresaId: number;
+  page?: number;
+  limit?: number;
+  search?: string;
+  accion?: AccionAuditoriaPppoe;
+  origen?: OrigenOperacionPppoe;
+  clienteId?: number;
+  instalacionId?: number;
+  accesoInternetId?: number;
+  cuentaPppoeId?: number;
+  perfilHomologacionId?: number;
+  operadorId?: number;
+  /** `YYYY-MM-DD` (día completo en Guatemala) o fecha ISO con hora. */
+  fechaDesde?: string;
+  fechaHasta?: string;
+};
 
+/** Listado administrativo paginado de la bitácora PPPoE, del más reciente al más antiguo. */
 @Injectable()
 export class ListarPppoeAuditoriasUseCase {
   constructor(
     @Inject(PPPOE_AUDITORIA_REPOSITORY)
     private readonly auditoriaRepository: PppoeAuditoriaRepositoryPort,
+    private readonly rangoFechas: RangoFechasAuditoriaService,
   ) {}
 
   execute(
-    query: ListarPppoeAuditoriasQueryDto,
+    input: ListarPppoeAuditoriasInput,
   ): Promise<PppoeAuditoriaPaginatedResult> {
+    const { fechaDesde, fechaHasta } = this.rangoFechas.interpretar(
+      input.fechaDesde,
+      input.fechaHasta,
+    );
+
     return this.auditoriaRepository.findPaginated({
-      empresaId: query.empresaId,
-
-      page: query.page ?? 1,
-
-      limit: query.limit ?? 10,
-
-      search: query.search?.trim() || null,
-
-      accion: query.accion ?? null,
-
-      origen: query.origen ?? null,
-
-      clienteId: query.clienteId ?? null,
-
-      instalacionId: query.instalacionId ?? null,
-
-      accesoInternetId: query.accesoInternetId ?? null,
-
-      cuentaPppoeId: query.cuentaPppoeId ?? null,
-
-      perfilHomologacionId: query.perfilHomologacionId ?? null,
-
-      operadorId: query.operadorId ?? null,
-
-      fechaDesde: this.parseFechaDesde(query.fechaDesde),
-
-      fechaHasta: this.parseFechaHasta(query.fechaHasta),
-
-      /**
-       * La auditoría siempre se presenta desde el evento
-       * más reciente.
-       */
+      empresaId: input.empresaId,
+      page: input.page ?? 1,
+      limit: input.limit ?? 10,
+      search: input.search?.trim() || null,
+      accion: input.accion ?? null,
+      origen: input.origen ?? null,
+      clienteId: input.clienteId ?? null,
+      instalacionId: input.instalacionId ?? null,
+      accesoInternetId: input.accesoInternetId ?? null,
+      cuentaPppoeId: input.cuentaPppoeId ?? null,
+      perfilHomologacionId: input.perfilHomologacionId ?? null,
+      operadorId: input.operadorId ?? null,
+      fechaDesde,
+      fechaHasta,
       ordenPor: 'creadoEn',
-
       ordenDireccion: 'desc',
     });
-  }
-
-  private parseFechaDesde(value?: string): Date | null {
-    if (!value?.trim()) {
-      return null;
-    }
-
-    const normalized = value.trim();
-
-    const fecha = dayjs(normalized);
-
-    if (!fecha.isValid()) {
-      throw new BadRequestException('fechaDesde no contiene una fecha válida.');
-    }
-
-    return this.isDateOnly(normalized)
-      ? fecha.startOf('day').toDate()
-      : fecha.toDate();
-  }
-
-  private parseFechaHasta(value?: string): Date | null {
-    if (!value?.trim()) {
-      return null;
-    }
-
-    const normalized = value.trim();
-
-    const fecha = dayjs(normalized);
-
-    if (!fecha.isValid()) {
-      throw new BadRequestException('fechaHasta no contiene una fecha válida.');
-    }
-
-    return this.isDateOnly(normalized)
-      ? fecha.endOf('day').toDate()
-      : fecha.toDate();
-  }
-
-  private isDateOnly(value: string): boolean {
-    return /^\d{4}-\d{2}-\d{2}$/.test(value);
   }
 }

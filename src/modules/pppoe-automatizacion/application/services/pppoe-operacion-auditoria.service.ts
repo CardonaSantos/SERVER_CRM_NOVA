@@ -1,18 +1,16 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
-import { PppoeAuditoriaEntity } from 'src/modules/pppoe-auditoria/domain/entities/pppoe-auditoria.entity';
-
 import {
   AccionAuditoriaPppoe,
   OrigenOperacionPppoe,
 } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 
 import {
-  PPPOE_AUDITORIA_REPOSITORY,
-  PppoeAuditoriaRepositoryPort,
-} from 'src/modules/pppoe-auditoria/domain/ports/pppoe-auditoria-repository.port';
+  PPPOE_AUDITORIA,
+  PppoeAuditoriaFacadePort,
+} from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.facade.port';
 
-import { DatosAuditoriaPppoe } from 'src/modules/pppoe-auditoria/domain/props/pppoe-auditoria.props';
+import { DatosAuditoriaPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 
 import { PppoeOperacionEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion.entity';
 
@@ -48,8 +46,8 @@ export class PppoeOperacionAuditoriaService
   private readonly logger = new Logger(PppoeOperacionAuditoriaService.name);
 
   constructor(
-    @Inject(PPPOE_AUDITORIA_REPOSITORY)
-    private readonly repository: PppoeAuditoriaRepositoryPort,
+    @Inject(PPPOE_AUDITORIA)
+    private readonly auditoria: PppoeAuditoriaFacadePort,
   ) {}
 
   async registrarCreada(
@@ -202,7 +200,7 @@ export class PppoeOperacionAuditoriaService
       const operadorId =
         input.params.actor?.operadorId ?? operacion.iniciadoPorId;
 
-      const entity = PppoeAuditoriaEntity.registrarEventoOperacion({
+      await this.auditoria.registrarEventoOperacion({
         empresaId: operacion.empresaId,
 
         cuentaPppoeId: operacion.cuentaPppoeId,
@@ -241,8 +239,6 @@ export class PppoeOperacionAuditoriaService
 
         creadoEn: input.params.fecha,
       });
-
-      await this.repository.create(entity);
     } catch (error: unknown) {
       const baseMessage =
         `No pudo persistirse la auditoría ${input.accion} ` +

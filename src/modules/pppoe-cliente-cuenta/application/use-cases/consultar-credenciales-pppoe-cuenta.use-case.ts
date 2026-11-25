@@ -20,11 +20,9 @@ import {
   PppoeSecretCipherPort,
 } from 'src/modules/pppoe-credentials/public/pppoe-secret-cipher.port';
 import {
-  PPPOE_AUDITORIA_REPOSITORY,
-  PppoeAuditoriaRepositoryPort,
-} from 'src/modules/pppoe-auditoria/domain/ports/pppoe-auditoria-repository.port';
-
-import { PppoeAuditoriaEntity } from 'src/modules/pppoe-auditoria/domain/entities/pppoe-auditoria.entity';
+  PPPOE_AUDITORIA,
+  PppoeAuditoriaFacadePort,
+} from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.facade.port';
 
 import {
   AccionAuditoriaPppoe,
@@ -65,8 +63,8 @@ export class ConsultarCredencialesPppoeCuentaUseCase {
     @Inject(PPPOE_SECRET_CIPHER)
     private readonly secretCipher: PppoeSecretCipherPort,
 
-    @Inject(PPPOE_AUDITORIA_REPOSITORY)
-    private readonly auditoriaRepository: PppoeAuditoriaRepositoryPort,
+    @Inject(PPPOE_AUDITORIA)
+    private readonly auditoria: PppoeAuditoriaFacadePort,
   ) {}
 
   async execute(
@@ -109,7 +107,7 @@ export class ConsultarCredencialesPppoeCuentaUseCase {
      *
      * Nunca enviamos la contraseña a auditoría.
      */
-    const auditoria = PppoeAuditoriaEntity.registrarEventoCuenta({
+    await this.auditoria.registrarEventoCuenta({
       empresaId: input.empresaId,
 
       clienteId: detalle.cliente.id,
@@ -145,8 +143,6 @@ export class ConsultarCredencialesPppoeCuentaUseCase {
 
       userAgent: input.userAgent ?? null,
     });
-
-    await this.auditoriaRepository.create(auditoria);
 
     return {
       cuentaPppoeId: input.cuentaPppoeId,

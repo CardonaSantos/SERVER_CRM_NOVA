@@ -91,7 +91,7 @@ export class PppoeAuditoriaEntity {
       'estadoCuentaNuevo',
     );
 
-    const creadoEn = input.creadoEn ?? new Date();
+    const creadoEn = input.creadoEn;
 
     this.assertValidDate(creadoEn, 'creadoEn');
 

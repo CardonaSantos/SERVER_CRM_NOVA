@@ -1,99 +1,72 @@
+import { Inject, Injectable } from '@nestjs/common';
+
 import {
-  BadRequestException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-} from '@nestjs/common';
+  EstadoOperacionPppoe,
+  TipoOperacionPppoe,
+} from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
-import { ListarAuditoriaPppoeInstalacionQueryDto } from '../../presentation/dto/listar-auditoria-pppoe-instalacion-query.dto';
-
+import {
+  AccionAuditoriaPppoe,
+  OrigenOperacionPppoe,
+} from '../../domain/enums/pppoe-auditoria.enum';
+import { InstalacionAuditoriaNoEncontradaError } from '../../domain/errors/pppoe-auditoria.errors';
 import {
   PPPOE_AUDITORIA_INSTALACION_QUERY,
   PppoeAuditoriaInstalacionQueryPort,
 } from '../../domain/ports/pppoe-auditoria-instalacion-query.port';
-
 import { PppoeAuditoriaInstalacionPaginatedResult } from '../../domain/read-models/pppoe-auditoria-instalacion.read-model';
+import { RangoFechasAuditoriaService } from '../services/rango-fechas-auditoria.service';
 
-export type ListarAuditoriaPppoeInstalacionCommand = {
-  instalacionId: number;
+export type ListarAuditoriaPppoeInstalacionInput = {
   empresaId: number;
-  actorRol: string;
-  query: ListarAuditoriaPppoeInstalacionQueryDto;
+  instalacionId: number;
+  page?: number;
+  limit?: number;
+  search?: string;
+  tipoOperacion?: TipoOperacionPppoe;
+  estadoOperacion?: EstadoOperacionPppoe;
+  accion?: AccionAuditoriaPppoe;
+  origen?: OrigenOperacionPppoe;
+  /** `YYYY-MM-DD` (día completo en Guatemala) o fecha ISO con hora. */
+  fechaDesde?: string;
+  fechaHasta?: string;
+  ordenDireccion?: 'asc' | 'desc';
 };
 
+/** Línea de tiempo PPPoE de una instalación. */
 @Injectable()
 export class ListarAuditoriaPppoeInstalacionUseCase {
   constructor(
     @Inject(PPPOE_AUDITORIA_INSTALACION_QUERY)
     private readonly queryPort: PppoeAuditoriaInstalacionQueryPort,
+    private readonly rangoFechas: RangoFechasAuditoriaService,
   ) {}
 
   async execute(
-    command: ListarAuditoriaPppoeInstalacionCommand,
-  ): Promise<PppoeAuditoriaInstalacionPaginatedResult | null> {
-    this.assertPositiveInteger(command.instalacionId, 'instalacionId');
-    this.assertPositiveInteger(command.empresaId, 'empresaId');
-    this.assertAllowedRole(command.actorRol);
+    input: ListarAuditoriaPppoeInstalacionInput,
+  ): Promise<PppoeAuditoriaInstalacionPaginatedResult> {
+    const { fechaDesde, fechaHasta } = this.rangoFechas.interpretar(
+      input.fechaDesde,
+      input.fechaHasta,
+    );
 
-    const fechaDesde = command.query.fechaDesde
-      ? new Date(command.query.fechaDesde)
-      : null;
-
-    const fechaHasta = command.query.fechaHasta
-      ? new Date(command.query.fechaHasta)
-      : null;
-
-    if (
-      fechaDesde &&
-      fechaHasta &&
-      fechaDesde.getTime() > fechaHasta.getTime()
-    ) {
-      throw new BadRequestException(
-        'fechaDesde no puede ser posterior a fechaHasta.',
-      );
-    }
-
-    return this.queryPort.findTimelineByInstalacion({
-      empresaId: command.empresaId,
-      instalacionId: command.instalacionId,
-
-      page: command.query.page ?? 1,
-      limit: command.query.limit ?? 10,
-
-      search: command.query.search?.trim() || null,
-
-      tipoOperacion: command.query.tipoOperacion ?? null,
-      estadoOperacion: command.query.estadoOperacion ?? null,
-
-      accion: command.query.accion ?? null,
-      origen: command.query.origen ?? null,
-
+    const resultado = await this.queryPort.findTimelineByInstalacion({
+      empresaId: input.empresaId,
+      instalacionId: input.instalacionId,
+      page: input.page ?? 1,
+      limit: input.limit ?? 10,
+      search: input.search?.trim() || null,
+      tipoOperacion: input.tipoOperacion ?? null,
+      estadoOperacion: input.estadoOperacion ?? null,
+      accion: input.accion ?? null,
+      origen: input.origen ?? null,
       fechaDesde,
       fechaHasta,
-
-      ordenDireccion: command.query.ordenDireccion ?? 'desc',
+      ordenDireccion: input.ordenDireccion ?? 'desc',
     });
-  }
 
-  private assertAllowedRole(actorRol: string): void {
-    const role = actorRol?.trim().toUpperCase();
+    if (!resultado) throw new InstalacionAuditoriaNoEncontradaError();
 
-    if (
-      ['ADMIN', 'COORDINADOR_OPERACIONES', 'OFICINA', 'SUPER_ADMIN'].includes(
-        role,
-      )
-    ) {
-      return;
-    }
-
-    throw new ForbiddenException(
-      'No tiene permisos para consultar la auditoría PPPoE administrativa.',
-    );
-  }
-
-  private assertPositiveInteger(value: number, field: string): void {
-    if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
-    }
+    return resultado;
   }
 }

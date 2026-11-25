@@ -18,10 +18,12 @@ import {
 } from '../../domain/enums/pppoe-auditoria.enum';
 
 export class ListarPppoeAuditoriasQueryDto {
+  /** Obsoleto: se ignora (la empresa sale de la sesión). Se acepta para no romper clientes. */
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  empresaId: number;
+  empresaId?: number;
 
   @IsOptional()
   @Type(() => Number)

@@ -103,13 +103,8 @@ export type CrearPppoeAuditoriaEntityProps = {
   ipOrigen?: string | null;
   userAgent?: string | null;
 
-  /**
-   * Permite controlar la fecha en pruebas o conservar
-   * exactamente el momento en que ocurrió el evento.
-   *
-   * Si se omite, la entidad utilizará la fecha actual.
-   */
-  creadoEn?: Date;
+  /** Momento del evento (lo pone el reloj del caso de uso). */
+  creadoEn: Date;
 };
 
 /**
