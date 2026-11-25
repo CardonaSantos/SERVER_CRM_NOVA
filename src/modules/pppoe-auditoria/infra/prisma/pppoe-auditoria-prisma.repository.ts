@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { PrismaTransaccional } from 'src/common/transaccion/prisma-transaccional.service';
 
 import {
   AccionAuditoriaPppoe as PrismaAccionAuditoriaPppoe,
@@ -231,7 +232,15 @@ export class PppoeAuditoriaPrismaRepository
   private static readonly DEFAULT_LIMIT = 25;
   private static readonly MAX_LIMIT = 100;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly transaccional: PrismaTransaccional,
+  ) {}
+
+  /** La transacción abierta por una unidad de trabajo, o el cliente normal. */
+  private get db() {
+    return this.transaccional.cliente;
+  }
 
   /**
    * Inserta un nuevo registro en la bitácora.
@@ -240,7 +249,7 @@ export class PppoeAuditoriaPrismaRepository
    * es append-only.
    */
   async create(entity: PppoeAuditoriaEntity): Promise<PppoeAuditoriaEntity> {
-    const record = await this.prisma.pppoeAuditoria.create({
+    const record = await this.db.pppoeAuditoria.create({
       data: PppoeAuditoriaPrismaMapper.toCreatePersistence(entity),
     });
 
@@ -267,7 +276,7 @@ export class PppoeAuditoriaPrismaRepository
     const skip = (page - 1) * limit;
 
     const [records, total] = await this.prisma.$transaction([
-      this.prisma.pppoeAuditoria.findMany({
+      this.db.pppoeAuditoria.findMany({
         where,
 
         skip,
@@ -278,7 +287,7 @@ export class PppoeAuditoriaPrismaRepository
         select: pppoeAuditoriaListSelect,
       }),
 
-      this.prisma.pppoeAuditoria.count({
+      this.db.pppoeAuditoria.count({
         where,
       }),
     ]);

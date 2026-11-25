@@ -25,15 +25,18 @@ export type RegistrarTransicionCuentaInput =
 export type RegistrarEventoOperacionInput =
   ConFechaOpcional<RegistrarEventoOperacionPppoeProps>;
 
+/** Cada registro devuelve el id de la auditoría creada. */
 export interface PppoeAuditoriaFacadePort {
   /** Evento sobre una cuenta PPPoE (p. ej. credenciales visualizadas). */
-  registrarEventoCuenta(input: RegistrarEventoCuentaInput): Promise<void>;
+  registrarEventoCuenta(input: RegistrarEventoCuentaInput): Promise<number>;
 
   /** Cambio de estado confirmado de una cuenta PPPoE. */
   registrarTransicionCuenta(
     input: RegistrarTransicionCuentaInput,
-  ): Promise<void>;
+  ): Promise<number>;
 
   /** Evento de una operación técnica PPPoE (iniciada, exitosa, fallida…). */
-  registrarEventoOperacion(input: RegistrarEventoOperacionInput): Promise<void>;
+  registrarEventoOperacion(
+    input: RegistrarEventoOperacionInput,
+  ): Promise<number>;
 }

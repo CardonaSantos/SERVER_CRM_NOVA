@@ -12,19 +12,19 @@ import { RegistrarAuditoriaPppoeUseCase } from '../use-cases/registrar-auditoria
 export class PppoeAuditoriaFacade implements PppoeAuditoriaFacadePort {
   constructor(private readonly registrar: RegistrarAuditoriaPppoeUseCase) {}
 
-  registrarEventoCuenta(input: RegistrarEventoCuentaInput): Promise<void> {
+  registrarEventoCuenta(input: RegistrarEventoCuentaInput): Promise<number> {
     return this.registrar.execute({ evento: 'CUENTA', ...input });
   }
 
   registrarTransicionCuenta(
     input: RegistrarTransicionCuentaInput,
-  ): Promise<void> {
+  ): Promise<number> {
     return this.registrar.execute({ evento: 'TRANSICION_CUENTA', ...input });
   }
 
   registrarEventoOperacion(
     input: RegistrarEventoOperacionInput,
-  ): Promise<void> {
+  ): Promise<number> {
     return this.registrar.execute({ evento: 'OPERACION', ...input });
   }
 }

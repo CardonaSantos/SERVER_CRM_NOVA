@@ -27,38 +27,32 @@ export class RegistrarAuditoriaPppoeUseCase {
     @Inject(RELOJ) private readonly reloj: RelojPort,
   ) {}
 
-  async execute(input: RegistrarAuditoriaPppoeInput): Promise<void> {
+  /** Devuelve el id de la auditoría creada. */
+  async execute(input: RegistrarAuditoriaPppoeInput): Promise<number> {
+    const guardada = await this.repositorio.create(this.construir(input));
+    return guardada.id!;
+  }
+
+  private construir(input: RegistrarAuditoriaPppoeInput): PppoeAuditoriaEntity {
     const { evento, ...datos } = input;
     const creadoEn = input.creadoEn ?? this.reloj.ahora();
 
     switch (evento) {
       case 'CUENTA':
-        await this.repositorio.create(
-          PppoeAuditoriaEntity.registrarEventoCuenta({
-            ...(datos as RegistrarEventoCuentaInput),
-            creadoEn,
-          }),
-        );
-        return;
-
+        return PppoeAuditoriaEntity.registrarEventoCuenta({
+          ...(datos as RegistrarEventoCuentaInput),
+          creadoEn,
+        });
       case 'TRANSICION_CUENTA':
-        await this.repositorio.create(
-          PppoeAuditoriaEntity.registrarTransicionCuenta({
-            ...(datos as RegistrarTransicionCuentaInput),
-            creadoEn,
-          }),
-        );
-        return;
-
+        return PppoeAuditoriaEntity.registrarTransicionCuenta({
+          ...(datos as RegistrarTransicionCuentaInput),
+          creadoEn,
+        });
       case 'OPERACION':
-        await this.repositorio.create(
-          PppoeAuditoriaEntity.registrarEventoOperacion({
-            ...(datos as RegistrarEventoOperacionInput),
-            creadoEn,
-          }),
-        );
-        return;
-
+        return PppoeAuditoriaEntity.registrarEventoOperacion({
+          ...(datos as RegistrarEventoOperacionInput),
+          creadoEn,
+        });
       default: {
         const exhaustivo: never = evento;
         throw new Error(
