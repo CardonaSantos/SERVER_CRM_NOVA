@@ -97,7 +97,6 @@ export class PerfilHomologacionPresenter {
       ? {
           id: u.id,
           nombre: u.nombre,
-          correo: u.correo,
           rol: u.rol,
           activo: u.activo,
         }

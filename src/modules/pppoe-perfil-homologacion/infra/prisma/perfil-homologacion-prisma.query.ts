@@ -17,7 +17,7 @@ import {
 } from '../../domain/read-models/perfil-homologacion.read-model';
 
 const usuarioResumen = {
-  select: { id: true, nombre: true, correo: true, rol: true, activo: true },
+  select: { id: true, nombre: true, rol: true, activo: true },
 } as const;
 
 const includeListado = {
@@ -169,7 +169,6 @@ export class PerfilHomologacionPrismaQuery
         ? {
             id: u.id,
             nombre: u.nombre,
-            correo: u.correo,
             rol: u.rol,
             activo: u.activo,
           }

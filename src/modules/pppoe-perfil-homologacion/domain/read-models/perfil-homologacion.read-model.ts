@@ -40,7 +40,6 @@ export function aPerfilHomologacionReadModel(
 export type PerfilHomologacionUsuarioResumen = {
   id: number;
   nombre: string;
-  correo: string;
   rol: string;
   activo: boolean;
 };

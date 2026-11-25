@@ -10,6 +10,8 @@ import {
 } from '@nestjs/common';
 
 import { Actor, ActorHttp } from 'src/auth/decoradores/actor.decorator';
+import { Roles } from 'src/auth/decoradores/roles.decorator';
+import { ROLES_OFICINA } from 'src/auth/roles/grupos-roles';
 
 import { ActivarPerfilHomologacionUseCase } from '../../application/use-cases/activar-perfil-homologacion.use-case';
 import { ActualizarCodigoPerfilHomologacionUseCase } from '../../application/use-cases/actualizar-codigo-perfil-homologacion.use-case';
@@ -38,6 +40,7 @@ export class PerfilHomologacionController {
   ) {}
 
   @Post()
+  @Roles(...ROLES_OFICINA)
   async create(
     @Body() dto: CrearPerfilHomologacionDto,
     @Actor() actor: ActorHttp,
@@ -84,6 +87,7 @@ export class PerfilHomologacionController {
   }
 
   @Patch(':id/codigo-perfil')
+  @Roles(...ROLES_OFICINA)
   async updateCodigoPerfil(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: ActualizarCodigoPerfilHomologacionDto,
@@ -98,6 +102,7 @@ export class PerfilHomologacionController {
   }
 
   @Patch(':id/activar')
+  @Roles(...ROLES_OFICINA)
   async activar(
     @Param('id', ParseIntPipe) id: number,
     @Actor() actor: ActorHttp,
@@ -110,6 +115,7 @@ export class PerfilHomologacionController {
   }
 
   @Patch(':id/desactivar')
+  @Roles(...ROLES_OFICINA)
   async desactivar(
     @Param('id', ParseIntPipe) id: number,
     @Actor() actor: ActorHttp,
