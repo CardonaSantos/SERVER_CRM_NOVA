@@ -1,3 +1,5 @@
+import { DomainError } from 'src/common/hexagonal/domain-error';
+
 import {
   CodigoErrorMikrotikSsh,
   EfectoRemotoMikrotik,
@@ -57,7 +59,10 @@ export type MikrotikSshErrorPrimitives = {
  * - streams;
  * - RouterOS.
  */
-export class MikrotikSshError extends Error {
+export class MikrotikSshError extends DomainError {
+  /** El router no respondió o rechazó la orden: 502 hacia la UI. */
+  readonly tipo = 'EXTERNO' as const;
+
   private static readonly MAX_MESSAGE_LENGTH = 2_000;
 
   readonly codigo: CodigoErrorMikrotikSsh;
@@ -78,8 +83,6 @@ export class MikrotikSshError extends Error {
 
   constructor(message: string, props: MikrotikSshErrorProps) {
     super(MikrotikSshError.normalizeMessage(message));
-
-    this.name = 'MikrotikSshError';
 
     this.codigo = MikrotikSshError.assertEnumValue(
       props.codigo,
