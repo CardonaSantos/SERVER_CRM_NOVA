@@ -57,9 +57,11 @@ import {
   PppoeOperacionAuditoriaPort,
 } from '../../domain/ports/pppoe-operacion-auditoria.port';
 import { EliminarSecretPppoeExecutor } from '../executors/eliminar-secret-pppoe.executor';
-import { CLIENTE_ACCESO_INTERNET_REPOSITORY } from 'src/modules/pppoe-acceso-internet/infra/tokens/token-ppoe-acceso-internet.token';
-import { ClienteAccesoInternetRepositoryPort } from 'src/modules/pppoe-acceso-internet/domain/ports/ppoe-acceso-internet.port';
-import { ClienteAccesoInternetEntity } from 'src/modules/pppoe-acceso-internet/domain/entities/ppoe-acceso-internet.entity';
+import {
+  CLIENTE_ACCESO_INTERNET_REPOSITORY,
+  ClienteAccesoInternetRepositoryPort,
+} from 'src/modules/pppoe-acceso-internet/domain/ports/cliente-acceso-internet-repository.port';
+import { ClienteAccesoInternetEntity } from 'src/modules/pppoe-acceso-internet/domain/entities/cliente-acceso-internet.entity';
 import {
   CLIENTE_INTERNET_ESTADO_OPERATIVO,
   ClienteInternetEstadoOperativoPort,

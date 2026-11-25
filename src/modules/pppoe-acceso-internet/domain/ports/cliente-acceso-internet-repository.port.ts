@@ -1,4 +1,8 @@
-import { ClienteAccesoInternetEntity } from '../entities/ppoe-acceso-internet.entity';
+import { ClienteAccesoInternetEntity } from '../entities/cliente-acceso-internet.entity';
+
+export const CLIENTE_ACCESO_INTERNET_REPOSITORY = Symbol(
+  'CLIENTE_ACCESO_INTERNET_REPOSITORY',
+);
 
 export type BuscarAccesoInternetDelClienteParams = {
   accesoInternetId: number;

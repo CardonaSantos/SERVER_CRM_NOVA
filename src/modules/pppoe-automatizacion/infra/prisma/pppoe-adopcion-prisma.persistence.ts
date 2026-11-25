@@ -3,13 +3,13 @@ import { Prisma } from '@prisma/client';
 
 import { PrismaService } from 'src/prisma/prisma.service';
 
-import { ClienteAccesoInternetEntity } from 'src/modules/pppoe-acceso-internet/domain/entities/ppoe-acceso-internet.entity';
+import { ClienteAccesoInternetEntity } from 'src/modules/pppoe-acceso-internet/domain/entities/cliente-acceso-internet.entity';
 
 import {
   EstadoAccesoInternet,
   MetodoAutenticacionInternet,
   TecnologiaAccesoInternet,
-} from 'src/modules/pppoe-acceso-internet/domain/enums/ppoe-acceso-internet.enum';
+} from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
 
 import { ClienteAccesoInternetPrismaMapper } from 'src/modules/pppoe-acceso-internet/infra/prisma/cliente-acceso-internet-prisma.mapper';
 

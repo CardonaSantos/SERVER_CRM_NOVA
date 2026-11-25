@@ -2,12 +2,12 @@ import {
   EstadoAccesoInternet,
   MetodoAutenticacionInternet,
   TecnologiaAccesoInternet,
-} from '../enums/ppoe-acceso-internet.enum';
+} from '../enums/cliente-acceso-internet.enum';
 import {
   AdoptarClienteAccesoInternetProps,
   ClienteAccesoInternetProps,
   CrearClienteAccesoInternetProps,
-} from '../props/props-entity';
+} from '../props/cliente-acceso-internet.props';
 
 export class ClienteAccesoInternetEntity {
   private constructor(private readonly props: ClienteAccesoInternetProps) {}

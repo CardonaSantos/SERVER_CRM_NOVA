@@ -5,7 +5,7 @@ import { Equals, IsEnum, IsInt, IsOptional, Min } from 'class-validator';
 import {
   MetodoAutenticacionInternet,
   TecnologiaAccesoInternet,
-} from 'src/modules/pppoe-acceso-internet/domain/enums/ppoe-acceso-internet.enum';
+} from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
 
 const toNumber = ({ value }: { value: unknown }): number | undefined => {
   if (value === undefined || value === null || value === '') {

@@ -36,11 +36,13 @@ import {
 } from '../../domain/ports/pppoe-adopcion-persistence.port';
 
 import { AdoptarCuentaPppoeExistenteResult } from '../results/adoptar-cuenta-pppoe-existente.result';
-import { CLIENTE_ACCESO_INTERNET_REPOSITORY } from 'src/modules/pppoe-acceso-internet/infra/tokens/token-ppoe-acceso-internet.token';
-import { ClienteAccesoInternetRepositoryPort } from 'src/modules/pppoe-acceso-internet/domain/ports/ppoe-acceso-internet.port';
+import {
+  CLIENTE_ACCESO_INTERNET_REPOSITORY,
+  ClienteAccesoInternetRepositoryPort,
+} from 'src/modules/pppoe-acceso-internet/domain/ports/cliente-acceso-internet-repository.port';
 import { PPPOE_PERFIL_HOMOLOGACION_REPOSITORY } from 'src/modules/pppoe-perfil-homologacion/infra/tokens/ppoe-perfil-homologacion.token';
 import { PerfilHomologacionRepositoryPort } from 'src/modules/pppoe-perfil-homologacion/domain/ports/ppoe-perfil-homologacion.port';
-import { EstadoAccesoInternet } from 'src/modules/pppoe-acceso-internet/domain/enums/ppoe-acceso-internet.enum';
+import { EstadoAccesoInternet } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
 
 export type AdoptarCuentaPppoeExistenteInput = {
   empresaId: number;

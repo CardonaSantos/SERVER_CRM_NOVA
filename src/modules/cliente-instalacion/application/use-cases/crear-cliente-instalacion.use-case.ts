@@ -7,15 +7,17 @@ import {
 import { CrearClienteInstalacionDto } from '../dto/crear-cliente-instalacion.dto';
 import { CLIENTE_INSTALACION_REPOSITORY } from '../../infra/tokens/cliente-instalacion.tokens';
 import { RolTecnicoOperacionCliente } from '../../domain/enums/rol-tecnico-operacion-cliente.enum';
-import { CLIENTE_ACCESO_INTERNET_REPOSITORY } from 'src/modules/pppoe-acceso-internet/infra/tokens/token-ppoe-acceso-internet.token';
-import { ClienteAccesoInternetRepositoryPort } from 'src/modules/pppoe-acceso-internet/domain/ports/ppoe-acceso-internet.port';
+import {
+  CLIENTE_ACCESO_INTERNET_REPOSITORY,
+  ClienteAccesoInternetRepositoryPort,
+} from 'src/modules/pppoe-acceso-internet/domain/ports/cliente-acceso-internet-repository.port';
 import { CLIENTE_INSTALACION_ACCESO_REPOSITORY } from 'src/modules/ppoe-instalacion-acceso/tokens/instalacion-acceso.token';
 import { ClienteInstalacionAccesoRepositoryPort } from 'src/modules/ppoe-instalacion-acceso/domain/ports/cliente-instalacion-acceso.port';
-import { ClienteAccesoInternetEntity } from 'src/modules/pppoe-acceso-internet/domain/entities/ppoe-acceso-internet.entity';
+import { ClienteAccesoInternetEntity } from 'src/modules/pppoe-acceso-internet/domain/entities/cliente-acceso-internet.entity';
 import {
   MetodoAutenticacionInternet,
   TecnologiaAccesoInternet,
-} from 'src/modules/pppoe-acceso-internet/domain/enums/ppoe-acceso-internet.enum';
+} from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
 import { ClienteInstalacionAccesoEntity } from 'src/modules/ppoe-instalacion-acceso/domain/entities/ppoe-instalacion-acceso.entity';
 import { AccionInstalacionAcceso } from 'src/modules/ppoe-instalacion-acceso/domain/enums/ppoe-instalacion-acceso.enum';
 

@@ -10,7 +10,7 @@ import {
   MaxLength,
 } from 'class-validator';
 
-import { EstadoAccesoInternet } from 'src/modules/pppoe-acceso-internet/domain/enums/ppoe-acceso-internet.enum';
+import { EstadoAccesoInternet } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
 
 import { EstadoCuentaPppoe } from '../../domain/enums/pppoe-cliente-cuenta.enum';
 

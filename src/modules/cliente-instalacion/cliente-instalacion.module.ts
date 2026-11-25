@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { PrismaModule } from 'src/prisma/prisma.module';
 
 import { AlmacenamientoMediaModule } from '../almacenamiento-media/almacenamiento-media.module';
-import { PpoeAccesoInternetModule } from '../pppoe-acceso-internet/ppoe-acceso-internet.module';
+import { PppoeAccesoInternetModule } from '../pppoe-acceso-internet/pppoe-acceso-internet.module';
 
 import { CrearClienteInstalacionUseCase } from './application/use-cases/crear-cliente-instalacion.use-case';
 import { ListarClienteInstalacionesUseCase } from './application/use-cases/listar-cliente-instalaciones.use-case';
@@ -38,7 +38,7 @@ import { ActivarPppoeInstalacionUseCase } from './application/use-cases/activar-
     AuthModule,
     PrismaModule,
     AlmacenamientoMediaModule,
-    PpoeAccesoInternetModule,
+    PppoeAccesoInternetModule,
     PppoeAutomatizacionModule,
     PppoeClienteCuentaModule,
   ],

@@ -37,7 +37,7 @@ import { CrearYEjecutarEliminacionPppoeUseCase } from './application/use-cases/c
 import { PppoeOperacionAdminService } from './application/services/pppoe-operacion-admin.service';
 import { PppoeOperacionAdminController } from './presentation/pppoe-operacion-admin.controller';
 import { AuthModule } from 'src/auth/auth.module';
-import { PpoeAccesoInternetModule } from '../pppoe-acceso-internet/ppoe-acceso-internet.module';
+import { PppoeAccesoInternetModule } from '../pppoe-acceso-internet/pppoe-acceso-internet.module';
 import { PppoeCuentaAccionesController } from './presentation/pppoe-cuenta-acciones.controller';
 import { CrearPrealtaPppoeClienteUseCase } from './application/use-cases/crear-prealta-pppoe-cliente.use-case';
 import { ProvisionarPppoeClienteManualUseCase } from './application/use-cases/provisionar-pppoe-cliente-manual.use-case';
@@ -73,7 +73,7 @@ import { ClienteInternetEstadoOperativoPrismaAdapter } from './infra/prisma/clie
     PppoeCredentialsModule,
 
     PppoeAuditoriaModule,
-    PpoeAccesoInternetModule,
+    PppoeAccesoInternetModule,
     MikroTikModule,
   ],
 

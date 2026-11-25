@@ -30,7 +30,7 @@ import { EliminarTecnicoDesinstalacionUseCase } from './application/use-cases/el
 import { ClienteDesinstalacionTecnicoPrismaRepository } from './infra/prisma/cliente-desinstalacion-tecnico.prisma.repository';
 import { MarcarFallidaClienteDesinstalacionUseCase } from './application/use-cases/marcar-fallida-cliente-desinstalacion.use-case';
 import { ValidarAccesoDesinstalacionService } from './application/services/validar-acceso-desinstalacion.service';
-import { PpoeAccesoInternetModule } from '../pppoe-acceso-internet/ppoe-acceso-internet.module';
+import { PppoeAccesoInternetModule } from '../pppoe-acceso-internet/pppoe-acceso-internet.module';
 
 import { ValidarAutorizacionDesinstalacionService } from './application/services/validar-autorizacion-desinstalacion.service';
 import { AuthModule } from 'src/auth/auth.module';
@@ -47,7 +47,7 @@ import { ClienteDesinstalacionContextoPrismaRepository } from './infra/prisma/cl
   imports: [
     PrismaModule,
 
-    PpoeAccesoInternetModule,
+    PppoeAccesoInternetModule,
 
     PppoeClienteCuentaModule,
 

@@ -7,16 +7,16 @@ import {
   BuscarAccesoInternetPorIdParams,
   BuscarAccesoPppoePorClienteParams,
   ClienteAccesoInternetRepositoryPort,
-} from '../../domain/ports/ppoe-acceso-internet.port';
+} from '../../domain/ports/cliente-acceso-internet-repository.port';
 
-import { ClienteAccesoInternetEntity } from '../../domain/entities/ppoe-acceso-internet.entity';
+import { ClienteAccesoInternetEntity } from '../../domain/entities/cliente-acceso-internet.entity';
 
 import { ClienteAccesoInternetPrismaMapper } from './cliente-acceso-internet-prisma.mapper';
 
 import {
   EstadoAccesoInternet,
   MetodoAutenticacionInternet,
-} from '../../domain/enums/ppoe-acceso-internet.enum';
+} from '../../domain/enums/cliente-acceso-internet.enum';
 
 @Injectable()
 export class ClienteAccesoInternetPrismaRepository

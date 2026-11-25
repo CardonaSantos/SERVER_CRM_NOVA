@@ -11,9 +11,10 @@ import {
   ClientePppoeCuentaRepositoryPort,
 } from 'src/modules/pppoe-cliente-cuenta/domain/ports/pppoe-cliente-cuenta.port';
 
-import { ClienteAccesoInternetRepositoryPort } from 'src/modules/pppoe-acceso-internet/domain/ports/ppoe-acceso-internet.port';
-
-import { CLIENTE_ACCESO_INTERNET_REPOSITORY } from 'src/modules/pppoe-acceso-internet/infra/tokens/token-ppoe-acceso-internet.token';
+import {
+  ClienteAccesoInternetRepositoryPort,
+  CLIENTE_ACCESO_INTERNET_REPOSITORY,
+} from 'src/modules/pppoe-acceso-internet/domain/ports/cliente-acceso-internet-repository.port';
 
 import { PerfilHomologacionRepositoryPort } from 'src/modules/pppoe-perfil-homologacion/domain/ports/ppoe-perfil-homologacion.port';
 

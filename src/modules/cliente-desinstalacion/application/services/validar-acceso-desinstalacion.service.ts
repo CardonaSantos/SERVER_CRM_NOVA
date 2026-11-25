@@ -5,13 +5,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { EstadoAccesoInternet } from 'src/modules/pppoe-acceso-internet/domain/enums/ppoe-acceso-internet.enum';
+import { EstadoAccesoInternet } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
 
-import { ClienteAccesoInternetEntity } from 'src/modules/pppoe-acceso-internet/domain/entities/ppoe-acceso-internet.entity';
+import { ClienteAccesoInternetEntity } from 'src/modules/pppoe-acceso-internet/domain/entities/cliente-acceso-internet.entity';
 
-import { ClienteAccesoInternetRepositoryPort } from 'src/modules/pppoe-acceso-internet/domain/ports/ppoe-acceso-internet.port';
-
-import { CLIENTE_ACCESO_INTERNET_REPOSITORY } from 'src/modules/pppoe-acceso-internet/infra/tokens/token-ppoe-acceso-internet.token';
+import {
+  ClienteAccesoInternetRepositoryPort,
+  CLIENTE_ACCESO_INTERNET_REPOSITORY,
+} from 'src/modules/pppoe-acceso-internet/domain/ports/cliente-acceso-internet-repository.port';
 
 export type ValidarAccesoDesinstalacionParams = {
   clienteId: number;

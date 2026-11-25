@@ -3,13 +3,13 @@ import {
   type ClienteAccesoInternet as PrismaClienteAccesoInternet,
 } from '@prisma/client';
 
-import { ClienteAccesoInternetEntity } from '../../domain/entities/ppoe-acceso-internet.entity';
+import { ClienteAccesoInternetEntity } from '../../domain/entities/cliente-acceso-internet.entity';
 
 import {
   EstadoAccesoInternet,
   MetodoAutenticacionInternet,
   TecnologiaAccesoInternet,
-} from '../../domain/enums/ppoe-acceso-internet.enum';
+} from '../../domain/enums/cliente-acceso-internet.enum';
 
 export class ClienteAccesoInternetPrismaMapper {
   static toDomain(

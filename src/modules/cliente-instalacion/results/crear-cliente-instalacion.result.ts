@@ -1,7 +1,7 @@
 import {
   MetodoAutenticacionInternet,
   TecnologiaAccesoInternet,
-} from 'src/modules/pppoe-acceso-internet/domain/enums/ppoe-acceso-internet.enum';
+} from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
 import { ModoAccesoInstalacion } from '../application/dto/iniciar-acceso-types.dto';
 import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 import { ClienteInstalacionDetalle } from '../domain/ports/cliente-instalacion.repository.port';

@@ -2,7 +2,7 @@ import {
   EstadoAccesoInternet,
   MetodoAutenticacionInternet,
   TecnologiaAccesoInternet,
-} from '../enums/ppoe-acceso-internet.enum';
+} from '../enums/cliente-acceso-internet.enum';
 
 /**
  * Estado completo de ClienteAccesoInternet.

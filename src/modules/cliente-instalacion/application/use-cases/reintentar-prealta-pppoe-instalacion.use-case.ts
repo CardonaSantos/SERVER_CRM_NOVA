@@ -9,12 +9,15 @@ import { CLIENTE_INSTALACION_REPOSITORY } from '../../infra/tokens/cliente-insta
 
 import { ClienteInstalacionRepositoryPort } from '../../domain/ports/cliente-instalacion.repository.port';
 
-import { ClienteAccesoInternetRepositoryPort } from 'src/modules/pppoe-acceso-internet/domain/ports/ppoe-acceso-internet.port';
+import {
+  ClienteAccesoInternetRepositoryPort,
+  CLIENTE_ACCESO_INTERNET_REPOSITORY,
+} from 'src/modules/pppoe-acceso-internet/domain/ports/cliente-acceso-internet-repository.port';
 
 import {
   MetodoAutenticacionInternet,
   TecnologiaAccesoInternet,
-} from 'src/modules/pppoe-acceso-internet/domain/enums/ppoe-acceso-internet.enum';
+} from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
 
 import {
   PPPOE_PREALTA,
@@ -27,7 +30,6 @@ import {
   EstadoResultadoPrealtaPppoe,
   PrealtaPppoeInstalacionResult,
 } from '../../results/crear-cliente-instalacion.result';
-import { CLIENTE_ACCESO_INTERNET_REPOSITORY } from 'src/modules/pppoe-acceso-internet/infra/tokens/token-ppoe-acceso-internet.token';
 import { CLIENTE_INSTALACION_ACCESO_REPOSITORY } from 'src/modules/ppoe-instalacion-acceso/tokens/instalacion-acceso.token';
 import { ClienteInstalacionAccesoRepositoryPort } from 'src/modules/ppoe-instalacion-acceso/domain/ports/cliente-instalacion-acceso.port';
 
