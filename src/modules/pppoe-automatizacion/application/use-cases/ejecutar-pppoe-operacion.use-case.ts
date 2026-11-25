@@ -9,9 +9,9 @@ import {
 import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 import {
-  CLIENTE_PPPOE_CUENTA_REPOSITORY,
-  ClientePppoeCuentaRepositoryPort,
-} from 'src/modules/pppoe-cliente-cuenta/domain/ports/cliente-pppoe-cuenta-repository.port';
+  PPPOE_CLIENTE_CUENTA,
+  PppoeClienteCuentaFacadePort,
+} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
 
 import { FinalizarPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/finalizar-pppoe-operacion.use-case';
 
@@ -49,7 +49,7 @@ import { EjecutarOperacionPppoeResult } from '../../domain/props/pppoe-provision
 import { PppoeOperacionStepRunnerService } from '../services/pppoe-operacion-step-runner.service';
 import { SuspenderServicioPppoeExecutor } from '../executors/suspender-servicio-pppoe.executor';
 import { ResolverContextoEjecucionPppoeService } from '../services/resolver-contexto-ejecucion-pppoe.service';
-import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/cliente-pppoe-cuenta.entity';
+import { ClientePppoeCuentaReadModel } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 import { ActivarSecretPppoeExecutor } from '../executors/activar-secret-pppoe.executor';
 import { PppoeOperacionResultado } from 'src/modules/pppoe-operacion/domain/props/pppoe-operacion.props';
 import {
@@ -152,8 +152,8 @@ export class EjecutarPppoeOperacionUseCase {
     @Inject(PPPOE_OPERACION_AUDITORIA)
     private readonly operacionAuditoria: PppoeOperacionAuditoriaPort,
 
-    @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
-    private readonly cuentaRepository: ClientePppoeCuentaRepositoryPort,
+    @Inject(PPPOE_CLIENTE_CUENTA)
+    private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
 
     @Inject(PPPOE_OPERACION_REPOSITORY)
     private readonly operacionRepository: PppoeOperacionRepositoryPort,
@@ -209,7 +209,7 @@ export class EjecutarPppoeOperacionUseCase {
       fecha: input.fechaInicio,
     });
 
-    let cuenta: ClientePppoeCuentaEntity | null = null;
+    let cuenta: ClientePppoeCuentaReadModel | null = null;
 
     let contexto: ContextoEjecucionPppoe | null = null;
 
@@ -599,8 +599,8 @@ export class EjecutarPppoeOperacionUseCase {
   private async prepareAccountForOperation(params: {
     operacion: PppoeOperacionEntity;
 
-    cuenta: ClientePppoeCuentaEntity;
-  }): Promise<ClientePppoeCuentaEntity> {
+    cuenta: ClientePppoeCuentaReadModel;
+  }): Promise<ClientePppoeCuentaReadModel> {
     switch (params.operacion.tipo) {
       case TipoOperacionPppoe.CREAR_SECRET:
         return this.prepareAccountForSecretCreation(params.cuenta);
@@ -663,7 +663,7 @@ export class EjecutarPppoeOperacionUseCase {
   private async findRequiredAccess(params: {
     empresaId: number;
 
-    cuenta: ClientePppoeCuentaEntity;
+    cuenta: ClientePppoeCuentaReadModel;
   }): Promise<AccesoInternetReadModel> {
     const acceso = await this.accesosInternet.buscarPorId(
       params.cuenta.accesoInternetId,
@@ -769,8 +769,8 @@ export class EjecutarPppoeOperacionUseCase {
    * ERROR -> EN_DESINSTALACION
    */
   private async prepareAccountForDeletion(
-    cuenta: ClientePppoeCuentaEntity,
-  ): Promise<ClientePppoeCuentaEntity> {
+    cuenta: ClientePppoeCuentaReadModel,
+  ): Promise<ClientePppoeCuentaReadModel> {
     switch (cuenta.estado) {
       case EstadoCuentaPppoe.PENDIENTE_ACTIVACION:
       case EstadoCuentaPppoe.EN_INSTALACION:
@@ -778,9 +778,10 @@ export class EjecutarPppoeOperacionUseCase {
       case EstadoCuentaPppoe.ACTIVA:
       case EstadoCuentaPppoe.SUSPENDIDA:
       case EstadoCuentaPppoe.ERROR:
-        cuenta.iniciarDesinstalacion();
-
-        return this.cuentaRepository.update(cuenta);
+        return this.cuentasPppoe.cambiarEstado({
+          cuentaPppoeId: cuenta.id,
+          transicion: 'INICIAR_DESINSTALACION',
+        });
 
       case EstadoCuentaPppoe.EN_DESINSTALACION:
         /*
@@ -817,8 +818,8 @@ export class EjecutarPppoeOperacionUseCase {
    * ERROR -> SUSPENDIDA
    */
   private async prepareAccountForSuspension(
-    cuenta: ClientePppoeCuentaEntity,
-  ): Promise<ClientePppoeCuentaEntity> {
+    cuenta: ClientePppoeCuentaReadModel,
+  ): Promise<ClientePppoeCuentaReadModel> {
     /**
      * La existencia del secret debe estar confirmada.
      *
@@ -886,18 +887,20 @@ export class EjecutarPppoeOperacionUseCase {
    * ERROR -> EN_INSTALACION
    */
   private async prepareAccountForSecretCreation(
-    cuenta: ClientePppoeCuentaEntity,
-  ): Promise<ClientePppoeCuentaEntity> {
+    cuenta: ClientePppoeCuentaReadModel,
+  ): Promise<ClientePppoeCuentaReadModel> {
     switch (cuenta.estado) {
       case EstadoCuentaPppoe.PENDIENTE_ACTIVACION:
-        cuenta.iniciarInstalacion();
-
-        return this.cuentaRepository.update(cuenta);
+        return this.cuentasPppoe.cambiarEstado({
+          cuentaPppoeId: cuenta.id,
+          transicion: 'INICIAR_INSTALACION',
+        });
 
       case EstadoCuentaPppoe.ERROR:
-        cuenta.reintentarInstalacion();
-
-        return this.cuentaRepository.update(cuenta);
+        return this.cuentasPppoe.cambiarEstado({
+          cuentaPppoeId: cuenta.id,
+          transicion: 'REINTENTAR_INSTALACION',
+        });
 
       case EstadoCuentaPppoe.EN_INSTALACION:
         /*
@@ -952,19 +955,21 @@ export class EjecutarPppoeOperacionUseCase {
    * ERROR -> EN_ACTIVACION
    */
   private async prepareAccountForActivation(
-    cuenta: ClientePppoeCuentaEntity,
-  ): Promise<ClientePppoeCuentaEntity> {
+    cuenta: ClientePppoeCuentaReadModel,
+  ): Promise<ClientePppoeCuentaReadModel> {
     switch (cuenta.estado) {
       case EstadoCuentaPppoe.EN_INSTALACION:
       case EstadoCuentaPppoe.SUSPENDIDA:
-        cuenta.iniciarActivacion();
-
-        return this.cuentaRepository.update(cuenta);
+        return this.cuentasPppoe.cambiarEstado({
+          cuentaPppoeId: cuenta.id,
+          transicion: 'INICIAR_ACTIVACION',
+        });
 
       case EstadoCuentaPppoe.ERROR:
-        cuenta.reintentarActivacion();
-
-        return this.cuentaRepository.update(cuenta);
+        return this.cuentasPppoe.cambiarEstado({
+          cuentaPppoeId: cuenta.id,
+          transicion: 'REINTENTAR_ACTIVACION',
+        });
 
       case EstadoCuentaPppoe.EN_ACTIVACION:
         /*
@@ -1029,33 +1034,43 @@ export class EjecutarPppoeOperacionUseCase {
    */
   private async applySuccessfulAccountResult(params: {
     operacion: PppoeOperacionEntity;
-    cuenta: ClientePppoeCuentaEntity;
+    cuenta: ClientePppoeCuentaReadModel;
     fecha: Date;
-  }): Promise<ClientePppoeCuentaEntity> {
+  }): Promise<ClientePppoeCuentaReadModel> {
     switch (params.operacion.tipo) {
       case TipoOperacionPppoe.CREAR_SECRET:
-        params.cuenta.marcarSecretCreado(params.fecha);
-        break;
+        return this.cuentasPppoe.cambiarEstado({
+          cuentaPppoeId: params.cuenta.id,
+          transicion: 'MARCAR_SECRET_CREADO',
+          fecha: params.fecha,
+        });
 
       case TipoOperacionPppoe.ACTIVAR_SECRET:
-        params.cuenta.marcarActiva(params.fecha);
-        break;
+        return this.cuentasPppoe.cambiarEstado({
+          cuentaPppoeId: params.cuenta.id,
+          transicion: 'MARCAR_ACTIVA',
+          fecha: params.fecha,
+        });
 
       case TipoOperacionPppoe.SUSPENDER_SERVICIO:
-        params.cuenta.marcarSuspendida(params.fecha);
-        break;
+        return this.cuentasPppoe.cambiarEstado({
+          cuentaPppoeId: params.cuenta.id,
+          transicion: 'MARCAR_SUSPENDIDA',
+          fecha: params.fecha,
+        });
 
       case TipoOperacionPppoe.ELIMINAR_SECRET:
-        params.cuenta.marcarEliminada(params.fecha);
-        break;
+        return this.cuentasPppoe.cambiarEstado({
+          cuentaPppoeId: params.cuenta.id,
+          transicion: 'MARCAR_ELIMINADA',
+          fecha: params.fecha,
+        });
 
       default:
         throw new ConflictException(
           `No existe transición local exitosa para la operación ${params.operacion.tipo}.`,
         );
     }
-
-    return this.cuentaRepository.update(params.cuenta);
   }
 
   /**
@@ -1221,24 +1236,25 @@ export class EjecutarPppoeOperacionUseCase {
    * el error técnico principal.
    */
   private async registerAccountErrorSafely(params: {
-    cuenta: ClientePppoeCuentaEntity | null;
+    cuenta: ClientePppoeCuentaReadModel | null;
 
     cuentaPppoeId: number;
 
     errorMessage: string;
-  }): Promise<ClientePppoeCuentaEntity | null> {
+  }): Promise<ClientePppoeCuentaReadModel | null> {
     try {
       const cuenta =
         params.cuenta ??
-        (await this.cuentaRepository.findById(params.cuentaPppoeId));
+        (await this.cuentasPppoe.buscarPorId(params.cuentaPppoeId));
 
       if (!cuenta || cuenta.estaEliminada) {
         return cuenta;
       }
 
-      cuenta.registrarError(params.errorMessage);
-
-      return await this.cuentaRepository.update(cuenta);
+      return await this.cuentasPppoe.registrarError({
+        cuentaPppoeId: cuenta.id,
+        mensaje: params.errorMessage,
+      });
     } catch {
       /*
        * La operación conserva el error principal.
@@ -1252,9 +1268,9 @@ export class EjecutarPppoeOperacionUseCase {
 
   private async findAccountSafely(
     cuentaPppoeId: number,
-  ): Promise<ClientePppoeCuentaEntity | null> {
+  ): Promise<ClientePppoeCuentaReadModel | null> {
     try {
-      return await this.cuentaRepository.findById(cuentaPppoeId);
+      return await this.cuentasPppoe.buscarPorId(cuentaPppoeId);
     } catch {
       return null;
     }
@@ -1313,7 +1329,7 @@ export class EjecutarPppoeOperacionUseCase {
   private toResult(params: {
     operacion: PppoeOperacionEntity;
 
-    cuenta: ClientePppoeCuentaEntity | null;
+    cuenta: ClientePppoeCuentaReadModel | null;
 
     technicalError: PppoeOperacionStepError | null;
   }): EjecutarOperacionPppoeResult {

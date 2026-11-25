@@ -26,12 +26,7 @@ import {
 } from '../../domain/read-models/cliente-pppoe-cuenta-detalle.read-model';
 
 import { OrigenCuentaPppoe } from '../../domain/read-models/cliente-pppoe-cuenta-listado.read-model';
-
-export type ObtenerDetalleCuentaPppoeInput = {
-  empresaId: number;
-
-  cuentaPppoeId: number;
-};
+import { ObtenerDetalleCuentaPppoeInput } from '../../public/pppoe-cliente-cuenta.facade.port';
 
 type ContextoActivacionCuentaPppoe = {
   flujo: FlujoActivacionCuentaPppoe | null;

@@ -3,7 +3,7 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import {
   CLIENTE_PPPOE_CUENTA_REPOSITORY,
   ClientePppoeCuentaRepositoryPort,
-} from 'src/modules/pppoe-cliente-cuenta/domain/ports/cliente-pppoe-cuenta-repository.port';
+} from '../../domain/ports/cliente-pppoe-cuenta-repository.port';
 
 import {
   PPPOE_SECRET_CIPHER,
@@ -18,17 +18,14 @@ import {
   AccionAuditoriaPppoe,
   OrigenOperacionPppoe,
 } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
-import { PppoeCredencialesInstalacionPort } from 'src/modules/pppoe-automatizacion/domain/ports/pppoe-credenciales-instalacion.port';
-import { ConsultarCredencialesPppoeInstalacionInput } from 'src/modules/pppoe-automatizacion/application/inputs/consultar-credenciales-pppoe-instalacion.input';
 import {
+  ConsultarCredencialesPppoeInstalacionInput,
   ConsultarCredencialesPppoeInstalacionResult,
   CredencialPppoeInstalacionItem,
-} from 'src/modules/pppoe-automatizacion/application/inputs/consultar-credenciales-pppoe-instalacion.result';
+} from '../../public/pppoe-cliente-cuenta.facade.port';
 
 @Injectable()
-export class ConsultarCredencialesPppoeInstalacionUseCase
-  implements PppoeCredencialesInstalacionPort
-{
+export class ConsultarCredencialesPppoeInstalacionUseCase {
   constructor(
     @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
     private readonly cuentaRepository: ClientePppoeCuentaRepositoryPort,
@@ -40,7 +37,7 @@ export class ConsultarCredencialesPppoeInstalacionUseCase
     private readonly auditoria: PppoeAuditoriaFacadePort,
   ) {}
 
-  async consultar(
+  async execute(
     input: ConsultarCredencialesPppoeInstalacionInput,
   ): Promise<ConsultarCredencialesPppoeInstalacionResult> {
     this.validateInput(input);

@@ -14,9 +14,9 @@ import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-a
 import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 import {
-  CLIENTE_PPPOE_CUENTA_REPOSITORY,
-  ClientePppoeCuentaRepositoryPort,
-} from 'src/modules/pppoe-cliente-cuenta/domain/ports/cliente-pppoe-cuenta-repository.port';
+  PPPOE_CLIENTE_CUENTA,
+  PppoeClienteCuentaFacadePort,
+} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
 
 import { PppoeOperacionEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion.entity';
 
@@ -141,8 +141,8 @@ export class CrearYEjecutarActivacionPppoeUseCase {
     @Inject(PPPOE_OPERACION_AUDITORIA)
     private readonly operacionAuditoria: PppoeOperacionAuditoriaPort,
 
-    @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
-    private readonly cuentaRepository: ClientePppoeCuentaRepositoryPort,
+    @Inject(PPPOE_CLIENTE_CUENTA)
+    private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
 
     @Inject(PPPOE_OPERACION_REPOSITORY)
     private readonly operacionRepository: PppoeOperacionRepositoryPort,
@@ -167,7 +167,7 @@ export class CrearYEjecutarActivacionPppoeUseCase {
      * ========================================================
      */
 
-    const cuenta = await this.cuentaRepository.findById(input.cuentaPppoeId);
+    const cuenta = await this.cuentasPppoe.buscarPorId(input.cuentaPppoeId);
 
     if (!cuenta) {
       throw new NotFoundException(

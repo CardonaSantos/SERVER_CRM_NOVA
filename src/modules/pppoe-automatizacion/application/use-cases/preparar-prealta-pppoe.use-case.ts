@@ -13,9 +13,9 @@ import { PrepararPrealtaPppoeResult } from '../results/preparar-prealta-pppoe.re
 import { PppoePrealtaPort } from '../../domain/ports/pppoe-prealta.port';
 
 import {
-  CLIENTE_PPPOE_CUENTA_REPOSITORY,
-  ClientePppoeCuentaRepositoryPort,
-} from 'src/modules/pppoe-cliente-cuenta/domain/ports/cliente-pppoe-cuenta-repository.port';
+  PPPOE_CLIENTE_CUENTA,
+  PppoeClienteCuentaFacadePort,
+} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
 
 import {
   PPPOE_SECRET_CIPHER,
@@ -42,7 +42,7 @@ import {
   PPPOE_PERFIL_HOMOLOGACION,
   PppoePerfilHomologacionFacadePort,
 } from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.facade.port';
-import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/cliente-pppoe-cuenta.entity';
+import { ClientePppoeCuentaReadModel } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 @Injectable()
 export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
@@ -50,8 +50,8 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
     @Inject(PPPOE_PERFIL_HOMOLOGACION)
     private readonly perfilesHomologacion: PppoePerfilHomologacionFacadePort,
 
-    @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
-    private readonly cuentaRepository: ClientePppoeCuentaRepositoryPort,
+    @Inject(PPPOE_CLIENTE_CUENTA)
+    private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
 
     @Inject(PPPOE_CREDENTIAL_GENERATOR)
     private readonly credentialGenerator: PppoeCredentialGeneratorPort,
@@ -80,7 +80,7 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
       );
     }
 
-    const cuentaExistente = await this.cuentaRepository.findByAccesoInternetId(
+    const cuentaExistente = await this.cuentasPppoe.buscarPorAccesoInternet(
       input.accesoInternetId,
     );
 
@@ -98,10 +98,7 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
     });
 
     const cuentaVigenteConMismoUsuario =
-      await this.cuentaRepository.findVigenteByEmpresaYUsuario({
-        empresaId: input.empresaId,
-        usuario: credenciales.usuario,
-      });
+      await this.cuentasPppoe.buscarVigentePorUsuario(credenciales.usuario);
 
     if (cuentaVigenteConMismoUsuario) {
       throw new ConflictException(
@@ -113,7 +110,7 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
       credenciales.secretoPlano,
     );
 
-    const cuentaNueva = ClientePppoeCuentaEntity.create({
+    const cuentaCreada = await this.cuentasPppoe.crear({
       empresaId: input.empresaId,
 
       accesoInternetId: input.accesoInternetId,
@@ -132,8 +129,6 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
 
       generadoPorId: input.operadorId,
     });
-
-    const cuentaCreada = await this.cuentaRepository.create(cuentaNueva);
 
     if (cuentaCreada.id === null) {
       throw new Error(
@@ -163,7 +158,7 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
 
     perfilHomologacionId: number;
 
-    cuenta: ClientePppoeCuentaEntity;
+    cuenta: ClientePppoeCuentaReadModel;
   }): Promise<PrepararPrealtaPppoeResult> {
     const { input, perfilHomologacionId, cuenta } = params;
 
@@ -305,7 +300,7 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
   }
 
   private toResult(
-    cuenta: ClientePppoeCuentaEntity,
+    cuenta: ClientePppoeCuentaReadModel,
     creada: boolean,
   ): PrepararPrealtaPppoeResult {
     if (cuenta.id === null) {

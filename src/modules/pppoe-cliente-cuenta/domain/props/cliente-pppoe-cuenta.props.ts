@@ -1,6 +1,6 @@
 import { EstadoCuentaPppoe } from '../enums/estado-cuenta-pppoe.enum';
 
-export type CrearClientePppoeCuentaEntityProps = {
+export type CrearClientePppoeCuentaProps = {
   empresaId: number;
 
   accesoInternetId: number;
@@ -16,7 +16,7 @@ export type CrearClientePppoeCuentaEntityProps = {
   generadoPorId?: number | null;
 };
 
-export type AdoptarClientePppoeCuentaEntityProps = {
+export type AdoptarClientePppoeCuentaProps = {
   empresaId: number;
 
   accesoInternetId: number;
@@ -58,7 +58,7 @@ export type AdoptarClientePppoeCuentaEntityProps = {
   fechaAdopcion?: Date;
 };
 
-export type ClientePppoeCuentaEntityProps = {
+export type ClientePppoeCuentaProps = {
   id: number | null;
 
   empresaId: number;

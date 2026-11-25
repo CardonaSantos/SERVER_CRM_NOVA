@@ -6,9 +6,9 @@ import {
 } from '@nestjs/common';
 import { AuthService } from 'src/auth/auth.service';
 import {
-  CLIENTE_PPPOE_CUENTA_REPOSITORY,
-  ClientePppoeCuentaRepositoryPort,
-} from 'src/modules/pppoe-cliente-cuenta/domain/ports/cliente-pppoe-cuenta-repository.port';
+  PPPOE_CLIENTE_CUENTA,
+  PppoeClienteCuentaFacadePort,
+} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
 
 import {
   PPPOE_PROVISIONAMIENTO,
@@ -53,8 +53,8 @@ export class AprobarAutorizacionDesinstalacionUseCase {
 
     private readonly authService: AuthService,
 
-    @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
-    private readonly cuentaPppoeRepository: ClientePppoeCuentaRepositoryPort,
+    @Inject(PPPOE_CLIENTE_CUENTA)
+    private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
 
     @Inject(PPPOE_PROVISIONAMIENTO)
     private readonly pppoeProvisionamiento: PppoeProvisionamientoPort,
@@ -147,7 +147,7 @@ export class AprobarAutorizacionDesinstalacionUseCase {
      * ========================================================
      */
 
-    const cuentaPppoe = await this.cuentaPppoeRepository.findByAccesoInternetId(
+    const cuentaPppoe = await this.cuentasPppoe.buscarPorAccesoInternet(
       props.accesoInternetId,
     );
 

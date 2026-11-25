@@ -32,11 +32,14 @@ import { ActivarPppoeInstalacionResult } from '../../results/activar-pppoe-insta
 
 import { ClienteInstalacionEntity } from '../../domain/entities/cliente-instalacion.entity';
 
-import { ObtenerDetalleCuentaPppoeUseCase } from 'src/modules/pppoe-cliente-cuenta/application/use-cases/obtener-detalle-cuenta-pppoe.use-case';
+import {
+  PPPOE_CLIENTE_CUENTA,
+  PppoeClienteCuentaFacadePort,
+} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
 
 import { FlujoActivacionCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
-import { ClientePppoeCuentaDetalleActivacionAccion } from 'src/modules/pppoe-cliente-cuenta/domain/read-models/cliente-pppoe-cuenta-detalle.read-model';
+import { ClientePppoeCuentaDetalleActivacionAccion } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 export type ActivarPppoeInstalacionCommand = {
   instalacionId: number;
@@ -89,7 +92,8 @@ export class ActivarPppoeInstalacionUseCase {
 
     private readonly resolverPppoe: ResolverPppoeInstalacionService,
 
-    private readonly obtenerDetalleCuenta: ObtenerDetalleCuentaPppoeUseCase,
+    @Inject(PPPOE_CLIENTE_CUENTA)
+    private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
 
     private readonly authService: AuthService,
 
@@ -159,7 +163,7 @@ export class ActivarPppoeInstalacionUseCase {
      * Esto evita que los diferentes entry-points de activación
      * tengan reglas independientes.
      */
-    const detalleCuenta = await this.obtenerDetalleCuenta.execute({
+    const detalleCuenta = await this.cuentasPppoe.obtenerDetalle({
       empresaId: command.empresaId,
 
       cuentaPppoeId,

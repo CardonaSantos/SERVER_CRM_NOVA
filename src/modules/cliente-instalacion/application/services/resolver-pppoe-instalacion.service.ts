@@ -19,11 +19,11 @@ import {
 } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
 
 import {
-  CLIENTE_PPPOE_CUENTA_REPOSITORY,
-  ClientePppoeCuentaRepositoryPort,
-} from 'src/modules/pppoe-cliente-cuenta/domain/ports/cliente-pppoe-cuenta-repository.port';
+  PPPOE_CLIENTE_CUENTA,
+  PppoeClienteCuentaFacadePort,
+} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
 
-import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/cliente-pppoe-cuenta.entity';
+import { ClientePppoeCuentaReadModel } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 export type ResolverPppoeInstalacionResult =
   | {
@@ -38,7 +38,7 @@ export type ResolverPppoeInstalacionResult =
 
       accesoInternetId: number;
 
-      cuenta: ClientePppoeCuentaEntity;
+      cuenta: ClientePppoeCuentaReadModel;
     };
 
 /**
@@ -56,8 +56,8 @@ export class ResolverPppoeInstalacionService {
     @Inject(PPPOE_ACCESO_INTERNET)
     private readonly accesosInternet: PppoeAccesoInternetFacadePort,
 
-    @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
-    private readonly cuentaPppoeRepository: ClientePppoeCuentaRepositoryPort,
+    @Inject(PPPOE_CLIENTE_CUENTA)
+    private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
   ) {}
 
   async resolve(
@@ -131,7 +131,7 @@ export class ResolverPppoeInstalacionService {
     const accesoInternetId = acceso.id;
 
     const cuenta =
-      await this.cuentaPppoeRepository.findByAccesoInternetId(accesoInternetId);
+      await this.cuentasPppoe.buscarPorAccesoInternet(accesoInternetId);
 
     if (!cuenta) {
       throw new ConflictException(

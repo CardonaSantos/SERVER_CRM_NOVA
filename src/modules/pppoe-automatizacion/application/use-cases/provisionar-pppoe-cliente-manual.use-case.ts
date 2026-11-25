@@ -13,13 +13,11 @@ import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe
 import { FlujoActivacionCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 import {
-  CLIENTE_PPPOE_CUENTA_REPOSITORY,
-  ClientePppoeCuentaRepositoryPort,
-} from 'src/modules/pppoe-cliente-cuenta/domain/ports/cliente-pppoe-cuenta-repository.port';
+  PPPOE_CLIENTE_CUENTA,
+  PppoeClienteCuentaFacadePort,
+} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
 
-import { ClientePppoeCuentaDetalleActivacionAccion } from 'src/modules/pppoe-cliente-cuenta/domain/read-models/cliente-pppoe-cuenta-detalle.read-model';
-
-import { ObtenerDetalleCuentaPppoeUseCase } from 'src/modules/pppoe-cliente-cuenta/application/use-cases/obtener-detalle-cuenta-pppoe.use-case';
+import { ClientePppoeCuentaDetalleActivacionAccion } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 import { EstadoOperacionPppoe } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
@@ -73,7 +71,7 @@ export type ProvisionarPppoeClienteManualResult = {
  *   o recuperación.
  *
  * La política administrativa se obtiene desde
- * ObtenerDetalleCuentaPppoeUseCase.
+ * el detalle de la cuenta (PPPOE_CLIENTE_CUENTA.obtenerDetalle).
  *
  * La ejecución técnica continúa delegándose a:
  *
@@ -84,10 +82,8 @@ export type ProvisionarPppoeClienteManualResult = {
 @Injectable()
 export class ProvisionarPppoeClienteManualUseCase {
   constructor(
-    @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
-    private readonly cuentaRepository: ClientePppoeCuentaRepositoryPort,
-
-    private readonly obtenerDetalleCuenta: ObtenerDetalleCuentaPppoeUseCase,
+    @Inject(PPPOE_CLIENTE_CUENTA)
+    private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
 
     private readonly crearSecret: CrearYEjecutarOperacionPppoeUseCase,
 
@@ -106,7 +102,7 @@ export class ProvisionarPppoeClienteManualUseCase {
      * el endpoint /provisionar utilizando una cuenta
      * perteneciente a ClienteInstalacion.
      */
-    const detalle = await this.obtenerDetalleCuenta.execute({
+    const detalle = await this.cuentasPppoe.obtenerDetalle({
       empresaId: input.empresaId,
 
       cuentaPppoeId: input.cuentaPppoeId,
@@ -119,7 +115,7 @@ export class ProvisionarPppoeClienteManualUseCase {
      * técnicos trabajan con la entidad de dominio y necesitamos
      * conocer tieneSecretCreado.
      */
-    const cuenta = await this.cuentaRepository.findById(input.cuentaPppoeId);
+    const cuenta = await this.cuentasPppoe.buscarPorId(input.cuentaPppoeId);
 
     if (!cuenta) {
       throw new NotFoundException(

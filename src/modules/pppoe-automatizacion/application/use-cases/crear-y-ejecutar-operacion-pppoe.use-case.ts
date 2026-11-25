@@ -14,9 +14,9 @@ import {
 } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 import {
-  CLIENTE_PPPOE_CUENTA_REPOSITORY,
-  ClientePppoeCuentaRepositoryPort,
-} from 'src/modules/pppoe-cliente-cuenta/domain/ports/cliente-pppoe-cuenta-repository.port';
+  PPPOE_CLIENTE_CUENTA,
+  PppoeClienteCuentaFacadePort,
+} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
 
 import {
   PPPOE_PERFIL_HOMOLOGACION,
@@ -94,8 +94,8 @@ export class CrearYEjecutarOperacionPppoeUseCase {
     @Inject(PPPOE_OPERACION_AUDITORIA)
     private readonly operacionAuditoria: PppoeOperacionAuditoriaPort,
 
-    @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
-    private readonly cuentaRepository: ClientePppoeCuentaRepositoryPort,
+    @Inject(PPPOE_CLIENTE_CUENTA)
+    private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
 
     @Inject(PPPOE_PERFIL_HOMOLOGACION)
     private readonly perfilesHomologacion: PppoePerfilHomologacionFacadePort,
@@ -115,7 +115,7 @@ export class CrearYEjecutarOperacionPppoeUseCase {
      * ========================================================
      */
 
-    const cuenta = await this.cuentaRepository.findById(input.cuentaPppoeId);
+    const cuenta = await this.cuentasPppoe.buscarPorId(input.cuentaPppoeId);
 
     if (!cuenta) {
       throw new NotFoundException(

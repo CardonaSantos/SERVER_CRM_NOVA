@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/cliente-pppoe-cuenta.entity';
+import { ClientePppoeCuentaReadModel } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
@@ -30,9 +30,9 @@ import {
 
 import { EjecutarOperacionPppoeResult } from '../../domain/props/pppoe-provisionamiento.props';
 import {
-  CLIENTE_PPPOE_CUENTA_REPOSITORY,
-  ClientePppoeCuentaRepositoryPort,
-} from 'src/modules/pppoe-cliente-cuenta/domain/ports/cliente-pppoe-cuenta-repository.port';
+  PPPOE_CLIENTE_CUENTA,
+  PppoeClienteCuentaFacadePort,
+} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
 import {
   PPPOE_OPERACION_AUDITORIA,
   PppoeOperacionAuditoriaPort,
@@ -103,8 +103,8 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
     @Inject(PPPOE_OPERACION_REPOSITORY)
     private readonly operacionRepository: PppoeOperacionRepositoryPort,
 
-    @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
-    private readonly cuentaRepository: ClientePppoeCuentaRepositoryPort,
+    @Inject(PPPOE_CLIENTE_CUENTA)
+    private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
   ) {}
 
   async execute(
@@ -270,7 +270,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
 
     fecha: Date;
   }): Promise<EjecutarOperacionPppoeResult> {
-    let cuenta = await this.cuentaRepository.findById(
+    let cuenta = await this.cuentasPppoe.buscarPorId(
       params.operacion.cuentaPppoeId,
     );
 
@@ -348,10 +348,10 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
   private async applyConfirmedRemoteResult(params: {
     operacion: PppoeOperacionEntity;
 
-    cuenta: ClientePppoeCuentaEntity;
+    cuenta: ClientePppoeCuentaReadModel;
 
     fecha: Date;
-  }): Promise<ClientePppoeCuentaEntity> {
+  }): Promise<ClientePppoeCuentaReadModel> {
     switch (params.operacion.tipo) {
       case TipoOperacionPppoe.CREAR_SECRET:
         if (params.cuenta.tieneSecretCreado) {
@@ -364,9 +364,11 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
           );
         }
 
-        params.cuenta.marcarSecretCreado(params.fecha);
-
-        return this.cuentaRepository.update(params.cuenta);
+        return this.cuentasPppoe.cambiarEstado({
+          cuentaPppoeId: params.cuenta.id,
+          transicion: 'MARCAR_SECRET_CREADO',
+          fecha: params.fecha,
+        });
 
       case TipoOperacionPppoe.ACTIVAR_SECRET:
         if (params.cuenta.estaActiva) {
@@ -379,9 +381,11 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
           );
         }
 
-        params.cuenta.marcarActiva(params.fecha);
-
-        return this.cuentaRepository.update(params.cuenta);
+        return this.cuentasPppoe.cambiarEstado({
+          cuentaPppoeId: params.cuenta.id,
+          transicion: 'MARCAR_ACTIVA',
+          fecha: params.fecha,
+        });
 
       case TipoOperacionPppoe.SUSPENDER_SERVICIO:
         if (params.cuenta.estaSuspendida) {
@@ -397,9 +401,11 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
           );
         }
 
-        params.cuenta.marcarSuspendida(params.fecha);
-
-        return this.cuentaRepository.update(params.cuenta);
+        return this.cuentasPppoe.cambiarEstado({
+          cuentaPppoeId: params.cuenta.id,
+          transicion: 'MARCAR_SUSPENDIDA',
+          fecha: params.fecha,
+        });
 
       case TipoOperacionPppoe.ELIMINAR_SECRET:
         /*
@@ -416,9 +422,11 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
           );
         }
 
-        params.cuenta.marcarEliminada(params.fecha);
-
-        return this.cuentaRepository.update(params.cuenta);
+        return this.cuentasPppoe.cambiarEstado({
+          cuentaPppoeId: params.cuenta.id,
+          transicion: 'MARCAR_ELIMINADA',
+          fecha: params.fecha,
+        });
 
       default:
         throw new ConflictException(
@@ -556,17 +564,19 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
     errorMensaje: string;
 
     fecha: Date;
-  }): Promise<ClientePppoeCuentaEntity | null> {
+  }): Promise<ClientePppoeCuentaReadModel | null> {
     try {
-      const cuenta = await this.cuentaRepository.findById(params.cuentaPppoeId);
+      const cuenta = await this.cuentasPppoe.buscarPorId(params.cuentaPppoeId);
 
       if (!cuenta || cuenta.estaEliminada) {
         return cuenta;
       }
 
-      cuenta.registrarError(params.errorMensaje, params.fecha);
-
-      return await this.cuentaRepository.update(cuenta);
+      return await this.cuentasPppoe.registrarError({
+        cuentaPppoeId: cuenta.id,
+        mensaje: params.errorMensaje,
+        fecha: params.fecha,
+      });
     } catch {
       return null;
     }
@@ -574,9 +584,9 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
 
   private async findAccountSafely(
     cuentaPppoeId: number,
-  ): Promise<ClientePppoeCuentaEntity | null> {
+  ): Promise<ClientePppoeCuentaReadModel | null> {
     try {
-      return await this.cuentaRepository.findById(cuentaPppoeId);
+      return await this.cuentasPppoe.buscarPorId(cuentaPppoeId);
     } catch {
       return null;
     }
@@ -605,7 +615,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
   private buildResult(params: {
     operacion: PppoeOperacionEntity;
 
-    cuenta: ClientePppoeCuentaEntity | null;
+    cuenta: ClientePppoeCuentaReadModel | null;
   }): EjecutarOperacionPppoeResult {
     const primitives = params.operacion.toPrimitives();
 

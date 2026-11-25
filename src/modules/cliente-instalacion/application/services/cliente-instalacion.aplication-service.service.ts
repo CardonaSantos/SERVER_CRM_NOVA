@@ -26,10 +26,10 @@ import {
 import { ReintentarPrealtaPppoeInstalacionUseCase } from '../use-cases/reintentar-prealta-pppoe-instalacion.use-case';
 import { ReintentarPrealtaPppoeDto } from '../dto/reintentar-prealta-pppoe.dto';
 import {
-  PPPOE_CREDENCIALES_INSTALACION,
-  PppoeCredencialesInstalacionPort,
-} from 'src/modules/pppoe-automatizacion/domain/ports/pppoe-credenciales-instalacion.port';
-import { ConsultarCredencialesPppoeInstalacionResult } from 'src/modules/pppoe-automatizacion/application/inputs/consultar-credenciales-pppoe-instalacion.result';
+  ConsultarCredencialesPppoeInstalacionResult,
+  PPPOE_CLIENTE_CUENTA,
+  PppoeClienteCuentaFacadePort,
+} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
 import { FiltrarMisInstalacionesAsignadasDto } from '../dto/instalaciones-asignadas';
 import { ListarMisInstalacionesAsignadasUseCase } from '../use-cases/listar-mis-instalaciones-asignadas.use-case';
 import { ObtenerDetalleTecnicoInstalacionUseCase } from '../use-cases/obtener-detalle-tecnico-instalacion.use-case';
@@ -138,8 +138,8 @@ export class ClienteInstalacionApplicationService {
 
     private readonly reintentarPrealtaPppoeInstalacionUseCase: ReintentarPrealtaPppoeInstalacionUseCase,
 
-    @Inject(PPPOE_CREDENCIALES_INSTALACION)
-    private readonly credencialesPppoeInstalacion: PppoeCredencialesInstalacionPort,
+    @Inject(PPPOE_CLIENTE_CUENTA)
+    private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
 
     private readonly listarMisInstalacionesAsignadasUseCase: ListarMisInstalacionesAsignadasUseCase,
 
@@ -199,7 +199,7 @@ export class ClienteInstalacionApplicationService {
   consultarCredencialesPppoe(
     params: ConsultarCredencialesPppoeServiceParams,
   ): Promise<ConsultarCredencialesPppoeInstalacionResult> {
-    return this.credencialesPppoeInstalacion.consultar({
+    return this.cuentasPppoe.consultarCredencialesInstalacion({
       instalacionId: params.instalacionId,
 
       operadorId: params.operadorId,

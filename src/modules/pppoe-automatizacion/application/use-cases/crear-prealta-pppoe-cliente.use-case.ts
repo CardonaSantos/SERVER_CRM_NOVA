@@ -19,9 +19,9 @@ import {
 } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.facade.port';
 
 import {
-  CLIENTE_PPPOE_CUENTA_REPOSITORY,
-  ClientePppoeCuentaRepositoryPort,
-} from 'src/modules/pppoe-cliente-cuenta/domain/ports/cliente-pppoe-cuenta-repository.port';
+  PPPOE_CLIENTE_CUENTA,
+  PppoeClienteCuentaFacadePort,
+} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
 
 import {
   PPPOE_PREALTA,
@@ -52,8 +52,8 @@ export class CrearPrealtaPppoeClienteUseCase {
     @Inject(PPPOE_ACCESO_INTERNET)
     private readonly accesosInternet: PppoeAccesoInternetFacadePort,
 
-    @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
-    private readonly cuentaPppoeRepository: ClientePppoeCuentaRepositoryPort,
+    @Inject(PPPOE_CLIENTE_CUENTA)
+    private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
 
     @Inject(PPPOE_PREALTA)
     private readonly pppoePrealta: PppoePrealtaPort,
@@ -114,10 +114,9 @@ export class CrearPrealtaPppoeClienteUseCase {
       );
     }
 
-    const cuentaExistente =
-      await this.cuentaPppoeRepository.findByAccesoInternetId(
-        accesoExistente.id,
-      );
+    const cuentaExistente = await this.cuentasPppoe.buscarPorAccesoInternet(
+      accesoExistente.id,
+    );
 
     if (cuentaExistente) {
       throw new ConflictException(

@@ -10,11 +10,9 @@ import { ResolverContextoEjecucionPppoeService } from './application/services/re
 
 import { PPPOE_PREALTA } from './domain/ports/pppoe-prealta.port';
 
-import { PPPOE_CREDENCIALES_INSTALACION } from './domain/ports/pppoe-credenciales-instalacion.port';
 import { PppoePerfilHomologacionModule } from '../pppoe-perfil-homologacion/pppoe-perfil-homologacion.module';
 import { PppoeClienteCuentaModule } from '../pppoe-cliente-cuenta/pppoe-cliente-cuenta.module';
 import { MikroTikModule } from 'src/mikro-tik/mikro-tik.module';
-import { ConsultarCredencialesPppoeInstalacionUseCase } from '../pppoe-cliente-cuenta/application/use-cases/consultar-credenciales-pppoe-instalacion.use-case';
 import { CrearYEjecutarActivacionPppoeUseCase } from './application/use-cases/crear-y-ejecutar-activacion-pppoe.use-case';
 import { PppoeOperacionModule } from '../pppoe-operacion/pppoe-operacion.module';
 import { ActivarSecretPppoeExecutor } from './application/executors/activar-secret-pppoe.executor';
@@ -83,7 +81,6 @@ import { ClienteInternetEstadoOperativoPrismaAdapter } from './infra/prisma/clie
      * Prealta y consultas
      */
     PrepararPrealtaPppoeUseCase,
-    ConsultarCredencialesPppoeInstalacionUseCase,
 
     /*
      * Adopción de cuentas existentes
@@ -131,11 +128,6 @@ import { ClienteInternetEstadoOperativoPrismaAdapter } from './infra/prisma/clie
     },
 
     {
-      provide: PPPOE_CREDENCIALES_INSTALACION,
-      useExisting: ConsultarCredencialesPppoeInstalacionUseCase,
-    },
-
-    {
       provide: PPPOE_PROVISIONAMIENTO,
       useExisting: PppoeProvisionamientoService,
     },
@@ -157,10 +149,6 @@ import { ClienteInternetEstadoOperativoPrismaAdapter } from './infra/prisma/clie
     },
   ],
 
-  exports: [
-    PPPOE_PREALTA,
-    PPPOE_CREDENCIALES_INSTALACION,
-    PPPOE_PROVISIONAMIENTO,
-  ],
+  exports: [PPPOE_PREALTA, PPPOE_PROVISIONAMIENTO],
 })
 export class PppoeAutomatizacionModule {}

@@ -13,7 +13,7 @@ import {
   PPPOE_PERFIL_HOMOLOGACION,
   PppoePerfilHomologacionFacadePort,
 } from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.facade.port';
-import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/cliente-pppoe-cuenta.entity';
+import { ClientePppoeCuentaReadModel } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 import { PerfilHomologacionReadModel } from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.types';
 /**
@@ -27,9 +27,9 @@ import { TipoOperacionPppoe } from 'src/modules/pppoe-operacion/public/pppoe-ope
 
 import { ContextoEjecucionPppoe } from '../models/contexto-ejecucion-pppoe.model';
 import {
-  CLIENTE_PPPOE_CUENTA_REPOSITORY,
-  ClientePppoeCuentaRepositoryPort,
-} from 'src/modules/pppoe-cliente-cuenta/domain/ports/cliente-pppoe-cuenta-repository.port';
+  PPPOE_CLIENTE_CUENTA,
+  PppoeClienteCuentaFacadePort,
+} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
 import { MIKROTIK_ROUTER_CONNECTION_CONTEXT } from 'src/mikro-tik/infra/tokens/mikrotik-router.tokens';
 import {
   MikrotikRouterConnectionContext,
@@ -39,8 +39,8 @@ import {
 @Injectable()
 export class ResolverContextoEjecucionPppoeService {
   constructor(
-    @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
-    private readonly cuentaRepository: ClientePppoeCuentaRepositoryPort,
+    @Inject(PPPOE_CLIENTE_CUENTA)
+    private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
 
     @Inject(PPPOE_PERFIL_HOMOLOGACION)
     private readonly perfilesHomologacion: PppoePerfilHomologacionFacadePort,
@@ -63,9 +63,7 @@ export class ResolverContextoEjecucionPppoeService {
       );
     }
 
-    const cuenta = await this.cuentaRepository.findById(
-      operacion.cuentaPppoeId,
-    );
+    const cuenta = await this.cuentasPppoe.buscarPorId(operacion.cuentaPppoeId);
 
     if (!cuenta) {
       throw new NotFoundException(
@@ -129,11 +127,7 @@ export class ResolverContextoEjecucionPppoeService {
   private validarCuenta(params: {
     operacion: PppoeOperacionEntity;
 
-    cuenta: Awaited<
-      ReturnType<ClientePppoeCuentaRepositoryPort['findById']>
-    > extends infer T
-      ? Exclude<T, null>
-      : never;
+    cuenta: ClientePppoeCuentaReadModel;
   }): void {
     const { operacion, cuenta } = params;
 
@@ -168,11 +162,7 @@ export class ResolverContextoEjecucionPppoeService {
   private validarPerfil(params: {
     operacion: PppoeOperacionEntity;
 
-    cuenta: Awaited<
-      ReturnType<ClientePppoeCuentaRepositoryPort['findById']>
-    > extends infer T
-      ? Exclude<T, null>
-      : never;
+    cuenta: ClientePppoeCuentaReadModel;
 
     perfil: PerfilHomologacionReadModel;
   }): void {

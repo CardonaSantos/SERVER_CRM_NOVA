@@ -7,9 +7,9 @@ import {
 } from '@nestjs/common';
 
 import {
-  CLIENTE_PPPOE_CUENTA_REPOSITORY,
-  ClientePppoeCuentaRepositoryPort,
-} from 'src/modules/pppoe-cliente-cuenta/domain/ports/cliente-pppoe-cuenta-repository.port';
+  PPPOE_CLIENTE_CUENTA,
+  PppoeClienteCuentaFacadePort,
+} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
 
 import {
   PPPOE_ACCESO_INTERNET,
@@ -94,8 +94,8 @@ export class VerificarAdopcionPppoeUseCase {
     @Inject(PPPOE_ACCESO_INTERNET)
     private readonly accesosInternet: PppoeAccesoInternetFacadePort,
 
-    @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
-    private readonly cuentaRepository: ClientePppoeCuentaRepositoryPort,
+    @Inject(PPPOE_CLIENTE_CUENTA)
+    private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
 
     @Inject(PPPOE_PERFIL_HOMOLOGACION)
     private readonly perfilesHomologacion: PppoePerfilHomologacionFacadePort,
@@ -145,10 +145,7 @@ export class VerificarAdopcionPppoeUseCase {
      * Evitar usar un usuario existente operando, pero poder adoptar otro suspendido o eliminado, etc.
      */
     const cuentaVigenteConMismoUsuario =
-      await this.cuentaRepository.findVigenteByEmpresaYUsuario({
-        empresaId: normalized.empresaId,
-        usuario: normalized.usuarioPppoe,
-      });
+      await this.cuentasPppoe.buscarVigentePorUsuario(normalized.usuarioPppoe);
 
     if (cuentaVigenteConMismoUsuario) {
       throw new ConflictException(

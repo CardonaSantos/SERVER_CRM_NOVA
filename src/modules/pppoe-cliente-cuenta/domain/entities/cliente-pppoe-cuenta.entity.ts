@@ -2,13 +2,13 @@ import { SecretoPppoeProtegido } from 'src/modules/pppoe-credentials/public/pppo
 
 import { EstadoCuentaPppoe } from '../enums/estado-cuenta-pppoe.enum';
 import {
-  AdoptarClientePppoeCuentaEntityProps,
-  ClientePppoeCuentaEntityProps,
-  CrearClientePppoeCuentaEntityProps,
+  AdoptarClientePppoeCuentaProps,
+  ClientePppoeCuentaProps,
+  CrearClientePppoeCuentaProps,
 } from '../props/cliente-pppoe-cuenta.props';
 
 export class ClientePppoeCuentaEntity {
-  private constructor(private readonly props: ClientePppoeCuentaEntityProps) {}
+  private constructor(private readonly props: ClientePppoeCuentaProps) {}
 
   /**
    * Crea una cuenta PPPoE preparada en el CRM.
@@ -17,9 +17,7 @@ export class ClientePppoeCuentaEntity {
    * - El secreto ya fue cifrado externamente.
    * - Todavía no se ha creado el secret en MikroTik.
    */
-  static create(
-    input: CrearClientePppoeCuentaEntityProps,
-  ): ClientePppoeCuentaEntity {
+  static create(input: CrearClientePppoeCuentaProps): ClientePppoeCuentaEntity {
     this.assertPositiveId(input.empresaId, 'empresaId');
     this.assertPositiveId(input.accesoInternetId, 'accesoInternetId');
     this.assertPositiveId(input.perfilHomologacionId, 'perfilHomologacionId');
@@ -95,7 +93,7 @@ export class ClientePppoeCuentaEntity {
    * - La contraseña debe llegar ya cifrada.
    */
   static adoptarExistente(
-    input: AdoptarClientePppoeCuentaEntityProps,
+    input: AdoptarClientePppoeCuentaProps,
   ): ClientePppoeCuentaEntity {
     this.assertPositiveId(input.empresaId, 'empresaId');
 
@@ -139,7 +137,7 @@ export class ClientePppoeCuentaEntity {
 
     this.assertValidDate(fechaAdopcion, 'fechaAdopcion');
 
-    const props: ClientePppoeCuentaEntityProps = {
+    const props: ClientePppoeCuentaProps = {
       id: null,
 
       empresaId: input.empresaId,
@@ -192,9 +190,7 @@ export class ClientePppoeCuentaEntity {
   /**
    * Reconstruye una cuenta obtenida desde persistencia.
    */
-  static hydrate(
-    input: ClientePppoeCuentaEntityProps,
-  ): ClientePppoeCuentaEntity {
+  static hydrate(input: ClientePppoeCuentaProps): ClientePppoeCuentaEntity {
     this.assertPositiveId(input.id, 'id');
 
     this.assertPositiveId(input.empresaId, 'empresaId');
@@ -230,7 +226,7 @@ export class ClientePppoeCuentaEntity {
 
     this.assertValidDate(input.actualizadoEn, 'actualizadoEn');
 
-    const props: ClientePppoeCuentaEntityProps = {
+    const props: ClientePppoeCuentaProps = {
       ...input,
 
       usuario: this.normalizeUsuario(input.usuario),
@@ -707,7 +703,7 @@ export class ClientePppoeCuentaEntity {
    * Salida para mappers
    */
 
-  toPrimitives(): ClientePppoeCuentaEntityProps {
+  toPrimitives(): ClientePppoeCuentaProps {
     return {
       id: this.props.id,
 
@@ -810,7 +806,7 @@ export class ClientePppoeCuentaEntity {
     }
   }
 
-  private static assertConsistency(props: ClientePppoeCuentaEntityProps): void {
+  private static assertConsistency(props: ClientePppoeCuentaProps): void {
     const esAdoptada = props.adoptadoEn !== null;
 
     if ((props.adoptadoEn === null) !== (props.adoptadoPorId === null)) {

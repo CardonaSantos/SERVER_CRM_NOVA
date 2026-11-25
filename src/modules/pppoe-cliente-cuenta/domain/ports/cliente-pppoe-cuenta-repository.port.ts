@@ -5,17 +5,7 @@ export const CLIENTE_PPPOE_CUENTA_REPOSITORY = Symbol(
   'CLIENTE_PPPOE_CUENTA_REPOSITORY',
 );
 
-export type BuscarCuentaPppoeVigentePorUsuarioParams = {
-  empresaId: number;
-  usuario: string;
-};
-
 export interface ClientePppoeCuentaRepositoryPort {
-  // /**
-  //  * Verificar un usuario que tenga una cuenta: valida para reemplazo
-  //  * @param usuario
-  //  */
-  // findByUsuarioValido(usuario: string): Promise<ClientePppoeCuentaEntity>;
   /**
    * Persiste una cuenta PPPoE nueva.
    *
@@ -47,19 +37,12 @@ export interface ClientePppoeCuentaRepositoryPort {
   ): Promise<ClientePppoeCuentaEntity | null>;
 
   /**
-   * Busca cualquier cuenta mediante su usuario PPPoE,
-   * incluyendo cuentas históricas y terminales.
-   */
-  findByUsuario(usuario: string): Promise<ClientePppoeCuentaEntity | null>;
-
-  /**
-   * Busca una cuenta vigente para el usuario PPPoE
-   * dentro de la empresa.
+   * Busca una cuenta vigente para el usuario PPPoE.
    *
    * ELIMINADA y CANCELADA no se consideran vigentes.
    */
-  findVigenteByEmpresaYUsuario(
-    params: BuscarCuentaPppoeVigentePorUsuarioParams,
+  findVigenteByUsuario(
+    usuario: string,
   ): Promise<ClientePppoeCuentaEntity | null>;
 
   /**

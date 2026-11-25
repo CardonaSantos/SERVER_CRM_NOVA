@@ -36,9 +36,9 @@ import { CrearYEjecutarSuspensionPppoeUseCase } from '../use-cases/crear-y-ejecu
 
 import { EjecutarPppoeOperacionUseCase } from '../use-cases/ejecutar-pppoe-operacion.use-case';
 import {
-  CLIENTE_PPPOE_CUENTA_REPOSITORY,
-  ClientePppoeCuentaRepositoryPort,
-} from 'src/modules/pppoe-cliente-cuenta/domain/ports/cliente-pppoe-cuenta-repository.port';
+  PPPOE_CLIENTE_CUENTA,
+  PppoeClienteCuentaFacadePort,
+} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
 import {
   PPPOE_OPERACION_AUDITORIA,
   PppoeOperacionAuditoriaPort,
@@ -90,8 +90,8 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
     @Inject(PPPOE_OPERACION_AUDITORIA)
     private readonly operacionAuditoria: PppoeOperacionAuditoriaPort,
 
-    @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
-    private readonly cuentaRepository: ClientePppoeCuentaRepositoryPort,
+    @Inject(PPPOE_CLIENTE_CUENTA)
+    private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
   ) {}
 
   /**
@@ -463,7 +463,7 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
     cuentaPppoeId: number;
   }): Promise<EjecutarOperacionPppoeResult['estadoCuenta']> {
     try {
-      const cuenta = await this.cuentaRepository.findById(params.cuentaPppoeId);
+      const cuenta = await this.cuentasPppoe.buscarPorId(params.cuentaPppoeId);
 
       if (!cuenta || cuenta.empresaId !== params.empresaId) {
         return null;

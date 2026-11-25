@@ -2,10 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from 'src/prisma/prisma.service';
 
-import {
-  BuscarCuentaPppoeVigentePorUsuarioParams,
-  ClientePppoeCuentaRepositoryPort,
-} from '../../domain/ports/cliente-pppoe-cuenta-repository.port';
+import { ClientePppoeCuentaRepositoryPort } from '../../domain/ports/cliente-pppoe-cuenta-repository.port';
 
 import { ClientePppoeCuentaPrismaMapper } from './cliente-pppoe-cuenta-prisma.mapper';
 
@@ -75,29 +72,12 @@ export class ClientePppoeCuentaPrismaRepository
     return record ? ClientePppoeCuentaPrismaMapper.toDomain(record) : null;
   }
 
-  async findByUsuario(
+  async findVigenteByUsuario(
     usuario: string,
   ): Promise<ClientePppoeCuentaEntity | null> {
     const record = await this.prisma.clientePppoeCuenta.findFirst({
       where: {
         usuario,
-      },
-
-      orderBy: {
-        id: 'desc',
-      },
-    });
-
-    return record ? ClientePppoeCuentaPrismaMapper.toDomain(record) : null;
-  }
-
-  async findVigenteByEmpresaYUsuario(
-    params: BuscarCuentaPppoeVigentePorUsuarioParams,
-  ): Promise<ClientePppoeCuentaEntity | null> {
-    const record = await this.prisma.clientePppoeCuenta.findFirst({
-      where: {
-        empresaId: params.empresaId,
-        usuario: params.usuario,
 
         estado: {
           notIn: [EstadoCuentaPppoe.ELIMINADA, EstadoCuentaPppoe.CANCELADA],
