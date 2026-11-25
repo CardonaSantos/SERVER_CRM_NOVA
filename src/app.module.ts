@@ -23,6 +23,7 @@ import { PasswordModule } from './auth/password/password.module';
 import { SesionesModule } from './auth/sesiones/sesiones.module';
 import { ValidacionModule } from './common/validacion/validacion.module';
 import { ExcepcionesModule } from './common/excepciones/excepciones.module';
+import { RelojModule } from './common/reloj/reloj.module';
 import { ZonaFacturacionCronModule } from './zona-facturacion-cron/zona-facturacion-cron.module';
 import { IdContratoModule } from './id-contrato/id-contrato.module';
 import { RutaCobroModule } from './ruta-cobro/ruta-cobro.module';
@@ -111,6 +112,8 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     ValidacionModule,
     // Filtro global: los 500 nunca exponen stack ni detalle interno.
     ExcepcionesModule,
+    // Global: puerto RELOJ (hora y fecha de negocio en America/Guatemala).
+    RelojModule,
     // TerminusModule,
     ZonaFacturacionCronModule,
     IdContratoModule,
