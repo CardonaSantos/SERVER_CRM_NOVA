@@ -1,7 +1,7 @@
 import {
   CrearPerfilHomologadoEntityProps,
   PerfilHomologadoEntityProps,
-} from '../props/entity-props.props';
+} from '../props/perfil-homologacion.props';
 
 export class PerfilHomologacionEntity {
   private constructor(private readonly props: PerfilHomologadoEntityProps) {}

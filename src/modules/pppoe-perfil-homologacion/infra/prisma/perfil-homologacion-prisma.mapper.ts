@@ -1,5 +1,5 @@
 import { PppoePerfilHomologacion, Prisma } from '@prisma/client';
-import { PerfilHomologacionEntity } from '../../domain/entities/ppoe-perfil-homologacion.entity';
+import { PerfilHomologacionEntity } from '../../domain/entities/perfil-homologacion.entity';
 
 export class PerfilHomologacionPrismaMapper {
   /**

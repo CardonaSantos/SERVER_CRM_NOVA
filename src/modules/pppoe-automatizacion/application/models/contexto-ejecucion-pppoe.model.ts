@@ -1,6 +1,6 @@
 import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/ppoe-cliente-cuenta.entity';
 
-import { PerfilHomologacionEntity } from 'src/modules/pppoe-perfil-homologacion/domain/entities/ppoe-perfil-homologacion.entity';
+import { PerfilHomologacionEntity } from 'src/modules/pppoe-perfil-homologacion/domain/entities/perfil-homologacion.entity';
 
 import { PppoeOperacionEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion.entity';
 import { MikrotikRouterConnectionContext } from 'src/mikro-tik/domain/ports/mikrotik-router-connection-context.port';

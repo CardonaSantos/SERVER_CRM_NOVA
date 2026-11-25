@@ -38,14 +38,16 @@ import {
   AccionAuditoriaPppoe,
   OrigenOperacionPppoe,
 } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
-import { PPPOE_PERFIL_HOMOLOGACION_REPOSITORY } from 'src/modules/pppoe-perfil-homologacion/infra/tokens/ppoe-perfil-homologacion.token';
-import { PerfilHomologacionRepositoryPort } from 'src/modules/pppoe-perfil-homologacion/domain/ports/ppoe-perfil-homologacion.port';
+import {
+  PERFIL_HOMOLOGACION_REPOSITORY,
+  PerfilHomologacionRepositoryPort,
+} from 'src/modules/pppoe-perfil-homologacion/domain/ports/perfil-homologacion-repository.port';
 import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/ppoe-cliente-cuenta.entity';
 
 @Injectable()
 export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
   constructor(
-    @Inject(PPPOE_PERFIL_HOMOLOGACION_REPOSITORY)
+    @Inject(PERFIL_HOMOLOGACION_REPOSITORY)
     private readonly perfilRepository: PerfilHomologacionRepositoryPort,
 
     @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)

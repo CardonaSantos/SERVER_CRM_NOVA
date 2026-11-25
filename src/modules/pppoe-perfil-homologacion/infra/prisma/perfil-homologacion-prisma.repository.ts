@@ -5,9 +5,9 @@ import {
   BuscarPerfilPorRouterCodigoParams,
   BuscarPerfilPorRouterServicioParams,
   PerfilHomologacionRepositoryPort,
-} from '../../domain/ports/ppoe-perfil-homologacion.port';
-import { PerfilHomologacionEntity } from '../../domain/entities/ppoe-perfil-homologacion.entity';
-import { PerfilHomologacionPrismaMapper } from './ppoe-perfil-homologacion.mapper.prisma';
+} from '../../domain/ports/perfil-homologacion-repository.port';
+import { PerfilHomologacionEntity } from '../../domain/entities/perfil-homologacion.entity';
+import { PerfilHomologacionPrismaMapper } from './perfil-homologacion-prisma.mapper';
 import { Prisma } from '@prisma/client';
 import {
   PerfilHomologacionDetalle,
@@ -16,7 +16,7 @@ import {
   PerfilHomologacionPaginatedResult,
   PerfilHomologacionSeleccionable,
   PerfilHomologacionSeleccionableFilters,
-} from '../../domain/models/pppoe-perfil-homologacion.read-model';
+} from '../../domain/read-models/perfil-homologacion.read-model';
 
 const perfilHomologacionReadInclude = {
   mikrotikRouter: {

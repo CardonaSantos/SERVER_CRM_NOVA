@@ -27,9 +27,10 @@ import {
   PppoeOperacionRepositoryPort,
 } from 'src/modules/pppoe-operacion/domain/ports/pppoe-operacion-repository.port';
 
-import { PerfilHomologacionRepositoryPort } from 'src/modules/pppoe-perfil-homologacion/domain/ports/ppoe-perfil-homologacion.port';
-
-import { PPPOE_PERFIL_HOMOLOGACION_REPOSITORY } from 'src/modules/pppoe-perfil-homologacion/infra/tokens/ppoe-perfil-homologacion.token';
+import {
+  PerfilHomologacionRepositoryPort,
+  PERFIL_HOMOLOGACION_REPOSITORY,
+} from 'src/modules/pppoe-perfil-homologacion/domain/ports/perfil-homologacion-repository.port';
 
 import {
   PPPOE_OPERACION_AUDITORIA,
@@ -146,7 +147,7 @@ export class CrearYEjecutarActivacionPppoeUseCase {
     @Inject(PPPOE_OPERACION_REPOSITORY)
     private readonly operacionRepository: PppoeOperacionRepositoryPort,
 
-    @Inject(PPPOE_PERFIL_HOMOLOGACION_REPOSITORY)
+    @Inject(PERFIL_HOMOLOGACION_REPOSITORY)
     private readonly perfilRepository: PerfilHomologacionRepositoryPort,
 
     @Inject(MIKROTIK_ROUTER_REPOSITORY)

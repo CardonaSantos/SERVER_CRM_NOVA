@@ -1,10 +1,12 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 
-import { PerfilHomologacionEntity } from '../../domain/entities/ppoe-perfil-homologacion.entity';
+import { PerfilHomologacionEntity } from '../../domain/entities/perfil-homologacion.entity';
 
-import { PerfilHomologacionRepositoryPort } from '../../domain/ports/ppoe-perfil-homologacion.port';
+import {
+  PerfilHomologacionRepositoryPort,
+  PERFIL_HOMOLOGACION_REPOSITORY,
+} from '../../domain/ports/perfil-homologacion-repository.port';
 
-import { PPPOE_PERFIL_HOMOLOGACION_REPOSITORY } from '../../infra/tokens/ppoe-perfil-homologacion.token';
 import { CambiarEstadoPpoePerfilHomologacionDto } from '../dto/cambiar-estado-ppoe-perfil-homologacion.dto';
 
 export type DesactivarPerfilHomologacionCommand =
@@ -15,7 +17,7 @@ export type DesactivarPerfilHomologacionCommand =
 @Injectable()
 export class DesactivarPerfilHomologacionUseCase {
   constructor(
-    @Inject(PPPOE_PERFIL_HOMOLOGACION_REPOSITORY)
+    @Inject(PERFIL_HOMOLOGACION_REPOSITORY)
     private readonly perfilRepository: PerfilHomologacionRepositoryPort,
   ) {}
 

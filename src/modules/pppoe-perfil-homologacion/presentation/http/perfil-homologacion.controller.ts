@@ -10,16 +10,16 @@ import {
   Query,
   Req,
 } from '@nestjs/common';
-import { PpoePerfilHomologacionService } from '../application/services/ppoe-perfil-homologacion.service';
-import { ListarPpoePerfilesHomologacionQueryDto } from '../application/dto/listar-ppoe-perfiles-homologacion-query.dto';
-import { CreatePpoePerfilHomologacionDto } from '../dto/create-ppoe-perfil-homologacion.dto';
-import { PpoePerfilHomologacionPresenter } from './ppoe-perfil-homologacion.presenter';
+import { PpoePerfilHomologacionService } from '../../application/services/ppoe-perfil-homologacion.service';
+import { ListarPpoePerfilesHomologacionQueryDto } from '../dto/listar-perfiles-homologacion-query.dto';
+import { CreatePpoePerfilHomologacionDto } from '../dto/crear-perfil-homologacion.dto';
+import { PpoePerfilHomologacionPresenter } from '../presenters/perfil-homologacion.presenter';
 import {
   AuthenticatedPppoeRequest,
   getAuthenticatedPppoeActor,
-} from '../../pppoe-automatizacion/presentation/http/pppoe-authenticated-actor.http';
-import { UpdatePpoePerfilHomologacionDto } from '../application/dto/update-ppoe-perfil-homologacion.dto';
-import { ListarPerfilesHomologacionSeleccionablesQuery } from '../application/dto/homologacion-query';
+} from '../../../pppoe-automatizacion/presentation/http/pppoe-authenticated-actor.http';
+import { UpdatePpoePerfilHomologacionDto } from '../dto/actualizar-codigo-perfil-homologacion.dto';
+import { ListarPerfilesHomologacionSeleccionablesQuery } from '../dto/listar-perfiles-homologacion-seleccionables-query.dto';
 
 @Controller('ppoe-perfil-homologacion')
 export class PpoePerfilHomologacionController {

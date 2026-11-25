@@ -2,9 +2,9 @@ import { Injectable, NotImplementedException } from '@nestjs/common';
 
 import { CreatePpoePerfilHomologacionDto } from '../dto/create-ppoe-perfil-homologacion.dto';
 
-import { UpdatePpoePerfilHomologacionDto } from '../dto/update-ppoe-perfil-homologacion.dto';
+import { UpdatePpoePerfilHomologacionDto } from '../../presentation/dto/actualizar-codigo-perfil-homologacion.dto';
 
-import { PerfilHomologacionEntity } from '../../domain/entities/ppoe-perfil-homologacion.entity';
+import { PerfilHomologacionEntity } from '../../domain/entities/perfil-homologacion.entity';
 
 import { CrearPerfilHomologacionUseCase } from '../use-cases/crear-perfil-homologacion.use-case';
 
@@ -17,10 +17,10 @@ import { ActivarPerfilHomologacionUseCase } from '../use-cases/activar-perfil-ho
 import { DesactivarPerfilHomologacionUseCase } from '../use-cases/desactivar-perfil-homologacion.use-case';
 import { CambiarEstadoPpoePerfilHomologacionDto } from '../dto/cambiar-estado-ppoe-perfil-homologacion.dto';
 import { ListarPerfilesHomologacionUseCase } from '../use-cases/listar-perfiles-homologacion.use-case';
-import { ListarPpoePerfilesHomologacionQueryDto } from '../dto/listar-ppoe-perfiles-homologacion-query.dto';
-import { PerfilHomologacionPaginatedResult } from '../../domain/models/pppoe-perfil-homologacion.read-model';
+import { ListarPpoePerfilesHomologacionQueryDto } from '../../presentation/dto/listar-perfiles-homologacion-query.dto';
+import { PerfilHomologacionPaginatedResult } from '../../domain/read-models/perfil-homologacion.read-model';
 import { ListarPerfilesHomologacionSeleccionablesUseCase } from '../use-cases/listar-perfiles-homologacion-seleccionables.use-case';
-import { ListarPerfilesHomologacionSeleccionablesQuery } from '../dto/homologacion-query';
+import { ListarPerfilesHomologacionSeleccionablesQuery } from '../../presentation/dto/listar-perfiles-homologacion-seleccionables-query.dto';
 
 @Injectable()
 export class PpoePerfilHomologacionService {

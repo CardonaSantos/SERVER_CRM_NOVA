@@ -1,13 +1,15 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PerfilHomologacionRepositoryPort } from '../../domain/ports/ppoe-perfil-homologacion.port';
-import { PPPOE_PERFIL_HOMOLOGACION_REPOSITORY } from '../../infra/tokens/ppoe-perfil-homologacion.token';
-import { ListarPpoePerfilesHomologacionQueryDto } from '../dto/listar-ppoe-perfiles-homologacion-query.dto';
-import { PerfilHomologacionPaginatedResult } from '../../domain/models/pppoe-perfil-homologacion.read-model';
+import {
+  PerfilHomologacionRepositoryPort,
+  PERFIL_HOMOLOGACION_REPOSITORY,
+} from '../../domain/ports/perfil-homologacion-repository.port';
+import { ListarPpoePerfilesHomologacionQueryDto } from '../../presentation/dto/listar-perfiles-homologacion-query.dto';
+import { PerfilHomologacionPaginatedResult } from '../../domain/read-models/perfil-homologacion.read-model';
 
 @Injectable()
 export class ListarPerfilesHomologacionUseCase {
   constructor(
-    @Inject(PPPOE_PERFIL_HOMOLOGACION_REPOSITORY)
+    @Inject(PERFIL_HOMOLOGACION_REPOSITORY)
     private readonly perfilRepository: PerfilHomologacionRepositoryPort,
   ) {}
 

@@ -16,9 +16,10 @@ import {
   PppoeAccesoInternetFacadePort,
 } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.facade.port';
 
-import { PerfilHomologacionRepositoryPort } from 'src/modules/pppoe-perfil-homologacion/domain/ports/ppoe-perfil-homologacion.port';
-
-import { PPPOE_PERFIL_HOMOLOGACION_REPOSITORY } from 'src/modules/pppoe-perfil-homologacion/infra/tokens/ppoe-perfil-homologacion.token';
+import {
+  PerfilHomologacionRepositoryPort,
+  PERFIL_HOMOLOGACION_REPOSITORY,
+} from 'src/modules/pppoe-perfil-homologacion/domain/ports/perfil-homologacion-repository.port';
 
 import {
   MIKROTIK_SSH_PORT,
@@ -96,7 +97,7 @@ export class VerificarAdopcionPppoeUseCase {
     @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
     private readonly cuentaRepository: ClientePppoeCuentaRepositoryPort,
 
-    @Inject(PPPOE_PERFIL_HOMOLOGACION_REPOSITORY)
+    @Inject(PERFIL_HOMOLOGACION_REPOSITORY)
     private readonly perfilRepository: PerfilHomologacionRepositoryPort,
 
     @Inject(MIKROTIK_ROUTER_CONNECTION_CONTEXT)

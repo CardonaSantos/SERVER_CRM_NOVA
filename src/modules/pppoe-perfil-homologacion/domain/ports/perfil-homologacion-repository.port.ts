@@ -1,11 +1,15 @@
-import { PerfilHomologacionEntity } from '../entities/ppoe-perfil-homologacion.entity';
+import { PerfilHomologacionEntity } from '../entities/perfil-homologacion.entity';
 import {
   PerfilHomologacionDetalle,
   PerfilHomologacionFindManyFilters,
   PerfilHomologacionPaginatedResult,
   PerfilHomologacionSeleccionable,
   PerfilHomologacionSeleccionableFilters,
-} from '../models/pppoe-perfil-homologacion.read-model';
+} from '../read-models/perfil-homologacion.read-model';
+
+export const PERFIL_HOMOLOGACION_REPOSITORY = Symbol(
+  'PERFIL_HOMOLOGACION_REPOSITORY',
+);
 
 export type BuscarPerfilPorRouterServicioParams = {
   mikrotikRouterId: number;

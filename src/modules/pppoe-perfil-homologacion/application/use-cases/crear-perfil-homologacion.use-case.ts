@@ -1,17 +1,18 @@
 import { ConflictException, Inject, Injectable } from '@nestjs/common';
 
-import { CreatePpoePerfilHomologacionDto } from '../../dto/create-ppoe-perfil-homologacion.dto';
+import { CreatePpoePerfilHomologacionDto } from '../../presentation/dto/crear-perfil-homologacion.dto';
 
-import { PerfilHomologacionEntity } from '../../domain/entities/ppoe-perfil-homologacion.entity';
+import { PerfilHomologacionEntity } from '../../domain/entities/perfil-homologacion.entity';
 
-import { PerfilHomologacionRepositoryPort } from '../../domain/ports/ppoe-perfil-homologacion.port';
-
-import { PPPOE_PERFIL_HOMOLOGACION_REPOSITORY } from '../../infra/tokens/ppoe-perfil-homologacion.token';
+import {
+  PerfilHomologacionRepositoryPort,
+  PERFIL_HOMOLOGACION_REPOSITORY,
+} from '../../domain/ports/perfil-homologacion-repository.port';
 
 @Injectable()
 export class CrearPerfilHomologacionUseCase {
   constructor(
-    @Inject(PPPOE_PERFIL_HOMOLOGACION_REPOSITORY)
+    @Inject(PERFIL_HOMOLOGACION_REPOSITORY)
     private readonly perfilRepository: PerfilHomologacionRepositoryPort,
   ) {}
 

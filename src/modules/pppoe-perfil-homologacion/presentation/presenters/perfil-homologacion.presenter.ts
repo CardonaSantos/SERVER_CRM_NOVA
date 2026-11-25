@@ -1,9 +1,9 @@
-import { PerfilHomologacionEntity } from '../domain/entities/ppoe-perfil-homologacion.entity';
+import { PerfilHomologacionEntity } from '../../domain/entities/perfil-homologacion.entity';
 import {
   PerfilHomologacionDetalle,
   PerfilHomologacionListItem,
   PerfilHomologacionPaginatedResult,
-} from '../domain/models/pppoe-perfil-homologacion.read-model';
+} from '../../domain/read-models/perfil-homologacion.read-model';
 
 export class PpoePerfilHomologacionPresenter {
   /**

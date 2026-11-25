@@ -18,9 +18,10 @@ import {
   ClientePppoeCuentaRepositoryPort,
 } from 'src/modules/pppoe-cliente-cuenta/domain/ports/pppoe-cliente-cuenta.port';
 
-import { PPPOE_PERFIL_HOMOLOGACION_REPOSITORY } from 'src/modules/pppoe-perfil-homologacion/infra/tokens/ppoe-perfil-homologacion.token';
-
-import { PerfilHomologacionRepositoryPort } from 'src/modules/pppoe-perfil-homologacion/domain/ports/ppoe-perfil-homologacion.port';
+import {
+  PERFIL_HOMOLOGACION_REPOSITORY,
+  PerfilHomologacionRepositoryPort,
+} from 'src/modules/pppoe-perfil-homologacion/domain/ports/perfil-homologacion-repository.port';
 
 import {
   CrearSecretPppoeInput,
@@ -96,7 +97,7 @@ export class CrearYEjecutarOperacionPppoeUseCase {
     @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
     private readonly cuentaRepository: ClientePppoeCuentaRepositoryPort,
 
-    @Inject(PPPOE_PERFIL_HOMOLOGACION_REPOSITORY)
+    @Inject(PERFIL_HOMOLOGACION_REPOSITORY)
     private readonly perfilRepository: PerfilHomologacionRepositoryPort,
 
     @Inject(MIKROTIK_ROUTER_REPOSITORY)

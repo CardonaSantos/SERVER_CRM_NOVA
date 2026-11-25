@@ -5,10 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { PerfilHomologacionEntity } from '../../domain/entities/ppoe-perfil-homologacion.entity';
-import { PerfilHomologacionRepositoryPort } from '../../domain/ports/ppoe-perfil-homologacion.port';
-import { PPPOE_PERFIL_HOMOLOGACION_REPOSITORY } from '../../infra/tokens/ppoe-perfil-homologacion.token';
-import { UpdatePpoePerfilHomologacionDto } from '../dto/update-ppoe-perfil-homologacion.dto';
+import { PerfilHomologacionEntity } from '../../domain/entities/perfil-homologacion.entity';
+import {
+  PerfilHomologacionRepositoryPort,
+  PERFIL_HOMOLOGACION_REPOSITORY,
+} from '../../domain/ports/perfil-homologacion-repository.port';
+import { UpdatePpoePerfilHomologacionDto } from '../../presentation/dto/actualizar-codigo-perfil-homologacion.dto';
 
 export type ActualizarCodigoPerfilHomologacionCommand =
   UpdatePpoePerfilHomologacionDto & {
@@ -18,7 +20,7 @@ export type ActualizarCodigoPerfilHomologacionCommand =
 @Injectable()
 export class ActualizarCodigoPerfilHomologacionUseCase {
   constructor(
-    @Inject(PPPOE_PERFIL_HOMOLOGACION_REPOSITORY)
+    @Inject(PERFIL_HOMOLOGACION_REPOSITORY)
     private readonly perfilRepository: PerfilHomologacionRepositoryPort,
   ) {}
 

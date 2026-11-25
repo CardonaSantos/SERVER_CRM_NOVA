@@ -9,10 +9,13 @@ import {
   PPPOE_SECRET_CIPHER,
   PppoeSecretCipherPort,
 } from 'src/modules/pppoe-credentials/public/pppoe-secret-cipher.port';
-import { PerfilHomologacionRepositoryPort } from 'src/modules/pppoe-perfil-homologacion/domain/ports/ppoe-perfil-homologacion.port';
+import {
+  PerfilHomologacionRepositoryPort,
+  PERFIL_HOMOLOGACION_REPOSITORY,
+} from 'src/modules/pppoe-perfil-homologacion/domain/ports/perfil-homologacion-repository.port';
 import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/ppoe-cliente-cuenta.entity';
 
-import { PerfilHomologacionEntity } from 'src/modules/pppoe-perfil-homologacion/domain/entities/ppoe-perfil-homologacion.entity';
+import { PerfilHomologacionEntity } from 'src/modules/pppoe-perfil-homologacion/domain/entities/perfil-homologacion.entity';
 /**
  * Ajusta únicamente esta ruta a la ubicación real
  * del token que ya utilizas en el módulo de homologación.
@@ -27,7 +30,6 @@ import {
   CLIENTE_PPPOE_CUENTA_REPOSITORY,
   ClientePppoeCuentaRepositoryPort,
 } from 'src/modules/pppoe-cliente-cuenta/domain/ports/pppoe-cliente-cuenta.port';
-import { PPPOE_PERFIL_HOMOLOGACION_REPOSITORY } from 'src/modules/pppoe-perfil-homologacion/infra/tokens/ppoe-perfil-homologacion.token';
 import { MIKROTIK_ROUTER_CONNECTION_CONTEXT } from 'src/mikro-tik/infra/tokens/mikrotik-router.tokens';
 import {
   MikrotikRouterConnectionContext,
@@ -40,7 +42,7 @@ export class ResolverContextoEjecucionPppoeService {
     @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
     private readonly cuentaRepository: ClientePppoeCuentaRepositoryPort,
 
-    @Inject(PPPOE_PERFIL_HOMOLOGACION_REPOSITORY)
+    @Inject(PERFIL_HOMOLOGACION_REPOSITORY)
     private readonly perfilRepository: PerfilHomologacionRepositoryPort,
 
     @Inject(PPPOE_SECRET_CIPHER)
