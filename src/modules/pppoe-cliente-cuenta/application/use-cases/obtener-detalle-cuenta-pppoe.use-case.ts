@@ -1,13 +1,9 @@
-import {
-  BadRequestException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import { EstadoOperacionPppoe } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 import { EstadoCuentaPppoe } from '../../domain/enums/estado-cuenta-pppoe.enum';
+import { CuentaPppoeNoEncontradaError } from '../../domain/errors/pppoe-cliente-cuenta.errors';
 
 import { FlujoActivacionCuentaPppoe } from '../../domain/enums/flujo-activacion-cuenta-pppoe.enum';
 
@@ -46,19 +42,8 @@ export class ObtenerDetalleCuentaPppoeUseCase {
   async execute(
     input: ObtenerDetalleCuentaPppoeInput,
   ): Promise<ClientePppoeCuentaDetalleResult> {
-    this.validateInput(input);
-
-    const detalle = await this.query.findDetailById({
-      empresaId: input.empresaId,
-
-      cuentaPppoeId: input.cuentaPppoeId,
-    });
-
-    if (!detalle) {
-      throw new NotFoundException(
-        `No existe la cuenta PPPoE ${input.cuentaPppoeId}.`,
-      );
-    }
+    const detalle = await this.query.findDetailById(input.cuentaPppoeId);
+    if (!detalle) throw new CuentaPppoeNoEncontradaError();
 
     return {
       ...detalle,
@@ -531,18 +516,6 @@ export class ObtenerDetalleCuentaPppoeUseCase {
 
       default:
         return `La cuenta PPPoE no puede activarse desde el estado ${detalle.estadoCuenta}.`;
-    }
-  }
-
-  private validateInput(input: ObtenerDetalleCuentaPppoeInput): void {
-    this.assertPositiveInteger(input.empresaId, 'empresaId');
-
-    this.assertPositiveInteger(input.cuentaPppoeId, 'cuentaPppoeId');
-  }
-
-  private assertPositiveInteger(value: number, field: string): void {
-    if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
     }
   }
 }

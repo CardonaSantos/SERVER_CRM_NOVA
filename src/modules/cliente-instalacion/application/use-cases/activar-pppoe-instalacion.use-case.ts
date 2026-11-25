@@ -164,8 +164,6 @@ export class ActivarPppoeInstalacionUseCase {
      * tengan reglas independientes.
      */
     const detalleCuenta = await this.cuentasPppoe.obtenerDetalle({
-      empresaId: command.empresaId,
-
       cuentaPppoeId,
     });
 

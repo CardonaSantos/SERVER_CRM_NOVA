@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import {
   CLIENTE_PPPOE_CUENTA_REPOSITORY,
@@ -40,8 +40,6 @@ export class ConsultarCredencialesPppoeInstalacionUseCase {
   async execute(
     input: ConsultarCredencialesPppoeInstalacionInput,
   ): Promise<ConsultarCredencialesPppoeInstalacionResult> {
-    this.validateInput(input);
-
     const cuentas = await this.cuentaRepository.findProtectedByInstalacionId(
       input.instalacionId,
     );
@@ -172,19 +170,5 @@ export class ConsultarCredencialesPppoeInstalacionUseCase {
 
       userAgent: input.userAgent ?? null,
     });
-  }
-
-  private validateInput(
-    input: ConsultarCredencialesPppoeInstalacionInput,
-  ): void {
-    this.assertPositiveInteger(input.instalacionId, 'instalacionId');
-
-    this.assertPositiveInteger(input.operadorId, 'operadorId');
-  }
-
-  private assertPositiveInteger(value: number, field: string): void {
-    if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
-    }
   }
 }

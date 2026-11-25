@@ -5,7 +5,6 @@ import {
   EstadoOperacionPppoe,
   TipoOperacionPppoe,
 } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
-import { PaginatedResult } from 'src/Utils/pagination';
 
 export enum OrigenCuentaPppoe {
   /**
@@ -188,13 +187,7 @@ export type ClientePppoeCuentaListItem = {
  * Se obtendrá del JWT y el controller lo incorporará
  * antes de ejecutar el caso de uso.
  */
-export type ClientePppoeCuentaFindManyFilters = {
-  empresaId: number;
-
-  page: number;
-
-  limit: number;
-
+export type ClientePppoeCuentaFiltros = {
   origen?: OrigenCuentaPppoe | null;
   /**
    * Buscará posteriormente por datos como:
@@ -219,6 +212,3 @@ export type ClientePppoeCuentaFindManyFilters = {
 
   estadoAcceso?: EstadoAccesoInternet | null;
 };
-
-export type ClientePppoeCuentaPaginatedResult =
-  PaginatedResult<ClientePppoeCuentaListItem>;

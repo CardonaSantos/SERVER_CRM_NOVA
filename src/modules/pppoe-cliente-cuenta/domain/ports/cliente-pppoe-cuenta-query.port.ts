@@ -1,24 +1,21 @@
-import {
-  ClientePppoeCuentaFindManyFilters,
-  ClientePppoeCuentaPaginatedResult,
-} from '../read-models/cliente-pppoe-cuenta-listado.read-model';
+import { Paginacion, ResultadoPaginado } from 'src/common/hexagonal/paginacion';
 
 import { ClientePppoeCuentaDetalleReadModel } from '../read-models/cliente-pppoe-cuenta-detalle.read-model';
+import {
+  ClientePppoeCuentaFiltros,
+  ClientePppoeCuentaListItem,
+} from '../read-models/cliente-pppoe-cuenta-listado.read-model';
 
 export const CLIENTE_PPPOE_CUENTA_QUERY = Symbol('CLIENTE_PPPOE_CUENTA_QUERY');
 
-export type BuscarDetalleCuentaPppoeParams = {
-  empresaId: number;
-
-  cuentaPppoeId: number;
-};
-
 export interface ClientePppoeCuentaQueryPort {
+  /** Más recientes primero; `total` cuadra con la página (misma transacción). */
   findMany(
-    filters: ClientePppoeCuentaFindManyFilters,
-  ): Promise<ClientePppoeCuentaPaginatedResult>;
+    filtros: ClientePppoeCuentaFiltros,
+    paginacion: Paginacion,
+  ): Promise<ResultadoPaginado<ClientePppoeCuentaListItem>>;
 
   findDetailById(
-    params: BuscarDetalleCuentaPppoeParams,
+    cuentaPppoeId: number,
   ): Promise<ClientePppoeCuentaDetalleReadModel | null>;
 }

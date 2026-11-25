@@ -33,7 +33,6 @@ export type RegistrarErrorCuentaPppoeInput = {
 };
 
 export type ObtenerDetalleCuentaPppoeInput = {
-  empresaId: number;
   cuentaPppoeId: number;
 };
 

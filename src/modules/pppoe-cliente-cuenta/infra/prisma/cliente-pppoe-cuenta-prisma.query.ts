@@ -8,6 +8,12 @@ import {
   TipoOperacionPppoe as PrismaTipoOperacionPppoe,
 } from '@prisma/client';
 
+import {
+  Paginacion,
+  ResultadoPaginado,
+  aDesplazamiento,
+  crearResultadoPaginado,
+} from 'src/common/hexagonal/paginacion';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 import { EstadoAccesoInternet } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
@@ -20,17 +26,14 @@ import {
 import { EstadoCuentaPppoe } from '../../domain/enums/estado-cuenta-pppoe.enum';
 
 import {
-  ClientePppoeCuentaFindManyFilters,
-  ClientePppoeCuentaPaginatedResult,
+  ClientePppoeCuentaFiltros,
+  ClientePppoeCuentaListItem,
   OrigenCuentaPppoe,
 } from '../../domain/read-models/cliente-pppoe-cuenta-listado.read-model';
 
 import { ClientePppoeCuentaDetalleReadModel } from '../../domain/read-models/cliente-pppoe-cuenta-detalle.read-model';
 
-import {
-  BuscarDetalleCuentaPppoeParams,
-  ClientePppoeCuentaQueryPort,
-} from '../../domain/ports/cliente-pppoe-cuenta-query.port';
+import { ClientePppoeCuentaQueryPort } from '../../domain/ports/cliente-pppoe-cuenta-query.port';
 
 @Injectable()
 export class ClientePppoeCuentaPrismaQuery
@@ -39,19 +42,12 @@ export class ClientePppoeCuentaPrismaQuery
   constructor(private readonly prisma: PrismaService) {}
 
   async findMany(
-    filters: ClientePppoeCuentaFindManyFilters,
-  ): Promise<ClientePppoeCuentaPaginatedResult> {
-    this.assertPositiveInteger(filters.empresaId, 'empresaId');
+    filtros: ClientePppoeCuentaFiltros,
+    paginacion: Paginacion,
+  ): Promise<ResultadoPaginado<ClientePppoeCuentaListItem>> {
+    const where = this.construirWhere(filtros);
 
-    this.assertPositiveInteger(filters.page, 'page');
-
-    this.assertPositiveInteger(filters.limit, 'limit');
-
-    const where = this.buildWhere(filters);
-
-    const skip = (filters.page - 1) * filters.limit;
-
-    const [total, records] = await Promise.all([
+    const [total, records] = await this.prisma.$transaction([
       this.prisma.clientePppoeCuenta.count({
         where,
       }),
@@ -188,15 +184,12 @@ export class ClientePppoeCuentaPrismaQuery
             id: 'desc',
           },
         ],
-
-        skip,
-
-        take: filters.limit,
+        ...aDesplazamiento(paginacion),
       }),
     ]);
 
-    return {
-      data: records.map((record) => {
+    return crearResultadoPaginado(
+      records.map((record) => {
         /*
          * El acceso debería contener servicioInternet.
          *
@@ -294,32 +287,16 @@ export class ClientePppoeCuentaPrismaQuery
                 },
         };
       }),
-
-      meta: {
-        total,
-
-        page: filters.page,
-
-        limit: filters.limit,
-
-        totalPages: Math.ceil(total / filters.limit),
-      },
-    };
+      total,
+      paginacion,
+    );
   }
 
   async findDetailById(
-    params: BuscarDetalleCuentaPppoeParams,
+    cuentaPppoeId: number,
   ): Promise<ClientePppoeCuentaDetalleReadModel | null> {
-    this.assertPositiveInteger(params.empresaId, 'empresaId');
-
-    this.assertPositiveInteger(params.cuentaPppoeId, 'cuentaPppoeId');
-
-    const record = await this.prisma.clientePppoeCuenta.findFirst({
-      where: {
-        id: params.cuentaPppoeId,
-
-        empresaId: params.empresaId,
-      },
+    const record = await this.prisma.clientePppoeCuenta.findUnique({
+      where: { id: cuentaPppoeId },
 
       select: {
         id: true,
@@ -811,14 +788,12 @@ export class ClientePppoeCuentaPrismaQuery
     };
   }
 
-  private buildWhere(
-    filters: ClientePppoeCuentaFindManyFilters,
+  private construirWhere(
+    filters: ClientePppoeCuentaFiltros,
   ): Prisma.ClientePppoeCuentaWhereInput {
     const searchTokens = this.normalizeSearchTokens(filters.search);
 
     return {
-      empresaId: filters.empresaId,
-
       adoptadoEn:
         filters.origen === OrigenCuentaPppoe.EXTERNA_ADOPTADA
           ? {
@@ -1052,12 +1027,6 @@ export class ClientePppoeCuentaPrismaQuery
     }
 
     return found;
-  }
-
-  private assertPositiveInteger(value: number, field: string): void {
-    if (!Number.isInteger(value) || value <= 0) {
-      throw new Error(`${field} debe ser un entero positivo.`);
-    }
   }
 
   private resolveOrigen(

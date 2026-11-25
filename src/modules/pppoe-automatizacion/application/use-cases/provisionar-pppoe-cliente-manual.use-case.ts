@@ -103,8 +103,6 @@ export class ProvisionarPppoeClienteManualUseCase {
      * perteneciente a ClienteInstalacion.
      */
     const detalle = await this.cuentasPppoe.obtenerDetalle({
-      empresaId: input.empresaId,
-
       cuentaPppoeId: input.cuentaPppoeId,
     });
 

@@ -10,7 +10,6 @@ import { ClientePppoeCuentaProtegidaInstalacion } from '../../domain/read-models
 
 import { EstadoCuentaPppoe } from '../../domain/enums/estado-cuenta-pppoe.enum';
 import { ClientePppoeCuentaEntity } from '../../domain/entities/cliente-pppoe-cuenta.entity';
-import { EstadoAccesoInternet } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
 
 @Injectable()
 export class ClientePppoeCuentaPrismaRepository

@@ -1,9 +1,6 @@
-import {
-  BadRequestException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+
+import { CuentaPppoeNoEncontradaError } from '../../domain/errors/pppoe-cliente-cuenta.errors';
 
 import {
   CLIENTE_PPPOE_CUENTA_REPOSITORY,
@@ -30,8 +27,6 @@ import {
 } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 
 export type ConsultarCredencialesPppoeCuentaInput = {
-  empresaId: number;
-
   cuentaPppoeId: number;
 
   operadorId: number;
@@ -70,24 +65,8 @@ export class ConsultarCredencialesPppoeCuentaUseCase {
   async execute(
     input: ConsultarCredencialesPppoeCuentaInput,
   ): Promise<ConsultarCredencialesPppoeCuentaResult> {
-    this.validateInput(input);
-
-    /**
-     * Primero consultamos mediante el read model,
-     * aplicando el scope de empresa.
-     *
-     * De esta forma una cuenta perteneciente a otra empresa
-     * se comporta como inexistente.
-     */
-    const detalle = await this.cuentaQuery.findDetailById({
-      empresaId: input.empresaId,
-
-      cuentaPppoeId: input.cuentaPppoeId,
-    });
-
-    if (!detalle) {
-      throw new NotFoundException('Cuenta PPPoE no encontrada.');
-    }
+    const detalle = await this.cuentaQuery.findDetailById(input.cuentaPppoeId);
+    if (!detalle) throw new CuentaPppoeNoEncontradaError();
 
     /**
      * La entidad contiene únicamente el material cifrado.
@@ -95,9 +74,7 @@ export class ConsultarCredencialesPppoeCuentaUseCase {
      */
     const cuenta = await this.cuentaRepository.findById(input.cuentaPppoeId);
 
-    if (!cuenta || cuenta.empresaId !== input.empresaId) {
-      throw new NotFoundException('Cuenta PPPoE no encontrada.');
-    }
+    if (!cuenta) throw new CuentaPppoeNoEncontradaError();
 
     const contrasena = await this.secretCipher.decrypt(cuenta.secretoProtegido);
 
@@ -108,7 +85,7 @@ export class ConsultarCredencialesPppoeCuentaUseCase {
      * Nunca enviamos la contraseña a auditoría.
      */
     await this.auditoria.registrarEventoCuenta({
-      empresaId: input.empresaId,
+      empresaId: cuenta.empresaId,
 
       clienteId: detalle.cliente.id,
 
@@ -151,19 +128,5 @@ export class ConsultarCredencialesPppoeCuentaUseCase {
 
       contrasena,
     };
-  }
-
-  private validateInput(input: ConsultarCredencialesPppoeCuentaInput): void {
-    this.assertPositiveInteger(input.empresaId, 'empresaId');
-
-    this.assertPositiveInteger(input.cuentaPppoeId, 'cuentaPppoeId');
-
-    this.assertPositiveInteger(input.operadorId, 'operadorId');
-  }
-
-  private assertPositiveInteger(value: number, field: string): void {
-    if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
-    }
   }
 }
