@@ -130,12 +130,6 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
       generadoPorId: input.operadorId,
     });
 
-    if (cuentaCreada.id === null) {
-      throw new Error(
-        'La cuenta PPPoE fue creada sin un identificador persistido.',
-      );
-    }
-
     await this.registrarAuditoriasPrealta({
       input,
 
@@ -161,10 +155,6 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
     cuenta: ClientePppoeCuentaReadModel;
   }): Promise<PrepararPrealtaPppoeResult> {
     const { input, perfilHomologacionId, cuenta } = params;
-
-    if (cuenta.id === null) {
-      throw new Error('La cuenta PPPoE existente no tiene identificador.');
-    }
 
     if (cuenta.empresaId !== input.empresaId) {
       throw new ProvisionamientoPppoeEstadoInvalidoError(
@@ -303,12 +293,6 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
     cuenta: ClientePppoeCuentaReadModel,
     creada: boolean,
   ): PrepararPrealtaPppoeResult {
-    if (cuenta.id === null) {
-      throw new Error(
-        'No es posible generar el resultado de una cuenta PPPoE sin identificador.',
-      );
-    }
-
     return {
       cuentaPppoeId: cuenta.id,
 

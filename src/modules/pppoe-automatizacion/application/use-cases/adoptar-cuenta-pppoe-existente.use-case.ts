@@ -1,3 +1,4 @@
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
 import { Inject, Injectable } from '@nestjs/common';
 import {
   PPPOE_CLIENTE_CUENTA,
@@ -89,6 +90,7 @@ export class AdoptarCuentaPppoeExistenteUseCase {
     /^NV-\d{4}\/\d{2}\/\d{2}MH(?:[01]\d|2[0-3]):[0-5]\d#$/;
 
   constructor(
+    @Inject(RELOJ) private readonly reloj: RelojPort,
     @Inject(PPPOE_ACCESO_INTERNET)
     private readonly accesosInternet: PppoeAccesoInternetFacadePort,
 
@@ -261,7 +263,7 @@ export class AdoptarCuentaPppoeExistenteUseCase {
 
     const fechaAdopcion = normalized.fechaReferencia
       ? new Date(normalized.fechaReferencia)
-      : new Date();
+      : this.reloj.ahora();
 
     const persisted = await this.persistence.persistir({
       empresaId: normalized.empresaId,

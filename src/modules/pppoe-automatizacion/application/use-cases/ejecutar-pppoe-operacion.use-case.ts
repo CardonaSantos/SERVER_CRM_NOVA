@@ -1,3 +1,4 @@
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import {
@@ -131,6 +132,7 @@ export class EjecutarPppoeOperacionUseCase {
   ]);
 
   constructor(
+    @Inject(RELOJ) private readonly reloj: RelojPort,
     @Inject(PPPOE_OPERACION)
     private readonly operaciones: PppoeOperacionFacadePort,
     private readonly resolverContexto: ResolverContextoEjecucionPppoeService,
@@ -305,7 +307,7 @@ export class EjecutarPppoeOperacionUseCase {
        * 4. SINCRONIZAR CUENTA LOCAL
        * ======================================================
        */
-      const fechaSincronizacion = new Date();
+      const fechaSincronizacion = this.reloj.ahora();
 
       cuenta = await this.applySuccessfulAccountResult({
         operacion: aggregate.operacion,
@@ -1354,10 +1356,6 @@ export class EjecutarPppoeOperacionUseCase {
   }
 
   private requirePersistedId(operacion: PppoeOperacionReadModel): number {
-    if (operacion.id === null) {
-      throw new Error('La operación PPPoE no contiene identificador.');
-    }
-
     return operacion.id;
   }
 

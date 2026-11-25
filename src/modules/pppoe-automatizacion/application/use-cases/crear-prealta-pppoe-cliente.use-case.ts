@@ -63,12 +63,6 @@ export class CrearPrealtaPppoeClienteUseCase {
 
     const acceso = await this.resolverAccesoInternet(input);
 
-    if (acceso.id === null) {
-      throw new Error(
-        'El acceso de internet no tiene un identificador persistido.',
-      );
-    }
-
     return this.pppoePrealta.preparar({
       empresaId: input.empresaId,
 
@@ -103,12 +97,6 @@ export class CrearPrealtaPppoeClienteUseCase {
 
     if (!accesoExistente) {
       return this.crearAccesoInternet(input);
-    }
-
-    if (accesoExistente.id === null) {
-      throw new Error(
-        'El acceso PPPoE existente no tiene un identificador persistido.',
-      );
     }
 
     const cuentaExistente = await this.cuentasPppoe.buscarPorAccesoInternet(

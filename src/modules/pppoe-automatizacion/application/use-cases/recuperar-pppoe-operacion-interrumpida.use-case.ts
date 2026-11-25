@@ -1,3 +1,4 @@
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
 import { Inject, Injectable } from '@nestjs/common';
 
 import {
@@ -93,6 +94,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
   ]);
 
   constructor(
+    @Inject(RELOJ) private readonly reloj: RelojPort,
     @Inject(PPPOE_OPERACION)
     private readonly operaciones: PppoeOperacionFacadePort,
     @Inject(PPPOE_OPERACION_AUDITORIA)
@@ -107,7 +109,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
   ): Promise<EjecutarOperacionPppoeResult> {
     this.validateInput(input);
 
-    const fecha = input.fecha ?? new Date();
+    const fecha = input.fecha ?? this.reloj.ahora();
 
     let aggregate = await this.loadAggregate({
       empresaId: input.empresaId,
