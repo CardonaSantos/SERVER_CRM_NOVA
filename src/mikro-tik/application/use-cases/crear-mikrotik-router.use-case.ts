@@ -14,7 +14,7 @@ import {
 import {
   MIKROTIK_ROUTER_SECRET_CIPHER,
   MikrotikRouterSecretCipherPort,
-} from 'src/modules/mikrotik-router-credentials/application/ports/mikrotik-router-secret-cipher.port';
+} from 'src/modules/mikrotik-router-credentials/public/mikrotik-router-secret-cipher.port';
 import { MikrotikRouterEntity } from 'src/mikro-tik/domain/entities/mikrotik-router-entity';
 
 @Injectable()

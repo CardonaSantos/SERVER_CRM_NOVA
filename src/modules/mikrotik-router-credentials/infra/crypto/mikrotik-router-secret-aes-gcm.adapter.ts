@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 
-import { MikrotikRouterSecretCipherPort } from '../../application/ports/mikrotik-router-secret-cipher.port';
+import { MikrotikRouterSecretCipherPort } from '../../public/mikrotik-router-secret-cipher.port';
 
 type MikrotikRouterSecretEnvelope = {
   formato: 'MIKROTIK_ROUTER_AES_GCM';
@@ -19,7 +19,7 @@ type MikrotikRouterSecretEnvelope = {
 };
 
 @Injectable()
-export class AesGcmMikrotikRouterSecretCipher
+export class MikrotikRouterSecretAesGcmAdapter
   implements MikrotikRouterSecretCipherPort
 {
   private static readonly ALGORITHM = 'aes-256-gcm';
@@ -41,14 +41,14 @@ export class AesGcmMikrotikRouterSecretCipher
 
     const key = this.getKey(versionClave);
 
-    const iv = randomBytes(AesGcmMikrotikRouterSecretCipher.IV_LENGTH);
+    const iv = randomBytes(MikrotikRouterSecretAesGcmAdapter.IV_LENGTH);
 
     const cipher = createCipheriv(
-      AesGcmMikrotikRouterSecretCipher.ALGORITHM,
+      MikrotikRouterSecretAesGcmAdapter.ALGORITHM,
       key,
       iv,
       {
-        authTagLength: AesGcmMikrotikRouterSecretCipher.AUTH_TAG_LENGTH,
+        authTagLength: MikrotikRouterSecretAesGcmAdapter.AUTH_TAG_LENGTH,
       },
     );
 
@@ -59,9 +59,9 @@ export class AesGcmMikrotikRouterSecretCipher
     ]);
 
     const envelope: MikrotikRouterSecretEnvelope = {
-      formato: AesGcmMikrotikRouterSecretCipher.FORMAT,
+      formato: MikrotikRouterSecretAesGcmAdapter.FORMAT,
 
-      versionFormato: AesGcmMikrotikRouterSecretCipher.FORMAT_VERSION,
+      versionFormato: MikrotikRouterSecretAesGcmAdapter.FORMAT_VERSION,
 
       versionClave,
 
@@ -134,7 +134,7 @@ export class AesGcmMikrotikRouterSecretCipher
 
     const envelope = parsed as Record<string, unknown>;
 
-    if (envelope.formato !== AesGcmMikrotikRouterSecretCipher.FORMAT) {
+    if (envelope.formato !== MikrotikRouterSecretAesGcmAdapter.FORMAT) {
       return null;
     }
 
@@ -154,13 +154,13 @@ export class AesGcmMikrotikRouterSecretCipher
 
     const authTag = this.decodeBase64(envelope.authTag, 'authTag');
 
-    if (iv.length !== AesGcmMikrotikRouterSecretCipher.IV_LENGTH) {
+    if (iv.length !== MikrotikRouterSecretAesGcmAdapter.IV_LENGTH) {
       throw new Error(
         'El IV de la credencial MikroTik no tiene una longitud válida.',
       );
     }
 
-    if (authTag.length !== AesGcmMikrotikRouterSecretCipher.AUTH_TAG_LENGTH) {
+    if (authTag.length !== MikrotikRouterSecretAesGcmAdapter.AUTH_TAG_LENGTH) {
       throw new Error(
         'El auth tag de la credencial MikroTik no tiene una longitud válida.',
       );
@@ -168,11 +168,11 @@ export class AesGcmMikrotikRouterSecretCipher
 
     try {
       const decipher = createDecipheriv(
-        AesGcmMikrotikRouterSecretCipher.ALGORITHM,
+        MikrotikRouterSecretAesGcmAdapter.ALGORITHM,
         key,
         iv,
         {
-          authTagLength: AesGcmMikrotikRouterSecretCipher.AUTH_TAG_LENGTH,
+          authTagLength: MikrotikRouterSecretAesGcmAdapter.AUTH_TAG_LENGTH,
         },
       );
 
@@ -218,8 +218,8 @@ export class AesGcmMikrotikRouterSecretCipher
 
       if (
         data.length <=
-        AesGcmMikrotikRouterSecretCipher.IV_LENGTH +
-          AesGcmMikrotikRouterSecretCipher.AUTH_TAG_LENGTH
+        MikrotikRouterSecretAesGcmAdapter.IV_LENGTH +
+          MikrotikRouterSecretAesGcmAdapter.AUTH_TAG_LENGTH
       ) {
         throw new Error('Credencial legacy incompleta.');
       }
@@ -237,7 +237,7 @@ export class AesGcmMikrotikRouterSecretCipher
       const key = Buffer.from(legacyKey.slice(0, 32));
 
       const decipher = createDecipheriv(
-        AesGcmMikrotikRouterSecretCipher.ALGORITHM,
+        MikrotikRouterSecretAesGcmAdapter.ALGORITHM,
         key,
         iv,
       );
@@ -257,36 +257,6 @@ export class AesGcmMikrotikRouterSecretCipher
     }
   }
 
-  private decodeEnvelope(passwordEnc: string): MikrotikRouterSecretEnvelope {
-    const encoded = passwordEnc?.trim();
-
-    if (!encoded) {
-      throw new Error(
-        'La credencial cifrada del router MikroTik es obligatoria.',
-      );
-    }
-
-    try {
-      const serialized = this.decodeBase64(encoded, 'passwordEnc').toString(
-        'utf8',
-      );
-
-      const parsed = JSON.parse(serialized) as unknown;
-
-      this.assertEnvelope(parsed);
-
-      return parsed;
-    } catch (error) {
-      if (error instanceof Error && error.message.startsWith('La credencial')) {
-        throw error;
-      }
-
-      throw new Error(
-        'La credencial cifrada del router MikroTik tiene un formato inválido.',
-      );
-    }
-  }
-
   private assertEnvelope(
     value: unknown,
   ): asserts value is MikrotikRouterSecretEnvelope {
@@ -298,7 +268,7 @@ export class AesGcmMikrotikRouterSecretCipher
 
     const envelope = value as Record<string, unknown>;
 
-    if (envelope.formato !== AesGcmMikrotikRouterSecretCipher.FORMAT) {
+    if (envelope.formato !== MikrotikRouterSecretAesGcmAdapter.FORMAT) {
       throw new Error(
         'La credencial cifrada del router MikroTik utiliza un formato no soportado.',
       );
@@ -306,7 +276,7 @@ export class AesGcmMikrotikRouterSecretCipher
 
     if (
       envelope.versionFormato !==
-      AesGcmMikrotikRouterSecretCipher.FORMAT_VERSION
+      MikrotikRouterSecretAesGcmAdapter.FORMAT_VERSION
     ) {
       throw new Error(
         'La versión del formato de la credencial MikroTik no es compatible.',

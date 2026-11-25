@@ -18,7 +18,7 @@ import { MIKROTIK_ROUTER_REPOSITORY } from '../../infra/tokens/mikrotik-router.t
 import {
   MIKROTIK_ROUTER_SECRET_CIPHER,
   MikrotikRouterSecretCipherPort,
-} from 'src/modules/mikrotik-router-credentials/application/ports/mikrotik-router-secret-cipher.port';
+} from 'src/modules/mikrotik-router-credentials/public/mikrotik-router-secret-cipher.port';
 
 @Injectable()
 export class ResolverContextoConexionMikrotikUseCase

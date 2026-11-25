@@ -1,21 +1,22 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { MIKROTIK_ROUTER_SECRET_CIPHER } from './application/ports/mikrotik-router-secret-cipher.port';
-import { AesGcmMikrotikRouterSecretCipher } from './infra/crypto/aes-gcm-mikrotik-router-secret-cipher';
 
+import { MikrotikRouterSecretAesGcmAdapter } from './infra/crypto/mikrotik-router-secret-aes-gcm.adapter';
+import { MIKROTIK_ROUTER_SECRET_CIPHER } from './public/mikrotik-router-secret-cipher.port';
+
+/**
+ * Cifrado de las credenciales administrativas de los routers MikroTik.
+ *
+ * API pública: `public/mikrotik-router-secret-cipher.port.ts`
+ * (token MIKROTIK_ROUTER_SECRET_CIPHER). ConfigService es global.
+ */
 @Module({
-  imports: [ConfigModule],
-
   providers: [
-    AesGcmMikrotikRouterSecretCipher,
-
+    // Adaptadores
     {
       provide: MIKROTIK_ROUTER_SECRET_CIPHER,
-
-      useExisting: AesGcmMikrotikRouterSecretCipher,
+      useClass: MikrotikRouterSecretAesGcmAdapter,
     },
   ],
-
   exports: [MIKROTIK_ROUTER_SECRET_CIPHER],
 })
 export class MikrotikRouterCredentialsModule {}
