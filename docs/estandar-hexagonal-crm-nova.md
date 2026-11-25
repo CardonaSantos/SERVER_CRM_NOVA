@@ -364,6 +364,14 @@ implementación vive en `infra/<tecnologia>/`.
   `tx` ni `Prisma.TransactionClient` fuera de infra.
 - Concurrencia: si dos escrituras pueden pisarse, la implementación usa `updateMany` con
   condición de estado/versión y lanza un `DomainError` de tipo `CONFLICTO` si no afectó filas.
+- **Atomicidad entre módulos: unidad de trabajo** 🆕. Cuando un caso de uso necesita escribir de
+  forma atómica en tablas de **otros** módulos, no entra a sus entidades ni mappers: inyecta
+  `UNIDAD_DE_TRABAJO` (`src/common/transaccion/unidad-de-trabajo.port.ts`) y llama a las
+  fachadas dentro de `ejecutar(() => …, { aislamiento? })`. Los repositorios Prisma leen el
+  cliente de `PrismaTransaccional.cliente` (no `PrismaService` directo) para unirse a la
+  transacción abierta; fuera de una unidad se comportan igual que antes. Dentro de `ejecutar`
+  no hay I/O remoto (SSH, Meta, Spaces). El puerto de intención (`<modulo>-transaction.port.ts`)
+  sigue siendo la opción cuando todas las tablas son del propio módulo.
 
 ### 5.6 Efectos externos (MikroTik, WhatsApp, Spaces)
 Patrón del step runner de `pppoe-automatizacion`, obligatorio para todo lo que toca el mundo
@@ -789,6 +797,7 @@ Todas creadas y con pruebas en `refactorizacion comun #1–#5`. La de ESLint que
 | Paginación común | `src/common/hexagonal/paginacion.ts` + `src/common/http/paginacion-query.dto.ts` | §7.6 |
 | `RELOJ` + adaptador + `RelojFijo` | `src/common/reloj/` (módulo global) | §5.7; el adaptador usa `src/Utils/dayjs.config.ts` |
 | `@Actor()` + `ActorHttp` | `src/auth/decoradores/actor.decorator.ts` | Lee `UsuarioAutenticado` de `req.user` e IP de `req.ip` |
+| Unidad de trabajo | `src/common/transaccion/` (módulo global) | §5.5: `UNIDAD_DE_TRABAJO` + `PrismaTransaccional` (AsyncLocalStorage). Agregada en C3 (`refactorizacion comun #6`) |
 | (Opcional) reglas de ESLint | `eslint.config.mjs` | `no-restricted-imports` por capa para que §1.1 lo vigile el lint. Sin dependencias nuevas |
 
 ---
