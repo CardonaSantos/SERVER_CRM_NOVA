@@ -6,7 +6,7 @@ import {
   CanalOperacionPppoe,
   EstadoOperacionPppoe,
   TipoOperacionPppoe,
-} from '../../domain/enums/pppoe-operacion-operacion-paso.enums';
+} from '../../domain/enums/pppoe-operacion.enum';
 
 import {
   PPPOE_OPERACION_QUERY,

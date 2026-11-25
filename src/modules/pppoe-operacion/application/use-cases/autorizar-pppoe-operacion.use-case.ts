@@ -8,9 +8,9 @@ import {
 } from '@nestjs/common';
 import { PppoeOperacionEntity } from '../../domain/entities/pppoe-operacion.entity';
 import {
-  OPERADOR_REAUTENTICACION_PORT,
+  OPERADOR_REAUTENTICACION,
   OperadorReautenticacionPort,
-} from '../../domain/ports/operador-reautenticacion.port';
+} from '../ports/operador-reautenticacion.port';
 import {
   PPPOE_OPERACION_REPOSITORY,
   PppoeOperacionRepositoryPort,
@@ -65,7 +65,7 @@ export class AutorizarPppoeOperacionUseCase {
     @Inject(PPPOE_OPERACION_REPOSITORY)
     private readonly repository: PppoeOperacionRepositoryPort,
 
-    @Inject(OPERADOR_REAUTENTICACION_PORT)
+    @Inject(OPERADOR_REAUTENTICACION)
     private readonly operadorReautenticacion: OperadorReautenticacionPort,
   ) {}
 

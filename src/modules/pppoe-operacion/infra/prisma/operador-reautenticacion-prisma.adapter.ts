@@ -7,7 +7,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import {
   OperadorReautenticacionPort,
   ValidarReautenticacionOperadorParams,
-} from '../../../domain/ports/operador-reautenticacion.port';
+} from '../../application/ports/operador-reautenticacion.port';
 
 /**
  * Valida nuevamente las credenciales de un operador

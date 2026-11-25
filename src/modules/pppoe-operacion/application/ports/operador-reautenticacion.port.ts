@@ -1,6 +1,4 @@
-export const OPERADOR_REAUTENTICACION_PORT = Symbol(
-  'OPERADOR_REAUTENTICACION_PORT',
-);
+export const OPERADOR_REAUTENTICACION = Symbol('OPERADOR_REAUTENTICACION');
 
 /**
  * Datos necesarios para validar nuevamente la contraseña

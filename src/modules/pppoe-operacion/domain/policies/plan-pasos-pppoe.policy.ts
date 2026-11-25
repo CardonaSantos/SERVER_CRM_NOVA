@@ -1,9 +1,9 @@
 import {
   TipoOperacionPppoe,
   TipoPasoPppoe,
-} from '../domain/enums/pppoe-operacion-operacion-paso.enums';
+} from '../enums/pppoe-operacion.enum';
 
-import { CrearPppoeOperacionPasoInicialProps } from '../domain/props/pppoe-operacion-paso.props';
+import { CrearPppoeOperacionPasoInicialProps } from '../props/pppoe-operacion-paso.props';
 
 /**
  * Construye el plan técnico correspondiente
@@ -31,7 +31,7 @@ import { CrearPppoeOperacionPasoInicialProps } from '../domain/props/pppoe-opera
  *
  * Esa diferencia no pertenece al plan técnico.
  */
-export class PppoeOperacionPlanFactory {
+export class PoliticaPlanPasosPppoe {
   /**
    * Construye los pasos iniciales de una operación.
    *

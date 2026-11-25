@@ -3,8 +3,8 @@ import {
   CanalOperacionPppoe,
   EstadoOperacionPppoe,
   TipoOperacionPppoe,
-} from '../enums/pppoe-operacion-operacion-paso.enums';
-import { DomainJsonObject } from './domain-json.type';
+} from '../enums/pppoe-operacion.enum';
+import { DomainJsonObject } from './json-dominio.props';
 import { CrearPppoeOperacionPasoInicialProps } from './pppoe-operacion-paso.props';
 
 /**

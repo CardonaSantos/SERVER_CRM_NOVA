@@ -3,10 +3,10 @@ import {
   Prisma,
 } from '@prisma/client';
 
-import { PppoeOperacionPrismaEnumMapper } from './pppoe-operacion-prisma-enum.mapper';
+import { PppoeOperacionPrismaEnumMapper } from './pppoe-operacion-enum-prisma.mapper';
 import { PppoeOperacionPasoEntity } from '../../domain/entities/pppoe-operacion-paso.entity';
 import { CrearPppoeOperacionPasoInicialProps } from '../../domain/props/pppoe-operacion-paso.props';
-import { EstadoPasoPppoe } from '../../domain/enums/pppoe-operacion-operacion-paso.enums';
+import { EstadoPasoPppoe } from '../../domain/enums/pppoe-operacion.enum';
 
 /**
  * Convierte registros Prisma de PppoeOperacionPaso

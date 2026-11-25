@@ -36,7 +36,7 @@ import {
   EstadoPasoPppoe,
   TipoOperacionPppoe,
   TipoPasoPppoe,
-} from '../enums/pppoe-operacion-operacion-paso.enums';
+} from '../enums/pppoe-operacion.enum';
 
 /**
  * Resultado general sanitizado almacenado

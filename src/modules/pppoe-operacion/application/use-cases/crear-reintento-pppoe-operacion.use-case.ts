@@ -10,13 +10,13 @@ import { PppoeOperacionEntity } from '../../domain/entities/pppoe-operacion.enti
 import {
   CanalOperacionPppoe,
   EstadoOperacionPppoe,
-} from '../../domain/enums/pppoe-operacion-operacion-paso.enums';
+} from '../../domain/enums/pppoe-operacion.enum';
 import {
   PPPOE_OPERACION_REPOSITORY,
   PppoeOperacionAggregate,
   PppoeOperacionRepositoryPort,
 } from '../../domain/ports/pppoe-operacion-repository.port';
-import { PppoeOperacionPlanFactory } from '../../factories/pppoe-operacion-plan.factory';
+import { PoliticaPlanPasosPppoe } from '../../domain/policies/plan-pasos-pppoe.policy';
 
 export type CrearReintentoPppoeOperacionUseCaseResult =
   PppoeOperacionAggregate & {
@@ -181,7 +181,7 @@ export class CrearReintentoPppoeOperacionUseCase {
 
     const reintento = this.createRetryEntity(ultimoIntento, input);
 
-    const pasos = PppoeOperacionPlanFactory.crearPasos(reintento.tipo);
+    const pasos = PoliticaPlanPasosPppoe.crearPasos(reintento.tipo);
 
     const createdAggregate = await this.repository.createWithSteps({
       operacion: reintento,

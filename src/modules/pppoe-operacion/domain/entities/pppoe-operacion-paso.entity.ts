@@ -3,10 +3,7 @@ import {
   PppoeOperacionPasoProps,
 } from '../props/pppoe-operacion-paso.props';
 
-import {
-  EstadoPasoPppoe,
-  TipoPasoPppoe,
-} from '../enums/pppoe-operacion-operacion-paso.enums';
+import { EstadoPasoPppoe, TipoPasoPppoe } from '../enums/pppoe-operacion.enum';
 
 /**
  * Datos permitidos al comenzar la ejecución de un paso.

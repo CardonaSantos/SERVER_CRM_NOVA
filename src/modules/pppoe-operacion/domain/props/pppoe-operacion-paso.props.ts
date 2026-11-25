@@ -1,7 +1,4 @@
-import {
-  EstadoPasoPppoe,
-  TipoPasoPppoe,
-} from '../enums/pppoe-operacion-operacion-paso.enums';
+import { EstadoPasoPppoe, TipoPasoPppoe } from '../enums/pppoe-operacion.enum';
 
 /**
  * Estado completo de un paso técnico.

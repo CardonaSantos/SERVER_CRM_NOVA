@@ -1,7 +1,7 @@
 import {
   EstadoOperacionPppoe,
   TipoOperacionPppoe,
-} from '../enums/pppoe-operacion-operacion-paso.enums';
+} from '../enums/pppoe-operacion.enum';
 
 import { PppoeOperacionPasoEntity } from '../entities/pppoe-operacion-paso.entity';
 

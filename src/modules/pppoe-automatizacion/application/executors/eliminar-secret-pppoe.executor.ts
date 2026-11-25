@@ -124,7 +124,7 @@ export class EliminarSecretPppoeExecutor {
      * Los órdenes pertenecen al agregado persistido.
      *
      * Para las nuevas operaciones ELIMINAR_SECRET,
-     * PppoeOperacionPlanFactory debe producir:
+     * PoliticaPlanPasosPppoe debe producir:
      *
      * 1 CONECTAR_ROUTER
      * 2 BUSCAR_SECRET

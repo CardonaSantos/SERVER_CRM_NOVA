@@ -5,13 +5,13 @@ import {
   CanalOperacionPppoe,
   EstadoOperacionPppoe,
   TipoOperacionPppoe,
-} from '../../domain/enums/pppoe-operacion-operacion-paso.enums';
+} from '../../domain/enums/pppoe-operacion.enum';
 import {
   PPPOE_OPERACION_REPOSITORY,
   PppoeOperacionAggregate,
   PppoeOperacionRepositoryPort,
 } from '../../domain/ports/pppoe-operacion-repository.port';
-import { PppoeOperacionPlanFactory } from '../../factories/pppoe-operacion-plan.factory';
+import { PoliticaPlanPasosPppoe } from '../../domain/policies/plan-pasos-pppoe.policy';
 
 /**
  * INPUT DEL CASO DE USO
@@ -226,7 +226,7 @@ export class CrearPppoeOperacionUseCase {
      *  PLANIFICACIÓN DE PASOS
      */
 
-    const steps = PppoeOperacionPlanFactory.crearPasos(input.tipo);
+    const steps = PoliticaPlanPasosPppoe.crearPasos(input.tipo);
 
     /**
      *  PERSISTENCIA DEL AGREGADO

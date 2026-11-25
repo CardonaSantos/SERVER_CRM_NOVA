@@ -17,7 +17,7 @@ import {
   PppoeOperacionRepositoryPort,
   ReclamarPppoeOperacionParaEjecucionParams,
 } from '../../domain/ports/pppoe-operacion-repository.port';
-import { EstadoOperacionPppoe } from '../../domain/enums/pppoe-operacion-operacion-paso.enums';
+import { EstadoOperacionPppoe } from '../../domain/enums/pppoe-operacion.enum';
 import {
   BuscarPppoeOperacionDetalleParams,
   PppoeOperacionQueryPort,
@@ -26,7 +26,7 @@ import { PppoeOperacionPrismaMapper } from './pppoe-operacion-prisma.mapper';
 import { PppoeOperacionPasoPrismaMapper } from './pppoe-operacion-paso-prisma.mapper';
 import { PppoeOperacionEntity } from '../../domain/entities/pppoe-operacion.entity';
 import { PppoeOperacionPasoEntity } from '../../domain/entities/pppoe-operacion-paso.entity';
-import { PppoeOperacionPrismaEnumMapper } from './pppoe-operacion-prisma-enum.mapper';
+import { PppoeOperacionPrismaEnumMapper } from './pppoe-operacion-enum-prisma.mapper';
 import {
   PppoeOperacionFindManyFilters,
   PppoeOperacionPaginatedResult,

@@ -11,11 +11,11 @@ import { IniciarPppoeOperacionUseCase } from './application/use-cases/iniciar-pp
 import { ListarPppoeOperacionesUseCase } from './application/use-cases/listar-pppoe-operaciones.use-case';
 import { ObtenerDetallePppoeOperacionUseCase } from './application/use-cases/obtener-detalle-pppoe-operacion.use-case';
 
-import { OPERADOR_REAUTENTICACION_PORT } from './domain/ports/operador-reautenticacion.port';
+import { OPERADOR_REAUTENTICACION } from './application/ports/operador-reautenticacion.port';
 import { PPPOE_OPERACION_QUERY } from './domain/ports/pppoe-operacion-query.port';
 import { PPPOE_OPERACION_REPOSITORY } from './domain/ports/pppoe-operacion-repository.port';
 
-import { OperadorReautenticacionPrismaAdapter } from './infra/prisma/adapters/operador-reautenticacion-prisma.adapter';
+import { OperadorReautenticacionPrismaAdapter } from './infra/prisma/operador-reautenticacion-prisma.adapter';
 import { PppoeOperacionPrismaRepository } from './infra/prisma/pppoe-operacion-prisma.repository';
 import { CrearPppoeOperacionUseCase } from './application/use-cases/crear-pppoe-operacion.use-case';
 
@@ -63,7 +63,7 @@ const useCases = [
      * Puerto de reautenticación.
      */
     {
-      provide: OPERADOR_REAUTENTICACION_PORT,
+      provide: OPERADOR_REAUTENTICACION,
       useExisting: OperadorReautenticacionPrismaAdapter,
     },
   ],

@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 
 import { PppoeOperacionPasoPrismaMapper } from './pppoe-operacion-paso-prisma.mapper';
 
-import { PppoeOperacionPrismaEnumMapper } from './pppoe-operacion-prisma-enum.mapper';
+import { PppoeOperacionPrismaEnumMapper } from './pppoe-operacion-enum-prisma.mapper';
 import {
   PppoeOperacionDetalle,
   PppoeOperacionListItem,

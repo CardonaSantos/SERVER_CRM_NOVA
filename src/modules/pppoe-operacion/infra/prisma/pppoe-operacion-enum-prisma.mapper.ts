@@ -14,7 +14,7 @@ import {
   EstadoPasoPppoe,
   TipoOperacionPppoe,
   TipoPasoPppoe,
-} from '../../domain/enums/pppoe-operacion-operacion-paso.enums';
+} from '../../domain/enums/pppoe-operacion.enum';
 
 /**
  * Convierte los tipos de operación generados por Prisma

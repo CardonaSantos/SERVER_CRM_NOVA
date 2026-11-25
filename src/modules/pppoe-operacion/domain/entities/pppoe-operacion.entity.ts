@@ -4,7 +4,7 @@ import {
   CanalOperacionPppoe,
   EstadoOperacionPppoe,
   TipoOperacionPppoe,
-} from '../enums/pppoe-operacion-operacion-paso.enums';
+} from '../enums/pppoe-operacion.enum';
 
 import {
   CrearPppoeOperacionProps,

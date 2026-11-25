@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { EstadoOperacionPppoe } from '../../domain/enums/pppoe-operacion-operacion-paso.enums';
+import { EstadoOperacionPppoe } from '../../domain/enums/pppoe-operacion.enum';
 
 import {
   PPPOE_OPERACION_REPOSITORY,

@@ -5,4 +5,4 @@ export {
   EstadoPasoPppoe,
   TipoOperacionPppoe,
   TipoPasoPppoe,
-} from '../domain/enums/pppoe-operacion-operacion-paso.enums';
+} from '../domain/enums/pppoe-operacion.enum';

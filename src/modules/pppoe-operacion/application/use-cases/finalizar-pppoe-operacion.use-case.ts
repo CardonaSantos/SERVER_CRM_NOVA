@@ -10,7 +10,7 @@ import { PppoeOperacionPasoEntity } from '../../domain/entities/pppoe-operacion-
 import {
   EstadoOperacionPppoe,
   TipoPasoPppoe,
-} from '../../domain/enums/pppoe-operacion-operacion-paso.enums';
+} from '../../domain/enums/pppoe-operacion.enum';
 import {
   PPPOE_OPERACION_REPOSITORY,
   PppoeOperacionAggregate,
