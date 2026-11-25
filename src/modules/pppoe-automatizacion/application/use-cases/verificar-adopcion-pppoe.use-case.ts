@@ -12,9 +12,9 @@ import {
 } from 'src/modules/pppoe-cliente-cuenta/domain/ports/pppoe-cliente-cuenta.port';
 
 import {
-  ClienteAccesoInternetRepositoryPort,
-  CLIENTE_ACCESO_INTERNET_REPOSITORY,
-} from 'src/modules/pppoe-acceso-internet/domain/ports/cliente-acceso-internet-repository.port';
+  PPPOE_ACCESO_INTERNET,
+  PppoeAccesoInternetFacadePort,
+} from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.facade.port';
 
 import { PerfilHomologacionRepositoryPort } from 'src/modules/pppoe-perfil-homologacion/domain/ports/ppoe-perfil-homologacion.port';
 
@@ -90,8 +90,8 @@ export class VerificarAdopcionPppoeUseCase {
     /^NV-\d{4}\/\d{2}\/\d{2}MH(?:[01]\d|2[0-3]):[0-5]\d#$/;
 
   constructor(
-    @Inject(CLIENTE_ACCESO_INTERNET_REPOSITORY)
-    private readonly accesoRepository: ClienteAccesoInternetRepositoryPort,
+    @Inject(PPPOE_ACCESO_INTERNET)
+    private readonly accesosInternet: PppoeAccesoInternetFacadePort,
 
     @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
     private readonly cuentaRepository: ClientePppoeCuentaRepositoryPort,
@@ -125,10 +125,9 @@ export class VerificarAdopcionPppoeUseCase {
      */
 
     const accesoExistente =
-      await this.accesoRepository.findPppoeVigenteByClienteId({
-        empresaId: normalized.empresaId,
-        clienteId: normalized.clienteId,
-      });
+      await this.accesosInternet.buscarPppoeVigenteDelCliente(
+        normalized.clienteId,
+      );
 
     if (accesoExistente) {
       throw new ConflictException(

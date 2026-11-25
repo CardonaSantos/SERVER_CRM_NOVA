@@ -7,12 +7,12 @@ import {
 
 import { EstadoAccesoInternet } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
 
-import { ClienteAccesoInternetEntity } from 'src/modules/pppoe-acceso-internet/domain/entities/cliente-acceso-internet.entity';
+import { AccesoInternetReadModel } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
 
 import {
-  ClienteAccesoInternetRepositoryPort,
-  CLIENTE_ACCESO_INTERNET_REPOSITORY,
-} from 'src/modules/pppoe-acceso-internet/domain/ports/cliente-acceso-internet-repository.port';
+  PPPOE_ACCESO_INTERNET,
+  PppoeAccesoInternetFacadePort,
+} from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.facade.port';
 
 export type ValidarAccesoDesinstalacionParams = {
   clienteId: number;
@@ -23,14 +23,14 @@ export type ValidarAccesoDesinstalacionParams = {
 @Injectable()
 export class ValidarAccesoDesinstalacionService {
   constructor(
-    @Inject(CLIENTE_ACCESO_INTERNET_REPOSITORY)
-    private readonly accesoInternetRepository: ClienteAccesoInternetRepositoryPort,
+    @Inject(PPPOE_ACCESO_INTERNET)
+    private readonly accesosInternet: PppoeAccesoInternetFacadePort,
   ) {}
 
   async validar(
     params: ValidarAccesoDesinstalacionParams,
-  ): Promise<ClienteAccesoInternetEntity> {
-    const acceso = await this.accesoInternetRepository.findByIdForClient({
+  ): Promise<AccesoInternetReadModel> {
+    const acceso = await this.accesosInternet.buscarDelCliente({
       clienteId: params.clienteId,
 
       accesoInternetId: params.accesoInternetId,

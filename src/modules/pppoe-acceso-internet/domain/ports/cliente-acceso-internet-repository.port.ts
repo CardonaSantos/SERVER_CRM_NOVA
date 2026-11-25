@@ -9,27 +9,18 @@ export type BuscarAccesoInternetDelClienteParams = {
   clienteId: number;
 };
 
-export type BuscarAccesoInternetPorIdParams = {
-  empresaId: number;
-  accesoInternetId: number;
-};
-
-export type BuscarAccesoPppoePorClienteParams = {
-  empresaId: number;
-  clienteId: number;
-};
-
 export interface ClienteAccesoInternetRepositoryPort {
   create(
     entity: ClienteAccesoInternetEntity,
   ): Promise<ClienteAccesoInternetEntity>;
 
+  /** Persiste estado, fechas de estado, servicio, tecnología y método. */
   update(
     entity: ClienteAccesoInternetEntity,
   ): Promise<ClienteAccesoInternetEntity>;
 
   findById(
-    params: BuscarAccesoInternetPorIdParams,
+    accesoInternetId: number,
   ): Promise<ClienteAccesoInternetEntity | null>;
 
   findByIdForClient(
@@ -37,26 +28,10 @@ export interface ClienteAccesoInternetRepositoryPort {
   ): Promise<ClienteAccesoInternetEntity | null>;
 
   /**
-   * Devuelve el acceso PPPoE más reciente del cliente,
-   * incluyendo accesos históricos que ya finalizaron en BAJA.
-   */
-  findPppoeByClienteId(
-    params: BuscarAccesoPppoePorClienteParams,
-  ): Promise<ClienteAccesoInternetEntity | null>;
-
-  /**
-   * Devuelve únicamente el acceso PPPoE vigente del cliente.
-   *
-   * Se consideran vigentes:
-   * - PENDIENTE
-   * - CONFIGURANDO
-   * - ACTIVO
-   * - SUSPENDIDO
-   *
-   * Un acceso en BAJA pertenece a un ciclo terminado y no debe
-   * impedir que el cliente inicie una nueva prealta PPPoE.
+   * El acceso PPPoE vigente más reciente del cliente (PENDIENTE,
+   * CONFIGURANDO, ACTIVO o SUSPENDIDO). Un acceso en BAJA no cuenta.
    */
   findPppoeVigenteByClienteId(
-    params: BuscarAccesoPppoePorClienteParams,
+    clienteId: number,
   ): Promise<ClienteAccesoInternetEntity | null>;
 }

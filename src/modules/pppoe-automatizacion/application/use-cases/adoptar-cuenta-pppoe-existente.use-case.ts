@@ -37,9 +37,9 @@ import {
 
 import { AdoptarCuentaPppoeExistenteResult } from '../results/adoptar-cuenta-pppoe-existente.result';
 import {
-  CLIENTE_ACCESO_INTERNET_REPOSITORY,
-  ClienteAccesoInternetRepositoryPort,
-} from 'src/modules/pppoe-acceso-internet/domain/ports/cliente-acceso-internet-repository.port';
+  PPPOE_ACCESO_INTERNET,
+  PppoeAccesoInternetFacadePort,
+} from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.facade.port';
 import { PPPOE_PERFIL_HOMOLOGACION_REPOSITORY } from 'src/modules/pppoe-perfil-homologacion/infra/tokens/ppoe-perfil-homologacion.token';
 import { PerfilHomologacionRepositoryPort } from 'src/modules/pppoe-perfil-homologacion/domain/ports/ppoe-perfil-homologacion.port';
 import { EstadoAccesoInternet } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
@@ -97,8 +97,8 @@ export class AdoptarCuentaPppoeExistenteUseCase {
     /^NV-\d{4}\/\d{2}\/\d{2}MH(?:[01]\d|2[0-3]):[0-5]\d#$/;
 
   constructor(
-    @Inject(CLIENTE_ACCESO_INTERNET_REPOSITORY)
-    private readonly accesoRepository: ClienteAccesoInternetRepositoryPort,
+    @Inject(PPPOE_ACCESO_INTERNET)
+    private readonly accesosInternet: PppoeAccesoInternetFacadePort,
 
     @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
     private readonly cuentaRepository: ClientePppoeCuentaRepositoryPort,
@@ -125,10 +125,9 @@ export class AdoptarCuentaPppoeExistenteUseCase {
     const normalized = this.validateAndNormalizeInput(input);
 
     const accesoVigente =
-      await this.accesoRepository.findPppoeVigenteByClienteId({
-        empresaId: normalized.empresaId,
-        clienteId: normalized.clienteId,
-      });
+      await this.accesosInternet.buscarPppoeVigenteDelCliente(
+        normalized.clienteId,
+      );
 
     if (accesoVigente) {
       throw new ConflictException(

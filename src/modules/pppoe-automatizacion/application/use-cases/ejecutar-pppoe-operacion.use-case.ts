@@ -58,10 +58,10 @@ import {
 } from '../../domain/ports/pppoe-operacion-auditoria.port';
 import { EliminarSecretPppoeExecutor } from '../executors/eliminar-secret-pppoe.executor';
 import {
-  CLIENTE_ACCESO_INTERNET_REPOSITORY,
-  ClienteAccesoInternetRepositoryPort,
-} from 'src/modules/pppoe-acceso-internet/domain/ports/cliente-acceso-internet-repository.port';
-import { ClienteAccesoInternetEntity } from 'src/modules/pppoe-acceso-internet/domain/entities/cliente-acceso-internet.entity';
+  PPPOE_ACCESO_INTERNET,
+  PppoeAccesoInternetFacadePort,
+} from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.facade.port';
+import { AccesoInternetReadModel } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
 import {
   CLIENTE_INTERNET_ESTADO_OPERATIVO,
   ClienteInternetEstadoOperativoPort,
@@ -158,8 +158,8 @@ export class EjecutarPppoeOperacionUseCase {
     @Inject(PPPOE_OPERACION_REPOSITORY)
     private readonly operacionRepository: PppoeOperacionRepositoryPort,
 
-    @Inject(CLIENTE_ACCESO_INTERNET_REPOSITORY)
-    private readonly accesoRepository: ClienteAccesoInternetRepositoryPort,
+    @Inject(PPPOE_ACCESO_INTERNET)
+    private readonly accesosInternet: PppoeAccesoInternetFacadePort,
 
     @Inject(CLIENTE_INTERNET_ESTADO_OPERATIVO)
     private readonly clienteEstadoOperativo: ClienteInternetEstadoOperativoPort,
@@ -168,7 +168,7 @@ export class EjecutarPppoeOperacionUseCase {
   async execute(
     input: EjecutarPppoeOperacionUseCaseInput,
   ): Promise<EjecutarOperacionPppoeResult> {
-    let acceso: ClienteAccesoInternetEntity | null = null;
+    let acceso: AccesoInternetReadModel | null = null;
 
     this.logger.log(
       `[PPPOE] Ejecutando operación ${input.operacionId} empresa=${input.empresaId}`,
@@ -508,10 +508,10 @@ export class EjecutarPppoeOperacionUseCase {
   private async applySuccessfulAccessResult(params: {
     operacion: PppoeOperacionEntity;
 
-    acceso: ClienteAccesoInternetEntity;
+    acceso: AccesoInternetReadModel;
 
     fecha: Date;
-  }): Promise<ClienteAccesoInternetEntity> {
+  }): Promise<AccesoInternetReadModel> {
     switch (params.operacion.tipo) {
       case TipoOperacionPppoe.CREAR_SECRET:
         /*
@@ -546,9 +546,11 @@ export class EjecutarPppoeOperacionUseCase {
          * remotamente. Ahora sincronizamos el estado formal
          * del acceso en el CRM.
          */
-        params.acceso.activar(params.fecha);
-
-        break;
+        return this.accesosInternet.cambiarEstado({
+          accesoInternetId: params.acceso.id,
+          transicion: 'ACTIVAR',
+          fecha: params.fecha,
+        });
 
       case TipoOperacionPppoe.SUSPENDER_SERVICIO:
         /*
@@ -559,9 +561,11 @@ export class EjecutarPppoeOperacionUseCase {
          * - Secret deshabilitado;
          * - ausencia de sesiones PPPoE activas.
          */
-        params.acceso.suspender(params.fecha);
-
-        break;
+        return this.accesosInternet.cambiarEstado({
+          accesoInternetId: params.acceso.id,
+          transicion: 'SUSPENDER',
+          fecha: params.fecha,
+        });
 
       case TipoOperacionPppoe.ELIMINAR_SECRET:
         /*
@@ -572,17 +576,17 @@ export class EjecutarPppoeOperacionUseCase {
          * - Secret eliminado;
          * - ausencia de sesiones PPPoE activas.
          */
-        params.acceso.darDeBaja(params.fecha);
-
-        break;
+        return this.accesosInternet.cambiarEstado({
+          accesoInternetId: params.acceso.id,
+          transicion: 'DAR_DE_BAJA',
+          fecha: params.fecha,
+        });
 
       default:
         throw new ConflictException(
           `No existe transición exitosa del acceso para la operación ${params.operacion.tipo}.`,
         );
     }
-
-    return this.accesoRepository.update(params.acceso);
   }
 
   /**
@@ -635,13 +639,14 @@ export class EjecutarPppoeOperacionUseCase {
   private async prepareAccessForOperation(params: {
     operacion: PppoeOperacionEntity;
 
-    acceso: ClienteAccesoInternetEntity;
-  }): Promise<ClienteAccesoInternetEntity> {
+    acceso: AccesoInternetReadModel;
+  }): Promise<AccesoInternetReadModel> {
     switch (params.operacion.tipo) {
       case TipoOperacionPppoe.CREAR_SECRET:
-        params.acceso.iniciarConfiguracion();
-
-        return this.accesoRepository.update(params.acceso);
+        return this.accesosInternet.cambiarEstado({
+          accesoInternetId: params.acceso.id,
+          transicion: 'INICIAR_CONFIGURACION',
+        });
 
       case TipoOperacionPppoe.ACTIVAR_SECRET:
       case TipoOperacionPppoe.SUSPENDER_SERVICIO:
@@ -659,12 +664,10 @@ export class EjecutarPppoeOperacionUseCase {
     empresaId: number;
 
     cuenta: ClientePppoeCuentaEntity;
-  }): Promise<ClienteAccesoInternetEntity> {
-    const acceso = await this.accesoRepository.findById({
-      empresaId: params.empresaId,
-
-      accesoInternetId: params.cuenta.accesoInternetId,
-    });
+  }): Promise<AccesoInternetReadModel> {
+    const acceso = await this.accesosInternet.buscarPorId(
+      params.cuenta.accesoInternetId,
+    );
 
     if (!acceso) {
       throw new ConflictException(
@@ -695,7 +698,7 @@ export class EjecutarPppoeOperacionUseCase {
   private async applySuccessfulClientResult(params: {
     operacion: PppoeOperacionEntity;
 
-    acceso: ClienteAccesoInternetEntity;
+    acceso: AccesoInternetReadModel;
   }): Promise<void> {
     const operacion = params.operacion.toPrimitives();
 

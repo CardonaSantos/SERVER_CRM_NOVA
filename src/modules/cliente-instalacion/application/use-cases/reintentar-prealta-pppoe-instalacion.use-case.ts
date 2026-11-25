@@ -10,9 +10,9 @@ import { CLIENTE_INSTALACION_REPOSITORY } from '../../infra/tokens/cliente-insta
 import { ClienteInstalacionRepositoryPort } from '../../domain/ports/cliente-instalacion.repository.port';
 
 import {
-  ClienteAccesoInternetRepositoryPort,
-  CLIENTE_ACCESO_INTERNET_REPOSITORY,
-} from 'src/modules/pppoe-acceso-internet/domain/ports/cliente-acceso-internet-repository.port';
+  PPPOE_ACCESO_INTERNET,
+  PppoeAccesoInternetFacadePort,
+} from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.facade.port';
 
 import {
   MetodoAutenticacionInternet,
@@ -39,8 +39,8 @@ export class ReintentarPrealtaPppoeInstalacionUseCase {
     @Inject(CLIENTE_INSTALACION_REPOSITORY)
     private readonly instalacionRepository: ClienteInstalacionRepositoryPort,
 
-    @Inject(CLIENTE_ACCESO_INTERNET_REPOSITORY)
-    private readonly accesoInternetRepository: ClienteAccesoInternetRepositoryPort,
+    @Inject(PPPOE_ACCESO_INTERNET)
+    private readonly accesosInternet: PppoeAccesoInternetFacadePort,
 
     @Inject(CLIENTE_INSTALACION_ACCESO_REPOSITORY)
     private readonly instalacionAccesoRepository: ClienteInstalacionAccesoRepositoryPort,
@@ -74,7 +74,7 @@ export class ReintentarPrealtaPppoeInstalacionUseCase {
       );
     }
 
-    const acceso = await this.accesoInternetRepository.findByIdForClient({
+    const acceso = await this.accesosInternet.buscarDelCliente({
       accesoInternetId: command.accesoInternetId,
       clienteId: detalle.cliente.id,
     });
@@ -85,27 +85,19 @@ export class ReintentarPrealtaPppoeInstalacionUseCase {
       );
     }
 
-    const accesoProps = acceso.toPrimitives();
-
-    if (accesoProps.id === null) {
-      throw new ConflictException(
-        'El acceso de internet todavía no está persistido.',
-      );
-    }
-
-    if (accesoProps.tecnologia !== TecnologiaAccesoInternet.FIBRA_GPON) {
+    if (acceso.tecnologia !== TecnologiaAccesoInternet.FIBRA_GPON) {
       throw new ConflictException(
         'La prealta PPPoE solamente aplica a accesos FIBRA_GPON.',
       );
     }
 
-    if (accesoProps.metodoAutenticacion !== MetodoAutenticacionInternet.PPPOE) {
+    if (acceso.metodoAutenticacion !== MetodoAutenticacionInternet.PPPOE) {
       throw new ConflictException(
         'El acceso indicado no utiliza autenticación PPPoE.',
       );
     }
 
-    if (accesoProps.servicioInternetId === null) {
+    if (acceso.servicioInternetId === null) {
       throw new ConflictException(
         'El acceso de internet no tiene un servicio asociado.',
       );
@@ -114,13 +106,13 @@ export class ReintentarPrealtaPppoeInstalacionUseCase {
     const resultado = await this.pppoePrealta.preparar({
       instalacionId: command.instalacionId,
 
-      empresaId: accesoProps.empresaId,
+      empresaId: acceso.empresaId,
 
-      clienteId: accesoProps.clienteId,
+      clienteId: acceso.clienteId,
 
-      servicioInternetId: accesoProps.servicioInternetId,
+      servicioInternetId: acceso.servicioInternetId,
 
-      accesoInternetId: accesoProps.id,
+      accesoInternetId: acceso.id,
 
       mikrotikRouterId: command.mikrotikRouterId,
 

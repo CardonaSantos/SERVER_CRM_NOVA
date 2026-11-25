@@ -9,9 +9,9 @@ import { ClienteInstalacionAccesoRepositoryPort } from 'src/modules/ppoe-instala
 import { AccionInstalacionAcceso } from 'src/modules/ppoe-instalacion-acceso/domain/enums/ppoe-instalacion-acceso.enum';
 
 import {
-  CLIENTE_ACCESO_INTERNET_REPOSITORY,
-  ClienteAccesoInternetRepositoryPort,
-} from 'src/modules/pppoe-acceso-internet/domain/ports/cliente-acceso-internet-repository.port';
+  PPPOE_ACCESO_INTERNET,
+  PppoeAccesoInternetFacadePort,
+} from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.facade.port';
 
 import {
   MetodoAutenticacionInternet,
@@ -53,8 +53,8 @@ export class ResolverPppoeInstalacionService {
     @Inject(CLIENTE_INSTALACION_ACCESO_REPOSITORY)
     private readonly instalacionAccesoRepository: ClienteInstalacionAccesoRepositoryPort,
 
-    @Inject(CLIENTE_ACCESO_INTERNET_REPOSITORY)
-    private readonly accesoInternetRepository: ClienteAccesoInternetRepositoryPort,
+    @Inject(PPPOE_ACCESO_INTERNET)
+    private readonly accesosInternet: PppoeAccesoInternetFacadePort,
 
     @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
     private readonly cuentaPppoeRepository: ClientePppoeCuentaRepositoryPort,
@@ -99,7 +99,7 @@ export class ResolverPppoeInstalacionService {
       };
     }
 
-    const acceso = await this.accesoInternetRepository.findByIdForClient({
+    const acceso = await this.accesosInternet.buscarDelCliente({
       accesoInternetId: vinculo.accesoInternetId,
       clienteId: instalacion.clienteId,
     });

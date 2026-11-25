@@ -8,12 +8,12 @@ import { CrearClienteInstalacionDto } from '../dto/crear-cliente-instalacion.dto
 import { CLIENTE_INSTALACION_REPOSITORY } from '../../infra/tokens/cliente-instalacion.tokens';
 import { RolTecnicoOperacionCliente } from '../../domain/enums/rol-tecnico-operacion-cliente.enum';
 import {
-  CLIENTE_ACCESO_INTERNET_REPOSITORY,
-  ClienteAccesoInternetRepositoryPort,
-} from 'src/modules/pppoe-acceso-internet/domain/ports/cliente-acceso-internet-repository.port';
+  PPPOE_ACCESO_INTERNET,
+  PppoeAccesoInternetFacadePort,
+} from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.facade.port';
 import { CLIENTE_INSTALACION_ACCESO_REPOSITORY } from 'src/modules/ppoe-instalacion-acceso/tokens/instalacion-acceso.token';
 import { ClienteInstalacionAccesoRepositoryPort } from 'src/modules/ppoe-instalacion-acceso/domain/ports/cliente-instalacion-acceso.port';
-import { ClienteAccesoInternetEntity } from 'src/modules/pppoe-acceso-internet/domain/entities/cliente-acceso-internet.entity';
+import { AccesoInternetReadModel } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
 import {
   MetodoAutenticacionInternet,
   TecnologiaAccesoInternet,
@@ -119,8 +119,8 @@ export class CrearClienteInstalacionUseCase {
     private readonly instalacionRepository: ClienteInstalacionRepositoryPort,
 
     // INYECCIONES
-    @Inject(CLIENTE_ACCESO_INTERNET_REPOSITORY)
-    private readonly accesoInternetRepository: ClienteAccesoInternetRepositoryPort,
+    @Inject(PPPOE_ACCESO_INTERNET)
+    private readonly accesosInternet: PppoeAccesoInternetFacadePort,
 
     @Inject(CLIENTE_INSTALACION_ACCESO_REPOSITORY)
     private readonly instalacionAccesoRepository: ClienteInstalacionAccesoRepositoryPort,
@@ -306,16 +306,14 @@ export class CrearClienteInstalacionUseCase {
     servicioInternetId,
     tecnologia,
     metodoAutenticacion,
-  }: CrearAccesoNuevoParams): Promise<ClienteAccesoInternetEntity> {
-    const entity = ClienteAccesoInternetEntity.create({
+  }: CrearAccesoNuevoParams): Promise<AccesoInternetReadModel> {
+    return this.accesosInternet.crear({
       empresaId,
       clienteId,
       servicioInternetId,
       tecnologia,
       metodoAutenticacion,
     });
-
-    return this.accesoInternetRepository.create(entity);
   }
 
   private async vincularAccesoExistente({
@@ -323,11 +321,10 @@ export class CrearClienteInstalacionUseCase {
     clienteId,
     accesoInternetId,
   }: VincularAccesoExistenteParams): Promise<ClienteInstalacionAccesoResult> {
-    const accesoExistente =
-      await this.accesoInternetRepository.findByIdForClient({
-        accesoInternetId,
-        clienteId,
-      });
+    const accesoExistente = await this.accesosInternet.buscarDelCliente({
+      accesoInternetId,
+      clienteId,
+    });
 
     if (!accesoExistente?.id) {
       throw new Error(

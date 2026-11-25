@@ -5,7 +5,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 
-import { ClienteAccesoInternetEntity } from 'src/modules/pppoe-acceso-internet/domain/entities/cliente-acceso-internet.entity';
+import { AccesoInternetReadModel } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
 
 import {
   EstadoAccesoInternet,
@@ -14,9 +14,9 @@ import {
 } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
 
 import {
-  ClienteAccesoInternetRepositoryPort,
-  CLIENTE_ACCESO_INTERNET_REPOSITORY,
-} from 'src/modules/pppoe-acceso-internet/domain/ports/cliente-acceso-internet-repository.port';
+  PPPOE_ACCESO_INTERNET,
+  PppoeAccesoInternetFacadePort,
+} from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.facade.port';
 
 import {
   CLIENTE_PPPOE_CUENTA_REPOSITORY,
@@ -49,8 +49,8 @@ export type CrearPrealtaPppoeClienteInput = {
 @Injectable()
 export class CrearPrealtaPppoeClienteUseCase {
   constructor(
-    @Inject(CLIENTE_ACCESO_INTERNET_REPOSITORY)
-    private readonly accesoInternetRepository: ClienteAccesoInternetRepositoryPort,
+    @Inject(PPPOE_ACCESO_INTERNET)
+    private readonly accesosInternet: PppoeAccesoInternetFacadePort,
 
     @Inject(CLIENTE_PPPOE_CUENTA_REPOSITORY)
     private readonly cuentaPppoeRepository: ClientePppoeCuentaRepositoryPort,
@@ -94,7 +94,7 @@ export class CrearPrealtaPppoeClienteUseCase {
 
   private async resolverAccesoInternet(
     input: CrearPrealtaPppoeClienteInput,
-  ): Promise<ClienteAccesoInternetEntity> {
+  ): Promise<AccesoInternetReadModel> {
     /*
      * Buscamos exclusivamente un ciclo PPPoE vigente.
      *
@@ -102,10 +102,7 @@ export class CrearPrealtaPppoeClienteUseCase {
      * no debe ser reutilizado ni impedir una nueva prealta.
      */
     const accesoExistente =
-      await this.accesoInternetRepository.findPppoeVigenteByClienteId({
-        empresaId: input.empresaId,
-        clienteId: input.clienteId,
-      });
+      await this.accesosInternet.buscarPppoeVigenteDelCliente(input.clienteId);
 
     if (!accesoExistente) {
       return this.crearAccesoInternet(input);
@@ -160,8 +157,8 @@ export class CrearPrealtaPppoeClienteUseCase {
 
   private async crearAccesoInternet(
     input: CrearPrealtaPppoeClienteInput,
-  ): Promise<ClienteAccesoInternetEntity> {
-    const acceso = ClienteAccesoInternetEntity.create({
+  ): Promise<AccesoInternetReadModel> {
+    return this.accesosInternet.crear({
       empresaId: input.empresaId,
 
       clienteId: input.clienteId,
@@ -170,8 +167,6 @@ export class CrearPrealtaPppoeClienteUseCase {
       tecnologia: TecnologiaAccesoInternet.FIBRA_GPON,
       metodoAutenticacion: MetodoAutenticacionInternet.PPPOE,
     });
-
-    return this.accesoInternetRepository.create(acceso);
   }
 
   private validateInput(input: CrearPrealtaPppoeClienteInput): void {

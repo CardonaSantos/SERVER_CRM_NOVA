@@ -1,11 +1,9 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from 'src/prisma/prisma.service';
 
 import {
   BuscarAccesoInternetDelClienteParams,
-  BuscarAccesoInternetPorIdParams,
-  BuscarAccesoPppoePorClienteParams,
   ClienteAccesoInternetRepositoryPort,
 } from '../../domain/ports/cliente-acceso-internet-repository.port';
 
@@ -42,9 +40,7 @@ export class ClienteAccesoInternetPrismaRepository
     const id = entity.id;
 
     if (id === null) {
-      throw new ConflictException(
-        'No puede actualizarse un acceso de internet sin identificador.',
-      );
+      throw new Error('No puede actualizarse un acceso sin id.');
     }
 
     const data = ClienteAccesoInternetPrismaMapper.toUpdatePersistence(entity);
@@ -61,13 +57,10 @@ export class ClienteAccesoInternetPrismaRepository
   }
 
   async findById(
-    params: BuscarAccesoInternetPorIdParams,
+    accesoInternetId: number,
   ): Promise<ClienteAccesoInternetEntity | null> {
-    const record = await this.prisma.clienteAccesoInternet.findFirst({
-      where: {
-        id: params.accesoInternetId,
-        empresaId: params.empresaId,
-      },
+    const record = await this.prisma.clienteAccesoInternet.findUnique({
+      where: { id: accesoInternetId },
     });
 
     if (!record) {
@@ -94,34 +87,12 @@ export class ClienteAccesoInternetPrismaRepository
     return ClienteAccesoInternetPrismaMapper.toDomain(record);
   }
 
-  async findPppoeByClienteId(
-    params: BuscarAccesoPppoePorClienteParams,
-  ): Promise<ClienteAccesoInternetEntity | null> {
-    const record = await this.prisma.clienteAccesoInternet.findFirst({
-      where: {
-        empresaId: params.empresaId,
-        clienteId: params.clienteId,
-        metodoAutenticacion: MetodoAutenticacionInternet.PPPOE,
-      },
-      orderBy: {
-        id: 'desc',
-      },
-    });
-
-    if (!record) {
-      return null;
-    }
-
-    return ClienteAccesoInternetPrismaMapper.toDomain(record);
-  }
-
   async findPppoeVigenteByClienteId(
-    params: BuscarAccesoPppoePorClienteParams,
+    clienteId: number,
   ): Promise<ClienteAccesoInternetEntity | null> {
     const record = await this.prisma.clienteAccesoInternet.findFirst({
       where: {
-        empresaId: params.empresaId,
-        clienteId: params.clienteId,
+        clienteId,
         metodoAutenticacion: MetodoAutenticacionInternet.PPPOE,
         estado: {
           in: [
