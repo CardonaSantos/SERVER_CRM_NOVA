@@ -1,38 +1,35 @@
-import {
-  ArgumentsHost,
-  Catch,
-  HttpException,
-  HttpStatus,
-  Logger,
-} from '@nestjs/common';
+import { ArgumentsHost, Catch, Logger } from '@nestjs/common';
 import { BaseExceptionFilter } from '@nestjs/core';
-import { BaseWsExceptionFilter } from '@nestjs/websockets';
+import { BaseWsExceptionFilter, WsException } from '@nestjs/websockets';
 import type { Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 
-const MENSAJE_GENERICO = 'Ha ocurrido un error interno en el servidor';
+import { esDomainError } from 'src/common/hexagonal/domain-error';
 
-/** Códigos que pone throwFatalError: su `message` puede traer detalle interno. */
-const CODIGOS_INTERNOS = new Set(['INTERNAL_SERVER_ERROR', 'UNKNOWN_ERROR']);
+import { construirRespuestaError } from './respuesta-error';
 
 const REQUEST_ID_VALIDO = /^[A-Za-z0-9._-]{8,64}$/;
 
 /**
- * Filtro global de excepciones (etapa 7).
+ * Filtro global de excepciones: contrato único de error (estándar §7.5).
  *
- * - < 500: idéntico al comportamiento de Nest (BaseExceptionFilter). El
- *   front no ve ningún cambio en 400/401/403/404/409/429.
- * - 501–599: también idéntico (son deliberados, p. ej. router no
- *   disponible).
- * - 500 y errores no controlados: se registran con stack, método, ruta,
- *   usuario y un requestId; al cliente NUNCA le llegan stack, `details`
- *   ni el mensaje interno de throwFatalError (antes dependía de que
- *   NODE_ENV fuera 'production'). Recibe { statusCode, message,
- *   errorCode, requestId } y la cabecera X-Request-ID para reportarlo.
- *   Los 500 con mensaje deliberado (sin errorCode interno) lo conservan.
+ * Toda respuesta de error HTTP sale como
+ * { statusCode, codigo, message, campos?, requestId } + cabecera
+ * X-Request-ID. La traducción vive en `construirRespuestaError`:
  *
- * EXPONER_DETALLE_ERRORES=true agrega `detalle` a los 500 (solo para
- * depurar en local; nunca en Railway).
+ * - DomainError → status por tipo, su código y su mensaje.
+ * - HttpException 4xx → mensaje deliberado (las frases genéricas de Nest se
+ *   pasan a español), código declarado o genérico por status; validación
+ *   con `campos`.
+ * - 500 y errores no controlados → mensaje genérico; stack, método, ruta,
+ *   usuario y requestId solo al log. Nunca stack, `details` ni el mensaje
+ *   interno de throwFatalError.
+ *
+ * EXPONER_DETALLE_ERRORES=true agrega `detalle` a los 500 (solo local;
+ * nunca en Railway).
+ *
+ * WebSocket: comportamiento estándar de Nest; un DomainError se emite como
+ * { status: 'error', codigo, message }.
  */
 @Catch()
 export class FiltroGlobalExcepciones extends BaseExceptionFilter {
@@ -44,21 +41,20 @@ export class FiltroGlobalExcepciones extends BaseExceptionFilter {
   private readonly filtroWs = new BaseWsExceptionFilter();
 
   catch(exception: unknown, host: ArgumentsHost) {
-    // Gateways WS: el comportamiento estándar de Nest para sockets.
     if (host.getType() === 'ws') {
-      return this.filtroWs.catch(exception, host);
+      return this.filtroWs.catch(
+        esDomainError(exception)
+          ? new WsException({
+              status: 'error',
+              codigo: exception.codigo,
+              message: exception.message,
+            })
+          : exception,
+        host,
+      );
     }
 
     if (host.getType() !== 'http') {
-      return super.catch(exception, host);
-    }
-
-    const status =
-      exception instanceof HttpException
-        ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
-
-    if (status !== HttpStatus.INTERNAL_SERVER_ERROR) {
       return super.catch(exception, host);
     }
 
@@ -66,58 +62,34 @@ export class FiltroGlobalExcepciones extends BaseExceptionFilter {
     const request = http.getRequest<Request & { user?: { id?: number } }>();
     const response = http.getResponse<Response>();
 
+    if (response.headersSent) {
+      return;
+    }
+
     const recibido = request.headers['x-request-id'];
     const requestId =
       typeof recibido === 'string' && REQUEST_ID_VALIDO.test(recibido)
         ? recibido
         : randomUUID();
 
-    const original =
-      exception instanceof HttpException ? exception.getResponse() : null;
-    const cuerpo =
-      original && typeof original === 'object'
-        ? (original as Record<string, unknown>)
-        : {};
+    const resultado = construirRespuestaError(exception, requestId, {
+      exponerDetalle: this.exponerDetalle,
+    });
 
-    const errorCode =
-      typeof cuerpo.errorCode === 'string'
-        ? cuerpo.errorCode
-        : 'INTERNAL_SERVER_ERROR';
+    if (resultado.registro) {
+      const linea = `[${requestId}] ${request.method} ${request.route?.path ?? request.path} → ${resultado.status} ${resultado.cuerpo.codigo} (usuario ${request.user?.id ?? '-'}): ${resultado.mensajeInterno}`;
 
-    // Mensaje deliberado de una InternalServerErrorException propia: se
-    // conserva. El de throwFatalError o un error no controlado: genérico.
-    let mensajeDeliberado: string | null = null;
-
-    if (
-      exception instanceof HttpException &&
-      !CODIGOS_INTERNOS.has(String(cuerpo.errorCode))
-    ) {
-      const m = typeof original === 'string' ? original : cuerpo.message;
-      if (typeof m === 'string' && m !== 'Internal Server Error') {
-        mensajeDeliberado = m;
+      if (resultado.registro === 'error') {
+        this.logger.error(
+          linea,
+          exception instanceof Error ? exception.stack : undefined,
+        );
+      } else {
+        this.logger.warn(linea);
       }
     }
 
-    const mensajeInterno =
-      exception instanceof Error ? exception.message : String(exception);
-
-    this.logger.error(
-      `[${requestId}] ${request.method} ${request.route?.path ?? request.path} → 500 (usuario ${request.user?.id ?? '-'}): ${mensajeInterno}`,
-      exception instanceof Error ? exception.stack : undefined,
-    );
-
-    const body: Record<string, unknown> = {
-      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-      message: mensajeDeliberado ?? MENSAJE_GENERICO,
-      errorCode,
-      requestId,
-    };
-
-    if (this.exponerDetalle) {
-      body.detalle = { mensaje: mensajeInterno, original };
-    }
-
     response.setHeader('X-Request-ID', requestId);
-    response.status(HttpStatus.INTERNAL_SERVER_ERROR).json(body);
+    response.status(resultado.status).json(resultado.cuerpo);
   }
 }

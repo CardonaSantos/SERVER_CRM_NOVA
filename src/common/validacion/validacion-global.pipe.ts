@@ -8,6 +8,11 @@ import {
 import { plainToInstance } from 'class-transformer';
 import { validate, ValidationError } from 'class-validator';
 
+import {
+  aplanarErroresValidacion,
+  ErrorValidacionHttp,
+} from './error-validacion';
+
 export type ModoValidacion = 'observacion' | 'estricto';
 
 const INTERVALO_RESUMEN_MS = 10 * 60 * 1000;
@@ -41,6 +46,9 @@ export class ValidacionGlobalPipe implements PipeTransform {
     transform: true,
     whitelist: true,
     forbidNonWhitelisted: true,
+    // Errores agrupados por campo para el contrato único (estándar §7.5).
+    exceptionFactory: (errores: ValidationError[]) =>
+      new ErrorValidacionHttp(aplanarErroresValidacion(errores)),
   });
 
   private readonly vistos = new Map<
