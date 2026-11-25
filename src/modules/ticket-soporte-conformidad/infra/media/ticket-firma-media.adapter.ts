@@ -9,9 +9,9 @@ import {
 import {
   ELIMINAR_MEDIA_USECASE,
   SUBIR_MEDIA_USECASE,
-} from 'src/modules/digital-ocean-media/tokens/tokens';
-import { SubirMediaUseCase } from 'src/modules/digital-ocean-media/application/use-cases/subir-media.usecase';
-import { EliminarMediaUseCase } from 'src/modules/digital-ocean-media/application/use-cases/eliminar-media.usecase';
+} from 'src/modules/almacenamiento-media/tokens/tokens';
+import { SubirMediaUseCase } from 'src/modules/almacenamiento-media/application/use-cases/subir-media.usecase';
+import { EliminarMediaUseCase } from 'src/modules/almacenamiento-media/application/use-cases/eliminar-media.usecase';
 
 @Injectable()
 export class TicketFirmaMediaAdapter implements TicketFirmaMediaPort {

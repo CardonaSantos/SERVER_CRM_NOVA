@@ -161,4 +161,4 @@ import { UPLOAD_FILE_USECASE } from './tokens/tokens';
     STORAGE_PORT,
   ],
 })
-export class DigitalOceanMediaModule {}
+export class AlmacenamientoMediaModule {}

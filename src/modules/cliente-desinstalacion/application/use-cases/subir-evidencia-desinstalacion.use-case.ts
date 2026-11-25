@@ -7,9 +7,9 @@ import {
 
 import { CategoriaMedia, TipoMedia } from '@prisma/client';
 
-import { SubirMediaUseCase } from 'src/modules/digital-ocean-media/application/use-cases/subir-media.usecase';
+import { SubirMediaUseCase } from 'src/modules/almacenamiento-media/application/use-cases/subir-media.usecase';
 
-import { SUBIR_MEDIA_USECASE } from 'src/modules/digital-ocean-media/tokens/tokens';
+import { SUBIR_MEDIA_USECASE } from 'src/modules/almacenamiento-media/tokens/tokens';
 
 import { TipoEvidenciaClienteOperacion } from 'src/modules/cliente-instalacion/domain/enums/tipo-evidencia-cliente-operacion.enum';
 

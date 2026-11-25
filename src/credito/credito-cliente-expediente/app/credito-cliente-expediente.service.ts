@@ -14,17 +14,17 @@ import {
   ELIMINAR_MEDIA_USECASE,
   STORAGE_PORT,
   UPLOAD_FILE_USECASE,
-} from 'src/modules/digital-ocean-media/tokens/tokens';
-import { UploadFileUseCase } from 'src/modules/digital-ocean-media/application/use-cases/upload-file.usecase';
+} from 'src/modules/almacenamiento-media/tokens/tokens';
+import { UploadFileUseCase } from 'src/modules/almacenamiento-media/application/use-cases/upload-file.usecase';
 import { ClienteArchivo } from '../entities/cliente-archivo.entity';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ClienteExpediente } from '../entities/credito-cliente-expediente.entity';
 import { ClienteReferencia } from '../entities/cliente-referencia.entity';
 import { Prisma } from '@prisma/client';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
-import { EliminarMediaUseCase } from 'src/modules/digital-ocean-media/application/use-cases/eliminar-media.usecase';
-import { EliminarMediaCommand } from 'src/modules/digital-ocean-media/dto/eliminar-media.dto';
-import { FileStoragePort } from 'src/modules/digital-ocean-media/domain/ports/file-storage.port';
+import { EliminarMediaUseCase } from 'src/modules/almacenamiento-media/application/use-cases/eliminar-media.usecase';
+import { EliminarMediaCommand } from 'src/modules/almacenamiento-media/dto/eliminar-media.dto';
+import { FileStoragePort } from 'src/modules/almacenamiento-media/domain/ports/file-storage.port';
 
 interface DtoCargarFile {
   buffer: Buffer;

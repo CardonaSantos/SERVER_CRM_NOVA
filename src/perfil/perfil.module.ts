@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
 import { PerfilController } from './presentation/perfil.controller';
 import { PerfilService } from './app/perfil.service';
-import { DigitalOceanMediaModule } from 'src/modules/digital-ocean-media/digital-ocean-media.module';
+import { AlmacenamientoMediaModule } from 'src/modules/almacenamiento-media/almacenamiento-media.module';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { PrismaPerfilRepository } from './infraestructure/prisma-perfil.repository';
 import { PERFIL_REPOSITORY } from './domain/perfil.repository';
 
 @Module({
-  imports: [DigitalOceanMediaModule, PrismaModule],
+  imports: [AlmacenamientoMediaModule, PrismaModule],
   controllers: [PerfilController],
   providers: [
     PerfilService,

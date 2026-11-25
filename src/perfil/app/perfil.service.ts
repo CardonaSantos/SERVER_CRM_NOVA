@@ -4,11 +4,11 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import {
   ELIMINAR_MEDIA_USECASE,
   UPLOAD_FILE_USECASE,
-} from 'src/modules/digital-ocean-media/tokens/tokens';
+} from 'src/modules/almacenamiento-media/tokens/tokens';
 
-import { UploadFileUseCase } from 'src/modules/digital-ocean-media/application/use-cases/upload-file.usecase';
-import { EliminarMediaUseCase } from 'src/modules/digital-ocean-media/application/use-cases/eliminar-media.usecase';
-import { EliminarMediaCommand } from 'src/modules/digital-ocean-media/dto/eliminar-media.dto';
+import { UploadFileUseCase } from 'src/modules/almacenamiento-media/application/use-cases/upload-file.usecase';
+import { EliminarMediaUseCase } from 'src/modules/almacenamiento-media/application/use-cases/eliminar-media.usecase';
+import { EliminarMediaCommand } from 'src/modules/almacenamiento-media/dto/eliminar-media.dto';
 
 import {
   PERFIL_REPOSITORY,

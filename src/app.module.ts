@@ -40,7 +40,7 @@ import { MetricasTicketsModule } from './metricas-tickets/metricas-tickets.modul
 import { FacturaEliminacionModule } from './factura-eliminacion/factura-eliminacion.module';
 import { BanruralIntegrationModule } from './banrural-integration/banrural-integration.module';
 import { ReportsModule } from './modules/reports/reports.module';
-import { DigitalOceanMediaModule } from './modules/digital-ocean-media/digital-ocean-media.module';
+import { AlmacenamientoMediaModule } from './modules/almacenamiento-media/almacenamiento-media.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { PerfilUsuarioModule } from './perfil-usuario/perfil-usuario.module';
 import { TicketSolucionesModule } from './ticket-soluciones/ticket-soluciones.module';
@@ -131,7 +131,7 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     FacturaEliminacionModule,
     BanruralIntegrationModule,
     ReportsModule,
-    DigitalOceanMediaModule,
+    AlmacenamientoMediaModule,
     NotificacionesModule,
     PerfilUsuarioModule,
     TicketSolucionesModule,

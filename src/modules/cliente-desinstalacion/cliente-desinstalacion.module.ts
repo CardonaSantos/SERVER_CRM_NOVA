@@ -39,7 +39,7 @@ import { PppoeClienteCuentaModule } from '../pppoe-cliente-cuenta/ppoe-cliente-c
 import { TipoEvidenciaClienteOperacion } from '../cliente-instalacion/domain/enums/tipo-evidencia-cliente-operacion.enum';
 import { SubirEvidenciaDesinstalacionUseCase } from './application/use-cases/subir-evidencia-desinstalacion.use-case';
 import { ClienteDesinstalacionMediaPrismaRepository } from './infra/prisma/cliente-desinstalacion-media.prisma.repository';
-import { DigitalOceanMediaModule } from '../digital-ocean-media/digital-ocean-media.module';
+import { AlmacenamientoMediaModule } from '../almacenamiento-media/almacenamiento-media.module';
 import { ObtenerContextoCreacionDesinstalacionUseCase } from './application/use-cases/obtener-contexto-creacion-desinstalacion.use-case';
 import { ClienteDesinstalacionContextoPrismaRepository } from './infra/prisma/cliente-desinstalacion-contexto.prisma.repository';
 
@@ -55,7 +55,7 @@ import { ClienteDesinstalacionContextoPrismaRepository } from './infra/prisma/cl
 
     AuthModule,
 
-    DigitalOceanMediaModule,
+    AlmacenamientoMediaModule,
   ],
   controllers: [ClienteDesinstalacionController],
   providers: [

@@ -6,8 +6,8 @@ import {
 } from '../../infra/tokens/cliente-instalacion.tokens';
 import { ClienteInstalacionRepositoryPort } from '../../domain/ports/cliente-instalacion.repository.port';
 import { ClienteInstalacionMediaRepositoryPort } from '../../domain/ports/cliente-instalacion-media.repository.port';
-import { SubirMediaUseCase } from 'src/modules/digital-ocean-media/application/use-cases/subir-media.usecase';
-import { SUBIR_MEDIA_USECASE } from 'src/modules/digital-ocean-media/tokens/tokens';
+import { SubirMediaUseCase } from 'src/modules/almacenamiento-media/application/use-cases/subir-media.usecase';
+import { SUBIR_MEDIA_USECASE } from 'src/modules/almacenamiento-media/tokens/tokens';
 import { ClienteInstalacionMediaEntity } from '../../domain/entities/cliente-instalacion-media.entity';
 
 export type SubirEvidenciaInstalacionCommand = {

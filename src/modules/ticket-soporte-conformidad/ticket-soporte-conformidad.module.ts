@@ -8,7 +8,7 @@ import { RegistrarFirmaClienteTicketConformidadUseCase } from './application/use
 import { TICKET_CONFORMIDAD_REPOSITORY } from './domain/ports/ticket-conformidad.repository.port';
 import { TICKET_FIRMA_REPOSITORY } from './domain/ports/ticket-firma.repository.port';
 import { TICKET_CONFORMIDAD_ENLACE_REPOSITORY } from './domain/ports/ticket-conformidad-enlace.repository.port';
-import { DigitalOceanMediaModule } from '../digital-ocean-media/digital-ocean-media.module';
+import { AlmacenamientoMediaModule } from '../almacenamiento-media/almacenamiento-media.module';
 import { TicketConformidadController } from './presentation/ticket-soporte-conformidad.controller';
 import { TicketConformidadPublicController } from './presentation/ticket-conformidad-public.controller';
 import { TicketConformidadPrismaRepository } from './infra/prisma/repositories/ticket-conformidad-prisma.repository';
@@ -33,7 +33,7 @@ import { TicketConformidadApplicationService } from './application/services/tick
 import { RegistrarFirmaTecnicoTicketConformidadUseCase } from './application/use-cases/registrar-firma-tecnico.use-case';
 
 @Module({
-  imports: [ConfigModule, DigitalOceanMediaModule],
+  imports: [ConfigModule, AlmacenamientoMediaModule],
   controllers: [TicketConformidadController, TicketConformidadPublicController],
 
   providers: [
