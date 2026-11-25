@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { AuthService } from 'src/auth/auth.service';
 
@@ -18,13 +18,6 @@ export type ActorProvisionamientoPppoeAdmin = {
   operadorId: number;
 
   operadorNombre?: string | null;
-
-  /**
-   * Rol obtenido exclusivamente del JWT.
-   *
-   * Nunca debe recibirse desde el body.
-   */
-  actorRol: string;
 
   ipOrigen?: string | null;
 
@@ -64,7 +57,6 @@ export type ProvisionarPppoeClienteManualParams = {
  *
  * - empresa desde JWT;
  * - operador desde JWT;
- * - rol administrativo;
  * - reautenticación antes de tocar MikroTik.
  *
  * La contraseña de reautenticación termina aquí.
@@ -90,8 +82,6 @@ export class PppoeCuentaProvisionamientoAdminService {
     params: CrearPrealtaPppoeClienteManualParams,
   ): Promise<PrepararPrealtaPppoeResult> {
     this.validateActor(params.actor);
-
-    this.assertOfficeRole(params.actor.actorRol);
 
     this.assertPositiveInteger(params.empresaId, 'empresaId');
 
@@ -131,8 +121,6 @@ export class PppoeCuentaProvisionamientoAdminService {
     params: ProvisionarPppoeClienteManualParams,
   ): Promise<ProvisionarPppoeClienteManualResult> {
     this.validateActor(params.actor);
-
-    this.assertOfficeRole(params.actor.actorRol);
 
     this.assertPositiveInteger(params.empresaId, 'empresaId');
 
@@ -198,36 +186,6 @@ export class PppoeCuentaProvisionamientoAdminService {
     }
 
     this.assertPositiveInteger(actor.operadorId, 'actor.operadorId');
-
-    if (
-      typeof actor.actorRol !== 'string' ||
-      actor.actorRol.trim().length === 0
-    ) {
-      throw new ForbiddenException(
-        'No fue posible determinar el rol del operador.',
-      );
-    }
-  }
-
-  /**
-   * Conservamos la misma política utilizada
-   * por la activación PPPoE desde instalaciones.
-   */
-  private assertOfficeRole(actorRol: string): void {
-    const rol = actorRol.trim().toUpperCase();
-
-    if (
-      rol === 'OFICINA' ||
-      rol === 'ADMIN' ||
-      rol === 'SUPER_ADMIN' ||
-      rol === 'COORDINADOR_OPERACIONES'
-    ) {
-      return;
-    }
-
-    throw new ForbiddenException(
-      'El operador no posee permisos para administrar altas PPPoE.',
-    );
   }
 
   private assertPositiveInteger(value: number, field: string): void {
