@@ -55,7 +55,7 @@ export type AdoptarClientePppoeCuentaProps = {
    * Momento en que CRM verificó e incorporó
    * formalmente la cuenta.
    */
-  fechaAdopcion?: Date;
+  fechaAdopcion: Date;
 };
 
 export type ClientePppoeCuentaProps = {

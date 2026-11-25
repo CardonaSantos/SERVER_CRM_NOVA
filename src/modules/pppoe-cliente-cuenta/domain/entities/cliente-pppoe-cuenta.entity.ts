@@ -2,6 +2,11 @@ import { SecretoPppoeProtegido } from 'src/modules/pppoe-credentials/public/pppo
 
 import { EstadoCuentaPppoe } from '../enums/estado-cuenta-pppoe.enum';
 import {
+  CuentaPppoeDatosInvalidosError,
+  CuentaPppoeEliminadaError,
+  CuentaPppoeEstadoInvalidoError,
+} from '../errors/pppoe-cliente-cuenta.errors';
+import {
   AdoptarClientePppoeCuentaProps,
   ClientePppoeCuentaProps,
   CrearClientePppoeCuentaProps,
@@ -17,7 +22,10 @@ export class ClientePppoeCuentaEntity {
    * - El secreto ya fue cifrado externamente.
    * - Todavía no se ha creado el secret en MikroTik.
    */
-  static create(input: CrearClientePppoeCuentaProps): ClientePppoeCuentaEntity {
+  static create(
+    input: CrearClientePppoeCuentaProps,
+    ahora: Date,
+  ): ClientePppoeCuentaEntity {
     this.assertPositiveId(input.empresaId, 'empresaId');
     this.assertPositiveId(input.accesoInternetId, 'accesoInternetId');
     this.assertPositiveId(input.perfilHomologacionId, 'perfilHomologacionId');
@@ -42,7 +50,8 @@ export class ClientePppoeCuentaEntity {
 
     this.assertPositiveId(input.versionClave, 'versionClave');
 
-    const now = new Date();
+    this.assertValidDate(ahora, 'ahora');
+    const now = new Date(ahora);
 
     return new ClientePppoeCuentaEntity({
       id: null,
@@ -107,7 +116,7 @@ export class ClientePppoeCuentaEntity {
       input.estadoRemoto !== EstadoCuentaPppoe.ACTIVA &&
       input.estadoRemoto !== EstadoCuentaPppoe.SUSPENDIDA
     ) {
-      throw new Error(
+      throw new CuentaPppoeEstadoInvalidoError(
         'Una cuenta PPPoE adoptada debe encontrarse ACTIVA o SUSPENDIDA en MikroTik.',
       );
     }
@@ -131,9 +140,7 @@ export class ClientePppoeCuentaEntity {
 
     this.assertPositiveId(input.versionClave, 'versionClave');
 
-    const fechaAdopcion = input.fechaAdopcion
-      ? new Date(input.fechaAdopcion)
-      : new Date();
+    const fechaAdopcion = new Date(input.fechaAdopcion);
 
     this.assertValidDate(fechaAdopcion, 'fechaAdopcion');
 
@@ -187,9 +194,6 @@ export class ClientePppoeCuentaEntity {
     return new ClientePppoeCuentaEntity(props);
   }
 
-  /**
-   * Reconstruye una cuenta obtenida desde persistencia.
-   */
   static hydrate(input: ClientePppoeCuentaProps): ClientePppoeCuentaEntity {
     this.assertPositiveId(input.id, 'id');
 
@@ -273,10 +277,6 @@ export class ClientePppoeCuentaEntity {
     return new ClientePppoeCuentaEntity(props);
   }
 
-  /*
-   * Identidad y relaciones
-   */
-
   get id(): number | null {
     return this.props.id;
   }
@@ -292,10 +292,6 @@ export class ClientePppoeCuentaEntity {
   get perfilHomologacionId(): number {
     return this.props.perfilHomologacionId;
   }
-
-  /*
-   * Credenciales protegidas
-   */
 
   get usuario(): string {
     return this.props.usuario;
@@ -329,10 +325,6 @@ export class ClientePppoeCuentaEntity {
     };
   }
 
-  /*
-   * Estado
-   */
-
   get estado(): EstadoCuentaPppoe {
     return this.props.estado;
   }
@@ -363,10 +355,6 @@ export class ClientePppoeCuentaEntity {
       this.props.ultimoError !== null
     );
   }
-
-  /*
-   * Auditoría
-   */
 
   get generadoPorId(): number | null {
     return this.props.generadoPorId;
@@ -420,11 +408,7 @@ export class ClientePppoeCuentaEntity {
     return new Date(this.props.actualizadoEn);
   }
 
-  /*
-   * Instalación y creación del secret
-   */
-
-  iniciarInstalacion(fecha: Date = new Date()): void {
+  iniciarInstalacion(fecha: Date): void {
     this.assertPersisted();
 
     this.assertCurrentState(
@@ -435,7 +419,7 @@ export class ClientePppoeCuentaEntity {
     this.cambiarEstado(EstadoCuentaPppoe.EN_INSTALACION, fecha);
   }
 
-  marcarSecretCreado(fecha: Date = new Date()): void {
+  marcarSecretCreado(fecha: Date): void {
     this.assertPersisted();
 
     this.assertCurrentState(
@@ -456,11 +440,7 @@ export class ClientePppoeCuentaEntity {
     this.touch(fecha);
   }
 
-  /*
-   * Activación
-   */
-
-  iniciarActivacion(fecha: Date = new Date()): void {
+  iniciarActivacion(fecha: Date): void {
     this.assertPersisted();
 
     this.assertCurrentState(
@@ -469,7 +449,7 @@ export class ClientePppoeCuentaEntity {
     );
 
     if (!this.tieneSecretCreado) {
-      throw new Error(
+      throw new CuentaPppoeEstadoInvalidoError(
         'No se puede activar una cuenta cuyo secret todavía no ha sido confirmado.',
       );
     }
@@ -477,7 +457,7 @@ export class ClientePppoeCuentaEntity {
     this.cambiarEstado(EstadoCuentaPppoe.EN_ACTIVACION, fecha);
   }
 
-  marcarActiva(fecha: Date = new Date()): void {
+  marcarActiva(fecha: Date): void {
     this.assertPersisted();
 
     this.assertCurrentState(
@@ -486,7 +466,7 @@ export class ClientePppoeCuentaEntity {
     );
 
     if (!this.tieneSecretCreado) {
-      throw new Error(
+      throw new CuentaPppoeEstadoInvalidoError(
         'No se puede marcar como activa una cuenta sin un secret existente.',
       );
     }
@@ -498,11 +478,7 @@ export class ClientePppoeCuentaEntity {
     this.cambiarEstado(EstadoCuentaPppoe.ACTIVA, fecha);
   }
 
-  /*
-   * Suspensión
-   */
-
-  marcarSuspendida(fecha: Date = new Date()): void {
+  marcarSuspendida(fecha: Date): void {
     this.assertPersisted();
 
     this.assertCurrentState(
@@ -514,7 +490,7 @@ export class ClientePppoeCuentaEntity {
       !this.tieneSecretCreado ||
       (!this.props.activadoEn && !this.esAdoptada)
     ) {
-      throw new Error(
+      throw new CuentaPppoeEstadoInvalidoError(
         'No puede suspenderse una cuenta cuyo secret no está confirmado como existente.',
       );
     }
@@ -528,35 +504,7 @@ export class ClientePppoeCuentaEntity {
     this.cambiarEstado(EstadoCuentaPppoe.SUSPENDIDA, fecha);
   }
 
-  confirmarSuspensionTrasReintento(fecha: Date = new Date()): void {
-    this.assertPersisted();
-
-    this.assertCurrentState(
-      [EstadoCuentaPppoe.ERROR],
-      'confirmar la suspensión reintentada',
-    );
-
-    if (
-      !this.tieneSecretCreado ||
-      (!this.props.activadoEn && !this.esAdoptada)
-    ) {
-      throw new Error(
-        'No puede confirmarse la suspensión de una cuenta cuyo secret no está confirmado como existente.',
-      );
-    }
-
-    this.props.suspendidoEn = new Date(fecha);
-
-    this.props.ultimaSincronizacionEn = new Date(fecha);
-
-    this.cambiarEstado(EstadoCuentaPppoe.SUSPENDIDA, fecha);
-  }
-
-  /*
-   * Desinstalación
-   */
-
-  iniciarDesinstalacion(fecha: Date = new Date()): void {
+  iniciarDesinstalacion(fecha: Date): void {
     this.assertPersisted();
 
     this.assertCurrentState(
@@ -574,7 +522,7 @@ export class ClientePppoeCuentaEntity {
     this.cambiarEstado(EstadoCuentaPppoe.EN_DESINSTALACION, fecha);
   }
 
-  marcarEliminada(fecha: Date = new Date()): void {
+  marcarEliminada(fecha: Date): void {
     this.assertPersisted();
 
     this.assertCurrentState(
@@ -589,11 +537,7 @@ export class ClientePppoeCuentaEntity {
     this.cambiarEstado(EstadoCuentaPppoe.ELIMINADA, fecha);
   }
 
-  /*
-   * Errores y sincronización
-   */
-
-  registrarError(mensaje: string, fecha: Date = new Date()): void {
+  registrarError(mensaje: string, fecha: Date): void {
     this.assertPersisted();
     this.assertNotDeleted();
 
@@ -609,17 +553,7 @@ export class ClientePppoeCuentaEntity {
     this.touch(fecha);
   }
 
-  registrarSincronizacion(fecha: Date = new Date()): void {
-    this.assertPersisted();
-
-    ClientePppoeCuentaEntity.assertValidDate(fecha, 'fecha');
-
-    this.props.ultimaSincronizacionEn = new Date(fecha);
-
-    this.touch(fecha);
-  }
-
-  reintentarInstalacion(fecha: Date = new Date()): void {
+  reintentarInstalacion(fecha: Date): void {
     this.assertPersisted();
 
     this.assertCurrentState(
@@ -628,7 +562,7 @@ export class ClientePppoeCuentaEntity {
     );
 
     if (this.tieneSecretCreado) {
-      throw new Error(
+      throw new CuentaPppoeEstadoInvalidoError(
         'El secret ya fue creado. Debe reintentar la activación, no la instalación.',
       );
     }
@@ -636,7 +570,7 @@ export class ClientePppoeCuentaEntity {
     this.cambiarEstado(EstadoCuentaPppoe.EN_INSTALACION, fecha);
   }
 
-  reintentarActivacion(fecha: Date = new Date()): void {
+  reintentarActivacion(fecha: Date): void {
     this.assertPersisted();
 
     this.assertCurrentState(
@@ -645,63 +579,13 @@ export class ClientePppoeCuentaEntity {
     );
 
     if (!this.tieneSecretCreado) {
-      throw new Error(
+      throw new CuentaPppoeEstadoInvalidoError(
         'No puede reintentarse la activación porque el secret no ha sido confirmado.',
       );
     }
 
     this.cambiarEstado(EstadoCuentaPppoe.EN_ACTIVACION, fecha);
   }
-
-  /*
-   * Rotación del secreto cifrado
-   */
-
-  rotarSecretoProtegido(
-    secreto: SecretoPppoeProtegido,
-    fecha: Date = new Date(),
-  ): void {
-    this.assertPersisted();
-    this.assertNotDeleted();
-
-    if (secreto.versionClave <= this.props.versionClave) {
-      throw new Error(
-        'La nueva versión de clave debe ser mayor que la versión actual.',
-      );
-    }
-
-    this.props.secretoCifrado =
-      ClientePppoeCuentaEntity.normalizeRequiredString(
-        secreto.secretoCifrado,
-        'secretoCifrado',
-      );
-
-    this.props.secretoIv = ClientePppoeCuentaEntity.normalizeRequiredString(
-      secreto.secretoIv,
-      'secretoIv',
-    );
-
-    this.props.secretoAuthTag =
-      ClientePppoeCuentaEntity.normalizeRequiredString(
-        secreto.secretoAuthTag,
-        'secretoAuthTag',
-      );
-
-    ClientePppoeCuentaEntity.assertPositiveId(
-      secreto.versionClave,
-      'versionClave',
-    );
-
-    this.props.versionClave = secreto.versionClave;
-
-    this.props.ultimoError = null;
-
-    this.touch(fecha);
-  }
-
-  /*
-   * Salida para mappers
-   */
 
   toPrimitives(): ClientePppoeCuentaProps {
     return {
@@ -761,10 +645,6 @@ export class ClientePppoeCuentaEntity {
     };
   }
 
-  /*
-   * Reglas internas
-   */
-
   private cambiarEstado(estado: EstadoCuentaPppoe, fecha: Date): void {
     ClientePppoeCuentaEntity.assertValidDate(fecha, 'fecha');
 
@@ -786,7 +666,7 @@ export class ClientePppoeCuentaEntity {
     action: string,
   ): void {
     if (!permittedStates.includes(this.props.estado)) {
-      throw new Error(
+      throw new CuentaPppoeEstadoInvalidoError(
         `No se puede ${action} desde el estado ${this.props.estado}.`,
       );
     }
@@ -802,7 +682,7 @@ export class ClientePppoeCuentaEntity {
 
   private assertNotDeleted(): void {
     if (this.props.estado === EstadoCuentaPppoe.ELIMINADA) {
-      throw new Error('No se puede modificar una cuenta PPPoE eliminada.');
+      throw new CuentaPppoeEliminadaError();
     }
   }
 
@@ -810,19 +690,21 @@ export class ClientePppoeCuentaEntity {
     const esAdoptada = props.adoptadoEn !== null;
 
     if ((props.adoptadoEn === null) !== (props.adoptadoPorId === null)) {
-      throw new Error(
+      throw new CuentaPppoeDatosInvalidosError(
         'Una cuenta adoptada debe tener adoptadoEn y adoptadoPorId de forma consistente.',
       );
     }
 
     if (props.activadoEn && !props.secretCreadoEn && !esAdoptada) {
-      throw new Error(
+      throw new CuentaPppoeDatosInvalidosError(
         'Una cuenta activada debe tener una fecha de creación del secret.',
       );
     }
 
     if (props.suspendidoEn && !props.secretCreadoEn && !esAdoptada) {
-      throw new Error('Una cuenta suspendida debe tener un secret creado.');
+      throw new CuentaPppoeDatosInvalidosError(
+        'Una cuenta suspendida debe tener un secret creado.',
+      );
     }
 
     if (
@@ -830,7 +712,9 @@ export class ClientePppoeCuentaEntity {
       !props.activadoEn &&
       !esAdoptada
     ) {
-      throw new Error('Una cuenta activa debe tener una fecha de activación.');
+      throw new CuentaPppoeDatosInvalidosError(
+        'Una cuenta activa debe tener una fecha de activación.',
+      );
     }
 
     if (
@@ -838,13 +722,13 @@ export class ClientePppoeCuentaEntity {
       !props.suspendidoEn &&
       !esAdoptada
     ) {
-      throw new Error(
+      throw new CuentaPppoeDatosInvalidosError(
         'Una cuenta suspendida debe tener una fecha de suspensión.',
       );
     }
 
     if (props.estado === EstadoCuentaPppoe.ELIMINADA && !props.eliminadoEn) {
-      throw new Error(
+      throw new CuentaPppoeDatosInvalidosError(
         'Una cuenta eliminada debe tener una fecha de eliminación.',
       );
     }
@@ -854,11 +738,15 @@ export class ClientePppoeCuentaEntity {
     const normalized = this.normalizeRequiredString(value, 'usuario');
 
     if (/\s/.test(normalized)) {
-      throw new Error('El usuario PPPoE no puede contener espacios.');
+      throw new CuentaPppoeDatosInvalidosError(
+        'El usuario PPPoE no puede contener espacios.',
+      );
     }
 
     if (normalized.length > 128) {
-      throw new Error('El usuario PPPoE no puede superar los 128 caracteres.');
+      throw new CuentaPppoeDatosInvalidosError(
+        'El usuario PPPoE no puede superar los 128 caracteres.',
+      );
     }
 
     return normalized;
@@ -868,7 +756,7 @@ export class ClientePppoeCuentaEntity {
     const normalized = value?.trim();
 
     if (!normalized) {
-      throw new Error(`${field} es obligatorio.`);
+      throw new CuentaPppoeDatosInvalidosError(`${field} es obligatorio.`);
     }
 
     return normalized;
@@ -886,7 +774,9 @@ export class ClientePppoeCuentaEntity {
 
   private static assertPositiveId(value: number | null, field: string): void {
     if (value === null || !Number.isInteger(value) || value <= 0) {
-      throw new Error(`${field} debe ser un entero positivo.`);
+      throw new CuentaPppoeDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 
@@ -903,7 +793,9 @@ export class ClientePppoeCuentaEntity {
 
   private static assertValidEstado(value: EstadoCuentaPppoe): void {
     if (!Object.values(EstadoCuentaPppoe).includes(value)) {
-      throw new Error(`Estado de cuenta PPPoE inválido: ${value}.`);
+      throw new CuentaPppoeDatosInvalidosError(
+        `Estado de cuenta PPPoE inválido: ${value}.`,
+      );
     }
   }
 
@@ -911,7 +803,9 @@ export class ClientePppoeCuentaEntity {
     const date = new Date(value);
 
     if (Number.isNaN(date.getTime())) {
-      throw new Error(`${field} debe ser una fecha válida.`);
+      throw new CuentaPppoeDatosInvalidosError(
+        `${field} debe ser una fecha válida.`,
+      );
     }
   }
 
