@@ -8,23 +8,23 @@ import {
 
 import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 
-import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
-
-import { FlujoActivacionCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
+import {
+  EstadoCuentaPppoe,
+  FlujoActivacionCuentaPppoe,
+  ClientePppoeCuentaDetalleActivacionAccion,
+} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 import {
   PPPOE_CLIENTE_CUENTA,
   PppoeClienteCuentaFacadePort,
 } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
 
-import { ClientePppoeCuentaDetalleActivacionAccion } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
-
 import { EstadoOperacionPppoe } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 import {
   ActorOperacionPppoeInput,
   EjecutarOperacionPppoeResult,
-} from '../../domain/props/pppoe-provisionamiento.props';
+} from '../../public/pppoe-provisionamiento.port';
 
 import {
   CrearYEjecutarOperacionPppoeUseCase,

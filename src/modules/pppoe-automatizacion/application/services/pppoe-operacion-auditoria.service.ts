@@ -3,14 +3,13 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   AccionAuditoriaPppoe,
   OrigenOperacionPppoe,
+  DatosAuditoriaPppoe,
 } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 
 import {
   PPPOE_AUDITORIA,
   PppoeAuditoriaFacadePort,
 } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.facade.port';
-
-import { DatosAuditoriaPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 
 import { PppoeOperacionEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion.entity';
 
@@ -24,7 +23,7 @@ import {
   RegistrarAuditoriaOperacionPppoeParams,
   RegistrarAuditoriaRecuperacionPppoeParams,
   RegistrarAuditoriaReintentoPppoeParams,
-} from '../../domain/ports/pppoe-operacion-auditoria.port';
+} from '../ports/pppoe-operacion-auditoria.port';
 import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 /**

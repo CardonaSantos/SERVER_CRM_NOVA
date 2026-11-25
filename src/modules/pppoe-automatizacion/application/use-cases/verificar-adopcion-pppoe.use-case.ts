@@ -5,41 +5,27 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-
 import {
   PPPOE_CLIENTE_CUENTA,
   PppoeClienteCuentaFacadePort,
 } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
-
 import {
   PPPOE_ACCESO_INTERNET,
   PppoeAccesoInternetFacadePort,
 } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.facade.port';
-
 import {
   PPPOE_PERFIL_HOMOLOGACION,
   PppoePerfilHomologacionFacadePort,
 } from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.facade.port';
-
 import {
   MIKROTIK_SSH_PORT,
   MikrotikSshPort,
 } from 'src/modules/mikrotik-ssh/public/mikrotik-ssh.port';
-
 import { MikrotikSshSessionPort } from 'src/modules/mikrotik-ssh/public/mikrotik-ssh-session.port';
-
 import { MetodoAutenticacionMikrotikSsh } from 'src/modules/mikrotik-ssh/public/mikrotik-ssh.types';
-
 import { MikrotikRouterConnectionContextPort } from 'src/mikro-tik/domain/ports/mikrotik-router-connection-context.port';
-
 import { MIKROTIK_ROUTER_CONNECTION_CONTEXT } from 'src/mikro-tik/infra/tokens/mikrotik-router.tokens';
-
 import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
-
-import {
-  EstadoRemotoAdopcionPppoe,
-  VerificarAdopcionPppoeResult,
-} from '../results/verificar-adopcion-pppoe.result';
 
 export type VerificarAdopcionPppoeInput = {
   empresaId: number;
@@ -575,3 +561,111 @@ export class VerificarAdopcionPppoeUseCase {
     }
   }
 }
+
+export type EstadoRemotoAdopcionPppoe =
+  | EstadoCuentaPppoe.ACTIVA
+  | EstadoCuentaPppoe.SUSPENDIDA;
+
+/**
+ * Resultado seguro de comprobar una cuenta PPPoE
+ * que ya existe en MikroTik antes de adoptarla.
+ *
+ * Nunca contiene la contraseña suministrada ni
+ * la contraseña almacenada en RouterOS.
+ */
+export type VerificarAdopcionPppoeResult = {
+  empresaId: number;
+
+  clienteId: number;
+
+  perfilHomologacionId: number;
+
+  mikrotikRouterId: number;
+
+  servicioInternetId: number;
+
+  usuarioPppoe: string;
+
+  /**
+   * Indica si el usuario existe físicamente
+   * dentro de /ppp secret.
+   */
+  encontrado: boolean;
+
+  /**
+   * null:
+   * no se encontró el secret.
+   *
+   * false:
+   * existe, pero la contraseña no coincide.
+   *
+   * true:
+   * las credenciales fueron verificadas.
+   */
+  passwordCoincide: boolean | null;
+
+  /**
+   * Perfil que debería tener según
+   * PppoePerfilHomologacion.
+   */
+  perfilEsperado: string;
+
+  /**
+   * Profile observado realmente en RouterOS.
+   */
+  perfilEncontrado: string | null;
+
+  perfilCoincide: boolean | null;
+
+  /**
+   * Valor service observado en /ppp secret.
+   *
+   * Históricos pueden utilizar:
+   *
+   * - pppoe
+   * - any
+   *
+   * Ambos son compatibles con PPPoE.
+   */
+  servicioEncontrado: string | null;
+
+  servicioCompatible: boolean | null;
+
+  /**
+   * Estado disabled observado remotamente.
+   *
+   * false = habilitado
+   * true  = suspendido/deshabilitado
+   */
+  deshabilitado: boolean | null;
+
+  /**
+   * Estado local que debería utilizarse
+   * si posteriormente se adopta la cuenta.
+   */
+  estadoRemoto: EstadoRemotoAdopcionPppoe | null;
+
+  /**
+   * Solo se calcula cuando la contraseña ya fue
+   * comprobada contra MikroTik.
+   *
+   * No bloquea la adopción.
+   */
+  cumpleFormatoNova: boolean | null;
+
+  /**
+   * true únicamente cuando:
+   *
+   * - existe el secret;
+   * - la contraseña coincide;
+   * - el profile coincide;
+   * - service es compatible.
+   */
+  puedeAdoptar: boolean;
+
+  /**
+   * Observaciones no bloqueantes o motivos
+   * por los que no puede adoptarse.
+   */
+  advertencias: string[];
+};

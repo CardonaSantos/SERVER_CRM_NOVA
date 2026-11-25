@@ -4,7 +4,6 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-
 import {
   PPPOE_SECRET_CIPHER,
   PppoeSecretCipherPort,
@@ -14,18 +13,9 @@ import {
   PppoePerfilHomologacionFacadePort,
 } from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.facade.port';
 import { ClientePppoeCuentaReadModel } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
-
 import { PerfilHomologacionReadModel } from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.types';
-/**
- * Ajusta únicamente esta ruta a la ubicación real
- * del token que ya utilizas en el módulo de homologación.
- */
-
 import { PppoeOperacionEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion.entity';
-
 import { TipoOperacionPppoe } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
-
-import { ContextoEjecucionPppoe } from '../models/contexto-ejecucion-pppoe.model';
 import {
   PPPOE_CLIENTE_CUENTA,
   PppoeClienteCuentaFacadePort,
@@ -35,6 +25,11 @@ import {
   MikrotikRouterConnectionContext,
   MikrotikRouterConnectionContextPort,
 } from 'src/mikro-tik/domain/ports/mikrotik-router-connection-context.port';
+
+/**
+ * Ajusta únicamente esta ruta a la ubicación real
+ * del token que ya utilizas en el módulo de homologación.
+ */
 
 @Injectable()
 export class ResolverContextoEjecucionPppoeService {
@@ -237,3 +232,34 @@ export class ResolverContextoEjecucionPppoeService {
     }
   }
 }
+
+/**
+ * Contexto técnico interno utilizado durante una
+ * ejecución PPPoE.
+ *
+ * Puede contener credenciales temporalmente descifradas,
+ * por lo que nunca debe:
+ *
+ * - devolverse desde un controller;
+ * - persistirse;
+ * - registrarse en logs;
+ * - almacenarse en auditorías;
+ * - serializarse.
+ */
+export type ContextoEjecucionPppoe = {
+  operacion: PppoeOperacionEntity;
+
+  cuenta: ClientePppoeCuentaReadModel;
+
+  perfil: PerfilHomologacionReadModel;
+
+  router: MikrotikRouterConnectionContext;
+
+  /**
+   * Solo se descifra para CREAR_SECRET.
+   *
+   * Activación, suspensión y eliminación no necesitan
+   * conocer la contraseña PPPoE.
+   */
+  passwordPppoe: string | null;
+};

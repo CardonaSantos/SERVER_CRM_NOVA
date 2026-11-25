@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { ActualizarPasoPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/actualizar-paso-pppoe-operacion.use-case';
 
-import { PppoeOperacionStepError } from '../errors/pppoe-operacion-step.error';
+import { PppoeOperacionStepError } from '../../domain/errors/pppoe-automatizacion.errors';
 
 /**
  * Resultado interno devuelto por la acción técnica

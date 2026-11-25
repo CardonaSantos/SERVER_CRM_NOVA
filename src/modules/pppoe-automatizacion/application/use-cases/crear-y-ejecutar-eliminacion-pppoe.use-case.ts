@@ -38,14 +38,14 @@ import { MIKROTIK_ROUTER_REPOSITORY } from 'src/mikro-tik/infra/tokens/mikrotik-
 import {
   PPPOE_OPERACION_AUDITORIA,
   PppoeOperacionAuditoriaPort,
-} from '../../domain/ports/pppoe-operacion-auditoria.port';
+} from '../ports/pppoe-operacion-auditoria.port';
 
 import {
   ActorOperacionPppoeInput,
   DarDeBajaServicioPppoeInput,
   EjecutarOperacionPppoeResult,
   EliminarSecretPppoeInput,
-} from '../../domain/props/pppoe-provisionamiento.props';
+} from '../../public/pppoe-provisionamiento.port';
 
 import { EjecutarPppoeOperacionUseCase } from './ejecutar-pppoe-operacion.use-case';
 

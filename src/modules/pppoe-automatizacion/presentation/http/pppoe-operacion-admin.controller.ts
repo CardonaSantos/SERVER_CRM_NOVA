@@ -16,13 +16,13 @@ import type { Request } from 'express';
 
 import { OperacionSensible } from 'src/auth/step-up/operacion-sensible.decorator';
 
-import { PppoeOperacionAdminService } from '../application/services/pppoe-operacion-admin.service';
+import { PppoeOperacionAdminService } from '../../application/services/pppoe-operacion-admin.service';
 
-import { AutorizarPppoeOperacionDto } from './dto/autorizar-pppoe-operacion.dto';
-import { CancelarPppoeOperacionDto } from './dto/cancelar-pppoe-operacion.dto';
-import { ListarPppoeOperacionesQueryDto } from './dto/listar-pppoe-operaciones-query.dto';
-import { RecuperarPppoeOperacionDto } from './dto/recuperar-pppoe-operacion.dto';
-import { ReintentarPppoeOperacionDto } from './dto/reintentar-pppoe-operacion.dto';
+import { AutorizarPppoeOperacionDto } from '../dto/autorizar-pppoe-operacion.dto';
+import { CancelarPppoeOperacionDto } from '../dto/cancelar-pppoe-operacion.dto';
+import { ListarPppoeOperacionesQueryDto } from '../dto/listar-pppoe-operaciones-query.dto';
+import { RecuperarPppoeOperacionDto } from '../dto/recuperar-pppoe-operacion.dto';
+import { ReintentarPppoeOperacionDto } from '../dto/reintentar-pppoe-operacion.dto';
 
 type AuthenticatedRequest = Request & {
   user?: {

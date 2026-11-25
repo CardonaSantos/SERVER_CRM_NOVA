@@ -35,9 +35,9 @@ import {
 import {
   PPPOE_OPERACION_AUDITORIA,
   PppoeOperacionAuditoriaPort,
-} from '../../domain/ports/pppoe-operacion-auditoria.port';
+} from '../ports/pppoe-operacion-auditoria.port';
 
-import { EjecutarOperacionPppoeResult } from '../../domain/props/pppoe-provisionamiento.props';
+import { EjecutarOperacionPppoeResult } from '../../public/pppoe-provisionamiento.port';
 
 import { EjecutarPppoeOperacionUseCase } from './ejecutar-pppoe-operacion.use-case';
 import { CrearPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/crear-pppoe-operacion.use-case';

@@ -1,6 +1,6 @@
 import { ClienteInstalacionEntity } from '../domain/entities/cliente-instalacion.entity';
 
-import { EjecutarOperacionPppoeResult } from 'src/modules/pppoe-automatizacion/domain/props/pppoe-provisionamiento.props';
+import { EjecutarOperacionPppoeResult } from 'src/modules/pppoe-automatizacion/public/pppoe-provisionamiento.port';
 
 export type ActivarPppoeInstalacionResult = {
   instalacion: ClienteInstalacionEntity;

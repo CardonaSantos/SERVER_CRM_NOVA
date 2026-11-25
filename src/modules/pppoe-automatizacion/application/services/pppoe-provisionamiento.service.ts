@@ -12,9 +12,8 @@ import { CrearReintentoPppoeOperacionUseCase } from 'src/modules/pppoe-operacion
 
 import { PppoeOperacionEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion.entity';
 
-import { PppoeProvisionamientoPort } from '../../domain/ports/pppoe-provisionamiento.port';
-
 import {
+  PppoeProvisionamientoPort,
   ActivarSecretPppoeInput,
   CrearSecretPppoeInput,
   DarDeBajaServicioPppoeInput,
@@ -23,7 +22,7 @@ import {
   ReactivarServicioPppoeInput,
   ReintentarOperacionPppoeInput,
   SuspenderServicioPppoeInput,
-} from '../../domain/props/pppoe-provisionamiento.props';
+} from '../../public/pppoe-provisionamiento.port';
 
 import { CrearYEjecutarOperacionPppoeUseCase } from '../use-cases/crear-y-ejecutar-operacion-pppoe.use-case';
 
@@ -42,7 +41,7 @@ import {
 import {
   PPPOE_OPERACION_AUDITORIA,
   PppoeOperacionAuditoriaPort,
-} from '../../domain/ports/pppoe-operacion-auditoria.port';
+} from '../ports/pppoe-operacion-auditoria.port';
 import { CrearYEjecutarEliminacionPppoeUseCase } from '../use-cases/crear-y-ejecutar-eliminacion-pppoe.use-case';
 
 import {

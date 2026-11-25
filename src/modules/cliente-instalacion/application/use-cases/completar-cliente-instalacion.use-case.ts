@@ -167,13 +167,13 @@ export class CompletarClienteInstalacionUseCase {
 // import {
 //   PPPOE_PROVISIONAMIENTO,
 //   PppoeProvisionamientoPort,
-// } from 'src/modules/pppoe-automatizacion/domain/ports/pppoe-provisionamiento.port';
+// } from 'src/modules/pppoe-automatizacion/public/pppoe-provisionamiento.port';
 
 // import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 
 // import { EstadoOperacionPppoe } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
-// import { EjecutarOperacionPppoeResult } from 'src/modules/pppoe-automatizacion/domain/props/pppoe-provisionamiento.props';
+// import { EjecutarOperacionPppoeResult } from 'src/modules/pppoe-automatizacion/public/pppoe-provisionamiento.port';
 
 // import { ResolverPppoeInstalacionService } from '../services/resolver-pppoe-instalacion.service';
 

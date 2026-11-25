@@ -8,7 +8,7 @@ import {
   ClienteInternetEstadoOperativoPort,
   EstadoOperativoClienteInternet,
   SincronizarEstadoOperativoClienteParams,
-} from '../../domain/ports/cliente-internet-estado-operativo.port';
+} from '../../application/ports/cliente-internet-estado-operativo.port';
 
 @Injectable()
 export class ClienteInternetEstadoOperativoPrismaAdapter

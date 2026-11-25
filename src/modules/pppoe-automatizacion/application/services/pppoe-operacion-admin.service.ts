@@ -16,8 +16,8 @@ import { PppoeOperacionEntity } from 'src/modules/pppoe-operacion/domain/entitie
 import {
   PPPOE_PROVISIONAMIENTO,
   PppoeProvisionamientoPort,
-} from '../../domain/ports/pppoe-provisionamiento.port';
-import { EjecutarOperacionPppoeResult } from '../../domain/props/pppoe-provisionamiento.props';
+  EjecutarOperacionPppoeResult,
+} from '../../public/pppoe-provisionamiento.port';
 import { EjecutarPppoeOperacionUseCase } from '../use-cases/ejecutar-pppoe-operacion.use-case';
 import { RecuperarPppoeOperacionInterrumpidaUseCase } from '../use-cases/recuperar-pppoe-operacion-interrumpida.use-case';
 import { AuthService } from 'src/auth/auth.service';

@@ -14,8 +14,8 @@ import {
 } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.facade.port';
 import { CLIENTE_INSTALACION_ACCESO_REPOSITORY } from 'src/modules/ppoe-instalacion-acceso/tokens/instalacion-acceso.token';
 import { ClienteInstalacionAccesoRepositoryPort } from 'src/modules/ppoe-instalacion-acceso/domain/ports/cliente-instalacion-acceso.port';
-import { AccesoInternetReadModel } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
 import {
+  AccesoInternetReadModel,
   MetodoAutenticacionInternet,
   TecnologiaAccesoInternet,
 } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
@@ -29,7 +29,7 @@ import {
 import {
   PPPOE_PREALTA,
   PppoePrealtaPort,
-} from 'src/modules/pppoe-automatizacion/domain/ports/pppoe-prealta.port';
+} from 'src/modules/pppoe-automatizacion/public/pppoe-prealta.port';
 
 import {
   ClienteInstalacionAccesoResult,

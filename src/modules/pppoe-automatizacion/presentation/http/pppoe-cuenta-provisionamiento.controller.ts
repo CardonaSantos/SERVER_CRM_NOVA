@@ -14,11 +14,11 @@ import type { Request } from 'express';
 
 import { OperacionSensible } from 'src/auth/step-up/operacion-sensible.decorator';
 
-import { PppoeCuentaProvisionamientoAdminService } from '../application/services/pppoe-cuenta-provisionamiento-admin.service';
+import { PppoeCuentaProvisionamientoAdminService } from '../../application/services/pppoe-cuenta-provisionamiento-admin.service';
 
-import { CrearPrealtaPppoeClienteManualDto } from './dto/crear-prealta-pppoe-cliente-manual.dto';
+import { CrearPrealtaPppoeClienteManualDto } from '../dto/crear-prealta-pppoe-cliente-manual.dto';
 
-import { ProvisionarPppoeClienteManualDto } from './dto/provisionar-pppoe-cliente-manual.dto';
+import { ProvisionarPppoeClienteManualDto } from '../dto/provisionar-pppoe-cliente-manual.dto';
 
 type AuthenticatedRequest = Request & {
   user?: {

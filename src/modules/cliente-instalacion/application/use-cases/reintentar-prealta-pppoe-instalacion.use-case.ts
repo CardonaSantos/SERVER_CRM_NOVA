@@ -22,7 +22,7 @@ import {
 import {
   PPPOE_PREALTA,
   PppoePrealtaPort,
-} from 'src/modules/pppoe-automatizacion/domain/ports/pppoe-prealta.port';
+} from 'src/modules/pppoe-automatizacion/public/pppoe-prealta.port';
 
 import { ReintentarPrealtaPppoeCommand } from '../commands/reintentar-prealta-pppoe.command';
 

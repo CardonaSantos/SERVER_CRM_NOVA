@@ -6,9 +6,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { ClientePppoeCuentaReadModel } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
-
-import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
+import {
+  ClientePppoeCuentaReadModel,
+  EstadoCuentaPppoe,
+} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 import { FinalizarPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/finalizar-pppoe-operacion.use-case';
 
@@ -28,7 +29,7 @@ import {
   PppoeOperacionRepositoryPort,
 } from 'src/modules/pppoe-operacion/domain/ports/pppoe-operacion-repository.port';
 
-import { EjecutarOperacionPppoeResult } from '../../domain/props/pppoe-provisionamiento.props';
+import { EjecutarOperacionPppoeResult } from '../../public/pppoe-provisionamiento.port';
 import {
   PPPOE_CLIENTE_CUENTA,
   PppoeClienteCuentaFacadePort,
@@ -36,7 +37,7 @@ import {
 import {
   PPPOE_OPERACION_AUDITORIA,
   PppoeOperacionAuditoriaPort,
-} from '../../domain/ports/pppoe-operacion-auditoria.port';
+} from '../ports/pppoe-operacion-auditoria.port';
 
 /**
  * Datos necesarios para recuperar una operación

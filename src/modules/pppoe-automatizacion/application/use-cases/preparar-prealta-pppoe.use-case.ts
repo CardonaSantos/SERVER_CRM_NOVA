@@ -6,11 +6,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { PrepararPrealtaPppoeInput } from '../inputs/preparar-prealta-pppoe.input';
-
-import { PrepararPrealtaPppoeResult } from '../results/preparar-prealta-pppoe.result';
-
-import { PppoePrealtaPort } from '../../domain/ports/pppoe-prealta.port';
+import {
+  PrepararPrealtaPppoeInput,
+  PrepararPrealtaPppoeResult,
+  PppoePrealtaPort,
+} from '../../public/pppoe-prealta.port';
 
 import {
   PPPOE_CLIENTE_CUENTA,
@@ -32,7 +32,10 @@ import {
   PppoeAuditoriaFacadePort,
 } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.facade.port';
 
-import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
+import {
+  EstadoCuentaPppoe,
+  ClientePppoeCuentaReadModel,
+} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 import {
   AccionAuditoriaPppoe,
@@ -42,7 +45,6 @@ import {
   PPPOE_PERFIL_HOMOLOGACION,
   PppoePerfilHomologacionFacadePort,
 } from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.facade.port';
-import { ClientePppoeCuentaReadModel } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 @Injectable()
 export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {

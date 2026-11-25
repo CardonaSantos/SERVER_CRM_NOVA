@@ -13,7 +13,7 @@ import {
 import {
   PPPOE_PROVISIONAMIENTO,
   PppoeProvisionamientoPort,
-} from 'src/modules/pppoe-automatizacion/domain/ports/pppoe-provisionamiento.port';
+} from 'src/modules/pppoe-automatizacion/public/pppoe-provisionamiento.port';
 import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entitie';
 import { ClienteDesinstalacionAutorizacionEntity } from '../../domain/entities/cliente-desintalacion-autorizacion.entitie';

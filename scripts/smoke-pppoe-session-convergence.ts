@@ -24,8 +24,8 @@ import { PppoeAutomatizacionModule } from 'src/modules/pppoe-automatizacion/pppo
 import {
   PPPOE_PROVISIONAMIENTO,
   PppoeProvisionamientoPort,
-} from 'src/modules/pppoe-automatizacion/domain/ports/pppoe-provisionamiento.port';
-import { EjecutarOperacionPppoeResult } from 'src/modules/pppoe-automatizacion/domain/props/pppoe-provisionamiento.props';
+} from 'src/modules/pppoe-automatizacion/public/pppoe-provisionamiento.port';
+import { EjecutarOperacionPppoeResult } from 'src/modules/pppoe-automatizacion/public/pppoe-provisionamiento.port';
 
 /**
  * Smoke REAL de convergencia PPPoE.

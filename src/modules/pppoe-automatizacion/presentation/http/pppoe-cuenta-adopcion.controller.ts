@@ -10,14 +10,14 @@ import {
 
 import type { Request } from 'express';
 
-import { VerificarAdopcionPppoeUseCase } from '../application/use-cases/verificar-adopcion-pppoe.use-case';
+import { VerificarAdopcionPppoeUseCase } from '../../application/use-cases/verificar-adopcion-pppoe.use-case';
 
-import { AdoptarCuentaPppoeExistenteUseCase } from '../application/use-cases/adoptar-cuenta-pppoe-existente.use-case';
+import { AdoptarCuentaPppoeExistenteUseCase } from '../../application/use-cases/adoptar-cuenta-pppoe-existente.use-case';
 
 import {
   AdoptarCuentaPppoeExistenteDto,
   VerificarAdopcionPppoeDto,
-} from './dto/adopcion-pppoe.dto';
+} from '../dto/adopcion-pppoe.dto';
 
 type AuthenticatedRequest = Request & {
   user?: {

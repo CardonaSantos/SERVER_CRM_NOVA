@@ -7,12 +7,7 @@ import {
 
 import { MikrotikSshSessionPort } from 'src/modules/mikrotik-ssh/public/mikrotik-ssh-session.port';
 
-import {
-  CodigoErrorMikrotikSsh,
-  EfectoRemotoMikrotik,
-  FaseFalloMikrotikSsh,
-  MetodoAutenticacionMikrotikSsh,
-} from 'src/modules/mikrotik-ssh/public/mikrotik-ssh.types';
+import { MetodoAutenticacionMikrotikSsh } from 'src/modules/mikrotik-ssh/public/mikrotik-ssh.types';
 
 import { PppoeOperacionPasoEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion-paso.entity';
 
@@ -23,49 +18,50 @@ import {
 
 import { PppoeOperacionResultado } from 'src/modules/pppoe-operacion/domain/props/pppoe-operacion.props';
 
-import { PppoeOperacionStepError } from '../errors/pppoe-operacion-step.error';
+import { ContextoEjecucionPppoe } from './resolver-contexto-ejecucion-pppoe.service';
 
-import { ContextoEjecucionPppoe } from '../models/contexto-ejecucion-pppoe.model';
+import { PppoeOperacionStepRunnerService } from './pppoe-operacion-step-runner.service';
 
-import { PppoeOperacionStepRunnerService } from '../services/pppoe-operacion-step-runner.service';
-
-export type EjecutarActivarSecretPppoeParams = {
+export type EjecutarCrearSecretPppoeParams = {
   contexto: ContextoEjecucionPppoe;
 
+  /**
+   * Pasos pertenecientes al agregado de la operación.
+   *
+   * Se utilizan para resolver el orden real y evitar
+   * depender de números escritos manualmente.
+   */
   pasos: PppoeOperacionPasoEntity[];
 };
 
 /**
- * Ejecuta el plan técnico de ACTIVAR_SECRET.
+ * Ejecuta el plan técnico de CREAR_SECRET.
  *
- * Corresponde al Estado 3:
+ * Corresponde al Estado 2:
  *
- * "En Activación" / "Estado Activo"
+ * "En Instalación"
  *
  * Flujo:
  *
  * 1. CONECTAR_ROUTER
  * 2. BUSCAR_SECRET
- * 3. HABILITAR_SECRET
+ * 3. AGREGAR_SECRET u OMITIR
  * 4. CONFIRMAR_SECRET
  *
- * Utiliza una única sesión SSH durante todo el flujo.
+ * Utiliza una única sesión SSH durante toda la operación.
  *
  * Requerimiento PPPoE v3:
  *
- * /ppp secret enable [find name="{id_cliente}"]
+ * /ppp secret add
+ *   name="{id_cliente}"
+ *   password="{password}"
+ *   profile="{perfil}"
+ *   service="pppoe"
  *
- * La consulta previa no sustituye el comando de habilitación.
- * Se utiliza únicamente para validar:
- *
- * - que el Secret exista;
- * - que corresponda al Profile homologado.
- *
- * Después de esas validaciones, el comando auditado se
- * ejecuta siempre.
+ * El secret creado debe quedar habilitado.
  */
 @Injectable()
-export class ActivarSecretPppoeExecutor {
+export class EjecutorCrearSecretPppoeService {
   constructor(
     @Inject(MIKROTIK_SSH_PORT)
     private readonly mikrotikSsh: MikrotikSshPort,
@@ -74,7 +70,7 @@ export class ActivarSecretPppoeExecutor {
   ) {}
 
   async execute(
-    params: EjecutarActivarSecretPppoeParams,
+    params: EjecutarCrearSecretPppoeParams,
   ): Promise<PppoeOperacionResultado> {
     const { contexto, pasos } = params;
 
@@ -92,13 +88,23 @@ export class ActivarSecretPppoeExecutor {
 
     const usuarioPppoe = contexto.cuenta.usuario;
 
+    const passwordPppoe = contexto.passwordPppoe;
+
+    if (passwordPppoe === null) {
+      throw new ConflictException(
+        'La ejecución de CREAR_SECRET requiere la contraseña PPPoE temporal.',
+      );
+    }
+
     const perfilProps = contexto.perfil;
 
     const codigoPerfil = perfilProps.codigoPerfil;
 
     /**
-     * Los órdenes se resuelven desde los pasos reales
-     * de la operación persistida.
+     * Los órdenes se obtienen del agregado persistido.
+     *
+     * El executor no presupone que siempre sean
+     * literalmente 1, 2, 3 y 4.
      */
     const ordenConectar = this.getStepOrder(
       pasos,
@@ -107,10 +113,7 @@ export class ActivarSecretPppoeExecutor {
 
     const ordenBuscar = this.getStepOrder(pasos, TipoPasoPppoe.BUSCAR_SECRET);
 
-    const ordenHabilitar = this.getStepOrder(
-      pasos,
-      TipoPasoPppoe.HABILITAR_SECRET,
-    );
+    const ordenAgregar = this.getStepOrder(pasos, TipoPasoPppoe.AGREGAR_SECRET);
 
     const ordenConfirmar = this.getStepOrder(
       pasos,
@@ -118,6 +121,10 @@ export class ActivarSecretPppoeExecutor {
     );
 
     let session: MikrotikSshSessionPort | null = null;
+
+    let secretEncontrado = false;
+
+    let secretCreado = false;
 
     try {
       /*
@@ -128,9 +135,7 @@ export class ActivarSecretPppoeExecutor {
 
       await this.stepRunner.ejecutar({
         empresaId,
-
         operacionId,
-
         orden: ordenConectar,
 
         comandoSanitizado:
@@ -139,6 +144,12 @@ export class ActivarSecretPppoeExecutor {
           `username=${contexto.router.username}`,
 
         ejecutar: async () => {
+          /**
+           * Guardamos la sesión inmediatamente.
+           *
+           * De esta forma puede cerrarse en finally incluso
+           * si posteriormente falla la persistencia del paso.
+           */
           session = await this.mikrotikSsh.abrirSesion({
             host: contexto.router.host,
 
@@ -153,10 +164,10 @@ export class ActivarSecretPppoeExecutor {
             },
 
             /**
-             * Configuración actual de infraestructura.
+             * Configuración actual del proyecto.
              *
-             * La verificación estricta de fingerprint
-             * pertenece al módulo SSH.
+             * La política de fingerprint pertenece a la
+             * infraestructura SSH y no al flujo PPPoE.
              */
             verificacionHost: {
               verificar: false,
@@ -184,16 +195,19 @@ export class ActivarSecretPppoeExecutor {
        * 2. BUSCAR EL SECRET
        * ======================================================
        *
-       * Consulta auxiliar de seguridad.
+       * Esta es una consulta auxiliar.
        *
-       * No reemplaza HABILITAR_SECRET.
+       * Permite:
+       *
+       * - proteger reintentos;
+       * - evitar duplicar un secret;
+       * - inspeccionar un cambio remoto previo cuyo resultado
+       *   local pudo no haberse persistido.
        */
 
       const searchResult = await this.stepRunner.ejecutar({
         empresaId,
-
         operacionId,
-
         orden: ordenBuscar,
 
         comandoSanitizado: `BUSCAR_SECRET usuario=${usuarioPppoe}`,
@@ -211,153 +225,109 @@ export class ActivarSecretPppoeExecutor {
         },
       });
 
+      secretEncontrado = searchResult.encontrado;
+
       /*
        * ======================================================
-       * VALIDAR EXISTENCIA
+       * 3. CREAR U OMITIR
        * ======================================================
-       *
-       * No enviamos un enable contra una cuenta que el CRM
-       * esperaba encontrar pero que no existe realmente
-       * en el MikroTik.
        */
 
-      if (!searchResult.encontrado || !searchResult.secret) {
-        await this.stepRunner.ejecutar({
-          empresaId,
-
-          operacionId,
-
-          orden: ordenHabilitar,
-
-          comandoSanitizado: `HABILITAR_SECRET usuario=${usuarioPppoe}`,
-
-          ejecutar: async () => {
-            throw new PppoeOperacionStepError({
-              errorCodigo: CodigoErrorMikrotikSsh.SECRET_NO_ENCONTRADO,
-
-              errorMensaje: `No existe el secret PPPoE ${usuarioPppoe} en el router.`,
-
-              efectoRemoto: EfectoRemotoMikrotik.NO_INICIADO,
-
-              reintentable: true,
-
-              fase: FaseFalloMikrotikSsh.EJECUCION,
-            });
-          },
-        });
-
+      if (searchResult.encontrado) {
         /**
-         * stepRunner.ejecutar siempre propaga el error.
+         * No intentamos crear un segundo registro.
          *
-         * Esta excepción únicamente protege el flujo
-         * ante un comportamiento inesperado del runner.
+         * Esto resulta especialmente importante ante un
+         * reintento producido después de un efecto remoto
+         * exitoso cuya persistencia local haya fallado.
+         *
+         * Tampoco habilitamos, deshabilitamos ni modificamos
+         * aquí el secret existente.
+         *
+         * Su estado real será validado en CONFIRMAR_SECRET.
          */
-        throw new Error(
-          'Flujo inesperado después de registrar SECRET_NO_ENCONTRADO.',
-        );
-      }
+        await this.stepRunner.omitir({
+          empresaId,
+          operacionId,
+          orden: ordenAgregar,
 
-      const secretActual = searchResult.secret;
-
-      /*
-       * ======================================================
-       * VALIDAR PROFILE
-       * ======================================================
-       *
-       * No habilitamos silenciosamente un Secret asociado
-       * a un Profile diferente del homologado.
-       */
-
-      if (secretActual.codigoPerfil !== codigoPerfil) {
+          motivo:
+            'El secret PPPoE ya existe en el router. Se comprobará su perfil y estado actual.',
+        });
+      } else {
         await this.stepRunner.ejecutar({
           empresaId,
-
           operacionId,
+          orden: ordenAgregar,
 
-          orden: ordenHabilitar,
-
-          comandoSanitizado: `HABILITAR_SECRET usuario=${usuarioPppoe}`,
+          /**
+           * Nunca se incluye passwordPppoe.
+           *
+           * El registro del paso describe únicamente
+           * información no sensible.
+           */
+          comandoSanitizado:
+            `AGREGAR_SECRET usuario=${usuarioPppoe} ` +
+            `perfil=${codigoPerfil} ` +
+            'service=pppoe',
 
           ejecutar: async () => {
-            throw new PppoeOperacionStepError({
-              errorCodigo: CodigoErrorMikrotikSsh.PERFIL_NO_COINCIDE,
+            /**
+             * El contrato de creación contiene únicamente
+             * los valores variables admitidos por el
+             * requerimiento:
+             *
+             * - usuario;
+             * - contraseña;
+             * - profile.
+             *
+             * service="pppoe" es agregado por el builder.
+             *
+             * No enviamos:
+             *
+             * - disabled;
+             * - comment.
+             */
+            const result = await session!.crearSecret({
+              usuarioPppoe,
 
-              errorMensaje: `El secret PPPoE ${usuarioPppoe} utiliza un perfil diferente al homologado.`,
+              passwordPppoe,
 
-              efectoRemoto: EfectoRemotoMikrotik.NO_INICIADO,
-
-              reintentable: false,
-
-              fase: FaseFalloMikrotikSsh.CONFIRMACION,
+              codigoPerfil,
             });
+
+            return {
+              value: result,
+
+              respuestaSanitizada: result.respuestaSanitizada,
+            };
           },
         });
 
-        throw new Error(
-          'Flujo inesperado después de registrar PERFIL_NO_COINCIDE.',
-        );
+        secretCreado = true;
       }
-
-      /*
-       * ======================================================
-       * 3. HABILITAR SECRET
-       * ======================================================
-       *
-       * Estado 3 del requerimiento PPPoE v3:
-       *
-       * /ppp secret enable [find name="{id_cliente}"]
-       *
-       * El comando se ejecuta siempre después de validar
-       * existencia y Profile.
-       *
-       * No importa si la consulta previa ya indicaba
-       * disabled=false.
-       *
-       * La finalidad de esta operación es aplicar el
-       * comando correspondiente al cambio de estado CRM.
-       */
-
-      const enableResult = await this.stepRunner.ejecutar({
-        empresaId,
-
-        operacionId,
-
-        orden: ordenHabilitar,
-
-        comandoSanitizado: `HABILITAR_SECRET usuario=${usuarioPppoe}`,
-
-        ejecutar: async () => {
-          const result = await session!.habilitarSecret({
-            usuarioPppoe,
-          });
-
-          return {
-            value: result,
-
-            respuestaSanitizada: result.respuestaSanitizada,
-          };
-        },
-      });
 
       /*
        * ======================================================
        * 4. CONFIRMAR EL RESULTADO
        * ======================================================
        *
-       * Después del enable comprobamos nuevamente:
+       * Estado 2 requiere:
        *
-       * - existencia;
-       * - Profile;
-       * - disabled=false.
+       * - secret existente;
+       * - profile correcto;
+       * - secret habilitado.
        *
-       * Solo entonces consideramos confirmado el Estado 3.
+       * En RouterOS:
+       *
+       * disabled=false
+       *
+       * significa que el Secret está habilitado.
        */
 
       const confirmationResult = await this.stepRunner.ejecutar({
         empresaId,
-
         operacionId,
-
         orden: ordenConfirmar,
 
         comandoSanitizado:
@@ -374,8 +344,8 @@ export class ActivarSecretPppoeExecutor {
             codigoPerfilEsperado: codigoPerfil,
 
             /**
-             * disabled=false equivale a
-             * Secret habilitado en RouterOS.
+             * El Secret creado durante
+             * "En Instalación" debe quedar habilitado.
              */
             deshabilitadoEsperado: false,
           });
@@ -388,25 +358,25 @@ export class ActivarSecretPppoeExecutor {
         },
       });
 
-      const secretConfirmado = confirmationResult.secretActual;
+      const secretActual = confirmationResult.secretActual;
 
       return {
-        secretEncontrado: true,
+        secretEncontrado,
 
-        /**
-         * Se mantiene por compatibilidad con el resultado
-         * anterior, pero en el flujo v3 nunca se omite
-         * HABILITAR_SECRET una vez superadas las validaciones.
-         */
-        habilitacionOmitida: false,
-
-        comandoHabilitarEjecutado: enableResult.comandoEjecutado,
+        secretCreado,
 
         secretConfirmado: confirmationResult.confirmado,
 
-        perfilCoincide: secretConfirmado?.codigoPerfil === codigoPerfil,
+        perfilCoincide: secretActual?.codigoPerfil === codigoPerfil,
 
-        habilitado: secretConfirmado?.deshabilitado === false,
+        /**
+         * Conservamos la propiedad existente del resultado
+         * para no modificar innecesariamente consumidores.
+         *
+         * En una ejecución correcta de Estado 2 su valor
+         * será false.
+         */
+        deshabilitado: secretActual?.deshabilitado ?? null,
       };
     } finally {
       await this.closeSessionSafely(session);
@@ -414,19 +384,19 @@ export class ActivarSecretPppoeExecutor {
   }
 
   /**
-   * Valida que el contexto corresponda exactamente
-   * a una operación ACTIVAR_SECRET.
+   * Valida que el contexto recibido corresponda
+   * realmente a una operación CREAR_SECRET.
    */
   private validateContext(contexto: ContextoEjecucionPppoe): void {
-    if (contexto.operacion.tipo !== TipoOperacionPppoe.ACTIVAR_SECRET) {
+    if (contexto.operacion.tipo !== TipoOperacionPppoe.CREAR_SECRET) {
       throw new ConflictException(
-        `ActivarSecretPppoeExecutor no puede procesar una operación de tipo ${contexto.operacion.tipo}.`,
+        `EjecutorCrearSecretPppoeService no puede procesar una operación de tipo ${contexto.operacion.tipo}.`,
       );
     }
 
     if (contexto.cuenta.id === null) {
       throw new ConflictException(
-        'La cuenta PPPoE debe estar persistida antes de activar el secret.',
+        'La cuenta PPPoE debe estar persistida antes de crear el secret.',
       );
     }
 
@@ -435,31 +405,14 @@ export class ActivarSecretPppoeExecutor {
         'La cuenta PPPoE y la operación pertenecen a empresas diferentes.',
       );
     }
-
-    /**
-     * ACTIVAR_SECRET presupone que la creación física
-     * del Secret ya fue confirmada previamente.
-     */
-    if (!contexto.cuenta.tieneSecretCreado) {
-      throw new ConflictException(
-        'La cuenta PPPoE no tiene confirmado un secret creado.',
-      );
-    }
-
-    /**
-     * ACTIVAR_SECRET no necesita conocer ni descifrar
-     * la contraseña PPPoE.
-     */
-    if (contexto.passwordPppoe !== null) {
-      throw new ConflictException(
-        'ACTIVAR_SECRET no debe contener la contraseña PPPoE descifrada.',
-      );
-    }
   }
 
   /**
    * Obtiene el orden real de un paso dentro
    * del agregado de la operación.
+   *
+   * Esto evita acoplar el executor a valores
+   * literales como 1, 2, 3 o 4.
    */
   private getStepOrder(
     pasos: PppoeOperacionPasoEntity[],
@@ -481,10 +434,13 @@ export class ActivarSecretPppoeExecutor {
   }
 
   /**
-   * El cierre no sustituye el resultado funcional.
+   * El cierre de la sesión no modifica el resultado
+   * funcional después de que el estado remoto fue
+   * confirmado.
    *
-   * El estado remoto ya debe haber sido confirmado
-   * mediante CONFIRMAR_SECRET.
+   * Tampoco permitimos que un error secundario durante
+   * el cierre sustituya un resultado/error técnico
+   * más importante producido anteriormente.
    */
   private async closeSessionSafely(
     session: MikrotikSshSessionPort | null,
@@ -497,7 +453,11 @@ export class ActivarSecretPppoeExecutor {
       await session.cerrar();
     } catch {
       /**
-       * No propagamos un error secundario de cierre.
+       * El módulo SSH ya realizó su intento de cierre.
+       *
+       * No propagamos este error porque no existe un paso
+       * funcional CERRAR_SESION dentro de esta operación
+       * PPPoE.
        */
     }
   }
@@ -512,12 +472,7 @@ export class ActivarSecretPppoeExecutor {
 
 // import { MikrotikSshSessionPort } from 'src/modules/mikrotik-ssh/public/mikrotik-ssh-session.port';
 
-// import {
-//   CodigoErrorMikrotikSsh,
-//   EfectoRemotoMikrotik,
-//   FaseFalloMikrotikSsh,
-//   MetodoAutenticacionMikrotikSsh,
-// } from 'src/modules/mikrotik-ssh/public/mikrotik-ssh.types';
+// import { MetodoAutenticacionMikrotikSsh } from 'src/modules/mikrotik-ssh/public/mikrotik-ssh.types';
 
 // import { PppoeOperacionPasoEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion-paso.entity';
 
@@ -528,30 +483,34 @@ export class ActivarSecretPppoeExecutor {
 
 // import { PppoeOperacionResultado } from 'src/modules/pppoe-operacion/domain/props/pppoe-operacion.props';
 
-// import { PppoeOperacionStepError } from '../errors/pppoe-operacion-step.error';
+// import { ContextoEjecucionPppoe } from './resolver-contexto-ejecucion-pppoe.service';
 
-// import { ContextoEjecucionPppoe } from '../models/contexto-ejecucion-pppoe.model';
+// import { PppoeOperacionStepRunnerService } from './pppoe-operacion-step-runner.service';
 
-// import { PppoeOperacionStepRunnerService } from '../services/pppoe-operacion-step-runner.service';
-
-// export type EjecutarActivarSecretPppoeParams = {
+// export type EjecutarCrearSecretPppoeParams = {
 //   contexto: ContextoEjecucionPppoe;
 
+//   /**
+//    * Pasos pertenecientes al agregado de la operación.
+//    *
+//    * Se utilizan para resolver el orden real y evitar
+//    * depender de números escritos manualmente.
+//    */
 //   pasos: PppoeOperacionPasoEntity[];
 // };
 
 // /**
-//  * Ejecuta el plan técnico de ACTIVAR_SECRET:
+//  * Ejecuta el plan técnico de CREAR_SECRET:
 //  *
 //  * 1. CONECTAR_ROUTER
 //  * 2. BUSCAR_SECRET
-//  * 3. HABILITAR_SECRET u OMITIR
+//  * 3. AGREGAR_SECRET u OMITIR
 //  * 4. CONFIRMAR_SECRET
 //  *
 //  * Utiliza una única sesión SSH durante todo el flujo.
 //  */
 // @Injectable()
-// export class ActivarSecretPppoeExecutor {
+// export class EjecutorCrearSecretPppoeService {
 //   constructor(
 //     @Inject(MIKROTIK_SSH_PORT)
 //     private readonly mikrotikSsh: MikrotikSshPort,
@@ -560,7 +519,7 @@ export class ActivarSecretPppoeExecutor {
 //   ) {}
 
 //   async execute(
-//     params: EjecutarActivarSecretPppoeParams,
+//     params: EjecutarCrearSecretPppoeParams,
 //   ): Promise<PppoeOperacionResultado> {
 //     const { contexto, pasos } = params;
 
@@ -578,6 +537,14 @@ export class ActivarSecretPppoeExecutor {
 
 //     const usuarioPppoe = contexto.cuenta.usuario;
 
+//     const passwordPppoe = contexto.passwordPppoe;
+
+//     if (passwordPppoe === null) {
+//       throw new ConflictException(
+//         'La ejecución de CREAR_SECRET requiere la contraseña PPPoE temporal.',
+//       );
+//     }
+
 //     const perfilProps = contexto.perfil;
 
 //     const codigoPerfil = perfilProps.codigoPerfil;
@@ -589,10 +556,7 @@ export class ActivarSecretPppoeExecutor {
 
 //     const ordenBuscar = this.getStepOrder(pasos, TipoPasoPppoe.BUSCAR_SECRET);
 
-//     const ordenHabilitar = this.getStepOrder(
-//       pasos,
-//       TipoPasoPppoe.HABILITAR_SECRET,
-//     );
+//     const ordenAgregar = this.getStepOrder(pasos, TipoPasoPppoe.AGREGAR_SECRET);
 
 //     const ordenConfirmar = this.getStepOrder(
 //       pasos,
@@ -601,9 +565,9 @@ export class ActivarSecretPppoeExecutor {
 
 //     let session: MikrotikSshSessionPort | null = null;
 
-//     let habilitacionOmitida = false;
+//     let secretEncontrado = false;
 
-//     let comandoHabilitarEjecutado = false;
+//     let secretCreado = false;
 
 //     try {
 //       /*
@@ -614,9 +578,7 @@ export class ActivarSecretPppoeExecutor {
 
 //       await this.stepRunner.ejecutar({
 //         empresaId,
-
 //         operacionId,
-
 //         orden: ordenConectar,
 
 //         comandoSanitizado:
@@ -625,6 +587,13 @@ export class ActivarSecretPppoeExecutor {
 //           `username=${contexto.router.username}`,
 
 //         ejecutar: async () => {
+//           /*
+//            * Asignamos la sesión a la variable externa antes
+//            * de devolverla.
+//            *
+//            * Así podremos cerrarla incluso si posteriormente
+//            * falla la persistencia del resultado del paso.
+//            */
 //           session = await this.mikrotikSsh.abrirSesion({
 //             host: contexto.router.host,
 
@@ -638,11 +607,11 @@ export class ActivarSecretPppoeExecutor {
 //               password: contexto.router.password,
 //             },
 
-//             /**
-//              * Integración inicial.
+//             /*
+//              * Primera integración.
 //              *
-//              * Se sustituirá por huella estricta cuando
-//              * el router almacene sshFingerprintSha256.
+//              * Antes de producción se reemplazará por
+//              * verificación estricta de fingerprint.
 //              */
 //             verificacionHost: {
 //               verificar: false,
@@ -673,9 +642,7 @@ export class ActivarSecretPppoeExecutor {
 
 //       const searchResult = await this.stepRunner.ejecutar({
 //         empresaId,
-
 //         operacionId,
-
 //         orden: ordenBuscar,
 
 //         comandoSanitizado: `BUSCAR_SECRET usuario=${usuarioPppoe}`,
@@ -693,114 +660,54 @@ export class ActivarSecretPppoeExecutor {
 //         },
 //       });
 
+//       secretEncontrado = searchResult.encontrado;
+
 //       /*
 //        * ======================================================
-//        * 3. HABILITAR U OMITIR
+//        * 3. CREAR U OMITIR
 //        * ======================================================
 //        */
 
-//       if (!searchResult.encontrado || !searchResult.secret) {
-//         /**
-//          * Registramos el fallo dentro del paso
-//          * HABILITAR_SECRET.
-//          *
-//          * No hubo una mutación remota.
-//          */
-//         await this.stepRunner.ejecutar({
-//           empresaId,
-
-//           operacionId,
-
-//           orden: ordenHabilitar,
-
-//           comandoSanitizado: `HABILITAR_SECRET usuario=${usuarioPppoe}`,
-
-//           ejecutar: async () => {
-//             throw new PppoeOperacionStepError({
-//               errorCodigo: CodigoErrorMikrotikSsh.SECRET_NO_ENCONTRADO,
-
-//               errorMensaje: `No existe el secret PPPoE ${usuarioPppoe} en el router.`,
-
-//               efectoRemoto: EfectoRemotoMikrotik.NO_INICIADO,
-
-//               reintentable: true,
-
-//               fase: FaseFalloMikrotikSsh.EJECUCION,
-//             });
-//           },
-//         });
-
-//         /**
-//          * El runner siempre propaga el error.
-//          */
-//         throw new Error(
-//           'Flujo inesperado después de registrar SECRET_NO_ENCONTRADO.',
-//         );
-//       }
-
-//       const secretActual = searchResult.secret;
-
-//       /**
-//        * No habilitamos un secret asociado a otro perfil.
-//        *
-//        * Primero debe corregirse la configuración remota
-//        * o generarse una operación administrativa específica.
-//        */
-//       if (secretActual.codigoPerfil !== codigoPerfil) {
-//         await this.stepRunner.ejecutar({
-//           empresaId,
-
-//           operacionId,
-
-//           orden: ordenHabilitar,
-
-//           comandoSanitizado: `HABILITAR_SECRET usuario=${usuarioPppoe}`,
-
-//           ejecutar: async () => {
-//             throw new PppoeOperacionStepError({
-//               errorCodigo: CodigoErrorMikrotikSsh.PERFIL_NO_COINCIDE,
-
-//               errorMensaje: `El secret PPPoE ${usuarioPppoe} utiliza un perfil diferente al homologado.`,
-
-//               efectoRemoto: EfectoRemotoMikrotik.NO_INICIADO,
-
-//               reintentable: false,
-
-//               fase: FaseFalloMikrotikSsh.CONFIRMACION,
-//             });
-//           },
-//         });
-
-//         throw new Error(
-//           'Flujo inesperado después de registrar PERFIL_NO_COINCIDE.',
-//         );
-//       }
-
-//       if (secretActual.deshabilitado === false) {
-//         habilitacionOmitida = true;
-
+//       if (searchResult.encontrado) {
 //         await this.stepRunner.omitir({
 //           empresaId,
-
 //           operacionId,
+//           orden: ordenAgregar,
 
-//           orden: ordenHabilitar,
-
-//           motivo: 'El secret PPPoE ya se encuentra habilitado en el router.',
+//           motivo:
+//             'El secret PPPoE ya existe en el router. Se comprobará su configuración actual.',
 //         });
 //       } else {
 //         await this.stepRunner.ejecutar({
 //           empresaId,
-
 //           operacionId,
+//           orden: ordenAgregar,
 
-//           orden: ordenHabilitar,
-
-//           comandoSanitizado: `HABILITAR_SECRET usuario=${usuarioPppoe}`,
+//           /*
+//            * No se incluye passwordPppoe.
+//            */
+//           comandoSanitizado:
+//             `AGREGAR_SECRET usuario=${usuarioPppoe} ` +
+//             `perfil=${codigoPerfil} ` +
+//             'deshabilitado=true',
 
 //           ejecutar: async () => {
-//             const result = await session!.habilitarSecret({
+//             const result = await session!.crearSecret({
 //               usuarioPppoe,
+
+//               passwordPppoe,
+
+//               codigoPerfil,
+
+//               /*
+//                * El secret se crea deshabilitado.
+//                *
+//                * La activación ocurrirá cuando la
+//                * instalación física se complete.
+//                */
+//               deshabilitado: true,
+
+//               comentario: `NOVA cuenta PPPoE ${contexto.cuenta.id}`,
 //             });
 
 //             return {
@@ -811,7 +718,7 @@ export class ActivarSecretPppoeExecutor {
 //           },
 //         });
 
-//         comandoHabilitarEjecutado = true;
+//         secretCreado = true;
 //       }
 
 //       /*
@@ -822,15 +729,13 @@ export class ActivarSecretPppoeExecutor {
 
 //       const confirmationResult = await this.stepRunner.ejecutar({
 //         empresaId,
-
 //         operacionId,
-
 //         orden: ordenConfirmar,
 
 //         comandoSanitizado:
 //           `CONFIRMAR_SECRET usuario=${usuarioPppoe} ` +
 //           `perfil=${codigoPerfil} ` +
-//           'deshabilitado=false',
+//           'deshabilitado=true',
 
 //         ejecutar: async () => {
 //           const result = await session!.confirmarSecret({
@@ -840,7 +745,7 @@ export class ActivarSecretPppoeExecutor {
 
 //             codigoPerfilEsperado: codigoPerfil,
 
-//             deshabilitadoEsperado: false,
+//             deshabilitadoEsperado: true,
 //           });
 
 //           return {
@@ -851,20 +756,18 @@ export class ActivarSecretPppoeExecutor {
 //         },
 //       });
 
-//       const secretConfirmado = confirmationResult.secretActual;
+//       const secretActual = confirmationResult.secretActual;
 
 //       return {
-//         secretEncontrado: true,
+//         secretEncontrado,
 
-//         habilitacionOmitida,
-
-//         comandoHabilitarEjecutado,
+//         secretCreado,
 
 //         secretConfirmado: confirmationResult.confirmado,
 
-//         perfilCoincide: secretConfirmado?.codigoPerfil === codigoPerfil,
+//         perfilCoincide: secretActual?.codigoPerfil === codigoPerfil,
 
-//         habilitado: secretConfirmado?.deshabilitado === false,
+//         deshabilitado: secretActual?.deshabilitado ?? null,
 //       };
 //     } finally {
 //       await this.closeSessionSafely(session);
@@ -872,15 +775,15 @@ export class ActivarSecretPppoeExecutor {
 //   }
 
 //   private validateContext(contexto: ContextoEjecucionPppoe): void {
-//     if (contexto.operacion.tipo !== TipoOperacionPppoe.ACTIVAR_SECRET) {
+//     if (contexto.operacion.tipo !== TipoOperacionPppoe.CREAR_SECRET) {
 //       throw new ConflictException(
-//         `ActivarSecretPppoeExecutor no puede procesar una operación de tipo ${contexto.operacion.tipo}.`,
+//         `EjecutorCrearSecretPppoeService no puede procesar una operación de tipo ${contexto.operacion.tipo}.`,
 //       );
 //     }
 
 //     if (contexto.cuenta.id === null) {
 //       throw new ConflictException(
-//         'La cuenta PPPoE debe estar persistida antes de activar el secret.',
+//         'La cuenta PPPoE debe estar persistida antes de crear el secret.',
 //       );
 //     }
 
@@ -889,24 +792,14 @@ export class ActivarSecretPppoeExecutor {
 //         'La cuenta PPPoE y la operación pertenecen a empresas diferentes.',
 //       );
 //     }
-
-//     if (!contexto.cuenta.tieneSecretCreado) {
-//       throw new ConflictException(
-//         'La cuenta PPPoE no tiene confirmado un secret creado.',
-//       );
-//     }
-
-//     /**
-//      * ACTIVAR_SECRET no necesita descifrar
-//      * la contraseña PPPoE.
-//      */
-//     if (contexto.passwordPppoe !== null) {
-//       throw new ConflictException(
-//         'ACTIVAR_SECRET no debe contener la contraseña PPPoE descifrada.',
-//       );
-//     }
 //   }
 
+//   /**
+//    * Obtiene el orden real de un paso dentro del agregado.
+//    *
+//    * No dependemos de valores como 1, 2, 3 o 4 escritos
+//    * directamente en el ejecutor.
+//    */
 //   private getStepOrder(
 //     pasos: PppoeOperacionPasoEntity[],
 //     tipo: TipoPasoPppoe,
@@ -927,10 +820,11 @@ export class ActivarSecretPppoeExecutor {
 //   }
 
 //   /**
-//    * El cierre no sustituye el resultado funcional.
+//    * El cierre no cambia el resultado funcional después
+//    * de que el estado remoto ya fue confirmado.
 //    *
-//    * El estado remoto ya debe haber sido confirmado
-//    * mediante CONFIRMAR_SECRET.
+//    * También evita sustituir un error técnico anterior por
+//    * un error secundario de cierre.
 //    */
 //   private async closeSessionSafely(
 //     session: MikrotikSshSessionPort | null,
@@ -942,8 +836,12 @@ export class ActivarSecretPppoeExecutor {
 //     try {
 //       await session.cerrar();
 //     } catch {
-//       /**
-//        * No propagamos errores secundarios de cierre.
+//       /*
+//        * El módulo SSH ya intenta cerrar la conexión.
+//        *
+//        * No propagamos este error porque no existe un paso
+//        * de negocio CERRAR_SESION y el cambio remoto pudo
+//        * haber sido confirmado correctamente.
 //        */
 //     }
 //   }

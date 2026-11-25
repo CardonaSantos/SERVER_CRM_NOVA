@@ -23,11 +23,11 @@ import {
 
 import { PppoeOperacionResultado } from 'src/modules/pppoe-operacion/domain/props/pppoe-operacion.props';
 
-import { PppoeOperacionStepError } from '../errors/pppoe-operacion-step.error';
+import { PppoeOperacionStepError } from '../../domain/errors/pppoe-automatizacion.errors';
 
-import { ContextoEjecucionPppoe } from '../models/contexto-ejecucion-pppoe.model';
+import { ContextoEjecucionPppoe } from './resolver-contexto-ejecucion-pppoe.service';
 
-import { PppoeOperacionStepRunnerService } from '../services/pppoe-operacion-step-runner.service';
+import { PppoeOperacionStepRunnerService } from './pppoe-operacion-step-runner.service';
 
 export type EjecutarEliminarSecretPppoeParams = {
   contexto: ContextoEjecucionPppoe;
@@ -79,7 +79,7 @@ export type EjecutarEliminarSecretPppoeParams = {
  * sesión PPPoE que todavía pudiera existir.
  */
 @Injectable()
-export class EliminarSecretPppoeExecutor {
+export class EjecutorEliminarSecretPppoeService {
   constructor(
     @Inject(MIKROTIK_SSH_PORT)
     private readonly mikrotikSsh: MikrotikSshPort,
@@ -491,7 +491,7 @@ export class EliminarSecretPppoeExecutor {
   private validateContext(contexto: ContextoEjecucionPppoe): void {
     if (contexto.operacion.tipo !== TipoOperacionPppoe.ELIMINAR_SECRET) {
       throw new ConflictException(
-        `EliminarSecretPppoeExecutor no puede procesar una operación de tipo ${contexto.operacion.tipo}.`,
+        `EjecutorEliminarSecretPppoeService no puede procesar una operación de tipo ${contexto.operacion.tipo}.`,
       );
     }
 

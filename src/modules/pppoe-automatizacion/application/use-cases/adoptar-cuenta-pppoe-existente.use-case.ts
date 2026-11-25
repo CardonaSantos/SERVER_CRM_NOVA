@@ -5,14 +5,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-
 import {
   PPPOE_CLIENTE_CUENTA,
   PppoeClienteCuentaFacadePort,
 } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
-
 import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
-
 import {
   PPPOE_SECRET_CIPHER,
   PppoeSecretCipherPort,
@@ -21,21 +18,14 @@ import {
   MIKROTIK_SSH_PORT,
   MikrotikSshPort,
 } from 'src/modules/mikrotik-ssh/public/mikrotik-ssh.port';
-
 import { MikrotikSshSessionPort } from 'src/modules/mikrotik-ssh/public/mikrotik-ssh-session.port';
-
 import { MetodoAutenticacionMikrotikSsh } from 'src/modules/mikrotik-ssh/public/mikrotik-ssh.types';
-
 import { MikrotikRouterConnectionContextPort } from 'src/mikro-tik/domain/ports/mikrotik-router-connection-context.port';
-
 import { MIKROTIK_ROUTER_CONNECTION_CONTEXT } from 'src/mikro-tik/infra/tokens/mikrotik-router.tokens';
-
 import {
-  PPPOE_ADOPCION_PERSISTENCE_PORT,
-  PppoeAdopcionPersistencePort,
-} from '../../domain/ports/pppoe-adopcion-persistence.port';
-
-import { AdoptarCuentaPppoeExistenteResult } from '../results/adoptar-cuenta-pppoe-existente.result';
+  PPPOE_ADOPCION_TRANSACTION,
+  PppoeAdopcionTransactionPort,
+} from '../ports/pppoe-adopcion-transaction.port';
 import {
   PPPOE_ACCESO_INTERNET,
   PppoeAccesoInternetFacadePort,
@@ -117,8 +107,8 @@ export class AdoptarCuentaPppoeExistenteUseCase {
     @Inject(PPPOE_SECRET_CIPHER)
     private readonly secretCipher: PppoeSecretCipherPort,
 
-    @Inject(PPPOE_ADOPCION_PERSISTENCE_PORT)
-    private readonly persistence: PppoeAdopcionPersistencePort,
+    @Inject(PPPOE_ADOPCION_TRANSACTION)
+    private readonly persistence: PppoeAdopcionTransactionPort,
   ) {}
 
   async execute(
@@ -450,3 +440,47 @@ export class AdoptarCuentaPppoeExistenteUseCase {
     }
   }
 }
+
+/**
+ * Resultado seguro de adoptar una cuenta PPPoE
+ * que ya existía previamente en MikroTik.
+ *
+ * Nunca contiene contraseña ni material criptográfico.
+ */
+export type AdoptarCuentaPppoeExistenteResult = {
+  empresaId: number;
+
+  clienteId: number;
+
+  accesoInternetId: number;
+
+  cuentaPppoeId: number;
+
+  perfilHomologacionId: number;
+
+  mikrotikRouterId: number;
+
+  servicioInternetId: number;
+
+  usuarioPppoe: string;
+
+  estadoCuenta: EstadoCuentaPppoe;
+
+  estadoAcceso: EstadoAccesoInternet;
+
+  adoptadoPorId: number;
+
+  adoptadoEn: Date;
+
+  auditoriaId: number;
+
+  /**
+   * Indica si la contraseña adoptada utiliza
+   * la nomenclatura actual de NOVA.
+   *
+   * false NO invalida la adopción.
+   */
+  cumpleFormatoNova: boolean;
+
+  advertencias: string[];
+};

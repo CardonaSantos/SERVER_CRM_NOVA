@@ -8,9 +8,7 @@ import { SecretoPppoeProtegido } from 'src/modules/pppoe-credentials/public/pppo
  * una adopción PPPoE completa dentro de una única
  * transacción de base de datos.
  */
-export const PPPOE_ADOPCION_PERSISTENCE_PORT = Symbol(
-  'PPPOE_ADOPCION_PERSISTENCE_PORT',
-);
+export const PPPOE_ADOPCION_TRANSACTION = Symbol('PPPOE_ADOPCION_TRANSACTION');
 
 /**
  * Una cuenta adoptada solamente puede reflejar
@@ -134,7 +132,7 @@ export type PersistirAdopcionPppoeResult = {
  * Nunca debe quedar solamente el acceso o solamente
  * la cuenta.
  */
-export interface PppoeAdopcionPersistencePort {
+export interface PppoeAdopcionTransactionPort {
   persistir(
     params: PersistirAdopcionPppoeParams,
   ): Promise<PersistirAdopcionPppoeResult>;

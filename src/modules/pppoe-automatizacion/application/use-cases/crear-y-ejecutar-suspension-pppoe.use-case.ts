@@ -29,7 +29,7 @@ import {
   PppoePerfilHomologacionFacadePort,
 } from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.facade.port';
 
-import { EjecutarOperacionPppoeResult } from '../../domain/props/pppoe-provisionamiento.props';
+import { EjecutarOperacionPppoeResult } from '../../public/pppoe-provisionamiento.port';
 
 import { EjecutarPppoeOperacionUseCase } from './ejecutar-pppoe-operacion.use-case';
 
@@ -42,7 +42,7 @@ import { MikrotikRouterRepositoryPort } from 'src/mikro-tik/domain/ports/mikroti
 import {
   PPPOE_OPERACION_AUDITORIA,
   PppoeOperacionAuditoriaPort,
-} from '../../domain/ports/pppoe-operacion-auditoria.port';
+} from '../ports/pppoe-operacion-auditoria.port';
 
 /**
  * Actor que solicita la suspensión.

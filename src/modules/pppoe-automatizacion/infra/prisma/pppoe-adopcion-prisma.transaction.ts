@@ -29,14 +29,14 @@ import { PppoeAuditoriaPrismaMapper } from 'src/modules/pppoe-auditoria/infra/pr
 import {
   PersistirAdopcionPppoeParams,
   PersistirAdopcionPppoeResult,
-  PppoeAdopcionPersistencePort,
-} from '../../domain/ports/pppoe-adopcion-persistence.port';
+  PppoeAdopcionTransactionPort,
+} from '../../application/ports/pppoe-adopcion-transaction.port';
 import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/cliente-pppoe-cuenta.entity';
 import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 @Injectable()
-export class PppoeAdopcionPrismaPersistence
-  implements PppoeAdopcionPersistencePort
+export class PppoeAdopcionPrismaTransaction
+  implements PppoeAdopcionTransactionPort
 {
   constructor(private readonly prisma: PrismaService) {}
 

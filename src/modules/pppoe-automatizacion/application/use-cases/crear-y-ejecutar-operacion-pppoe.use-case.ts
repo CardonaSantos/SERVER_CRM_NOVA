@@ -26,7 +26,8 @@ import {
 import {
   CrearSecretPppoeInput,
   EjecutarOperacionPppoeResult,
-} from '../../domain/props/pppoe-provisionamiento.props';
+  EjecutarProvisionamientoPppoeBaseInput,
+} from '../../public/pppoe-provisionamiento.port';
 
 import { EjecutarPppoeOperacionUseCase } from './ejecutar-pppoe-operacion.use-case';
 import { CrearPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/crear-pppoe-operacion.use-case';
@@ -35,9 +36,8 @@ import { MikrotikRouterRepositoryPort } from 'src/mikro-tik/domain/ports/mikroti
 import {
   PPPOE_OPERACION_AUDITORIA,
   PppoeOperacionAuditoriaPort,
-} from '../../domain/ports/pppoe-operacion-auditoria.port';
+} from '../ports/pppoe-operacion-auditoria.port';
 import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
-import { EjecutarProvisionamientoPppoeBaseInput } from '../../domain/props/pppoe-provisionamiento.props';
 
 /**
  * Determina el origen comercial de CREAR_SECRET.

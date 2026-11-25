@@ -5,9 +5,8 @@ import {
   Injectable,
 } from '@nestjs/common';
 
-import { AccesoInternetReadModel } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
-
 import {
+  AccesoInternetReadModel,
   EstadoAccesoInternet,
   MetodoAutenticacionInternet,
   TecnologiaAccesoInternet,
@@ -26,9 +25,8 @@ import {
 import {
   PPPOE_PREALTA,
   PppoePrealtaPort,
-} from '../../domain/ports/pppoe-prealta.port';
-
-import { PrepararPrealtaPppoeResult } from '../results/preparar-prealta-pppoe.result';
+  PrepararPrealtaPppoeResult,
+} from '../../public/pppoe-prealta.port';
 
 export type CrearPrealtaPppoeClienteInput = {
   empresaId: number;

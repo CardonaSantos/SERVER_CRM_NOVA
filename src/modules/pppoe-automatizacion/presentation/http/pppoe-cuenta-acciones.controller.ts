@@ -14,11 +14,11 @@ import type { Request } from 'express';
 
 import { OperacionSensible } from 'src/auth/step-up/operacion-sensible.decorator';
 
-import { PppoeOperacionAdminService } from '../application/services/pppoe-operacion-admin.service';
+import { PppoeOperacionAdminService } from '../../application/services/pppoe-operacion-admin.service';
 
-import { SuspenderPppoeManualDto } from './dto/suspender-pppoe-manual.dto';
-import { ReactivarPppoeManualDto } from './dto/reactivar-pppoe-manual.dto';
-import { DarDeBajaPppoeManualDto } from './dto/dar-de-baja-pppoe-manual.dto';
+import { SuspenderPppoeManualDto } from '../dto/suspender-pppoe-manual.dto';
+import { ReactivarPppoeManualDto } from '../dto/reactivar-pppoe-manual.dto';
+import { DarDeBajaPppoeManualDto } from '../dto/dar-de-baja-pppoe-manual.dto';
 
 type AuthenticatedRequest = Request & {
   user?: {

@@ -20,9 +20,8 @@ import { ResolverPppoeInstalacionService } from '../services/resolver-pppoe-inst
 import {
   PPPOE_PROVISIONAMIENTO,
   PppoeProvisionamientoPort,
-} from 'src/modules/pppoe-automatizacion/domain/ports/pppoe-provisionamiento.port';
-
-import { EjecutarOperacionPppoeResult } from 'src/modules/pppoe-automatizacion/domain/props/pppoe-provisionamiento.props';
+  EjecutarOperacionPppoeResult,
+} from 'src/modules/pppoe-automatizacion/public/pppoe-provisionamiento.port';
 
 import { EstadoOperacionPppoe } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
@@ -37,9 +36,10 @@ import {
   PppoeClienteCuentaFacadePort,
 } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
 
-import { FlujoActivacionCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
-
-import { ClientePppoeCuentaDetalleActivacionAccion } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
+import {
+  FlujoActivacionCuentaPppoe,
+  ClientePppoeCuentaDetalleActivacionAccion,
+} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 export type ActivarPppoeInstalacionCommand = {
   instalacionId: number;

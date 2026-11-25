@@ -6,7 +6,10 @@ import {
   Logger,
 } from '@nestjs/common';
 
-import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
+import {
+  EstadoCuentaPppoe,
+  ClientePppoeCuentaReadModel,
+} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 import {
   PPPOE_CLIENTE_CUENTA,
@@ -38,25 +41,26 @@ import {
   FaseFalloMikrotikSsh,
 } from 'src/modules/mikrotik-ssh/public/mikrotik-ssh.types';
 
-import { PppoeOperacionStepError } from '../errors/pppoe-operacion-step.error';
+import { PppoeOperacionStepError } from '../../domain/errors/pppoe-automatizacion.errors';
 
-import { CrearSecretPppoeExecutor } from '../executors/crear-secret-pppoe.executor';
+import { EjecutorCrearSecretPppoeService } from '../services/ejecutor-crear-secret-pppoe.service';
 
-import { ContextoEjecucionPppoe } from '../models/contexto-ejecucion-pppoe.model';
+import {
+  ContextoEjecucionPppoe,
+  ResolverContextoEjecucionPppoeService,
+} from '../services/resolver-contexto-ejecucion-pppoe.service';
 
-import { EjecutarOperacionPppoeResult } from '../../domain/props/pppoe-provisionamiento.props';
+import { EjecutarOperacionPppoeResult } from '../../public/pppoe-provisionamiento.port';
 
 import { PppoeOperacionStepRunnerService } from '../services/pppoe-operacion-step-runner.service';
-import { SuspenderServicioPppoeExecutor } from '../executors/suspender-servicio-pppoe.executor';
-import { ResolverContextoEjecucionPppoeService } from '../services/resolver-contexto-ejecucion-pppoe.service';
-import { ClientePppoeCuentaReadModel } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
-import { ActivarSecretPppoeExecutor } from '../executors/activar-secret-pppoe.executor';
+import { EjecutorSuspenderServicioPppoeService } from '../services/ejecutor-suspender-servicio-pppoe.service';
+import { EjecutorActivarSecretPppoeService } from '../services/ejecutor-activar-secret-pppoe.service';
 import { PppoeOperacionResultado } from 'src/modules/pppoe-operacion/domain/props/pppoe-operacion.props';
 import {
   PPPOE_OPERACION_AUDITORIA,
   PppoeOperacionAuditoriaPort,
-} from '../../domain/ports/pppoe-operacion-auditoria.port';
-import { EliminarSecretPppoeExecutor } from '../executors/eliminar-secret-pppoe.executor';
+} from '../ports/pppoe-operacion-auditoria.port';
+import { EjecutorEliminarSecretPppoeService } from '../services/ejecutor-eliminar-secret-pppoe.service';
 import {
   PPPOE_ACCESO_INTERNET,
   PppoeAccesoInternetFacadePort,
@@ -66,7 +70,7 @@ import {
   CLIENTE_INTERNET_ESTADO_OPERATIVO,
   ClienteInternetEstadoOperativoPort,
   EstadoOperativoClienteInternet,
-} from '../../domain/ports/cliente-internet-estado-operativo.port';
+} from '../ports/cliente-internet-estado-operativo.port';
 
 /**
  * Ejecuta una operación PPPoE previamente creada.
@@ -139,15 +143,15 @@ export class EjecutarPppoeOperacionUseCase {
 
     private readonly resolverContexto: ResolverContextoEjecucionPppoeService,
 
-    private readonly crearSecretExecutor: CrearSecretPppoeExecutor,
+    private readonly ejecutorCrearSecret: EjecutorCrearSecretPppoeService,
 
     private readonly stepRunner: PppoeOperacionStepRunnerService,
 
-    private readonly activarSecretExecutor: ActivarSecretPppoeExecutor,
+    private readonly ejecutorActivarSecret: EjecutorActivarSecretPppoeService,
 
-    private readonly suspenderServicioExecutor: SuspenderServicioPppoeExecutor,
+    private readonly ejecutorSuspenderServicio: EjecutorSuspenderServicioPppoeService,
 
-    private readonly eliminarSecretExecutor: EliminarSecretPppoeExecutor,
+    private readonly ejecutorEliminarSecret: EjecutorEliminarSecretPppoeService,
 
     @Inject(PPPOE_OPERACION_AUDITORIA)
     private readonly operacionAuditoria: PppoeOperacionAuditoriaPort,
@@ -995,28 +999,28 @@ export class EjecutarPppoeOperacionUseCase {
   }): Promise<PppoeOperacionResultado> {
     switch (params.contexto.operacion.tipo) {
       case TipoOperacionPppoe.CREAR_SECRET:
-        return this.crearSecretExecutor.execute({
+        return this.ejecutorCrearSecret.execute({
           contexto: params.contexto,
 
           pasos: params.pasos,
         });
 
       case TipoOperacionPppoe.ACTIVAR_SECRET:
-        return this.activarSecretExecutor.execute({
+        return this.ejecutorActivarSecret.execute({
           contexto: params.contexto,
 
           pasos: params.pasos,
         });
 
       case TipoOperacionPppoe.SUSPENDER_SERVICIO:
-        return this.suspenderServicioExecutor.execute({
+        return this.ejecutorSuspenderServicio.execute({
           contexto: params.contexto,
 
           pasos: params.pasos,
         });
 
       case TipoOperacionPppoe.ELIMINAR_SECRET:
-        return this.eliminarSecretExecutor.execute({
+        return this.ejecutorEliminarSecret.execute({
           contexto: params.contexto,
 
           pasos: params.pasos,

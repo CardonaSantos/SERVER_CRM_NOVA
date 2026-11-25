@@ -8,7 +8,7 @@ import { AuthService } from 'src/auth/auth.service';
 
 import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 
-import { PrepararPrealtaPppoeResult } from '../results/preparar-prealta-pppoe.result';
+import { PrepararPrealtaPppoeResult } from '../../public/pppoe-prealta.port';
 
 import { CrearPrealtaPppoeClienteUseCase } from '../use-cases/crear-prealta-pppoe-cliente.use-case';
 
