@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import { EstadoOperacionPppoe } from '../../domain/enums/pppoe-operacion.enum';
 
@@ -13,6 +7,12 @@ import {
   PppoeOperacionAggregate,
   PppoeOperacionRepositoryPort,
 } from '../../domain/ports/pppoe-operacion-repository.port';
+import {
+  OperacionPppoeDatosInvalidosError,
+  OperacionPppoeEnCursoError,
+  OperacionPppoeEstadoInvalidoError,
+  OperacionPppoeNoEncontradaError,
+} from '../../domain/errors/pppoe-operacion.errors';
 
 /**
  * Datos necesarios para iniciar una operación.
@@ -62,9 +62,7 @@ export class IniciarPppoeOperacionUseCase {
     });
 
     if (!aggregate) {
-      throw new NotFoundException(
-        `No existe la operación PPPoE ${input.operacionId}.`,
-      );
+      throw new OperacionPppoeNoEncontradaError();
     }
 
     const { operacion, pasos } = aggregate;
@@ -77,13 +75,13 @@ export class IniciarPppoeOperacionUseCase {
      * comandos SSH.
      */
     if (operacion.estaEjecutando()) {
-      throw new ConflictException(
+      throw new OperacionPppoeEnCursoError(
         `La operación PPPoE ${input.operacionId} ya está EJECUTANDO y fue reclamada por otro proceso.`,
       );
     }
 
     if (operacion.esTerminal()) {
-      throw new ConflictException(
+      throw new OperacionPppoeEstadoInvalidoError(
         `La operación no puede iniciarse desde el estado ${operacion.estado}.`,
       );
     }
@@ -91,7 +89,9 @@ export class IniciarPppoeOperacionUseCase {
     this.validateAuthorizationState(operacion);
 
     if (pasos.length === 0) {
-      throw new ConflictException('La operación no contiene pasos técnicos.');
+      throw new OperacionPppoeEstadoInvalidoError(
+        'La operación no contiene pasos técnicos.',
+      );
     }
 
     /**
@@ -104,7 +104,7 @@ export class IniciarPppoeOperacionUseCase {
     const pasoNoPendiente = pasos.find((paso) => !paso.estaPendiente());
 
     if (pasoNoPendiente) {
-      throw new ConflictException(
+      throw new OperacionPppoeEstadoInvalidoError(
         `La operación no puede iniciarse porque el paso ${pasoNoPendiente.orden} se encuentra en estado ${pasoNoPendiente.estado}.`,
       );
     }
@@ -138,7 +138,7 @@ export class IniciarPppoeOperacionUseCase {
      * solicitud cambió el estado antes que esta.
      */
     if (!claimedOperation) {
-      throw new ConflictException(
+      throw new OperacionPppoeEnCursoError(
         `La operación PPPoE ${input.operacionId} ya fue reclamada por otro proceso o cambió de estado.`,
       );
     }
@@ -154,13 +154,13 @@ export class IniciarPppoeOperacionUseCase {
     });
 
     if (!claimedAggregate) {
-      throw new NotFoundException(
+      throw new OperacionPppoeEstadoInvalidoError(
         `La operación PPPoE ${input.operacionId} fue reclamada, pero no pudo recargarse.`,
       );
     }
 
     if (!claimedAggregate.operacion.estaEjecutando()) {
-      throw new ConflictException(
+      throw new OperacionPppoeEstadoInvalidoError(
         `La operación PPPoE ${input.operacionId} no quedó en estado EJECUTANDO después de ser reclamada.`,
       );
     }
@@ -177,7 +177,7 @@ export class IniciarPppoeOperacionUseCase {
   ): void {
     if (operacion.requiereReautenticacion) {
       if (!operacion.estaAutorizada()) {
-        throw new ConflictException(
+        throw new OperacionPppoeEstadoInvalidoError(
           `La operación requiere autorización antes de ejecutarse. Estado actual: ${operacion.estado}.`,
         );
       }
@@ -186,7 +186,7 @@ export class IniciarPppoeOperacionUseCase {
     }
 
     if (!operacion.estaPendiente()) {
-      throw new ConflictException(
+      throw new OperacionPppoeEstadoInvalidoError(
         `La operación sin reautenticación debe estar PENDIENTE. Estado actual: ${operacion.estado}.`,
       );
     }
@@ -205,7 +205,9 @@ export class IniciarPppoeOperacionUseCase {
    */
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
+      throw new OperacionPppoeDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 
@@ -218,7 +220,9 @@ export class IniciarPppoeOperacionUseCase {
     }
 
     if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
-      throw new BadRequestException('fecha debe contener una fecha válida.');
+      throw new OperacionPppoeDatosInvalidosError(
+        'fecha debe contener una fecha válida.',
+      );
     }
   }
 }

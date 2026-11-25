@@ -1,4 +1,4 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 import { PppoeOperacionEntity } from '../../domain/entities/pppoe-operacion.entity';
 import {
@@ -12,6 +12,10 @@ import {
   PppoeOperacionRepositoryPort,
 } from '../../domain/ports/pppoe-operacion-repository.port';
 import { PoliticaPlanPasosPppoe } from '../../domain/policies/plan-pasos-pppoe.policy';
+import {
+  OperacionPppoeEnCursoError,
+  OperacionPppoeIdempotenciaError,
+} from '../../domain/errors/pppoe-operacion.errors';
 
 /**
  * INPUT DEL CASO DE USO
@@ -175,7 +179,7 @@ export class CrearPppoeOperacionUseCase {
     });
 
     if (runningOperation) {
-      throw new ConflictException(
+      throw new OperacionPppoeEnCursoError(
         this.buildRunningOperationMessage(runningOperation),
       );
     }
@@ -305,7 +309,7 @@ export class CrearPppoeOperacionUseCase {
       return;
     }
 
-    throw new ConflictException(
+    throw new OperacionPppoeIdempotenciaError(
       'La clave de idempotencia ya fue utilizada para una operación PPPoE diferente.',
     );
   }

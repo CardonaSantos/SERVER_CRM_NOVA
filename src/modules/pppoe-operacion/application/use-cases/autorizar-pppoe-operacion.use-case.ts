@@ -1,11 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PppoeOperacionEntity } from '../../domain/entities/pppoe-operacion.entity';
 import {
   OPERADOR_REAUTENTICACION,
@@ -15,6 +8,12 @@ import {
   PPPOE_OPERACION_REPOSITORY,
   PppoeOperacionRepositoryPort,
 } from '../../domain/ports/pppoe-operacion-repository.port';
+import {
+  OperacionPppoeDatosInvalidosError,
+  OperacionPppoeEstadoInvalidoError,
+  OperacionPppoeNoEncontradaError,
+  ReautenticacionOperadorInvalidaError,
+} from '../../domain/errors/pppoe-operacion.errors';
 
 /**
  * INPUT
@@ -57,7 +56,7 @@ export type AutorizarPppoeOperacionUseCaseInput = {
  * 1. Valida las credenciales.
  * 2. Ejecuta registrarReautenticacionFallida().
  * 3. Persiste el intento fallido.
- * 4. Devuelve UnauthorizedException.
+ * 4. Lanza REAUTENTICACION_INVALIDA (403).
  */
 @Injectable()
 export class AutorizarPppoeOperacionUseCase {
@@ -95,9 +94,7 @@ export class AutorizarPppoeOperacionUseCase {
     });
 
     if (!operacion) {
-      throw new NotFoundException(
-        `No existe la operación PPPoE ${input.operacionId} en la empresa ${input.empresaId}.`,
-      );
+      throw new OperacionPppoeNoEncontradaError();
     }
 
     /**
@@ -105,7 +102,7 @@ export class AutorizarPppoeOperacionUseCase {
      */
 
     if (!operacion.requiereReautenticacion) {
-      throw new ConflictException(
+      throw new OperacionPppoeEstadoInvalidoError(
         'La operación PPPoE no requiere reautenticación.',
       );
     }
@@ -121,7 +118,7 @@ export class AutorizarPppoeOperacionUseCase {
     }
 
     if (!operacion.estaPendiente()) {
-      throw new ConflictException(
+      throw new OperacionPppoeEstadoInvalidoError(
         `La operación PPPoE no puede autorizarse desde el estado ${operacion.estado}.`,
       );
     }
@@ -167,9 +164,7 @@ export class AutorizarPppoeOperacionUseCase {
        * - pertenece a otra empresa;
        * - la contraseña es incorrecta.
        */
-      throw new UnauthorizedException(
-        'No fue posible validar las credenciales del operador.',
-      );
+      throw new ReautenticacionOperadorInvalidaError();
     }
 
     /**
@@ -198,7 +193,9 @@ export class AutorizarPppoeOperacionUseCase {
    */
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
+      throw new OperacionPppoeDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 
@@ -210,7 +207,7 @@ export class AutorizarPppoeOperacionUseCase {
    */
   private assertPassword(password: string): void {
     if (typeof password !== 'string' || password.length === 0) {
-      throw new BadRequestException(
+      throw new OperacionPppoeDatosInvalidosError(
         'La contraseña del operador es obligatoria.',
       );
     }
@@ -220,7 +217,7 @@ export class AutorizarPppoeOperacionUseCase {
      * grandes antes de llamar al comparador de hashes.
      */
     if (password.length > 512) {
-      throw new BadRequestException(
+      throw new OperacionPppoeDatosInvalidosError(
         'La contraseña enviada supera la longitud permitida.',
       );
     }

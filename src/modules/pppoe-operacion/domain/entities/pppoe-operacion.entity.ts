@@ -11,6 +11,10 @@ import {
   PppoeOperacionProps,
   PppoeOperacionResultado,
 } from '../props/pppoe-operacion.props';
+import {
+  OperacionPppoeDatosInvalidosError,
+  OperacionPppoeEstadoInvalidoError,
+} from '../errors/pppoe-operacion.errors';
 
 /**
  * Datos necesarios para autorizar una operación que requiere
@@ -569,7 +573,7 @@ export class PppoeOperacionEntity {
     );
 
     if (!this.props.requiereReautenticacion) {
-      throw new Error(
+      throw new OperacionPppoeEstadoInvalidoError(
         'Esta operación no requiere reautenticación y no debe pasar por AUTORIZADA.',
       );
     }
@@ -611,7 +615,9 @@ export class PppoeOperacionEntity {
     );
 
     if (!this.props.requiereReautenticacion) {
-      throw new Error('Esta operación no requiere reautenticación.');
+      throw new OperacionPppoeEstadoInvalidoError(
+        'Esta operación no requiere reautenticación.',
+      );
     }
 
     const reautenticadoPorId = PppoeOperacionEntity.normalizePositiveInteger(
@@ -664,7 +670,9 @@ export class PppoeOperacionEntity {
         this.props.reautenticadoPorId === null ||
         this.props.reautenticadoEn === null
       ) {
-        throw new Error('La operación no contiene una autorización válida.');
+        throw new OperacionPppoeEstadoInvalidoError(
+          'La operación no contiene una autorización válida.',
+        );
       }
     } else {
       this.assertCurrentState(
@@ -684,7 +692,9 @@ export class PppoeOperacionEntity {
       this.props.reautenticadoEn &&
       fecha.getTime() < this.props.reautenticadoEn.getTime()
     ) {
-      throw new Error('iniciadoEn no puede ser anterior a reautenticadoEn.');
+      throw new OperacionPppoeDatosInvalidosError(
+        'iniciadoEn no puede ser anterior a reautenticadoEn.',
+      );
     }
 
     this.props.estado = EstadoOperacionPppoe.EJECUTANDO;
@@ -782,7 +792,7 @@ export class PppoeOperacionEntity {
       this.props.estado !== EstadoOperacionPppoe.PENDIENTE &&
       this.props.estado !== EstadoOperacionPppoe.AUTORIZADA
     ) {
-      throw new Error(
+      throw new OperacionPppoeEstadoInvalidoError(
         `Solo una operación PENDIENTE o AUTORIZADA puede cancelarse. Estado actual: ${this.props.estado}.`,
       );
     }
@@ -804,7 +814,9 @@ export class PppoeOperacionEntity {
       this.props.reautenticadoEn &&
       fecha.getTime() < this.props.reautenticadoEn.getTime()
     ) {
-      throw new Error('canceladoEn no puede ser anterior a reautenticadoEn.');
+      throw new OperacionPppoeDatosInvalidosError(
+        'canceladoEn no puede ser anterior a reautenticadoEn.',
+      );
     }
 
     this.props.estado = EstadoOperacionPppoe.CANCELADA;
@@ -848,7 +860,7 @@ export class PppoeOperacionEntity {
     input: CrearReintentoPppoeOperacionInput,
   ): PppoeOperacionEntity {
     if (!this.puedeReintentarse()) {
-      throw new Error(
+      throw new OperacionPppoeEstadoInvalidoError(
         `La operación ${this.props.estado} no puede reintentarse.`,
       );
     }
@@ -865,7 +877,9 @@ export class PppoeOperacionEntity {
     const routerPuertoSnapshot = input.routerPuertoSnapshot;
 
     if (typeof routerHostSnapshot !== 'string' || !routerHostSnapshot.trim()) {
-      throw new Error('El reintento necesita routerHostSnapshot.');
+      throw new OperacionPppoeDatosInvalidosError(
+        'El reintento necesita routerHostSnapshot.',
+      );
     }
 
     if (
@@ -873,7 +887,9 @@ export class PppoeOperacionEntity {
       routerPuertoSnapshot < 1 ||
       routerPuertoSnapshot > 65_535
     ) {
-      throw new Error('El reintento necesita un routerPuertoSnapshot válido.');
+      throw new OperacionPppoeDatosInvalidosError(
+        'El reintento necesita un routerPuertoSnapshot válido.',
+      );
     }
 
     return PppoeOperacionEntity.create({
@@ -1311,7 +1327,9 @@ export class PppoeOperacionEntity {
     message: string,
   ): void {
     if (this.props.estado !== expected) {
-      throw new Error(`${message} Estado actual: ${this.props.estado}.`);
+      throw new OperacionPppoeEstadoInvalidoError(
+        `${message} Estado actual: ${this.props.estado}.`,
+      );
     }
   }
 
@@ -1320,7 +1338,7 @@ export class PppoeOperacionEntity {
    */
   private assertDateNotBeforeCreation(fecha: Date): void {
     if (fecha.getTime() < this.props.creadoEn.getTime()) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         'La fecha de la acción no puede ser anterior a creadoEn.',
       );
     }
@@ -1331,11 +1349,13 @@ export class PppoeOperacionEntity {
    */
   private assertDateNotBeforeStart(fecha: Date): void {
     if (!this.props.iniciadoEn) {
-      throw new Error('La operación no contiene iniciadoEn.');
+      throw new OperacionPppoeDatosInvalidosError(
+        'La operación no contiene iniciadoEn.',
+      );
     }
 
     if (fecha.getTime() < this.props.iniciadoEn.getTime()) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         'La fecha de finalización no puede ser anterior a iniciadoEn.',
       );
     }
@@ -1346,13 +1366,17 @@ export class PppoeOperacionEntity {
    */
   private calculateDuration(finalizadoEn: Date): number {
     if (!this.props.iniciadoEn) {
-      throw new Error('No puede calcularse la duración sin iniciadoEn.');
+      throw new OperacionPppoeDatosInvalidosError(
+        'No puede calcularse la duración sin iniciadoEn.',
+      );
     }
 
     const duracion = finalizadoEn.getTime() - this.props.iniciadoEn.getTime();
 
     if (duracion < 0) {
-      throw new Error('La duración calculada no puede ser negativa.');
+      throw new OperacionPppoeDatosInvalidosError(
+        'La duración calculada no puede ser negativa.',
+      );
     }
 
     return duracion;
@@ -1384,23 +1408,25 @@ export class PppoeOperacionEntity {
    */
   private static assertGeneralConsistency(props: PppoeOperacionProps): void {
     if (props.instalacionId !== null && props.desinstalacionId !== null) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         'Una operación no puede pertenecer simultáneamente a una instalación y una desinstalación.',
       );
     }
 
     if (props.id !== null && props.reintentoDeId === props.id) {
-      throw new Error('Una operación no puede ser reintento de sí misma.');
+      throw new OperacionPppoeDatosInvalidosError(
+        'Una operación no puede ser reintento de sí misma.',
+      );
     }
 
     if (props.reintentoDeId === null && props.numeroIntento !== 1) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         'Una operación inicial debe tener numeroIntento igual a 1.',
       );
     }
 
     if (props.reintentoDeId !== null && props.numeroIntento < 2) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         'Un reintento debe tener numeroIntento mayor o igual que 2.',
       );
     }
@@ -1409,13 +1435,13 @@ export class PppoeOperacionEntity {
       props.origen === OrigenOperacionPppoe.OPERADOR &&
       props.iniciadoPorId === null
     ) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         'Una operación originada por OPERADOR debe contener iniciadoPorId.',
       );
     }
 
     if (props.requiereReautenticacion && props.iniciadoPorId === null) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         'Una operación con reautenticación debe tener iniciadoPorId.',
       );
     }
@@ -1436,7 +1462,7 @@ export class PppoeOperacionEntity {
     const tieneCodigoPerfil = props.codigoPerfilSnapshot !== null;
 
     if (tienePerfilId !== tieneCodigoPerfil) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         'perfilHomologacionId y codigoPerfilSnapshot deben existir juntos.',
       );
     }
@@ -1445,7 +1471,7 @@ export class PppoeOperacionEntity {
       props.tipo === TipoOperacionPppoe.CREAR_SECRET &&
       (!tienePerfilId || !tieneCodigoPerfil)
     ) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         'CREAR_SECRET requiere perfilHomologacionId y codigoPerfilSnapshot.',
       );
     }
@@ -1459,7 +1485,7 @@ export class PppoeOperacionEntity {
       props.canal === CanalOperacionPppoe.SSH &&
       (props.routerHostSnapshot === null || props.routerPuertoSnapshot === null)
     ) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         'Una operación SSH requiere routerHostSnapshot y routerPuertoSnapshot.',
       );
     }
@@ -1477,7 +1503,7 @@ export class PppoeOperacionEntity {
         props.reautenticacionExitosa !== null ||
         props.reautenticadoEn !== null
       ) {
-        throw new Error(
+        throw new OperacionPppoeEstadoInvalidoError(
           'Una operación que no requiere reautenticación no debe contener datos de reautenticación.',
         );
       }
@@ -1487,7 +1513,7 @@ export class PppoeOperacionEntity {
 
     if (props.reautenticacionExitosa === null) {
       if (props.reautenticadoPorId !== null || props.reautenticadoEn !== null) {
-        throw new Error(
+        throw new OperacionPppoeDatosInvalidosError(
           'Una reautenticación no evaluada no debe contener operador ni fecha.',
         );
       }
@@ -1496,7 +1522,7 @@ export class PppoeOperacionEntity {
     }
 
     if (props.reautenticadoPorId === null || props.reautenticadoEn === null) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         'Una reautenticación evaluada debe contener reautenticadoPorId y reautenticadoEn.',
       );
     }
@@ -1518,7 +1544,7 @@ export class PppoeOperacionEntity {
         this.assertNotStarted(props, 'PENDIENTE');
 
         if (props.reautenticacionExitosa === true) {
-          throw new Error(
+          throw new OperacionPppoeDatosInvalidosError(
             'Una operación con reautenticación exitosa debe estar AUTORIZADA o haber comenzado.',
           );
         }
@@ -1535,7 +1561,7 @@ export class PppoeOperacionEntity {
           props.reautenticadoPorId === null ||
           props.reautenticadoEn === null
         ) {
-          throw new Error(
+          throw new OperacionPppoeDatosInvalidosError(
             'Una operación AUTORIZADA debe contener una reautenticación exitosa.',
           );
         }
@@ -1545,7 +1571,9 @@ export class PppoeOperacionEntity {
 
       case EstadoOperacionPppoe.EJECUTANDO: {
         if (props.iniciadoEn === null) {
-          throw new Error('Una operación EJECUTANDO debe contener iniciadoEn.');
+          throw new OperacionPppoeDatosInvalidosError(
+            'Una operación EJECUTANDO debe contener iniciadoEn.',
+          );
         }
 
         if (
@@ -1553,7 +1581,7 @@ export class PppoeOperacionEntity {
           props.canceladoEn !== null ||
           props.duracionMs !== null
         ) {
-          throw new Error(
+          throw new OperacionPppoeDatosInvalidosError(
             'Una operación EJECUTANDO no puede contener fechas finales ni duración.',
           );
         }
@@ -1563,7 +1591,7 @@ export class PppoeOperacionEntity {
           props.errorCodigo !== null ||
           props.errorMensaje !== null
         ) {
-          throw new Error(
+          throw new OperacionPppoeDatosInvalidosError(
             'Una operación EJECUTANDO no puede contener un resultado final.',
           );
         }
@@ -1577,7 +1605,7 @@ export class PppoeOperacionEntity {
         this.assertFinishedExecution(props, 'EXITOSA');
 
         if (props.errorCodigo !== null || props.errorMensaje !== null) {
-          throw new Error(
+          throw new OperacionPppoeDatosInvalidosError(
             'Una operación EXITOSA no puede contener datos de error.',
           );
         }
@@ -1599,11 +1627,15 @@ export class PppoeOperacionEntity {
 
       case EstadoOperacionPppoe.CANCELADA: {
         if (props.canceladoEn === null) {
-          throw new Error('Una operación CANCELADA debe contener canceladoEn.');
+          throw new OperacionPppoeDatosInvalidosError(
+            'Una operación CANCELADA debe contener canceladoEn.',
+          );
         }
 
         if (!props.motivo) {
-          throw new Error('Una operación CANCELADA debe contener motivo.');
+          throw new OperacionPppoeDatosInvalidosError(
+            'Una operación CANCELADA debe contener motivo.',
+          );
         }
 
         if (
@@ -1611,7 +1643,7 @@ export class PppoeOperacionEntity {
           props.finalizadoEn !== null ||
           props.duracionMs !== null
         ) {
-          throw new Error(
+          throw new OperacionPppoeDatosInvalidosError(
             'Una operación CANCELADA no puede contener ejecución ni duración.',
           );
         }
@@ -1621,7 +1653,7 @@ export class PppoeOperacionEntity {
           props.errorCodigo !== null ||
           props.errorMensaje !== null
         ) {
-          throw new Error(
+          throw new OperacionPppoeDatosInvalidosError(
             'Una operación CANCELADA no puede contener un resultado técnico final.',
           );
         }
@@ -1652,7 +1684,7 @@ export class PppoeOperacionEntity {
       props.canceladoEn !== null ||
       props.duracionMs !== null
     ) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         `Una operación ${estado} no puede contener fechas de ejecución ni duración.`,
       );
     }
@@ -1662,7 +1694,7 @@ export class PppoeOperacionEntity {
       props.errorCodigo !== null ||
       props.errorMensaje !== null
     ) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         `Una operación ${estado} no puede contener resultados finales.`,
       );
     }
@@ -1680,13 +1712,15 @@ export class PppoeOperacionEntity {
       props.finalizadoEn === null ||
       props.duracionMs === null
     ) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         `Una operación ${estado} debe contener iniciadoEn, finalizadoEn y duracionMs.`,
       );
     }
 
     if (props.canceladoEn !== null) {
-      throw new Error(`Una operación ${estado} no puede contener canceladoEn.`);
+      throw new OperacionPppoeDatosInvalidosError(
+        `Una operación ${estado} no puede contener canceladoEn.`,
+      );
     }
 
     this.assertAuthorizedWhenRequired(props);
@@ -1702,7 +1736,7 @@ export class PppoeOperacionEntity {
     this.assertFinishedExecution(props, estado);
 
     if (!props.errorCodigo || !props.errorMensaje) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         `Una operación ${estado} debe contener errorCodigo y errorMensaje.`,
       );
     }
@@ -1721,7 +1755,7 @@ export class PppoeOperacionEntity {
         props.reautenticadoPorId === null ||
         props.reautenticadoEn === null)
     ) {
-      throw new Error(
+      throw new OperacionPppoeEstadoInvalidoError(
         'La operación requería reautenticación y no contiene una autorización válida.',
       );
     }
@@ -1738,7 +1772,9 @@ export class PppoeOperacionEntity {
    */
   private static assertTemporalConsistency(props: PppoeOperacionProps): void {
     if (props.actualizadoEn.getTime() < props.creadoEn.getTime()) {
-      throw new Error('actualizadoEn no puede ser anterior a creadoEn.');
+      throw new OperacionPppoeDatosInvalidosError(
+        'actualizadoEn no puede ser anterior a creadoEn.',
+      );
     }
 
     const optionalDates: Array<{
@@ -1765,7 +1801,9 @@ export class PppoeOperacionEntity {
 
     for (const date of optionalDates) {
       if (date.value && date.value.getTime() < props.creadoEn.getTime()) {
-        throw new Error(`${date.field} no puede ser anterior a creadoEn.`);
+        throw new OperacionPppoeDatosInvalidosError(
+          `${date.field} no puede ser anterior a creadoEn.`,
+        );
       }
     }
 
@@ -1774,7 +1812,9 @@ export class PppoeOperacionEntity {
       props.iniciadoEn &&
       props.iniciadoEn.getTime() < props.reautenticadoEn.getTime()
     ) {
-      throw new Error('iniciadoEn no puede ser anterior a reautenticadoEn.');
+      throw new OperacionPppoeDatosInvalidosError(
+        'iniciadoEn no puede ser anterior a reautenticadoEn.',
+      );
     }
 
     if (
@@ -1782,7 +1822,9 @@ export class PppoeOperacionEntity {
       props.finalizadoEn &&
       props.finalizadoEn.getTime() < props.iniciadoEn.getTime()
     ) {
-      throw new Error('finalizadoEn no puede ser anterior a iniciadoEn.');
+      throw new OperacionPppoeDatosInvalidosError(
+        'finalizadoEn no puede ser anterior a iniciadoEn.',
+      );
     }
   }
 
@@ -1797,7 +1839,9 @@ export class PppoeOperacionEntity {
     field: string,
   ): number {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new Error(`${field} debe ser un entero positivo.`);
+      throw new OperacionPppoeDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
 
     return value;
@@ -1816,7 +1860,9 @@ export class PppoeOperacionEntity {
 
   private static normalizeNetworkPort(value: number, field: string): number {
     if (!Number.isInteger(value) || value < 1 || value > 65_535) {
-      throw new Error(`${field} debe ser un puerto válido entre 1 y 65535.`);
+      throw new OperacionPppoeDatosInvalidosError(
+        `${field} debe ser un puerto válido entre 1 y 65535.`,
+      );
     }
 
     return value;
@@ -1841,11 +1887,13 @@ export class PppoeOperacionEntity {
     const normalized = value?.trim();
 
     if (!normalized) {
-      throw new Error(`${field} es obligatorio.`);
+      throw new OperacionPppoeDatosInvalidosError(`${field} es obligatorio.`);
     }
 
     if (normalized.length > maxLength) {
-      throw new Error(`${field} no puede superar ${maxLength} caracteres.`);
+      throw new OperacionPppoeDatosInvalidosError(
+        `${field} no puede superar ${maxLength} caracteres.`,
+      );
     }
 
     return normalized;
@@ -1867,7 +1915,9 @@ export class PppoeOperacionEntity {
     }
 
     if (normalized.length > maxLength) {
-      throw new Error(`${field} no puede superar ${maxLength} caracteres.`);
+      throw new OperacionPppoeDatosInvalidosError(
+        `${field} no puede superar ${maxLength} caracteres.`,
+      );
     }
 
     return normalized;
@@ -1885,13 +1935,15 @@ export class PppoeOperacionEntity {
     }
 
     if (normalized.length > this.MAX_ERROR_CODIGO_LENGTH) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         `errorCodigo no puede superar ${this.MAX_ERROR_CODIGO_LENGTH} caracteres.`,
       );
     }
 
     if (!/^[A-Z0-9_.:-]+$/.test(normalized)) {
-      throw new Error('errorCodigo contiene caracteres no permitidos.');
+      throw new OperacionPppoeDatosInvalidosError(
+        'errorCodigo contiene caracteres no permitidos.',
+      );
     }
 
     return normalized;
@@ -1901,7 +1953,9 @@ export class PppoeOperacionEntity {
     const normalized = this.normalizeErrorCode(value);
 
     if (!normalized) {
-      throw new Error('errorCodigo es obligatorio.');
+      throw new OperacionPppoeDatosInvalidosError(
+        'errorCodigo es obligatorio.',
+      );
     }
 
     return normalized;
@@ -1911,7 +1965,9 @@ export class PppoeOperacionEntity {
     const normalized = new Date(value);
 
     if (Number.isNaN(normalized.getTime())) {
-      throw new Error(`${field} debe contener una fecha válida.`);
+      throw new OperacionPppoeDatosInvalidosError(
+        `${field} debe contener una fecha válida.`,
+      );
     }
 
     return normalized;
@@ -1943,7 +1999,9 @@ export class PppoeOperacionEntity {
     }
 
     if (!Number.isInteger(value) || value < 0) {
-      throw new Error('duracionMs debe ser un entero mayor o igual que cero.');
+      throw new OperacionPppoeDatosInvalidosError(
+        'duracionMs debe ser un entero mayor o igual que cero.',
+      );
     }
 
     return value;
@@ -1957,7 +2015,9 @@ export class PppoeOperacionEntity {
     const values = Object.values(enumObject) as Array<TEnum[keyof TEnum]>;
 
     if (!values.includes(value as TEnum[keyof TEnum])) {
-      throw new Error(`${field} contiene un valor no soportado: ${value}.`);
+      throw new OperacionPppoeDatosInvalidosError(
+        `${field} contiene un valor no soportado: ${value}.`,
+      );
     }
 
     return value as TEnum[keyof TEnum];
@@ -1984,7 +2044,7 @@ export class PppoeOperacionEntity {
     const serialized = JSON.stringify(value);
 
     if (serialized.length > this.MAX_RESULTADO_LENGTH) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         `resultado no puede superar ${this.MAX_RESULTADO_LENGTH} caracteres serializados.`,
       );
     }
@@ -2006,7 +2066,9 @@ export class PppoeOperacionEntity {
 
     if (typeof value === 'number') {
       if (!Number.isFinite(value)) {
-        throw new Error(`${path} contiene un número no válido.`);
+        throw new OperacionPppoeDatosInvalidosError(
+          `${path} contiene un número no válido.`,
+        );
       }
 
       return;
@@ -2024,14 +2086,16 @@ export class PppoeOperacionEntity {
       typeof value !== 'object' ||
       Object.getPrototypeOf(value) !== Object.prototype
     ) {
-      throw new Error(`${path} debe contener únicamente valores JSON válidos.`);
+      throw new OperacionPppoeDatosInvalidosError(
+        `${path} debe contener únicamente valores JSON válidos.`,
+      );
     }
 
     for (const [key, childValue] of Object.entries(value)) {
       const normalizedKey = this.normalizeResultKey(key);
 
       if (this.SENSITIVE_RESULT_KEYS.has(normalizedKey)) {
-        throw new Error(
+        throw new OperacionPppoeDatosInvalidosError(
           `${path}.${key} contiene una clave sensible que no puede persistirse.`,
         );
       }

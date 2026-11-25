@@ -4,6 +4,10 @@ import {
 } from '../props/pppoe-operacion-paso.props';
 
 import { EstadoPasoPppoe, TipoPasoPppoe } from '../enums/pppoe-operacion.enum';
+import {
+  OperacionPppoeDatosInvalidosError,
+  OperacionPppoeEstadoInvalidoError,
+} from '../errors/pppoe-operacion.errors';
 
 /**
  * Datos permitidos al comenzar la ejecución de un paso.
@@ -601,7 +605,9 @@ export class PppoeOperacionPasoEntity {
    */
   private assertCurrentState(expected: EstadoPasoPppoe, message: string): void {
     if (this.props.estado !== expected) {
-      throw new Error(`${message} Estado actual: ${this.props.estado}.`);
+      throw new OperacionPppoeEstadoInvalidoError(
+        `${message} Estado actual: ${this.props.estado}.`,
+      );
     }
   }
 
@@ -611,7 +617,7 @@ export class PppoeOperacionPasoEntity {
    */
   private assertDateNotBeforeCreation(fecha: Date): void {
     if (fecha.getTime() < this.props.creadoEn.getTime()) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         'La fecha de la acción no puede ser anterior a creadoEn.',
       );
     }
@@ -623,11 +629,13 @@ export class PppoeOperacionPasoEntity {
    */
   private assertDateNotBeforeStart(fecha: Date): void {
     if (!this.props.iniciadoEn) {
-      throw new Error('El paso no contiene una fecha de inicio válida.');
+      throw new OperacionPppoeDatosInvalidosError(
+        'El paso no contiene una fecha de inicio válida.',
+      );
     }
 
     if (fecha.getTime() < this.props.iniciadoEn.getTime()) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         'La fecha de finalización no puede ser anterior a iniciadoEn.',
       );
     }
@@ -638,7 +646,7 @@ export class PppoeOperacionPasoEntity {
    */
   private calculateDuration(finalizadoEn: Date): number {
     if (!this.props.iniciadoEn) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         'No se puede calcular la duración de un paso sin iniciadoEn.',
       );
     }
@@ -646,7 +654,9 @@ export class PppoeOperacionPasoEntity {
     const duration = finalizadoEn.getTime() - this.props.iniciadoEn.getTime();
 
     if (duration < 0) {
-      throw new Error('La duración calculada del paso no puede ser negativa.');
+      throw new OperacionPppoeDatosInvalidosError(
+        'La duración calculada del paso no puede ser negativa.',
+      );
     }
 
     return duration;
@@ -678,7 +688,9 @@ export class PppoeOperacionPasoEntity {
    */
   private static assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new Error(`${field} debe ser un entero positivo.`);
+      throw new OperacionPppoeDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 
@@ -693,7 +705,9 @@ export class PppoeOperacionPasoEntity {
     const allowedValues = Object.values(enumObject);
 
     if (!allowedValues.includes(value)) {
-      throw new Error(`${field} contiene un valor no soportado: ${value}.`);
+      throw new OperacionPppoeDatosInvalidosError(
+        `${field} contiene un valor no soportado: ${value}.`,
+      );
     }
   }
 
@@ -718,7 +732,9 @@ export class PppoeOperacionPasoEntity {
     const normalized = new Date(value);
 
     if (Number.isNaN(normalized.getTime())) {
-      throw new Error(`${field} debe contener una fecha válida.`);
+      throw new OperacionPppoeDatosInvalidosError(
+        `${field} debe contener una fecha válida.`,
+      );
     }
 
     return normalized;
@@ -745,7 +761,9 @@ export class PppoeOperacionPasoEntity {
     }
 
     if (!Number.isInteger(value) || value < 0) {
-      throw new Error('duracionMs debe ser un entero mayor o igual que cero.');
+      throw new OperacionPppoeDatosInvalidosError(
+        'duracionMs debe ser un entero mayor o igual que cero.',
+      );
     }
 
     return value;
@@ -766,13 +784,13 @@ export class PppoeOperacionPasoEntity {
     }
 
     if (normalized.length > this.MAX_ERROR_CODIGO_LENGTH) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         `errorCodigo no puede superar ${this.MAX_ERROR_CODIGO_LENGTH} caracteres.`,
       );
     }
 
     if (!/^[A-Z0-9_.:-]+$/.test(normalized)) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         'errorCodigo solo puede contener letras, números, guion bajo, punto, dos puntos y guion.',
       );
     }
@@ -787,7 +805,7 @@ export class PppoeOperacionPasoEntity {
     const normalized = this.normalizeErrorCode(value);
 
     if (!normalized) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         'errorCodigo es obligatorio al marcar un paso como FALLIDO.',
       );
     }
@@ -835,7 +853,7 @@ export class PppoeOperacionPasoEntity {
       .replace(/(PPPOE_SECRET_KEY_V\d+\s*=\s*)[^\s]+/gi, '$1[REDACTED]');
 
     if (sanitized.length > this.MAX_TEXTO_TECNICO_LENGTH) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         `${field} no puede superar ${this.MAX_TEXTO_TECNICO_LENGTH} caracteres.`,
       );
     }
@@ -853,7 +871,7 @@ export class PppoeOperacionPasoEntity {
     const normalized = this.sanitizeTechnicalText(value, field);
 
     if (!normalized) {
-      throw new Error(`${field} es obligatorio.`);
+      throw new OperacionPppoeDatosInvalidosError(`${field} es obligatorio.`);
     }
 
     return normalized;
@@ -867,21 +885,27 @@ export class PppoeOperacionPasoEntity {
     props: PppoeOperacionPasoProps,
   ): void {
     if (props.actualizadoEn.getTime() < props.creadoEn.getTime()) {
-      throw new Error('actualizadoEn no puede ser anterior a creadoEn.');
+      throw new OperacionPppoeDatosInvalidosError(
+        'actualizadoEn no puede ser anterior a creadoEn.',
+      );
     }
 
     if (
       props.iniciadoEn &&
       props.iniciadoEn.getTime() < props.creadoEn.getTime()
     ) {
-      throw new Error('iniciadoEn no puede ser anterior a creadoEn.');
+      throw new OperacionPppoeDatosInvalidosError(
+        'iniciadoEn no puede ser anterior a creadoEn.',
+      );
     }
 
     if (
       props.finalizadoEn &&
       props.finalizadoEn.getTime() < props.creadoEn.getTime()
     ) {
-      throw new Error('finalizadoEn no puede ser anterior a creadoEn.');
+      throw new OperacionPppoeDatosInvalidosError(
+        'finalizadoEn no puede ser anterior a creadoEn.',
+      );
     }
 
     if (
@@ -889,7 +913,9 @@ export class PppoeOperacionPasoEntity {
       props.finalizadoEn &&
       props.finalizadoEn.getTime() < props.iniciadoEn.getTime()
     ) {
-      throw new Error('finalizadoEn no puede ser anterior a iniciadoEn.');
+      throw new OperacionPppoeDatosInvalidosError(
+        'finalizadoEn no puede ser anterior a iniciadoEn.',
+      );
     }
   }
 
@@ -905,13 +931,13 @@ export class PppoeOperacionPasoEntity {
           props.finalizadoEn !== null ||
           props.duracionMs !== null
         ) {
-          throw new Error(
+          throw new OperacionPppoeDatosInvalidosError(
             'Un paso PENDIENTE no puede contener fechas de ejecución ni duración.',
           );
         }
 
         if (props.errorCodigo !== null || props.errorMensaje !== null) {
-          throw new Error(
+          throw new OperacionPppoeDatosInvalidosError(
             'Un paso PENDIENTE no puede contener datos de error.',
           );
         }
@@ -921,17 +947,19 @@ export class PppoeOperacionPasoEntity {
 
       case EstadoPasoPppoe.EJECUTANDO: {
         if (props.iniciadoEn === null) {
-          throw new Error('Un paso EJECUTANDO debe contener iniciadoEn.');
+          throw new OperacionPppoeDatosInvalidosError(
+            'Un paso EJECUTANDO debe contener iniciadoEn.',
+          );
         }
 
         if (props.finalizadoEn !== null || props.duracionMs !== null) {
-          throw new Error(
+          throw new OperacionPppoeDatosInvalidosError(
             'Un paso EJECUTANDO no puede contener finalizadoEn ni duracionMs.',
           );
         }
 
         if (props.errorCodigo !== null || props.errorMensaje !== null) {
-          throw new Error(
+          throw new OperacionPppoeDatosInvalidosError(
             'Un paso EJECUTANDO no puede contener un error final.',
           );
         }
@@ -943,7 +971,9 @@ export class PppoeOperacionPasoEntity {
         this.assertCompletedExecutionFields(props, 'EXITOSO');
 
         if (props.errorCodigo !== null || props.errorMensaje !== null) {
-          throw new Error('Un paso EXITOSO no puede contener datos de error.');
+          throw new OperacionPppoeDatosInvalidosError(
+            'Un paso EXITOSO no puede contener datos de error.',
+          );
         }
 
         return;
@@ -953,7 +983,7 @@ export class PppoeOperacionPasoEntity {
         this.assertCompletedExecutionFields(props, 'FALLIDO');
 
         if (!props.errorCodigo || !props.errorMensaje) {
-          throw new Error(
+          throw new OperacionPppoeDatosInvalidosError(
             'Un paso FALLIDO debe contener errorCodigo y errorMensaje.',
           );
         }
@@ -963,21 +993,27 @@ export class PppoeOperacionPasoEntity {
 
       case EstadoPasoPppoe.OMITIDO: {
         if (props.iniciadoEn !== null) {
-          throw new Error('Un paso OMITIDO no debe contener iniciadoEn.');
+          throw new OperacionPppoeDatosInvalidosError(
+            'Un paso OMITIDO no debe contener iniciadoEn.',
+          );
         }
 
         if (props.finalizadoEn === null) {
-          throw new Error('Un paso OMITIDO debe contener finalizadoEn.');
+          throw new OperacionPppoeDatosInvalidosError(
+            'Un paso OMITIDO debe contener finalizadoEn.',
+          );
         }
 
         if (props.duracionMs !== 0) {
-          throw new Error(
+          throw new OperacionPppoeDatosInvalidosError(
             'Un paso OMITIDO debe tener duracionMs igual a cero.',
           );
         }
 
         if (props.errorCodigo !== null || props.errorMensaje !== null) {
-          throw new Error('Un paso OMITIDO no puede contener datos de error.');
+          throw new OperacionPppoeDatosInvalidosError(
+            'Un paso OMITIDO no puede contener datos de error.',
+          );
         }
 
         return;
@@ -1003,7 +1039,7 @@ export class PppoeOperacionPasoEntity {
       props.finalizadoEn === null ||
       props.duracionMs === null
     ) {
-      throw new Error(
+      throw new OperacionPppoeDatosInvalidosError(
         `Un paso ${estado} debe contener iniciadoEn, finalizadoEn y duracionMs.`,
       );
     }

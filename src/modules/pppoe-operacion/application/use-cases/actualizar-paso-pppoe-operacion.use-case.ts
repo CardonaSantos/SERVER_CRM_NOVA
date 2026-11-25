@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import { PppoeOperacionPasoEntity } from '../../domain/entities/pppoe-operacion-paso.entity';
 
@@ -13,6 +7,12 @@ import {
   PppoeOperacionAggregate,
   PppoeOperacionRepositoryPort,
 } from '../../domain/ports/pppoe-operacion-repository.port';
+import {
+  OperacionPppoeDatosInvalidosError,
+  OperacionPppoeEstadoInvalidoError,
+  OperacionPppoeNoEncontradaError,
+  PasoOperacionPppoeNoEncontradoError,
+} from '../../domain/errors/pppoe-operacion.errors';
 
 /**
  * Localiza el paso por id o por orden.
@@ -111,15 +111,13 @@ export class ActualizarPasoPppoeOperacionUseCase {
     });
 
     if (!aggregate) {
-      throw new NotFoundException(
-        `No existe la operación PPPoE ${input.operacionId}.`,
-      );
+      throw new OperacionPppoeNoEncontradaError();
     }
 
     const { operacion, pasos } = aggregate;
 
     if (!operacion.estaEjecutando()) {
-      throw new ConflictException(
+      throw new OperacionPppoeEstadoInvalidoError(
         `La operación debe estar EJECUTANDO. Estado actual: ${operacion.estado}.`,
       );
     }
@@ -127,9 +125,7 @@ export class ActualizarPasoPppoeOperacionUseCase {
     const paso = this.findStep(pasos, input.selector);
 
     if (!paso) {
-      throw new NotFoundException(
-        this.buildStepNotFoundMessage(input.selector),
-      );
+      throw new PasoOperacionPppoeNoEncontradoError();
     }
 
     /**
@@ -165,56 +161,48 @@ export class ActualizarPasoPppoeOperacionUseCase {
     paso: PppoeOperacionPasoEntity,
     input: ActualizarPasoPppoeOperacionUseCaseInput,
   ): void {
-    try {
-      switch (input.accion) {
-        case 'INICIAR':
-          paso.iniciar({
-            comandoSanitizado: input.comandoSanitizado,
-            fecha: input.fecha,
-          });
+    switch (input.accion) {
+      case 'INICIAR':
+        paso.iniciar({
+          comandoSanitizado: input.comandoSanitizado,
+          fecha: input.fecha,
+        });
 
-          return;
+        return;
 
-        case 'MARCAR_EXITOSO':
-          paso.marcarExitoso({
-            respuestaSanitizada: input.respuestaSanitizada,
-            fecha: input.fecha,
-          });
+      case 'MARCAR_EXITOSO':
+        paso.marcarExitoso({
+          respuestaSanitizada: input.respuestaSanitizada,
+          fecha: input.fecha,
+        });
 
-          return;
+        return;
 
-        case 'MARCAR_FALLIDO':
-          paso.marcarFallido({
-            errorCodigo: input.errorCodigo,
-            errorMensaje: input.errorMensaje,
-            respuestaSanitizada: input.respuestaSanitizada,
-            fecha: input.fecha,
-          });
+      case 'MARCAR_FALLIDO':
+        paso.marcarFallido({
+          errorCodigo: input.errorCodigo,
+          errorMensaje: input.errorMensaje,
+          respuestaSanitizada: input.respuestaSanitizada,
+          fecha: input.fecha,
+        });
 
-          return;
+        return;
 
-        case 'OMITIR':
-          paso.omitir({
-            motivo: input.motivo,
-            fecha: input.fecha,
-          });
+      case 'OMITIR':
+        paso.omitir({
+          motivo: input.motivo,
+          fecha: input.fecha,
+        });
 
-          return;
+        return;
 
-        default: {
-          const exhaustiveCheck: never = input;
+      default: {
+        const exhaustiveCheck: never = input;
 
-          throw new Error(
-            `Acción de paso no soportada: ${String(exhaustiveCheck)}.`,
-          );
-        }
+        throw new Error(
+          `Acción de paso no soportada: ${String(exhaustiveCheck)}.`,
+        );
       }
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new ConflictException(error.message);
-      }
-
-      throw error;
     }
   }
 
@@ -235,7 +223,7 @@ export class ActualizarPasoPppoeOperacionUseCase {
     );
 
     if (executingStep) {
-      throw new ConflictException(
+      throw new OperacionPppoeEstadoInvalidoError(
         `El paso ${executingStep.orden} ya se encuentra EJECUTANDO.`,
       );
     }
@@ -249,7 +237,7 @@ export class ActualizarPasoPppoeOperacionUseCase {
     );
 
     if (invalidPreviousStep) {
-      throw new ConflictException(
+      throw new OperacionPppoeEstadoInvalidoError(
         `El paso ${pasoObjetivo.orden} no puede procesarse porque el paso ${invalidPreviousStep.orden} está en estado ${invalidPreviousStep.estado}.`,
       );
     }
@@ -337,7 +325,7 @@ export class ActualizarPasoPppoeOperacionUseCase {
     const hasOrder = selector.orden !== undefined;
 
     if (hasStepId === hasOrder) {
-      throw new BadRequestException(
+      throw new OperacionPppoeDatosInvalidosError(
         'Debe enviarse pasoId u orden, pero no ambos.',
       );
     }
@@ -353,13 +341,15 @@ export class ActualizarPasoPppoeOperacionUseCase {
 
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
+      throw new OperacionPppoeDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 
   private assertRequiredString(value: string, field: string): void {
     if (typeof value !== 'string' || !value.trim()) {
-      throw new BadRequestException(`${field} es obligatorio.`);
+      throw new OperacionPppoeDatosInvalidosError(`${field} es obligatorio.`);
     }
   }
 
@@ -369,21 +359,9 @@ export class ActualizarPasoPppoeOperacionUseCase {
     }
 
     if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
-      throw new BadRequestException('fecha debe contener una fecha válida.');
-    }
-  }
-
-  private buildStepNotFoundMessage(selector: SelectorPasoPppoe): string {
-    if (selector.pasoId !== undefined) {
-      return (
-        `No existe el paso PPPoE ` +
-        `${selector.pasoId} dentro de la operación.`
+      throw new OperacionPppoeDatosInvalidosError(
+        'fecha debe contener una fecha válida.',
       );
     }
-
-    return (
-      `No existe un paso con orden ` +
-      `${selector.orden} dentro de la operación.`
-    );
   }
 }

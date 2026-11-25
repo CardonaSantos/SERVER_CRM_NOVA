@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 
@@ -17,6 +17,7 @@ import {
   PppoeOperacionFindManyFilters,
   PppoeOperacionPaginatedResult,
 } from '../../domain/read-models/pppoe-operacion.read-model';
+import { OperacionPppoeDatosInvalidosError } from '../../domain/errors/pppoe-operacion.errors';
 
 /**
  * Datos admitidos por el listado paginado.
@@ -108,7 +109,7 @@ export class ListarPppoeOperacionesUseCase {
     this.assertPositiveInteger(limit, 'limit');
 
     if (limit > ListarPppoeOperacionesUseCase.MAX_LIMIT) {
-      throw new BadRequestException(
+      throw new OperacionPppoeDatosInvalidosError(
         `limit no puede superar ${ListarPppoeOperacionesUseCase.MAX_LIMIT}.`,
       );
     }
@@ -158,7 +159,7 @@ export class ListarPppoeOperacionesUseCase {
       fechaHasta &&
       fechaDesde.getTime() > fechaHasta.getTime()
     ) {
-      throw new BadRequestException(
+      throw new OperacionPppoeDatosInvalidosError(
         'fechaDesde no puede ser posterior a fechaHasta.',
       );
     }
@@ -243,7 +244,9 @@ export class ListarPppoeOperacionesUseCase {
     }
 
     if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
-      throw new BadRequestException(`${field} debe contener una fecha válida.`);
+      throw new OperacionPppoeDatosInvalidosError(
+        `${field} debe contener una fecha válida.`,
+      );
     }
 
     return new Date(value.getTime());
@@ -251,7 +254,9 @@ export class ListarPppoeOperacionesUseCase {
 
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
+      throw new OperacionPppoeDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 

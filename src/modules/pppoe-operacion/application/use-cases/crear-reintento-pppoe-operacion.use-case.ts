@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 import { PppoeOperacionEntity } from '../../domain/entities/pppoe-operacion.entity';
 import {
@@ -17,6 +11,13 @@ import {
   PppoeOperacionRepositoryPort,
 } from '../../domain/ports/pppoe-operacion-repository.port';
 import { PoliticaPlanPasosPppoe } from '../../domain/policies/plan-pasos-pppoe.policy';
+import {
+  OperacionPppoeDatosInvalidosError,
+  OperacionPppoeEnCursoError,
+  OperacionPppoeEstadoInvalidoError,
+  OperacionPppoeIdempotenciaError,
+  OperacionPppoeNoEncontradaError,
+} from '../../domain/errors/pppoe-operacion.errors';
 
 export type CrearReintentoPppoeOperacionUseCaseResult =
   PppoeOperacionAggregate & {
@@ -95,9 +96,7 @@ export class CrearReintentoPppoeOperacionUseCase {
     });
 
     if (!operacionSolicitada) {
-      throw new NotFoundException(
-        `No existe la operación PPPoE ${input.operacionId}.`,
-      );
+      throw new OperacionPppoeNoEncontradaError();
     }
 
     const operacionRaizId = this.resolveRootOperationId(operacionSolicitada);
@@ -148,13 +147,13 @@ export class CrearReintentoPppoeOperacionUseCase {
     });
 
     if (!ultimoIntento) {
-      throw new NotFoundException(
+      throw new OperacionPppoeEstadoInvalidoError(
         `No se encontró la cadena de intentos de la operación ${operacionRaizId}.`,
       );
     }
 
     if (!ultimoIntento.puedeReintentarse()) {
-      throw new ConflictException(
+      throw new OperacionPppoeEstadoInvalidoError(
         `El último intento se encuentra en estado ${ultimoIntento.estado} y no puede reintentarse.`,
       );
     }
@@ -174,7 +173,7 @@ export class CrearReintentoPppoeOperacionUseCase {
     });
 
     if (runningOperation) {
-      throw new ConflictException(
+      throw new OperacionPppoeEnCursoError(
         `La cuenta PPPoE ya tiene una operación en curso: ${runningOperation.id}.`,
       );
     }
@@ -206,42 +205,34 @@ export class CrearReintentoPppoeOperacionUseCase {
     ultimoIntento: PppoeOperacionEntity,
     input: CrearReintentoPppoeOperacionUseCaseInput,
   ): PppoeOperacionEntity {
-    try {
-      return ultimoIntento.crearReintento({
-        claveIdempotencia: input.claveIdempotencia,
+    return ultimoIntento.crearReintento({
+      claveIdempotencia: input.claveIdempotencia,
 
-        iniciadoPorId: input.iniciadoPorId,
+      iniciadoPorId: input.iniciadoPorId,
 
-        origen: input.origen,
+      origen: input.origen,
 
-        canal: input.canal,
+      canal: input.canal,
 
-        requiereReautenticacion: input.requiereReautenticacion,
+      requiereReautenticacion: input.requiereReautenticacion,
 
-        motivo: input.motivo,
+      motivo: input.motivo,
 
-        perfilHomologacionId: input.perfilHomologacionId,
+      perfilHomologacionId: input.perfilHomologacionId,
 
-        codigoPerfilSnapshot: input.codigoPerfilSnapshot,
+      codigoPerfilSnapshot: input.codigoPerfilSnapshot,
 
-        mikrotikRouterId: input.mikrotikRouterId,
+      mikrotikRouterId: input.mikrotikRouterId,
 
-        routerHostSnapshot: input.routerHostSnapshot,
+      routerHostSnapshot: input.routerHostSnapshot,
 
-        routerPuertoSnapshot: input.routerPuertoSnapshot,
-      });
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new ConflictException(error.message);
-      }
-
-      throw error;
-    }
+      routerPuertoSnapshot: input.routerPuertoSnapshot,
+    });
   }
 
   private requireOperationId(operacion: PppoeOperacionEntity): number {
     if (operacion.id === null) {
-      throw new ConflictException(
+      throw new Error(
         'La operación PPPoE persistida no contiene identificador.',
       );
     }
@@ -310,7 +301,7 @@ export class CrearReintentoPppoeOperacionUseCase {
       return;
     }
 
-    throw new ConflictException(
+    throw new OperacionPppoeIdempotenciaError(
       'La clave de idempotencia ya pertenece a otra operación PPPoE.',
     );
   }
@@ -340,7 +331,9 @@ export class CrearReintentoPppoeOperacionUseCase {
 
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
+      throw new OperacionPppoeDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 
@@ -357,13 +350,13 @@ export class CrearReintentoPppoeOperacionUseCase {
 
   private assertRequiredString(value: string, field: string): void {
     if (typeof value !== 'string' || !value.trim()) {
-      throw new BadRequestException(`${field} es obligatorio.`);
+      throw new OperacionPppoeDatosInvalidosError(`${field} es obligatorio.`);
     }
   }
 
   private assertPort(value: number): void {
     if (!Number.isInteger(value) || value < 1 || value > 65_535) {
-      throw new BadRequestException(
+      throw new OperacionPppoeDatosInvalidosError(
         'routerPuertoSnapshot debe estar entre 1 y 65535.',
       );
     }

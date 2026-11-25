@@ -1,16 +1,15 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import {
   PPPOE_OPERACION_REPOSITORY,
   PppoeOperacionAggregate,
   PppoeOperacionRepositoryPort,
 } from '../../domain/ports/pppoe-operacion-repository.port';
+import {
+  OperacionPppoeDatosInvalidosError,
+  OperacionPppoeEstadoInvalidoError,
+  OperacionPppoeNoEncontradaError,
+} from '../../domain/errors/pppoe-operacion.errors';
 
 /**
  * Datos necesarios para cancelar una operación.
@@ -49,9 +48,7 @@ export class CancelarPppoeOperacionUseCase {
     });
 
     if (!aggregate) {
-      throw new NotFoundException(
-        `No existe la operación PPPoE ${input.operacionId}.`,
-      );
+      throw new OperacionPppoeNoEncontradaError();
     }
 
     const { operacion, pasos } = aggregate;
@@ -64,19 +61,19 @@ export class CancelarPppoeOperacionUseCase {
     }
 
     if (operacion.estaEjecutando()) {
-      throw new ConflictException(
+      throw new OperacionPppoeEstadoInvalidoError(
         'La operación ya comenzó y no puede cancelarse.',
       );
     }
 
     if (operacion.esTerminal()) {
-      throw new ConflictException(
+      throw new OperacionPppoeEstadoInvalidoError(
         `La operación ya finalizó en estado ${operacion.estado}.`,
       );
     }
 
     if (!operacion.estaPendiente() && !operacion.estaAutorizada()) {
-      throw new ConflictException(
+      throw new OperacionPppoeEstadoInvalidoError(
         `La operación no puede cancelarse desde el estado ${operacion.estado}.`,
       );
     }
@@ -88,23 +85,15 @@ export class CancelarPppoeOperacionUseCase {
     const pasoProcesado = pasos.find((paso) => !paso.estaPendiente());
 
     if (pasoProcesado) {
-      throw new ConflictException(
+      throw new OperacionPppoeEstadoInvalidoError(
         `La operación no puede cancelarse porque el paso ${pasoProcesado.orden} está en estado ${pasoProcesado.estado}.`,
       );
     }
 
-    try {
-      operacion.cancelar({
-        motivo: input.motivo,
-        fecha: input.fecha,
-      });
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new ConflictException(error.message);
-      }
-
-      throw error;
-    }
+    operacion.cancelar({
+      motivo: input.motivo,
+      fecha: input.fecha,
+    });
 
     const savedOperation = await this.repository.saveOperation(operacion);
 
@@ -126,17 +115,19 @@ export class CancelarPppoeOperacionUseCase {
 
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
+      throw new OperacionPppoeDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 
   private assertMotivo(value: string): void {
     if (typeof value !== 'string' || !value.trim()) {
-      throw new BadRequestException('motivo es obligatorio.');
+      throw new OperacionPppoeDatosInvalidosError('motivo es obligatorio.');
     }
 
     if (value.trim().length > CancelarPppoeOperacionUseCase.MAX_MOTIVO_LENGTH) {
-      throw new BadRequestException(
+      throw new OperacionPppoeDatosInvalidosError(
         `motivo no puede superar ${
           CancelarPppoeOperacionUseCase.MAX_MOTIVO_LENGTH
         } caracteres.`,
@@ -150,7 +141,9 @@ export class CancelarPppoeOperacionUseCase {
     }
 
     if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
-      throw new BadRequestException('fecha debe contener una fecha válida.');
+      throw new OperacionPppoeDatosInvalidosError(
+        'fecha debe contener una fecha válida.',
+      );
     }
   }
 }

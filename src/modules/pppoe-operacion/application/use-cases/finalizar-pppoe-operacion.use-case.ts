@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PppoeOperacionEntity } from '../../domain/entities/pppoe-operacion.entity';
 import { PppoeOperacionPasoEntity } from '../../domain/entities/pppoe-operacion-paso.entity';
 import {
@@ -17,6 +11,11 @@ import {
   PppoeOperacionRepositoryPort,
 } from '../../domain/ports/pppoe-operacion-repository.port';
 import { PppoeOperacionResultado } from '../../domain/props/pppoe-operacion.props';
+import {
+  OperacionPppoeDatosInvalidosError,
+  OperacionPppoeEstadoInvalidoError,
+  OperacionPppoeNoEncontradaError,
+} from '../../domain/errors/pppoe-operacion.errors';
 
 /**
  * Datos comunes de la finalización.
@@ -115,9 +114,7 @@ export class FinalizarPppoeOperacionUseCase {
     });
 
     if (!aggregate) {
-      throw new NotFoundException(
-        `No existe la operación PPPoE ${input.operacionId}.`,
-      );
+      throw new OperacionPppoeNoEncontradaError();
     }
 
     const { operacion, pasos } = aggregate;
@@ -131,19 +128,21 @@ export class FinalizarPppoeOperacionUseCase {
     }
 
     if (operacion.esTerminal()) {
-      throw new ConflictException(
+      throw new OperacionPppoeEstadoInvalidoError(
         `La operación ya terminó en estado ${operacion.estado}.`,
       );
     }
 
     if (!operacion.estaEjecutando()) {
-      throw new ConflictException(
+      throw new OperacionPppoeEstadoInvalidoError(
         `La operación debe estar EJECUTANDO. Estado actual: ${operacion.estado}.`,
       );
     }
 
     if (pasos.length === 0) {
-      throw new ConflictException('La operación no contiene pasos técnicos.');
+      throw new OperacionPppoeEstadoInvalidoError(
+        'La operación no contiene pasos técnicos.',
+      );
     }
 
     this.validateSteps(pasos, input.estadoFinal);
@@ -166,56 +165,48 @@ export class FinalizarPppoeOperacionUseCase {
     operacion: PppoeOperacionEntity,
     input: FinalizarPppoeOperacionUseCaseInput,
   ): void {
-    try {
-      switch (input.estadoFinal) {
-        case EstadoOperacionPppoe.EXITOSA:
-          operacion.marcarExitosa({
-            resultado: input.resultado,
-            fecha: input.fecha,
-          });
+    switch (input.estadoFinal) {
+      case EstadoOperacionPppoe.EXITOSA:
+        operacion.marcarExitosa({
+          resultado: input.resultado,
+          fecha: input.fecha,
+        });
 
-          return;
+        return;
 
-        case EstadoOperacionPppoe.PARCIAL:
-          operacion.marcarParcial({
-            errorCodigo: input.errorCodigo,
+      case EstadoOperacionPppoe.PARCIAL:
+        operacion.marcarParcial({
+          errorCodigo: input.errorCodigo,
 
-            errorMensaje: input.errorMensaje,
+          errorMensaje: input.errorMensaje,
 
-            resultado: input.resultado,
+          resultado: input.resultado,
 
-            fecha: input.fecha,
-          });
+          fecha: input.fecha,
+        });
 
-          return;
+        return;
 
-        case EstadoOperacionPppoe.FALLIDA:
-          operacion.marcarFallida({
-            errorCodigo: input.errorCodigo,
+      case EstadoOperacionPppoe.FALLIDA:
+        operacion.marcarFallida({
+          errorCodigo: input.errorCodigo,
 
-            errorMensaje: input.errorMensaje,
+          errorMensaje: input.errorMensaje,
 
-            resultado: input.resultado,
+          resultado: input.resultado,
 
-            fecha: input.fecha,
-          });
+          fecha: input.fecha,
+        });
 
-          return;
+        return;
 
-        default: {
-          const exhaustiveCheck: never = input;
+      default: {
+        const exhaustiveCheck: never = input;
 
-          throw new Error(
-            `Estado final no soportado: ${String(exhaustiveCheck)}.`,
-          );
-        }
+        throw new Error(
+          `Estado final no soportado: ${String(exhaustiveCheck)}.`,
+        );
       }
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new ConflictException(error.message);
-      }
-
-      throw error;
     }
   }
 
@@ -233,7 +224,7 @@ export class FinalizarPppoeOperacionUseCase {
     const pasoEjecutando = pasos.find((paso) => paso.estaEjecutando());
 
     if (pasoEjecutando) {
-      throw new ConflictException(
+      throw new OperacionPppoeEstadoInvalidoError(
         `El paso ${pasoEjecutando.orden} todavía está EJECUTANDO.`,
       );
     }
@@ -275,7 +266,7 @@ export class FinalizarPppoeOperacionUseCase {
       return;
     }
 
-    throw new ConflictException(
+    throw new OperacionPppoeEstadoInvalidoError(
       `La operación no puede finalizar como EXITOSA porque el paso ${invalidStep.orden} está en estado ${invalidStep.estado}.`,
     );
   }
@@ -291,7 +282,7 @@ export class FinalizarPppoeOperacionUseCase {
       return;
     }
 
-    throw new ConflictException(
+    throw new OperacionPppoeEstadoInvalidoError(
       'La operación no puede finalizar como FALLIDA porque ninguno de sus pasos está FALLIDO.',
     );
   }
@@ -304,7 +295,7 @@ export class FinalizarPppoeOperacionUseCase {
     const failedStep = pasos.find((paso) => paso.fueFallido());
 
     if (!failedStep) {
-      throw new ConflictException(
+      throw new OperacionPppoeEstadoInvalidoError(
         'La operación PARCIAL debe contener al menos un paso FALLIDO.',
       );
     }
@@ -316,7 +307,7 @@ export class FinalizarPppoeOperacionUseCase {
     );
 
     if (!possibleRemoteEffect) {
-      throw new ConflictException(
+      throw new OperacionPppoeEstadoInvalidoError(
         'No existe evidencia de un posible efecto remoto. La operación debe finalizar como FALLIDA.',
       );
     }
@@ -344,13 +335,15 @@ export class FinalizarPppoeOperacionUseCase {
 
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
+      throw new OperacionPppoeDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 
   private assertRequiredString(value: string, field: string): void {
     if (typeof value !== 'string' || !value.trim()) {
-      throw new BadRequestException(`${field} es obligatorio.`);
+      throw new OperacionPppoeDatosInvalidosError(`${field} es obligatorio.`);
     }
   }
 
@@ -360,7 +353,9 @@ export class FinalizarPppoeOperacionUseCase {
     }
 
     if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
-      throw new BadRequestException('fecha debe contener una fecha válida.');
+      throw new OperacionPppoeDatosInvalidosError(
+        'fecha debe contener una fecha válida.',
+      );
     }
   }
 }

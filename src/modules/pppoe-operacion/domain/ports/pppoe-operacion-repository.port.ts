@@ -290,7 +290,7 @@ export interface PppoeOperacionRepositoryPort {
    * No carga pasos ni relaciones enriquecidas.
    *
    * Devuelve null cuando el registro no existe.
-   * El caso de uso decide si debe lanzar NotFoundException.
+   * El caso de uso decide si es un error.
    */
   findById(
     params: BuscarPppoeOperacionPorIdParams,

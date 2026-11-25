@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import {
   PPPOE_OPERACION_QUERY,
@@ -11,6 +6,10 @@ import {
 } from '../../domain/ports/pppoe-operacion-query.port';
 
 import { PppoeOperacionDetalle } from '../../domain/read-models/pppoe-operacion.read-model';
+import {
+  OperacionPppoeDatosInvalidosError,
+  OperacionPppoeNoEncontradaError,
+} from '../../domain/errors/pppoe-operacion.errors';
 
 /**
  * Datos necesarios para consultar una operación.
@@ -43,9 +42,7 @@ export class ObtenerDetallePppoeOperacionUseCase {
     });
 
     if (!detalle) {
-      throw new NotFoundException(
-        `No existe la operación PPPoE ${input.operacionId} en la empresa ${input.empresaId}.`,
-      );
+      throw new OperacionPppoeNoEncontradaError();
     }
 
     return detalle;
@@ -59,7 +56,9 @@ export class ObtenerDetallePppoeOperacionUseCase {
 
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
+      throw new OperacionPppoeDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 }
