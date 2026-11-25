@@ -206,12 +206,6 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
       );
     }
 
-    if (cuenta.empresaId !== input.empresaId) {
-      throw new ProvisionamientoPppoeEstadoInvalidoError(
-        'La cuenta PPPoE no pertenece a la empresa indicada.',
-      );
-    }
-
     /*
      * ========================================================
      * 2. HOMOLOGACIÓN
@@ -240,12 +234,6 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
       );
     }
 
-    if (perfilProps.empresaId !== input.empresaId) {
-      throw new ProvisionamientoPppoeEstadoInvalidoError(
-        'La homologación PPPoE no pertenece a la empresa indicada.',
-      );
-    }
-
     /*
      * ========================================================
      * 3. ROUTER MIKROTIK
@@ -266,12 +254,6 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
       );
     }
 
-    if (router.empresaId !== input.empresaId) {
-      throw new ProvisionamientoPppoeEstadoInvalidoError(
-        'El router MikroTik no pertenece a la empresa indicada.',
-      );
-    }
-
     /*
      * ========================================================
      * 4. IDEMPOTENCIA PREVIA
@@ -280,8 +262,6 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
 
     const existingOperation = await this.operaciones.buscar({
       por: 'CLAVE_IDEMPOTENCIA',
-      empresaId: input.empresaId,
-
       claveIdempotencia: input.claveIdempotencia,
     });
 

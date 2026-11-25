@@ -121,12 +121,6 @@ export class CrearYEjecutarOperacionPppoeUseCase {
       throw new CuentaPppoeNoEncontradaError();
     }
 
-    if (cuenta.empresaId !== input.empresaId) {
-      throw new ProvisionamientoPppoeEstadoInvalidoError(
-        'La cuenta PPPoE no pertenece a la empresa indicada.',
-      );
-    }
-
     if (cuenta.estaEliminada) {
       throw new ProvisionamientoPppoeEstadoInvalidoError(
         'No puede crearse un secret para una cuenta PPPoE eliminada.',
@@ -155,12 +149,6 @@ export class CrearYEjecutarOperacionPppoeUseCase {
       );
     }
 
-    if (perfilProps.empresaId !== input.empresaId) {
-      throw new ProvisionamientoPppoeEstadoInvalidoError(
-        'La homologación PPPoE no pertenece a la empresa indicada.',
-      );
-    }
-
     /*
      * ========================================================
      * 3. ROUTER MIKROTIK
@@ -173,12 +161,6 @@ export class CrearYEjecutarOperacionPppoeUseCase {
 
     if (!router) {
       throw new RouterMikrotikNoEncontradoError();
-    }
-
-    if (router.empresaId !== input.empresaId) {
-      throw new ProvisionamientoPppoeEstadoInvalidoError(
-        'El router MikroTik no pertenece a la empresa indicada.',
-      );
     }
 
     if (router.id === null) {

@@ -15,8 +15,6 @@ export const PPPOE_OPERACION_QUERY = Symbol('PPPOE_OPERACION_QUERY');
  * de una operación dentro de una empresa.
  */
 export type BuscarPppoeOperacionDetalleParams = {
-  empresaId: number;
-
   operacionId: number;
 };
 

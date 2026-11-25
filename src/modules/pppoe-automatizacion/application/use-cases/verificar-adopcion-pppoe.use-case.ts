@@ -152,12 +152,6 @@ export class VerificarAdopcionPppoeUseCase {
       throw new PerfilHomologacionNoEncontradoError();
     }
 
-    if (perfil.empresaId !== normalized.empresaId) {
-      throw new ProvisionamientoPppoeEstadoInvalidoError(
-        'La homologación PPPoE no pertenece a la empresa actual.',
-      );
-    }
-
     if (!perfil.activo) {
       throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La homologación PPPoE seleccionada se encuentra inactiva.',

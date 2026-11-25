@@ -487,12 +487,6 @@ export class EjecutorSuspenderServicioPppoeService {
       );
     }
 
-    if (contexto.cuenta.empresaId !== contexto.operacion.empresaId) {
-      throw new ProvisionamientoPppoeEstadoInvalidoError(
-        'La cuenta PPPoE y la operación pertenecen a empresas diferentes.',
-      );
-    }
-
     /*
      * El Estado 4 presupone que existe previamente
      * un Secret creado en RouterOS.

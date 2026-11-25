@@ -79,13 +79,12 @@ export class PppoeOperacionPrismaRepository
     const primitives = entity.toPersistedPrimitives();
 
     /**
-     * Validamos empresa e id antes del update para evitar
+     * Validamos que exista antes del update para evitar
      * modificar una operación fuera del contexto esperado.
      */
     const exists = await this.prisma.pppoeOperacion.findFirst({
       where: {
         id: primitives.id,
-        empresaId: primitives.empresaId,
       },
       select: {
         id: true,
@@ -93,9 +92,7 @@ export class PppoeOperacionPrismaRepository
     });
 
     if (!exists) {
-      throw new Error(
-        `No existe la operación PPPoE ${primitives.id} en la empresa ${primitives.empresaId}.`,
-      );
+      throw new Error(`No existe la operación PPPoE ${primitives.id}.`);
     }
 
     const updated = await this.prisma.pppoeOperacion.update({
@@ -121,18 +118,12 @@ export class PppoeOperacionPrismaRepository
   async claimForExecution(
     params: ReclamarPppoeOperacionParaEjecucionParams,
   ): Promise<PppoeOperacionEntity | null> {
-    this.assertCompanyAndOperationIds(params);
+    this.assertPositiveInteger(params.operacionId, 'operacionId');
 
     const primitives = params.operacionIniciada.toPersistedPrimitives();
 
     if (primitives.id !== params.operacionId) {
       throw new Error('La operación iniciada no coincide con operacionId.');
-    }
-
-    if (primitives.empresaId !== params.empresaId) {
-      throw new Error(
-        'La operación iniciada no pertenece a la empresa indicada.',
-      );
     }
 
     if (primitives.estado !== EstadoOperacionPppoe.EJECUTANDO) {
@@ -148,7 +139,6 @@ export class PppoeOperacionPrismaRepository
     const result = await this.prisma.pppoeOperacion.updateMany({
       where: {
         id: params.operacionId,
-        empresaId: params.empresaId,
         /**
          * Compare-and-set.
          *
@@ -186,7 +176,6 @@ export class PppoeOperacionPrismaRepository
     const claimed = await this.prisma.pppoeOperacion.findFirst({
       where: {
         id: params.operacionId,
-        empresaId: params.empresaId,
       },
     });
 
@@ -200,20 +189,15 @@ export class PppoeOperacionPrismaRepository
   }
 
   /**
-   * ACTUALIZACIÓN DE PASO
-  /**
    * Persiste los cambios de un paso técnico.
    *
    * Se comprueba:
    * - id del paso;
    * - operación propietaria;
-   * - empresa propietaria de la operación.
    */
   async saveStep(
     params: GuardarPppoeOperacionPasoParams,
   ): Promise<PppoeOperacionPasoEntity> {
-    this.assertPositiveInteger(params.empresaId, 'empresaId');
-
     const primitives = params.paso.toPrimitives();
 
     if (primitives.id === null) {
@@ -226,9 +210,6 @@ export class PppoeOperacionPrismaRepository
       where: {
         id: primitives.id,
         operacionId: primitives.operacionId,
-        operacion: {
-          empresaId: params.empresaId,
-        },
       },
       select: {
         id: true,
@@ -237,7 +218,7 @@ export class PppoeOperacionPrismaRepository
 
     if (!exists) {
       throw new Error(
-        `No existe el paso PPPoE ${primitives.id} dentro de la operación ${primitives.operacionId} para la empresa ${params.empresaId}.`,
+        `No existe el paso PPPoE ${primitives.id} dentro de la operación ${primitives.operacionId}.`,
       );
     }
 
@@ -252,19 +233,16 @@ export class PppoeOperacionPrismaRepository
   }
 
   /**
-   * BÚSQUEDA DE OPERACIÓN
-  /**
    * Busca una operación simple sin cargar relaciones.
    */
   async findById(
     params: BuscarPppoeOperacionPorIdParams,
   ): Promise<PppoeOperacionEntity | null> {
-    this.assertCompanyAndOperationIds(params);
+    this.assertPositiveInteger(params.operacionId, 'operacionId');
 
     const found = await this.prisma.pppoeOperacion.findFirst({
       where: {
         id: params.operacionId,
-        empresaId: params.empresaId,
       },
     });
 
@@ -277,12 +255,11 @@ export class PppoeOperacionPrismaRepository
   async findAggregateById(
     params: BuscarPppoeOperacionPorIdParams,
   ): Promise<PppoeOperacionAggregate | null> {
-    this.assertCompanyAndOperationIds(params);
+    this.assertPositiveInteger(params.operacionId, 'operacionId');
 
     const found = await this.prisma.pppoeOperacion.findFirst({
       where: {
         id: params.operacionId,
-        empresaId: params.empresaId,
       },
       include: {
         pasos: {
@@ -308,12 +285,11 @@ export class PppoeOperacionPrismaRepository
   /**
    * BÚSQUEDA DE PASOS
    * Busca un paso por id y verifica que pertenezca
-   * a la operación y empresa indicadas.
+   * a la operación indicada.
    */
   async findStepById(
     params: BuscarPppoeOperacionPasoPorIdParams,
   ): Promise<PppoeOperacionPasoEntity | null> {
-    this.assertPositiveInteger(params.empresaId, 'empresaId');
     this.assertPositiveInteger(params.operacionId, 'operacionId');
     this.assertPositiveInteger(params.pasoId, 'pasoId');
 
@@ -321,9 +297,6 @@ export class PppoeOperacionPrismaRepository
       where: {
         id: params.pasoId,
         operacionId: params.operacionId,
-        operacion: {
-          empresaId: params.empresaId,
-        },
       },
     });
 
@@ -337,7 +310,6 @@ export class PppoeOperacionPrismaRepository
   async findStepByOrder(
     params: BuscarPppoeOperacionPasoPorOrdenParams,
   ): Promise<PppoeOperacionPasoEntity | null> {
-    this.assertPositiveInteger(params.empresaId, 'empresaId');
     this.assertPositiveInteger(params.operacionId, 'operacionId');
     this.assertPositiveInteger(params.orden, 'orden');
 
@@ -345,9 +317,6 @@ export class PppoeOperacionPrismaRepository
       where: {
         operacionId: params.operacionId,
         orden: params.orden,
-        operacion: {
-          empresaId: params.empresaId,
-        },
       },
     });
 
@@ -355,42 +324,30 @@ export class PppoeOperacionPrismaRepository
   }
 
   /**
-   * IDEMPOTENCIA
-   * Busca una operación mediante la restricción única:
-   * @@unique([empresaId, claveIdempotencia])
+   * Una empresa por BD: la clave es única por sí sola.
    */
   async findByIdempotencyKey(
     params: BuscarPppoeOperacionPorIdempotenciaParams,
   ): Promise<PppoeOperacionEntity | null> {
-    this.assertPositiveInteger(params.empresaId, 'empresaId');
-
     const claveIdempotencia = params.claveIdempotencia.trim();
 
     if (!claveIdempotencia) {
       throw new Error('claveIdempotencia es obligatoria.');
     }
 
-    const found = await this.prisma.pppoeOperacion.findUnique({
-      where: {
-        empresaId_claveIdempotencia: {
-          empresaId: params.empresaId,
-          claveIdempotencia,
-        },
-      },
+    const found = await this.prisma.pppoeOperacion.findFirst({
+      where: { claveIdempotencia },
     });
 
     return found ? PppoeOperacionPrismaMapper.toDomain(found) : null;
   }
 
   /**
-   * OPERACIONES EN CURSO
-  /**
    * Busca una operación activa sobre una cuenta PPPoE.
    */
   async findRunningOperation(
     params: BuscarPppoeOperacionEnCursoParams,
   ): Promise<PppoeOperacionEntity | null> {
-    this.assertPositiveInteger(params.empresaId, 'empresaId');
     this.assertPositiveInteger(params.cuentaPppoeId, 'cuentaPppoeId');
 
     if (params.estados.length === 0) {
@@ -401,7 +358,6 @@ export class PppoeOperacionPrismaRepository
 
     const found = await this.prisma.pppoeOperacion.findFirst({
       where: {
-        empresaId: params.empresaId,
         cuentaPppoeId: params.cuentaPppoeId,
         tipo:
           params.tipo === null || params.tipo === undefined
@@ -438,12 +394,10 @@ export class PppoeOperacionPrismaRepository
   async findLatestAttempt(
     params: BuscarUltimoIntentoPppoeParams,
   ): Promise<PppoeOperacionEntity | null> {
-    this.assertPositiveInteger(params.empresaId, 'empresaId');
     this.assertPositiveInteger(params.operacionRaizId, 'operacionRaizId');
 
     const found = await this.prisma.pppoeOperacion.findFirst({
       where: {
-        empresaId: params.empresaId,
         OR: [
           {
             id: params.operacionRaizId,
@@ -473,12 +427,10 @@ export class PppoeOperacionPrismaRepository
   async findLatestByAccount(
     params: BuscarUltimaOperacionCuentaPppoeParams,
   ): Promise<PppoeOperacionEntity | null> {
-    this.assertPositiveInteger(params.empresaId, 'empresaId');
     this.assertPositiveInteger(params.cuentaPppoeId, 'cuentaPppoeId');
 
     const found = await this.prisma.pppoeOperacion.findFirst({
       where: {
-        empresaId: params.empresaId,
         cuentaPppoeId: params.cuentaPppoeId,
         tipo:
           params.tipo === null || params.tipo === undefined
@@ -496,14 +448,6 @@ export class PppoeOperacionPrismaRepository
     });
 
     return found ? PppoeOperacionPrismaMapper.toDomain(found) : null;
-  }
-
-  private assertCompanyAndOperationIds(params: {
-    empresaId: number;
-    operacionId: number;
-  }): void {
-    this.assertPositiveInteger(params.empresaId, 'empresaId');
-    this.assertPositiveInteger(params.operacionId, 'operacionId');
   }
 
   private assertPositiveInteger(value: number, field: string): void {

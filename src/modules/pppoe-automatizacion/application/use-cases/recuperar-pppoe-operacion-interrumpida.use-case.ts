@@ -190,8 +190,6 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
     const finalAggregate =
       estadoFinal === EstadoOperacionPppoe.PARCIAL
         ? await this.operaciones.finalizar({
-            empresaId: input.empresaId,
-
             operacionId: input.operacionId,
 
             estadoFinal: EstadoOperacionPppoe.PARCIAL,
@@ -205,8 +203,6 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
             fecha,
           })
         : await this.operaciones.finalizar({
-            empresaId: input.empresaId,
-
             operacionId: input.operacionId,
 
             estadoFinal: EstadoOperacionPppoe.FALLIDA,
@@ -275,12 +271,6 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
       throw new CuentaPppoeNoEncontradaError();
     }
 
-    if (cuenta.empresaId !== params.empresaId) {
-      throw new ProvisionamientoPppoeEstadoInvalidoError(
-        'La cuenta PPPoE no pertenece a la empresa de la operación.',
-      );
-    }
-
     const estadoCuentaAnterior = cuenta.estado;
 
     cuenta = await this.applyConfirmedRemoteResult({
@@ -292,8 +282,6 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
     });
 
     const finalAggregate = await this.operaciones.finalizar({
-      empresaId: params.empresaId,
-
       operacionId: this.requireOperationId(params.operacion),
 
       estadoFinal: EstadoOperacionPppoe.EXITOSA,
@@ -450,7 +438,6 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
     const executingStep = pasos.find((paso) => paso.estaEjecutando);
 
     const operacionId = this.requireOperationId(operacion);
-    const empresaId = operacion.empresaId;
     const fallo = {
       accion: 'MARCAR_FALLIDO' as const,
       errorCodigo: 'PPPOE_OPERACION_INTERRUMPIDA',
@@ -460,7 +447,6 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
     if (executingStep) {
       return this.operaciones.actualizarPaso({
         ...fallo,
-        empresaId,
         operacionId,
         selector: { pasoId: executingStep.id },
         errorMensaje:
@@ -484,7 +470,6 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
     // un estado terminal coherente y duración cero.
     const selector = { pasoId: pendingStep.id };
     await this.operaciones.actualizarPaso({
-      empresaId,
       operacionId,
       selector,
       accion: 'INICIAR',
@@ -494,7 +479,6 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
 
     return this.operaciones.actualizarPaso({
       ...fallo,
-      empresaId,
       operacionId,
       selector,
       errorMensaje: 'La operación fue abandonada antes de ejecutar este paso.',
@@ -575,8 +559,6 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
     operacionId: number;
   }): Promise<PppoeOperacionAgregadoReadModel> {
     const aggregate = await this.operaciones.buscarAgregado({
-      empresaId: params.empresaId,
-
       operacionId: params.operacionId,
     });
 

@@ -20,8 +20,6 @@ import {
  * Datos necesarios para iniciar una operación.
  */
 export type IniciarPppoeOperacionUseCaseInput = {
-  empresaId: number;
-
   operacionId: number;
 
   /**
@@ -60,7 +58,6 @@ export class IniciarPppoeOperacionUseCase {
     this.validateInput(input);
 
     const aggregate = await this.repository.findAggregateById({
-      empresaId: input.empresaId,
       operacionId: input.operacionId,
     });
 
@@ -127,7 +124,6 @@ export class IniciarPppoeOperacionUseCase {
     });
 
     const claimedOperation = await this.repository.claimForExecution({
-      empresaId: input.empresaId,
       operacionId: input.operacionId,
       estadoEsperado,
       operacionIniciada: operacion,
@@ -148,7 +144,6 @@ export class IniciarPppoeOperacionUseCase {
      * persistido y una colección actualizada de pasos.
      */
     const claimedAggregate = await this.repository.findAggregateById({
-      empresaId: input.empresaId,
       operacionId: input.operacionId,
     });
 
@@ -188,7 +183,6 @@ export class IniciarPppoeOperacionUseCase {
   }
 
   private validateInput(input: IniciarPppoeOperacionUseCaseInput): void {
-    this.assertPositiveInteger(input.empresaId, 'empresaId');
     this.assertPositiveInteger(input.operacionId, 'operacionId');
     this.assertOptionalDate(input.fecha);
   }

@@ -17,8 +17,6 @@ import {
  * Datos necesarios para cancelar una operación.
  */
 export type CancelarPppoeOperacionUseCaseInput = {
-  empresaId: number;
-
   operacionId: number;
 
   motivo: string;
@@ -47,7 +45,6 @@ export class CancelarPppoeOperacionUseCase {
     this.validateInput(input);
 
     const aggregate = await this.repository.findAggregateById({
-      empresaId: input.empresaId,
       operacionId: input.operacionId,
     });
 
@@ -108,7 +105,6 @@ export class CancelarPppoeOperacionUseCase {
   }
 
   private validateInput(input: CancelarPppoeOperacionUseCaseInput): void {
-    this.assertPositiveInteger(input.empresaId, 'empresaId');
     this.assertPositiveInteger(input.operacionId, 'operacionId');
     this.assertMotivo(input.motivo);
     this.assertOptionalDate(input.fecha);

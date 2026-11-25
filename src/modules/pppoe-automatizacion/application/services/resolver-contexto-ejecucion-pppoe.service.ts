@@ -120,12 +120,6 @@ export class ResolverContextoEjecucionPppoeService {
   }): void {
     const { operacion, cuenta } = params;
 
-    if (cuenta.empresaId !== operacion.empresaId) {
-      throw new ProvisionamientoPppoeEstadoInvalidoError(
-        'La cuenta PPPoE no pertenece a la empresa de la operación.',
-      );
-    }
-
     if (cuenta.id !== operacion.cuentaPppoeId) {
       throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE no coincide con la operación solicitada.',
@@ -158,12 +152,6 @@ export class ResolverContextoEjecucionPppoeService {
     const { operacion, cuenta, perfil } = params;
 
     const perfilProps = perfil;
-
-    if (perfilProps.empresaId !== operacion.empresaId) {
-      throw new ProvisionamientoPppoeEstadoInvalidoError(
-        'La homologación PPPoE no pertenece a la empresa de la operación.',
-      );
-    }
 
     if (perfilProps.id !== cuenta.perfilHomologacionId) {
       throw new ProvisionamientoPppoeEstadoInvalidoError(

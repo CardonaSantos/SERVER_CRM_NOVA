@@ -89,8 +89,6 @@ export class PppoeOperacionStepRunnerService {
      * Si esto falla, no se ejecuta ninguna acción remota.
      */
     await this.operaciones.actualizarPaso({
-      empresaId: params.empresaId,
-
       operacionId: params.operacionId,
 
       selector: {
@@ -106,8 +104,6 @@ export class PppoeOperacionStepRunnerService {
       const executionResult = await params.ejecutar();
 
       await this.operaciones.actualizarPaso({
-        empresaId: params.empresaId,
-
         operacionId: params.operacionId,
 
         selector: {
@@ -132,8 +128,6 @@ export class PppoeOperacionStepRunnerService {
        */
       try {
         await this.operaciones.actualizarPaso({
-          empresaId: params.empresaId,
-
           operacionId: params.operacionId,
 
           selector: {
@@ -176,8 +170,6 @@ export class PppoeOperacionStepRunnerService {
     this.validateBaseParams(params);
 
     await this.operaciones.actualizarPaso({
-      empresaId: params.empresaId,
-
       operacionId: params.operacionId,
 
       selector: {

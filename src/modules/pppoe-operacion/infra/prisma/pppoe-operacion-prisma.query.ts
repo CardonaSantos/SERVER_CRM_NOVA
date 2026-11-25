@@ -32,7 +32,6 @@ export class PppoeOperacionPrismaQuery implements PppoeOperacionQueryPort {
   async findPaginated(
     filters: PppoeOperacionFindManyFilters,
   ): Promise<PppoeOperacionPaginatedResult> {
-    this.assertPositiveInteger(filters.empresaId, 'empresaId');
     this.assertPositiveInteger(filters.page, 'page');
     this.assertPositiveInteger(filters.limit, 'limit');
 
@@ -42,7 +41,7 @@ export class PppoeOperacionPrismaQuery implements PppoeOperacionQueryPort {
 
     const skip = (filters.page - 1) * filters.limit;
 
-    const [total, records] = await Promise.all([
+    const [total, records] = await this.prisma.$transaction([
       this.prisma.pppoeOperacion.count({
         where,
       }),
@@ -73,12 +72,11 @@ export class PppoeOperacionPrismaQuery implements PppoeOperacionQueryPort {
    * Devuelve el detalle completo de una operación.
    */
   async findDetailById(params: BuscarPppoeOperacionDetalleParams) {
-    this.assertCompanyAndOperationIds(params);
+    this.assertPositiveInteger(params.operacionId, 'operacionId');
 
     const found = await this.prisma.pppoeOperacion.findFirst({
       where: {
         id: params.operacionId,
-        empresaId: params.empresaId,
       },
       include: PPPOE_OPERACION_DETAIL_INCLUDE,
     });
@@ -100,7 +98,6 @@ export class PppoeOperacionPrismaQuery implements PppoeOperacionQueryPort {
         : undefined;
 
     return {
-      empresaId: filters.empresaId,
       cuentaPppoeId: filters.cuentaPppoeId ?? undefined,
       mikrotikRouterId: filters.mikrotikRouterId ?? undefined,
       perfilHomologacionId: filters.perfilHomologacionId ?? undefined,
@@ -339,14 +336,6 @@ export class PppoeOperacionPrismaQuery implements PppoeOperacionQueryPort {
       .map((token) => token.trim())
       .filter(Boolean)
       .slice(0, 8);
-  }
-
-  private assertCompanyAndOperationIds(params: {
-    empresaId: number;
-    operacionId: number;
-  }): void {
-    this.assertPositiveInteger(params.empresaId, 'empresaId');
-    this.assertPositiveInteger(params.operacionId, 'operacionId');
   }
 
   private assertPositiveInteger(value: number, field: string): void {

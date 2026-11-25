@@ -25,12 +25,8 @@ export class PppoeOperacionAdminController {
   constructor(private readonly adminService: PppoeOperacionAdminService) {}
 
   @Get()
-  listar(
-    @Query() query: ListarPppoeOperacionesQueryDto,
-    @Actor() actor: ActorHttp,
-  ) {
+  listar(@Query() query: ListarPppoeOperacionesQueryDto) {
     return this.adminService.listar({
-      empresaId: actor.empresaId,
       page: query.page,
       limit: query.limit,
       search: query.search,
@@ -56,14 +52,8 @@ export class PppoeOperacionAdminController {
   }
 
   @Get(':operacionId')
-  obtenerDetalle(
-    @Param('operacionId', ParseIntPipe) operacionId: number,
-    @Actor() actor: ActorHttp,
-  ) {
-    return this.adminService.obtenerDetalle({
-      empresaId: actor.empresaId,
-      operacionId,
-    });
+  obtenerDetalle(@Param('operacionId', ParseIntPipe) operacionId: number) {
+    return this.adminService.obtenerDetalle({ operacionId });
   }
 
   /** Reautentica al operador, autoriza la operación PENDIENTE y la ejecuta. */

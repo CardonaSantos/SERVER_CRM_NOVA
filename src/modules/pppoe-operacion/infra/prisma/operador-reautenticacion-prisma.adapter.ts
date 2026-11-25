@@ -32,7 +32,6 @@ export class OperadorReautenticacionPrismaAdapter
     const usuario = await this.prisma.usuario.findFirst({
       where: {
         id: params.operadorId,
-        empresaId: params.empresaId,
         activo: true,
       },
       select: {
@@ -47,7 +46,7 @@ export class OperadorReautenticacionPrismaAdapter
     /**
      * Step-up vigente del mismo operador (D8, transición): el usuario ya
      * confirmó su contraseña en POST /auth/reautenticar. Sigue exigiéndose
-     * que exista, esté activo y pertenezca a la empresa (consulta de arriba).
+     * que exista, esté activo (consulta de arriba).
      */
     if (stepUpVigentePara(params.operadorId)) {
       return true;
@@ -64,8 +63,6 @@ export class OperadorReautenticacionPrismaAdapter
     params: ValidarReautenticacionOperadorParams,
   ): boolean {
     return (
-      Number.isInteger(params.empresaId) &&
-      params.empresaId > 0 &&
       Number.isInteger(params.operadorId) &&
       params.operadorId > 0 &&
       typeof params.password === 'string' &&

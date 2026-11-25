@@ -33,8 +33,6 @@ export type SelectorPasoPppoe =
  * Datos comunes de todas las acciones.
  */
 type ActualizarPasoPppoeBaseInput = {
-  empresaId: number;
-
   operacionId: number;
 
   selector: SelectorPasoPppoe;
@@ -110,7 +108,6 @@ export class ActualizarPasoPppoeOperacionUseCase {
     this.validateInput(input);
 
     const aggregate = await this.repository.findAggregateById({
-      empresaId: input.empresaId,
       operacionId: input.operacionId,
     });
 
@@ -145,7 +142,6 @@ export class ActualizarPasoPppoeOperacionUseCase {
     this.applyAction(paso, input);
 
     const savedStep = await this.repository.saveStep({
-      empresaId: input.empresaId,
       paso,
     });
 
@@ -289,7 +285,6 @@ export class ActualizarPasoPppoeOperacionUseCase {
   }
 
   private validateInput(input: ActualizarPasoPppoeOperacionUseCaseInput): void {
-    this.assertPositiveInteger(input.empresaId, 'empresaId');
     this.assertPositiveInteger(input.operacionId, 'operacionId');
 
     this.validateSelector(input.selector);

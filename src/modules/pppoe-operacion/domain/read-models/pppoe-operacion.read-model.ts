@@ -606,11 +606,6 @@ export type PppoeOperacionDetalle = PppoeOperacionListItem & {
  */
 export type PppoeOperacionFindManyFilters = {
   /**
-   * Empresa propietaria de las operaciones.
-   */
-  empresaId: number;
-
-  /**
    * Página solicitada.
    */
   page: number;

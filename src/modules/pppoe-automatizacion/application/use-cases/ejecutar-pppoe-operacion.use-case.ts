@@ -176,8 +176,6 @@ export class EjecutarPppoeOperacionUseCase {
      * de comenzar cualquier acción técnica.
      */
     const aggregate = await this.operaciones.iniciar({
-      empresaId: input.empresaId,
-
       operacionId: input.operacionId,
 
       fecha: input.fechaInicio,
@@ -346,8 +344,6 @@ export class EjecutarPppoeOperacionUseCase {
        */
 
       const finalAggregate = await this.operaciones.finalizar({
-        empresaId: input.empresaId,
-
         operacionId: input.operacionId,
 
         estadoFinal: EstadoOperacionPppoe.EXITOSA,
@@ -446,8 +442,6 @@ export class EjecutarPppoeOperacionUseCase {
       const finalAggregate =
         finalState === EstadoOperacionPppoe.PARCIAL
           ? await this.operaciones.finalizar({
-              empresaId: input.empresaId,
-
               operacionId: input.operacionId,
 
               estadoFinal: EstadoOperacionPppoe.PARCIAL,
@@ -459,8 +453,6 @@ export class EjecutarPppoeOperacionUseCase {
               resultado: null,
             })
           : await this.operaciones.finalizar({
-              empresaId: input.empresaId,
-
               operacionId: input.operacionId,
 
               estadoFinal: EstadoOperacionPppoe.FALLIDA,
@@ -1275,8 +1267,6 @@ export class EjecutarPppoeOperacionUseCase {
     operacionId: number;
   }): Promise<PppoeOperacionAgregadoReadModel> {
     const aggregate = await this.operaciones.buscarAgregado({
-      empresaId: params.empresaId,
-
       operacionId: params.operacionId,
     });
 

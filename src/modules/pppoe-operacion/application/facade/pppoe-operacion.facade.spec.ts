@@ -143,14 +143,13 @@ describe('PppoeOperacionFacade', () => {
 
       await expect(
         fachada.autorizar({
-          empresaId: 1,
           operacionId: 1,
           operadorId: 7,
           password: 'mala',
         }),
       ).rejects.toBeInstanceOf(ReautenticacionOperadorInvalidaError);
 
-      const guardada = await repo.findById({ empresaId: 1, operacionId: 1 });
+      const guardada = await repo.findById({ operacionId: 1 });
       expect(guardada!.estaPendiente()).toBe(true);
       expect(guardada!.toPrimitives().reautenticacionExitosa).toBe(false);
     });
@@ -177,7 +176,6 @@ describe('PppoeOperacionFacade', () => {
 
       await expect(
         fachada.autorizar({
-          empresaId: 1,
           operacionId: 99,
           operadorId: 7,
           password: PASSWORD_VALIDA,
@@ -191,9 +189,9 @@ describe('PppoeOperacionFacade', () => {
       const { fachada } = armar();
       await fachada.crear(crearSecret);
 
-      await expect(
-        fachada.iniciar({ empresaId: 1, operacionId: 1 }),
-      ).rejects.toBeInstanceOf(OperacionPppoeEstadoInvalidoError);
+      await expect(fachada.iniciar({ operacionId: 1 })).rejects.toBeInstanceOf(
+        OperacionPppoeEstadoInvalidoError,
+      );
     });
 
     it('reclama la operación y la deja EJECUTANDO con la hora del reloj', async () => {
@@ -201,7 +199,7 @@ describe('PppoeOperacionFacade', () => {
       await fachada.crear(suspender);
       reloj.establecer('2026-11-25T15:05:00Z');
 
-      const r = await fachada.iniciar({ empresaId: 1, operacionId: 1 });
+      const r = await fachada.iniciar({ operacionId: 1 });
 
       expect(r.operacion.estaEjecutando).toBe(true);
       expect(r.operacion.iniciadoEn).toEqual(new Date('2026-11-25T15:05:00Z'));
@@ -212,9 +210,9 @@ describe('PppoeOperacionFacade', () => {
       await fachada.crear(suspender);
       repo.reclamoFalla = true;
 
-      await expect(
-        fachada.iniciar({ empresaId: 1, operacionId: 1 }),
-      ).rejects.toBeInstanceOf(OperacionPppoeEnCursoError);
+      await expect(fachada.iniciar({ operacionId: 1 })).rejects.toBeInstanceOf(
+        OperacionPppoeEnCursoError,
+      );
     });
   });
 
@@ -222,7 +220,7 @@ describe('PppoeOperacionFacade', () => {
     async function enEjecucion() {
       const ctx = armar();
       await ctx.fachada.crear(suspender);
-      const r = await ctx.fachada.iniciar({ empresaId: 1, operacionId: 1 });
+      const r = await ctx.fachada.iniciar({ operacionId: 1 });
       return { ...ctx, pasos: r.pasos };
     }
 
@@ -231,7 +229,6 @@ describe('PppoeOperacionFacade', () => {
 
       await expect(
         fachada.finalizar({
-          empresaId: 1,
           operacionId: 1,
           estadoFinal: EstadoOperacionPppoe.EXITOSA,
         }),
@@ -244,14 +241,12 @@ describe('PppoeOperacionFacade', () => {
       for (const paso of pasos) {
         reloj.avanzar({ minutos: 1 });
         await fachada.actualizarPaso({
-          empresaId: 1,
           operacionId: 1,
           selector: { orden: paso.orden },
           accion: 'INICIAR',
         });
         reloj.avanzar({ minutos: 1 });
         await fachada.actualizarPaso({
-          empresaId: 1,
           operacionId: 1,
           selector: { orden: paso.orden },
           accion: 'MARCAR_EXITOSO',
@@ -259,7 +254,6 @@ describe('PppoeOperacionFacade', () => {
       }
 
       const r = await fachada.finalizar({
-        empresaId: 1,
         operacionId: 1,
         estadoFinal: EstadoOperacionPppoe.EXITOSA,
       });
@@ -276,14 +270,12 @@ describe('PppoeOperacionFacade', () => {
       const primero = { orden: pasos[0].orden };
 
       await fachada.actualizarPaso({
-        empresaId: 1,
         operacionId: 1,
         selector: primero,
         accion: 'INICIAR',
       });
       reloj.avanzar({ minutos: 1 });
       await fachada.actualizarPaso({
-        empresaId: 1,
         operacionId: 1,
         selector: primero,
         accion: 'MARCAR_FALLIDO',
@@ -291,7 +283,6 @@ describe('PppoeOperacionFacade', () => {
         errorMensaje: 'El router no respondió.',
       });
       const fallida = await fachada.finalizar({
-        empresaId: 1,
         operacionId: 1,
         estadoFinal: EstadoOperacionPppoe.FALLIDA,
         errorCodigo: 'SSH_TIMEOUT',
@@ -301,7 +292,6 @@ describe('PppoeOperacionFacade', () => {
 
       reloj.avanzar({ minutos: 1 });
       const reintento = await fachada.crearReintento({
-        empresaId: 1,
         operacionId: 1,
         claveIdempotencia: 'suspender-10-2',
         iniciadoPorId: null,
@@ -323,7 +313,6 @@ describe('PppoeOperacionFacade', () => {
       await fachada.crear(suspender);
 
       const r = await fachada.cancelar({
-        empresaId: 1,
         operacionId: 1,
         motivo: 'Pago registrado.',
       });
@@ -334,10 +323,10 @@ describe('PppoeOperacionFacade', () => {
     it('no cancela una operación en ejecución', async () => {
       const { fachada } = armar();
       await fachada.crear(suspender);
-      await fachada.iniciar({ empresaId: 1, operacionId: 1 });
+      await fachada.iniciar({ operacionId: 1 });
 
       await expect(
-        fachada.cancelar({ empresaId: 1, operacionId: 1, motivo: 'x' }),
+        fachada.cancelar({ operacionId: 1, motivo: 'x' }),
       ).rejects.toBeInstanceOf(OperacionPppoeEstadoInvalidoError);
     });
   });

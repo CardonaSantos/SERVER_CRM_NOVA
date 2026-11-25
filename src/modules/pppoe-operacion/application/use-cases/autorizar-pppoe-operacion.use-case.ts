@@ -22,7 +22,6 @@ import {
  * mediante la reautenticación del operador.
  */
 export type AutorizarPppoeOperacionUseCaseInput = {
-  empresaId: number;
   operacionId: number;
 
   /**
@@ -66,13 +65,11 @@ export class AutorizarPppoeOperacionUseCase {
   async execute(
     input: AutorizarPppoeOperacionUseCaseInput,
   ): Promise<PppoeOperacionEntity> {
-    this.assertPositiveInteger(input.empresaId, 'empresaId');
     this.assertPositiveInteger(input.operacionId, 'operacionId');
     this.assertPositiveInteger(input.operadorId, 'operadorId');
     this.assertPassword(input.password);
 
     const operacion = await this.repository.findById({
-      empresaId: input.empresaId,
       operacionId: input.operacionId,
     });
 
@@ -105,7 +102,6 @@ export class AutorizarPppoeOperacionUseCase {
     const fechaReautenticacion = this.reloj.ahora();
 
     const credencialesValidas = await this.operadorReautenticacion.validar({
-      empresaId: input.empresaId,
       operadorId: input.operadorId,
       /**
        * No utilizar trim.

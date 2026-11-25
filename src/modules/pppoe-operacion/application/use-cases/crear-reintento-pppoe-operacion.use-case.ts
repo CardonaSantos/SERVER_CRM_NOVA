@@ -40,8 +40,6 @@ export type CrearReintentoPppoeOperacionUseCaseResult =
  * Datos necesarios para generar un nuevo intento.
  */
 export type CrearReintentoPppoeOperacionUseCaseInput = {
-  empresaId: number;
-
   /**
    * Puede ser la operación raíz o cualquier intento
    * perteneciente a la misma cadena.
@@ -94,7 +92,6 @@ export class CrearReintentoPppoeOperacionUseCase {
     this.validateInput(input);
 
     const operacionSolicitada = await this.repository.findById({
-      empresaId: input.empresaId,
       operacionId: input.operacionId,
     });
 
@@ -109,7 +106,6 @@ export class CrearReintentoPppoeOperacionUseCase {
      * el reintento creado anteriormente.
      */
     const existingOperation = await this.repository.findByIdempotencyKey({
-      empresaId: input.empresaId,
       claveIdempotencia: input.claveIdempotencia,
     });
 
@@ -120,10 +116,8 @@ export class CrearReintentoPppoeOperacionUseCase {
         operacionRaizId,
       );
 
-      const existingAggregate = await this.loadExistingAggregate(
-        input.empresaId,
-        existingOperation,
-      );
+      const existingAggregate =
+        await this.loadExistingAggregate(existingOperation);
 
       return {
         ...existingAggregate,
@@ -141,7 +135,6 @@ export class CrearReintentoPppoeOperacionUseCase {
      * de la cadena, no desde uno antiguo.
      */
     const ultimoIntento = await this.repository.findLatestAttempt({
-      empresaId: input.empresaId,
       operacionRaizId,
     });
 
@@ -160,7 +153,6 @@ export class CrearReintentoPppoeOperacionUseCase {
     const ultimoIntentoId = this.requireOperationId(ultimoIntento);
 
     const runningOperation = await this.repository.findRunningOperation({
-      empresaId: input.empresaId,
       cuentaPppoeId: ultimoIntento.cuentaPppoeId,
       estados: [
         EstadoOperacionPppoe.PENDIENTE,
@@ -234,7 +226,6 @@ export class CrearReintentoPppoeOperacionUseCase {
   }
 
   private async loadExistingAggregate(
-    empresaId: number,
     operacion: PppoeOperacionEntity,
   ): Promise<PppoeOperacionAggregate> {
     if (operacion.id === null) {
@@ -242,7 +233,6 @@ export class CrearReintentoPppoeOperacionUseCase {
     }
 
     const aggregate = await this.repository.findAggregateById({
-      empresaId,
       operacionId: operacion.id,
     });
 
@@ -276,7 +266,6 @@ export class CrearReintentoPppoeOperacionUseCase {
   }
 
   private validateInput(input: CrearReintentoPppoeOperacionUseCaseInput): void {
-    this.assertPositiveInteger(input.empresaId, 'empresaId');
     this.assertPositiveInteger(input.operacionId, 'operacionId');
     this.assertRequiredString(input.claveIdempotencia, 'claveIdempotencia');
 

@@ -431,12 +431,6 @@ export class EjecutorActivarSecretPppoeService {
       );
     }
 
-    if (contexto.cuenta.empresaId !== contexto.operacion.empresaId) {
-      throw new ProvisionamientoPppoeEstadoInvalidoError(
-        'La cuenta PPPoE y la operación pertenecen a empresas diferentes.',
-      );
-    }
-
     /**
      * ACTIVAR_SECRET presupone que la creación física
      * del Secret ya fue confirmada previamente.

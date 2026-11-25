@@ -23,8 +23,6 @@ import { OperacionPppoeDatosInvalidosError } from '../../domain/errors/pppoe-ope
  * Datos admitidos por el listado paginado.
  */
 export type ListarPppoeOperacionesUseCaseInput = {
-  empresaId: number;
-
   page?: number;
 
   limit?: number;
@@ -95,8 +93,6 @@ export class ListarPppoeOperacionesUseCase {
   private normalizeFilters(
     input: ListarPppoeOperacionesUseCaseInput,
   ): PppoeOperacionFindManyFilters {
-    this.assertPositiveInteger(input.empresaId, 'empresaId');
-
     const page = input.page ?? ListarPppoeOperacionesUseCase.DEFAULT_PAGE;
 
     const limit = input.limit ?? ListarPppoeOperacionesUseCase.DEFAULT_LIMIT;
@@ -157,7 +153,6 @@ export class ListarPppoeOperacionesUseCase {
     }
 
     return {
-      empresaId: input.empresaId,
       page,
       limit,
       search: this.normalizeSearch(input.search),

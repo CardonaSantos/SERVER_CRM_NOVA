@@ -502,12 +502,6 @@ export class EjecutorEliminarSecretPppoeService {
       );
     }
 
-    if (contexto.cuenta.empresaId !== contexto.operacion.empresaId) {
-      throw new ProvisionamientoPppoeEstadoInvalidoError(
-        'La cuenta PPPoE y la operación pertenecen a empresas diferentes.',
-      );
-    }
-
     /*
      * ELIMINAR_SECRET no requiere conocer ni descifrar
      * la contraseña PPPoE.

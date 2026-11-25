@@ -23,8 +23,6 @@ import {
  * Datos comunes de la finalización.
  */
 type FinalizarPppoeOperacionBaseInput = {
-  empresaId: number;
-
   operacionId: number;
 
   resultado?: PppoeOperacionResultado | null;
@@ -104,7 +102,6 @@ export class FinalizarPppoeOperacionUseCase {
     this.validateInput(input);
 
     const aggregate = await this.repository.findAggregateById({
-      empresaId: input.empresaId,
       operacionId: input.operacionId,
     });
 
@@ -283,7 +280,6 @@ export class FinalizarPppoeOperacionUseCase {
   }
 
   private validateInput(input: FinalizarPppoeOperacionUseCaseInput): void {
-    this.assertPositiveInteger(input.empresaId, 'empresaId');
     this.assertPositiveInteger(input.operacionId, 'operacionId');
     this.assertOptionalDate(input.fecha);
 

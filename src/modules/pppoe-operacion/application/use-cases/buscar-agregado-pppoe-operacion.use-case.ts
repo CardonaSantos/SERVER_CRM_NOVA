@@ -7,7 +7,6 @@ import {
 } from '../../domain/ports/pppoe-operacion-repository.port';
 
 export type BuscarAgregadoPppoeOperacionUseCaseInput = {
-  empresaId: number;
   operacionId: number;
 };
 

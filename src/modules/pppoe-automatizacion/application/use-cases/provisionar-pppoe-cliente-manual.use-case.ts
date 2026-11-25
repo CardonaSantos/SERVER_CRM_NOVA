@@ -118,12 +118,6 @@ export class ProvisionarPppoeClienteManualUseCase {
       throw new CuentaPppoeNoEncontradaError();
     }
 
-    if (cuenta.empresaId !== input.empresaId) {
-      throw new ProvisionamientoPppoeEstadoInvalidoError(
-        'La cuenta PPPoE no pertenece a la empresa indicada.',
-      );
-    }
-
     const claveCrearSecret = this.buildCreationIdempotencyKey({
       empresaId: input.empresaId,
 

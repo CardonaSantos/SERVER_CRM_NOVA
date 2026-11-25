@@ -217,14 +217,8 @@ export class PppoeOperacionAdminService {
   /**
    * Obtiene el detalle administrativo enriquecido.
    */
-  async obtenerDetalle(params: {
-    empresaId: number;
-
-    operacionId: number;
-  }) {
+  async obtenerDetalle(params: { operacionId: number }) {
     const operacion = await this.operaciones.obtenerDetalle({
-      empresaId: params.empresaId,
-
       operacionId: params.operacionId,
     });
 
@@ -248,8 +242,6 @@ export class PppoeOperacionAdminService {
     this.validateActor(params.actor);
 
     const operacion = await this.operaciones.autorizar({
-      empresaId: params.empresaId,
-
       operacionId: params.operacionId,
 
       operadorId: params.actor.operadorId,
@@ -273,8 +265,6 @@ export class PppoeOperacionAdminService {
     this.validateActor(params.actor);
 
     const aggregate = await this.operaciones.cancelar({
-      empresaId: params.empresaId,
-
       operacionId: params.operacionId,
 
       motivo: params.motivo,
@@ -287,8 +277,6 @@ export class PppoeOperacionAdminService {
      * no la entidad de dominio directamente.
      */
     return this.operaciones.obtenerDetalle({
-      empresaId: params.empresaId,
-
       operacionId,
     });
   }
@@ -330,8 +318,6 @@ export class PppoeOperacionAdminService {
      * intento perteneciente a la cadena.
      */
     const operacion = await this.operaciones.obtenerDetalle({
-      empresaId: params.empresaId,
-
       operacionId: params.operacionId,
     });
 

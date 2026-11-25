@@ -112,7 +112,6 @@ export class CrearPppoeOperacionUseCase {
     input: CrearPppoeOperacionUseCaseInput,
   ): Promise<CrearPppoeOperacionUseCaseResult> {
     const existingOperation = await this.repository.findByIdempotencyKey({
-      empresaId: input.empresaId,
       claveIdempotencia: input.claveIdempotencia,
     });
 
@@ -135,7 +134,6 @@ export class CrearPppoeOperacionUseCase {
       }
 
       const existingAggregate = await this.repository.findAggregateById({
-        empresaId: input.empresaId,
         operacionId: existingOperationId,
       });
 
@@ -158,7 +156,6 @@ export class CrearPppoeOperacionUseCase {
     }
 
     const runningOperation = await this.repository.findRunningOperation({
-      empresaId: input.empresaId,
       cuentaPppoeId: input.cuentaPppoeId,
       estados: [
         EstadoOperacionPppoe.PENDIENTE,

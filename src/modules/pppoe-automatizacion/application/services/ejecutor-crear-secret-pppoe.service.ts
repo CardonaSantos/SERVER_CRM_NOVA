@@ -400,12 +400,6 @@ export class EjecutorCrearSecretPppoeService {
         'La cuenta PPPoE debe estar persistida antes de crear el secret.',
       );
     }
-
-    if (contexto.cuenta.empresaId !== contexto.operacion.empresaId) {
-      throw new ProvisionamientoPppoeEstadoInvalidoError(
-        'La cuenta PPPoE y la operación pertenecen a empresas diferentes.',
-      );
-    }
   }
 
   /**

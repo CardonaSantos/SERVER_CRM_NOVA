@@ -15,8 +15,6 @@ import {
  * Datos necesarios para consultar una operación.
  */
 export type ObtenerDetallePppoeOperacionUseCaseInput = {
-  empresaId: number;
-
   operacionId: number;
 };
 
@@ -36,7 +34,6 @@ export class ObtenerDetallePppoeOperacionUseCase {
     this.validateInput(input);
 
     const detalle = await this.query.findDetailById({
-      empresaId: input.empresaId,
       operacionId: input.operacionId,
     });
 
@@ -48,7 +45,6 @@ export class ObtenerDetallePppoeOperacionUseCase {
   }
 
   private validateInput(input: ObtenerDetallePppoeOperacionUseCaseInput): void {
-    this.assertPositiveInteger(input.empresaId, 'empresaId');
     this.assertPositiveInteger(input.operacionId, 'operacionId');
   }
 

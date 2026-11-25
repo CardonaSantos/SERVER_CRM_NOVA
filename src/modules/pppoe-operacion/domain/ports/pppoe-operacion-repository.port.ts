@@ -9,8 +9,6 @@ import { CrearPppoeOperacionPasoInicialProps } from '../props/pppoe-operacion-pa
 import { PppoeOperacionEntity } from '../entities/pppoe-operacion.entity';
 
 export type ReclamarPppoeOperacionParaEjecucionParams = {
-  empresaId: number;
-
   operacionId: number;
 
   estadoEsperado:
@@ -30,12 +28,8 @@ export const PPPOE_OPERACION_REPOSITORY = Symbol('PPPOE_OPERACION_REPOSITORY');
  * Parámetros utilizados para persistir los cambios
  * de un paso dentro de una empresa.
  *
- * empresaId permite comprobar que el paso pertenece
- * a una operación de la empresa esperada.
  */
 export type GuardarPppoeOperacionPasoParams = {
-  empresaId: number;
-
   paso: PppoeOperacionPasoEntity;
 };
 
@@ -69,8 +63,6 @@ export type CrearPppoeOperacionAggregateParams = {
  * por su identificador dentro de una empresa.
  */
 export type BuscarPppoeOperacionPorIdParams = {
-  empresaId: number;
-
   operacionId: number;
 };
 
@@ -81,8 +73,6 @@ export type BuscarPppoeOperacionPorIdParams = {
  * pertenece a la operación esperada.
  */
 export type BuscarPppoeOperacionPasoPorIdParams = {
-  empresaId: number;
-
   operacionId: number;
 
   pasoId: number;
@@ -97,8 +87,6 @@ export type BuscarPppoeOperacionPasoPorIdParams = {
  * operación 25, orden 3 → AGREGAR_SECRET
  */
 export type BuscarPppoeOperacionPasoPorOrdenParams = {
-  empresaId: number;
-
   operacionId: number;
 
   orden: number;
@@ -116,8 +104,6 @@ export type BuscarPppoeOperacionPasoPorOrdenParams = {
  * - repetición accidental de una solicitud.
  */
 export type BuscarPppoeOperacionPorIdempotenciaParams = {
-  empresaId: number;
-
   claveIdempotencia: string;
 };
 
@@ -129,8 +115,6 @@ export type BuscarPppoeOperacionPorIdempotenciaParams = {
  * que dos procesos modifiquen simultáneamente el mismo secret.
  */
 export type BuscarPppoeOperacionEnCursoParams = {
-  empresaId: number;
-
   cuentaPppoeId: number;
 
   /**
@@ -168,8 +152,6 @@ export type BuscarPppoeOperacionEnCursoParams = {
  * reintentoDeId representa la operación raíz de la cadena.
  */
 export type BuscarUltimoIntentoPppoeParams = {
-  empresaId: number;
-
   operacionRaizId: number;
 };
 
@@ -181,8 +163,6 @@ export type BuscarUltimoIntentoPppoeParams = {
  * con el resultado del último movimiento hacia MikroTik.
  */
 export type BuscarUltimaOperacionCuentaPppoeParams = {
-  empresaId: number;
-
   cuentaPppoeId: number;
 
   tipo?: TipoOperacionPppoe | null;

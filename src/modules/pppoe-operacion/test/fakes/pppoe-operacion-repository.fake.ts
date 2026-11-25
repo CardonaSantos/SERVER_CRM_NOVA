@@ -51,7 +51,6 @@ export class PppoeOperacionRepositoryFake
     }
 
     return (await this.findAggregateById({
-      empresaId: operacion.empresaId,
       operacionId: operacion.id!,
     }))!;
   }

@@ -177,12 +177,6 @@ export class CrearYEjecutarActivacionPppoeUseCase {
       );
     }
 
-    if (cuenta.empresaId !== input.empresaId) {
-      throw new ProvisionamientoPppoeEstadoInvalidoError(
-        'La cuenta PPPoE no pertenece a la empresa indicada.',
-      );
-    }
-
     if (cuenta.estaEliminada) {
       throw new ProvisionamientoPppoeEstadoInvalidoError(
         'No puede activarse una cuenta PPPoE eliminada.',
@@ -210,12 +204,6 @@ export class CrearYEjecutarActivacionPppoeUseCase {
     if (perfilHomologacionId === null) {
       throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La homologación PPPoE no contiene un identificador persistido.',
-      );
-    }
-
-    if (perfilProps.empresaId !== input.empresaId) {
-      throw new ProvisionamientoPppoeEstadoInvalidoError(
-        'La homologación PPPoE no pertenece a la empresa indicada.',
       );
     }
 
@@ -247,12 +235,6 @@ export class CrearYEjecutarActivacionPppoeUseCase {
       );
     }
 
-    if (router.empresaId !== input.empresaId) {
-      throw new ProvisionamientoPppoeEstadoInvalidoError(
-        'El router MikroTik no pertenece a la empresa indicada.',
-      );
-    }
-
     const instalacionId = this.resolveInstalacionId(input);
 
     const motivo = this.resolveMotivo(input);
@@ -265,8 +247,6 @@ export class CrearYEjecutarActivacionPppoeUseCase {
 
     const existingOperation = await this.operaciones.buscar({
       por: 'CLAVE_IDEMPOTENCIA',
-      empresaId: input.empresaId,
-
       claveIdempotencia,
     });
 

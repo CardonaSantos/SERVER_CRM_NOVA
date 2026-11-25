@@ -6,8 +6,6 @@ export const OPERADOR_REAUTENTICACION = Symbol('OPERADOR_REAUTENTICACION');
  *
  */
 export type ValidarReautenticacionOperadorParams = {
-  empresaId: number;
-
   /**
    * Usuario autenticado que está confirmando la operación.
    */

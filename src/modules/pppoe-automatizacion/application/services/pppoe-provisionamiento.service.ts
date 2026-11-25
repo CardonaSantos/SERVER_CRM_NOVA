@@ -232,8 +232,6 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
     });
 
     const aggregate = await this.operaciones.crearReintento({
-      empresaId: input.empresaId,
-
       operacionId: input.operacionId,
 
       claveIdempotencia: input.claveIdempotencia,
@@ -344,8 +342,6 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
      */
     const operacionSolicitada = await this.operaciones.buscar({
       por: 'ID',
-      empresaId: params.empresaId,
-
       operacionId: params.operacionId,
     });
 
@@ -364,8 +360,6 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
      */
     const ultimoIntento = await this.operaciones.buscar({
       por: 'ULTIMO_INTENTO',
-      empresaId: params.empresaId,
-
       operacionRaizId,
     });
 

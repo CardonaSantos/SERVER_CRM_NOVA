@@ -7,10 +7,10 @@ import {
 } from '../../domain/ports/pppoe-operacion-repository.port';
 
 export type BuscarPppoeOperacionUseCaseInput =
-  | { por: 'ID'; empresaId: number; operacionId: number }
-  | { por: 'CLAVE_IDEMPOTENCIA'; empresaId: number; claveIdempotencia: string }
+  | { por: 'ID'; operacionId: number }
+  | { por: 'CLAVE_IDEMPOTENCIA'; claveIdempotencia: string }
   /** El intento más reciente de la cadena que nace en `operacionRaizId`. */
-  | { por: 'ULTIMO_INTENTO'; empresaId: number; operacionRaizId: number };
+  | { por: 'ULTIMO_INTENTO'; operacionRaizId: number };
 
 /** Búsquedas de una operación que devuelven null si no existe. */
 @Injectable()
