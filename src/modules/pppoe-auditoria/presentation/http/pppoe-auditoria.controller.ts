@@ -1,6 +1,8 @@
 import { Controller, Get, Query } from '@nestjs/common';
 
 import { Actor, ActorHttp } from 'src/auth/decoradores/actor.decorator';
+import { Roles } from 'src/auth/decoradores/roles.decorator';
+import { ROLES_OFICINA } from 'src/auth/roles/grupos-roles';
 
 import { ListarPppoeAuditoriasUseCase } from '../../application/use-cases/listar-pppoe-auditorias.use-case';
 import { ListarPppoeAuditoriasQueryDto } from '../dto/listar-pppoe-auditorias-query.dto';
@@ -14,6 +16,7 @@ export class PppoeAuditoriaController {
 
   /** Listado administrativo paginado de la bitácora PPPoE. */
   @Get()
+  @Roles(...ROLES_OFICINA)
   async findAll(
     @Query() query: ListarPppoeAuditoriasQueryDto,
     @Actor() actor: ActorHttp,
