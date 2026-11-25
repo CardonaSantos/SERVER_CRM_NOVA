@@ -2,25 +2,15 @@ import { PppoePerfilHomologacion, Prisma } from '@prisma/client';
 import { PerfilHomologacionEntity } from '../../domain/entities/perfil-homologacion.entity';
 
 export class PerfilHomologacionPrismaMapper {
-  /**
-   * Convierte un registro obtenido desde Prisma
-   * en una entidad de dominio.
-   */
   static toDomain(record: PppoePerfilHomologacion): PerfilHomologacionEntity {
     return PerfilHomologacionEntity.hydrate({
       id: record.id,
-
       empresaId: record.empresaId,
-
       mikrotikRouterId: record.mikrotikRouterId,
-
       servicioInternetId: record.servicioInternetId,
-
       codigoPerfil: record.codigoPerfil,
       activo: record.activo,
-
       creadoPorId: record.creadoPorId ?? null,
-
       actualizadoPorId: record.actualizadoPorId ?? null,
 
       creadoEn: new Date(record.creadoEn),
@@ -29,10 +19,7 @@ export class PerfilHomologacionPrismaMapper {
     });
   }
 
-  /**
-   * Convierte una entidad nueva en un objeto prisma
-   *
-   */
+  /** creadoEn y actualizadoEn los pone la BD. */
   static toCreatePersistence(
     entity: PerfilHomologacionEntity,
   ): Prisma.PppoePerfilHomologacionUncheckedCreateInput {
@@ -46,27 +33,16 @@ export class PerfilHomologacionPrismaMapper {
 
     return {
       empresaId: props.empresaId,
-
       mikrotikRouterId: props.mikrotikRouterId,
-
       servicioInternetId: props.servicioInternetId,
-
       codigoPerfil: props.codigoPerfil,
-
       activo: props.activo,
-
       creadoPorId: props.creadoPorId ?? null,
-
       actualizadoPorId: props.actualizadoPorId ?? null,
     };
   }
 
-  /**
-   * Convierte una entidad persistida en un objeto
-   * compatible con Prisma update().
-   *
-   * Solo incluye los campos que la entidad permite modificar.
-   */
+  /** Solo los campos que la entidad permite modificar. */
   static toUpdatePersistence(
     entity: PerfilHomologacionEntity,
   ): Prisma.PppoePerfilHomologacionUncheckedUpdateInput {

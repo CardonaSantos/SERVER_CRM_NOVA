@@ -8,6 +8,14 @@ export class PerfilHomologacionNoEncontradoError extends DomainError {
   }
 }
 
+export class PerfilHomologacionDatosInvalidosError extends DomainError {
+  readonly codigo = 'PERFIL_HOMOLOGACION_DATOS_INVALIDOS';
+  readonly tipo = 'INVALIDO';
+  constructor(mensaje: string) {
+    super(mensaje);
+  }
+}
+
 export class PerfilHomologacionDuplicadoError extends DomainError {
   readonly codigo = 'PERFIL_HOMOLOGACION_DUPLICADO';
   readonly tipo = 'CONFLICTO';

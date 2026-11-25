@@ -1,5 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
+
 import { PerfilHomologacionEntity } from '../../domain/entities/perfil-homologacion.entity';
 import {
   PerfilHomologacionCodigoDuplicadoError,
@@ -28,6 +30,7 @@ export class CrearPerfilHomologacionUseCase {
   constructor(
     @Inject(PERFIL_HOMOLOGACION_REPOSITORY)
     private readonly perfiles: PerfilHomologacionRepositoryPort,
+    @Inject(RELOJ) private readonly reloj: RelojPort,
   ) {}
 
   async execute(
@@ -39,13 +42,16 @@ export class CrearPerfilHomologacionUseCase {
     });
     if (existente) throw new PerfilHomologacionDuplicadoError();
 
-    const perfil = PerfilHomologacionEntity.create({
-      empresaId: input.empresaId,
-      mikrotikRouterId: input.mikrotikRouterId,
-      servicioInternetId: input.servicioInternetId,
-      codigoPerfil: input.codigoPerfil,
-      creadoPorId: input.creadoPorId,
-    });
+    const perfil = PerfilHomologacionEntity.create(
+      {
+        empresaId: input.empresaId,
+        mikrotikRouterId: input.mikrotikRouterId,
+        servicioInternetId: input.servicioInternetId,
+        codigoPerfil: input.codigoPerfil,
+        creadoPorId: input.creadoPorId,
+      },
+      this.reloj.ahora(),
+    );
 
     const mismoCodigo = await this.perfiles.findByRouterAndCode({
       mikrotikRouterId: perfil.mikrotikRouterId,
