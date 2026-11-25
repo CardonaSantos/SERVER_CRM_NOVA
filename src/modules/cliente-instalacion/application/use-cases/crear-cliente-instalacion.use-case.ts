@@ -1,3 +1,4 @@
+import { DomainError } from 'src/common/hexagonal/domain-error';
 import { HttpException, Inject, Injectable, Logger } from '@nestjs/common';
 import { ClienteInstalacionEntity } from '../../domain/entities/cliente-instalacion.entity';
 import {
@@ -593,6 +594,11 @@ export class CrearClienteInstalacionUseCase {
   }
 
   private obtenerMensajeSeguroPrealta(error: unknown): string {
+    // El mensaje de un DomainError está escrito para el usuario (estándar §4.5).
+    if (error instanceof DomainError) {
+      return error.message;
+    }
+
     if (error instanceof HttpException) {
       const response = error.getResponse();
 
