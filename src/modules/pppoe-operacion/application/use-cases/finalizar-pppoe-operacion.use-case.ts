@@ -1,4 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
+
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
 import { PppoeOperacionEntity } from '../../domain/entities/pppoe-operacion.entity';
 import { PppoeOperacionPasoEntity } from '../../domain/entities/pppoe-operacion-paso.entity';
 import {
@@ -100,6 +102,9 @@ export class FinalizarPppoeOperacionUseCase {
   constructor(
     @Inject(PPPOE_OPERACION_REPOSITORY)
     private readonly repository: PppoeOperacionRepositoryPort,
+
+    @Inject(RELOJ)
+    private readonly reloj: RelojPort,
   ) {}
 
   async execute(
@@ -169,7 +174,7 @@ export class FinalizarPppoeOperacionUseCase {
       case EstadoOperacionPppoe.EXITOSA:
         operacion.marcarExitosa({
           resultado: input.resultado,
-          fecha: input.fecha,
+          fecha: input.fecha ?? this.reloj.ahora(),
         });
 
         return;
@@ -182,7 +187,7 @@ export class FinalizarPppoeOperacionUseCase {
 
           resultado: input.resultado,
 
-          fecha: input.fecha,
+          fecha: input.fecha ?? this.reloj.ahora(),
         });
 
         return;
@@ -195,7 +200,7 @@ export class FinalizarPppoeOperacionUseCase {
 
           resultado: input.resultado,
 
-          fecha: input.fecha,
+          fecha: input.fecha ?? this.reloj.ahora(),
         });
 
         return;

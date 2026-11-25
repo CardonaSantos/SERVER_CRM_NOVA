@@ -1,4 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
+
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
 import { PppoeOperacionEntity } from '../../domain/entities/pppoe-operacion.entity';
 import {
   OPERADOR_REAUTENTICACION,
@@ -66,6 +68,9 @@ export class AutorizarPppoeOperacionUseCase {
 
     @Inject(OPERADOR_REAUTENTICACION)
     private readonly operadorReautenticacion: OperadorReautenticacionPort,
+
+    @Inject(RELOJ)
+    private readonly reloj: RelojPort,
   ) {}
 
   async execute(
@@ -127,7 +132,7 @@ export class AutorizarPppoeOperacionUseCase {
      *  VALIDAR CREDENCIALES
      */
 
-    const fechaReautenticacion = new Date();
+    const fechaReautenticacion = this.reloj.ahora();
 
     const credencialesValidas = await this.operadorReautenticacion.validar({
       empresaId: input.empresaId,

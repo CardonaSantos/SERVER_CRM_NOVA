@@ -28,7 +28,7 @@ export type AutorizarPppoeOperacionInput = {
    *
    * Si se omite, se utiliza la fecha actual.
    */
-  fecha?: Date;
+  fecha: Date;
 };
 
 /**
@@ -40,14 +40,14 @@ export type AutorizarPppoeOperacionInput = {
 export type RegistrarReautenticacionFallidaInput = {
   reautenticadoPorId: number;
 
-  fecha?: Date;
+  fecha: Date;
 };
 
 /**
  * Datos utilizados al iniciar la ejecución remota.
  */
 export type IniciarPppoeOperacionInput = {
-  fecha?: Date;
+  fecha: Date;
 };
 
 /**
@@ -62,7 +62,7 @@ export type MarcarPppoeOperacionExitosaInput = {
    */
   resultado?: PppoeOperacionResultado | null;
 
-  fecha?: Date;
+  fecha: Date;
 };
 
 /**
@@ -79,7 +79,7 @@ export type MarcarPppoeOperacionConErrorInput = {
    */
   resultado?: PppoeOperacionResultado | null;
 
-  fecha?: Date;
+  fecha: Date;
 };
 
 /**
@@ -89,7 +89,7 @@ export type MarcarPppoeOperacionConErrorInput = {
 export type CancelarPppoeOperacionInput = {
   motivo: string;
 
-  fecha?: Date;
+  fecha: Date;
 };
 
 /**
@@ -97,6 +97,9 @@ export type CancelarPppoeOperacionInput = {
  * de una operación FALLIDA o PARCIAL.
  */
 export type CrearReintentoPppoeOperacionInput = {
+  /** Momento de creación del nuevo intento. */
+  fecha: Date;
+
   /**
    * Debe ser una clave nueva para el nuevo intento.
    */
@@ -262,8 +265,11 @@ export class PppoeOperacionEntity {
    * - fechas de ejecución;
    * - duración.
    */
-  static create(input: CrearPppoeOperacionProps): PppoeOperacionEntity {
-    const now = new Date();
+  static create(
+    input: CrearPppoeOperacionProps,
+    ahora: Date,
+  ): PppoeOperacionEntity {
+    const now = PppoeOperacionEntity.normalizeRequiredDate(ahora, 'ahora');
 
     const props: PppoeOperacionProps = {
       id: null,
@@ -658,7 +664,7 @@ export class PppoeOperacionEntity {
    *
    * AUTORIZADA -> EJECUTANDO
    */
-  iniciar(input: IniciarPppoeOperacionInput = {}): void {
+  iniciar(input: IniciarPppoeOperacionInput): void {
     if (this.props.requiereReautenticacion) {
       this.assertCurrentState(
         EstadoOperacionPppoe.AUTORIZADA,
@@ -723,7 +729,7 @@ export class PppoeOperacionEntity {
    *
    * EJECUTANDO -> EXITOSA
    */
-  marcarExitosa(input: MarcarPppoeOperacionExitosaInput = {}): void {
+  marcarExitosa(input: MarcarPppoeOperacionExitosaInput): void {
     this.assertCurrentState(
       EstadoOperacionPppoe.EJECUTANDO,
       'Solo una operación EJECUTANDO puede marcarse como EXITOSA.',
@@ -892,53 +898,56 @@ export class PppoeOperacionEntity {
       );
     }
 
-    return PppoeOperacionEntity.create({
-      empresaId: this.props.empresaId,
+    return PppoeOperacionEntity.create(
+      {
+        empresaId: this.props.empresaId,
 
-      cuentaPppoeId: this.props.cuentaPppoeId,
+        cuentaPppoeId: this.props.cuentaPppoeId,
 
-      // mikrotikRouterId: input.mikrotikRouterId ?? this.props.mikrotikRouterId,
-      mikrotikRouterId: input.mikrotikRouterId,
-      perfilHomologacionId:
-        input.perfilHomologacionId !== undefined
-          ? input.perfilHomologacionId
-          : this.props.perfilHomologacionId,
+        // mikrotikRouterId: input.mikrotikRouterId ?? this.props.mikrotikRouterId,
+        mikrotikRouterId: input.mikrotikRouterId,
+        perfilHomologacionId:
+          input.perfilHomologacionId !== undefined
+            ? input.perfilHomologacionId
+            : this.props.perfilHomologacionId,
 
-      instalacionId: this.props.instalacionId,
+        instalacionId: this.props.instalacionId,
 
-      desinstalacionId: this.props.desinstalacionId,
+        desinstalacionId: this.props.desinstalacionId,
 
-      reintentoDeId: operacionRaizId,
+        reintentoDeId: operacionRaizId,
 
-      numeroIntento: this.props.numeroIntento + 1,
+        numeroIntento: this.props.numeroIntento + 1,
 
-      claveIdempotencia: input.claveIdempotencia,
+        claveIdempotencia: input.claveIdempotencia,
 
-      tipo: this.props.tipo,
+        tipo: this.props.tipo,
 
-      origen: input.origen ?? this.props.origen,
+        origen: input.origen ?? this.props.origen,
 
-      canal: input.canal ?? this.props.canal,
+        canal: input.canal ?? this.props.canal,
 
-      iniciadoPorId: input.iniciadoPorId,
+        iniciadoPorId: input.iniciadoPorId,
 
-      requiereReautenticacion:
-        input.requiereReautenticacion ?? this.props.requiereReautenticacion,
+        requiereReautenticacion:
+          input.requiereReautenticacion ?? this.props.requiereReautenticacion,
 
-      motivo:
-        input.motivo ?? `Reintento de la operación PPPoE ${this.props.id}.`,
+        motivo:
+          input.motivo ?? `Reintento de la operación PPPoE ${this.props.id}.`,
 
-      usuarioPppoeSnapshot: this.props.usuarioPppoeSnapshot,
+        usuarioPppoeSnapshot: this.props.usuarioPppoeSnapshot,
 
-      codigoPerfilSnapshot:
-        input.codigoPerfilSnapshot !== undefined
-          ? input.codigoPerfilSnapshot
-          : this.props.codigoPerfilSnapshot,
+        codigoPerfilSnapshot:
+          input.codigoPerfilSnapshot !== undefined
+            ? input.codigoPerfilSnapshot
+            : this.props.codigoPerfilSnapshot,
 
-      routerHostSnapshot,
+        routerHostSnapshot,
 
-      routerPuertoSnapshot,
-    });
+        routerPuertoSnapshot,
+      },
+      input.fecha,
+    );
   }
 
   /**
@@ -1984,11 +1993,8 @@ export class PppoeOperacionEntity {
     return this.normalizeRequiredDate(value, field);
   }
 
-  private static normalizeActionDate(
-    value: Date | undefined,
-    field: string,
-  ): Date {
-    return this.normalizeRequiredDate(value ?? new Date(), field);
+  private static normalizeActionDate(value: Date, field: string): Date {
+    return this.normalizeRequiredDate(value, field);
   }
 
   private static normalizeOptionalDuration(

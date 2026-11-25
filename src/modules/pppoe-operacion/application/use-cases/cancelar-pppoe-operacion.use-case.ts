@@ -1,5 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
+
 import {
   PPPOE_OPERACION_REPOSITORY,
   PppoeOperacionAggregate,
@@ -35,6 +37,9 @@ export class CancelarPppoeOperacionUseCase {
   constructor(
     @Inject(PPPOE_OPERACION_REPOSITORY)
     private readonly repository: PppoeOperacionRepositoryPort,
+
+    @Inject(RELOJ)
+    private readonly reloj: RelojPort,
   ) {}
 
   async execute(
@@ -92,7 +97,7 @@ export class CancelarPppoeOperacionUseCase {
 
     operacion.cancelar({
       motivo: input.motivo,
-      fecha: input.fecha,
+      fecha: input.fecha ?? this.reloj.ahora(),
     });
 
     const savedOperation = await this.repository.saveOperation(operacion);

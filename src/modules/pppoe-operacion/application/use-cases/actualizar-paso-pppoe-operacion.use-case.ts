@@ -1,5 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
+
 import { PppoeOperacionPasoEntity } from '../../domain/entities/pppoe-operacion-paso.entity';
 
 import {
@@ -98,6 +100,9 @@ export class ActualizarPasoPppoeOperacionUseCase {
   constructor(
     @Inject(PPPOE_OPERACION_REPOSITORY)
     private readonly repository: PppoeOperacionRepositoryPort,
+
+    @Inject(RELOJ)
+    private readonly reloj: RelojPort,
   ) {}
 
   async execute(
@@ -165,7 +170,7 @@ export class ActualizarPasoPppoeOperacionUseCase {
       case 'INICIAR':
         paso.iniciar({
           comandoSanitizado: input.comandoSanitizado,
-          fecha: input.fecha,
+          fecha: input.fecha ?? this.reloj.ahora(),
         });
 
         return;
@@ -173,7 +178,7 @@ export class ActualizarPasoPppoeOperacionUseCase {
       case 'MARCAR_EXITOSO':
         paso.marcarExitoso({
           respuestaSanitizada: input.respuestaSanitizada,
-          fecha: input.fecha,
+          fecha: input.fecha ?? this.reloj.ahora(),
         });
 
         return;
@@ -183,7 +188,7 @@ export class ActualizarPasoPppoeOperacionUseCase {
           errorCodigo: input.errorCodigo,
           errorMensaje: input.errorMensaje,
           respuestaSanitizada: input.respuestaSanitizada,
-          fecha: input.fecha,
+          fecha: input.fecha ?? this.reloj.ahora(),
         });
 
         return;
@@ -191,7 +196,7 @@ export class ActualizarPasoPppoeOperacionUseCase {
       case 'OMITIR':
         paso.omitir({
           motivo: input.motivo,
-          fecha: input.fecha,
+          fecha: input.fecha ?? this.reloj.ahora(),
         });
 
         return;

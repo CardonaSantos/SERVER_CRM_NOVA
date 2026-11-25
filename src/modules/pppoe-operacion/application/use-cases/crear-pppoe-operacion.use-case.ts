@@ -1,4 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
+
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
 import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 import { PppoeOperacionEntity } from '../../domain/entities/pppoe-operacion.entity';
 import {
@@ -99,6 +101,9 @@ export class CrearPppoeOperacionUseCase {
   constructor(
     @Inject(PPPOE_OPERACION_REPOSITORY)
     private readonly repository: PppoeOperacionRepositoryPort,
+
+    @Inject(RELOJ)
+    private readonly reloj: RelojPort,
   ) {}
 
   /**
@@ -188,43 +193,46 @@ export class CrearPppoeOperacionUseCase {
      * CONSTRUCCIÓN DE LA ENTIDAD PRINCIPAL
      */
 
-    const operation = PppoeOperacionEntity.create({
-      empresaId: input.empresaId,
+    const operation = PppoeOperacionEntity.create(
+      {
+        empresaId: input.empresaId,
 
-      cuentaPppoeId: input.cuentaPppoeId,
+        cuentaPppoeId: input.cuentaPppoeId,
 
-      mikrotikRouterId: input.mikrotikRouterId,
+        mikrotikRouterId: input.mikrotikRouterId,
 
-      perfilHomologacionId: input.perfilHomologacionId ?? null,
+        perfilHomologacionId: input.perfilHomologacionId ?? null,
 
-      instalacionId: input.instalacionId ?? null,
+        instalacionId: input.instalacionId ?? null,
 
-      desinstalacionId: input.desinstalacionId ?? null,
+        desinstalacionId: input.desinstalacionId ?? null,
 
-      claveIdempotencia: input.claveIdempotencia,
+        claveIdempotencia: input.claveIdempotencia,
 
-      tipo: input.tipo,
+        tipo: input.tipo,
 
-      origen: input.origen,
+        origen: input.origen,
 
-      canal: input.canal ?? CanalOperacionPppoe.SSH,
+        canal: input.canal ?? CanalOperacionPppoe.SSH,
 
-      iniciadoPorId: input.iniciadoPorId ?? null,
+        iniciadoPorId: input.iniciadoPorId ?? null,
 
-      requiereReautenticacion:
-        input.requiereReautenticacion ??
-        this.resolveDefaultReauthentication(input.tipo),
+        requiereReautenticacion:
+          input.requiereReautenticacion ??
+          this.resolveDefaultReauthentication(input.tipo),
 
-      motivo: input.motivo ?? null,
+        motivo: input.motivo ?? null,
 
-      usuarioPppoeSnapshot: input.usuarioPppoeSnapshot,
+        usuarioPppoeSnapshot: input.usuarioPppoeSnapshot,
 
-      codigoPerfilSnapshot: input.codigoPerfilSnapshot ?? null,
+        codigoPerfilSnapshot: input.codigoPerfilSnapshot ?? null,
 
-      routerHostSnapshot: input.routerHostSnapshot,
+        routerHostSnapshot: input.routerHostSnapshot,
 
-      routerPuertoSnapshot: input.routerPuertoSnapshot,
-    });
+        routerPuertoSnapshot: input.routerPuertoSnapshot,
+      },
+      this.reloj.ahora(),
+    );
 
     /**
      *  PLANIFICACIÓN DE PASOS

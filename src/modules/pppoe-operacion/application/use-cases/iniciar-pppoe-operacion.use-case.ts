@@ -1,5 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
+
 import { EstadoOperacionPppoe } from '../../domain/enums/pppoe-operacion.enum';
 
 import {
@@ -48,6 +50,9 @@ export class IniciarPppoeOperacionUseCase {
   constructor(
     @Inject(PPPOE_OPERACION_REPOSITORY)
     private readonly repository: PppoeOperacionRepositoryPort,
+
+    @Inject(RELOJ)
+    private readonly reloj: RelojPort,
   ) {}
 
   async execute(
@@ -120,7 +125,7 @@ export class IniciarPppoeOperacionUseCase {
      * realizar el compare-and-set atómico.
      */
     operacion.iniciar({
-      fecha: input.fecha,
+      fecha: input.fecha ?? this.reloj.ahora(),
     });
 
     const claimedOperation = await this.repository.claimForExecution({

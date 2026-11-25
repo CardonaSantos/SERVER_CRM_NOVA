@@ -1,4 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
+
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
 import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 import { PppoeOperacionEntity } from '../../domain/entities/pppoe-operacion.entity';
 import {
@@ -82,6 +84,9 @@ export class CrearReintentoPppoeOperacionUseCase {
   constructor(
     @Inject(PPPOE_OPERACION_REPOSITORY)
     private readonly repository: PppoeOperacionRepositoryPort,
+
+    @Inject(RELOJ)
+    private readonly reloj: RelojPort,
   ) {}
 
   async execute(
@@ -206,6 +211,8 @@ export class CrearReintentoPppoeOperacionUseCase {
     input: CrearReintentoPppoeOperacionUseCaseInput,
   ): PppoeOperacionEntity {
     return ultimoIntento.crearReintento({
+      fecha: this.reloj.ahora(),
+
       claveIdempotencia: input.claveIdempotencia,
 
       iniciadoPorId: input.iniciadoPorId,

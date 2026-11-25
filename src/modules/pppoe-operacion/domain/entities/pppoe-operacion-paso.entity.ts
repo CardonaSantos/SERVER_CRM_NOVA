@@ -23,7 +23,7 @@ export type IniciarPppoeOperacionPasoInput = {
    *
    * Si se omite, se utiliza la fecha actual.
    */
-  fecha?: Date;
+  fecha: Date;
 };
 
 /**
@@ -40,7 +40,7 @@ export type CompletarPppoeOperacionPasoInput = {
    *
    * Si se omite, se utiliza la fecha actual.
    */
-  fecha?: Date;
+  fecha: Date;
 };
 
 /**
@@ -73,7 +73,7 @@ export type FallarPppoeOperacionPasoInput = {
    *
    * Si se omite, se utiliza la fecha actual.
    */
-  fecha?: Date;
+  fecha: Date;
 };
 
 /**
@@ -95,7 +95,7 @@ export type OmitirPppoeOperacionPasoInput = {
    *
    * Si se omite, se utiliza la fecha actual.
    */
-  fecha?: Date;
+  fecha: Date;
 };
 
 /**
@@ -156,14 +156,17 @@ export class PppoeOperacionPasoEntity {
    * No permite definir manualmente estado, errores, fechas
    * de ejecución ni resultados técnicos.
    */
-  static create(input: CrearPppoeOperacionPasoProps): PppoeOperacionPasoEntity {
+  static create(
+    input: CrearPppoeOperacionPasoProps,
+    ahora: Date,
+  ): PppoeOperacionPasoEntity {
     this.assertPositiveInteger(input.operacionId, 'operacionId');
 
     this.assertPositiveInteger(input.orden, 'orden');
 
     this.assertEnumValue(input.tipo, TipoPasoPppoe, 'tipo');
 
-    const now = new Date();
+    const now = PppoeOperacionPasoEntity.normalizeRequiredDate(ahora, 'ahora');
 
     return new PppoeOperacionPasoEntity({
       id: null,
@@ -282,7 +285,7 @@ export class PppoeOperacionPasoEntity {
    *
    * PENDIENTE -> EJECUTANDO
    */
-  iniciar(input: IniciarPppoeOperacionPasoInput = {}): void {
+  iniciar(input: IniciarPppoeOperacionPasoInput): void {
     this.assertCurrentState(
       EstadoPasoPppoe.PENDIENTE,
       'Solo un paso PENDIENTE puede comenzar su ejecución.',
@@ -325,7 +328,7 @@ export class PppoeOperacionPasoEntity {
    *
    * EJECUTANDO -> EXITOSO
    */
-  marcarExitoso(input: CompletarPppoeOperacionPasoInput = {}): void {
+  marcarExitoso(input: CompletarPppoeOperacionPasoInput): void {
     this.assertCurrentState(
       EstadoPasoPppoe.EJECUTANDO,
       'Solo un paso EJECUTANDO puede marcarse como EXITOSO.',
@@ -418,7 +421,7 @@ export class PppoeOperacionPasoEntity {
    * BUSCAR_SECRET confirma que el secret ya existe y coincide,
    * por lo que AGREGAR_SECRET se omite.
    */
-  omitir(input: OmitirPppoeOperacionPasoInput = {}): void {
+  omitir(input: OmitirPppoeOperacionPasoInput): void {
     this.assertCurrentState(
       EstadoPasoPppoe.PENDIENTE,
       'Solo un paso PENDIENTE puede marcarse como OMITIDO.',
@@ -743,11 +746,8 @@ export class PppoeOperacionPasoEntity {
   /**
    * Normaliza una fecha recibida por una transición.
    */
-  private static normalizeActionDate(
-    value: Date | undefined,
-    field: string,
-  ): Date {
-    return this.normalizeRequiredDate(value ?? new Date(), field);
+  private static normalizeActionDate(value: Date, field: string): Date {
+    return this.normalizeRequiredDate(value, field);
   }
 
   /**
