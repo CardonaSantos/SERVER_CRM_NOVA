@@ -39,7 +39,7 @@ import {
 import { EjecutarOperacionPppoeResult } from '../../domain/props/pppoe-provisionamiento.props';
 
 import { EjecutarPppoeOperacionUseCase } from './ejecutar-pppoe-operacion.use-case';
-import { CrearPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/crear-pppoe-operacion.use-case.ts';
+import { CrearPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/crear-pppoe-operacion.use-case';
 
 /**
  * Determina la intención comercial de ACTIVAR_SECRET.

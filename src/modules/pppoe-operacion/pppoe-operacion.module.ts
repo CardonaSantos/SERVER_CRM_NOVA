@@ -17,7 +17,7 @@ import { PPPOE_OPERACION_REPOSITORY } from './domain/ports/pppoe-operacion-repos
 
 import { OperadorReautenticacionPrismaAdapter } from './infra/prisma/adapters/operador-reautenticacion-prisma.adapter';
 import { PppoeOperacionPrismaRepository } from './infra/prisma/pppoe-operacion-prisma.repository';
-import { CrearPppoeOperacionUseCase } from './application/use-cases/crear-pppoe-operacion.use-case.ts';
+import { CrearPppoeOperacionUseCase } from './application/use-cases/crear-pppoe-operacion.use-case';
 
 const useCases = [
   CrearPppoeOperacionUseCase,
