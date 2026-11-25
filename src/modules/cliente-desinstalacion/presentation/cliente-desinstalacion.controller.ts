@@ -12,10 +12,7 @@ import {
   Req,
   UnauthorizedException,
   UploadedFile,
-  UseGuards,
   UseInterceptors,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
 
 import { ActualizarClienteDesinstalacionDto } from '../application/dto/actualizar-desinstalacion-cliente.dto';
@@ -39,20 +36,11 @@ import { ClienteDesinstalacionAutorizacionPresenter } from './autorizacion-clien
 import { ClienteDesinstalacionPresenter } from './cliente-desinstalacion.presenter';
 import { ClienteDesinstalacionTecnicoPresenter } from './cliente-desinstalacion-tecnico.presenter';
 import { MarcarFallidaClienteDesinstalacionDto } from '../application/dto/marcar-fallida-cliente-desinstalacion.dto';
-import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 import { OperacionSensible } from 'src/auth/step-up/operacion-sensible.decorator';
 import { SubirEvidenciaDesinstalacionDto } from '../application/dto/subir-evidencia-desinstalacion.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FiltrarAutorizacionesPendientesDto } from '../application/dto/filtrar-autorizaciones-pendientes.dto';
 
-@UseGuards(JwtAuthGuard)
-@UsePipes(
-  new ValidationPipe({
-    transform: true,
-    whitelist: true,
-    forbidNonWhitelisted: true,
-  }),
-)
 @Controller('cliente-desinstalaciones')
 export class ClienteDesinstalacionController {
   private readonly logger = new Logger(ClienteDesinstalacionController.name);

@@ -9,12 +9,7 @@ import {
   Query,
   Req,
   UnauthorizedException,
-  UseGuards,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
-
-import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 
 import { RequestWithAuthenticatedUser } from 'src/auth/interfaces/request-with-authenticated-user.interface';
 
@@ -24,14 +19,6 @@ import { PppoeAuditoriaService } from '../application/services/pppoe-auditoria.s
 
 import { PppoeAuditoriaInstalacionPresenter } from './pppoe-auditoria-instalacion.presenter';
 
-@UseGuards(JwtAuthGuard)
-@UsePipes(
-  new ValidationPipe({
-    transform: true,
-    whitelist: true,
-    forbidNonWhitelisted: true,
-  }),
-)
 @Controller('cliente-instalaciones')
 export class PppoeAuditoriaInstalacionController {
   constructor(

@@ -1,5 +1,3 @@
-import { UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 import {
   Controller,
   Get,
@@ -18,7 +16,6 @@ import { ClientesInternetReportRequest } from '../http-dto/clientes-internet.rep
 import { Response } from 'express';
 import { ClientesInternetReportUseCase } from 'src/modules/reports/application/use-cases/clientes-internet/clientes-internet.use-case';
 
-@UseGuards(JwtAuthGuard)
 @Controller('reports')
 export class ReportsController {
   private readonly logger = new Logger(ReportsController.name);

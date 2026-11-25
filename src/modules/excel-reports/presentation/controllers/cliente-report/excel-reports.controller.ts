@@ -1,13 +1,4 @@
-import {
-  Controller,
-  Get,
-  Query,
-  StreamableFile,
-  UseGuards,
-  ValidationPipe,
-} from '@nestjs/common';
-
-import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
+import { Controller, Get, Query, StreamableFile } from '@nestjs/common';
 
 import { dayjs } from 'src/Utils/dayjs.config';
 
@@ -28,7 +19,6 @@ import { ExportarFacturacionXlsxUseCase } from 'src/modules/excel-reports/applic
 import { ExportarFacturacionReporteDto } from 'src/modules/excel-reports/application/dto/facturacion-reporte/facturacion-reporte.dto';
 
 @Controller('excel-reports')
-@UseGuards(JwtAuthGuard)
 export class ExcelReportsController {
   constructor(
     private readonly exportarClientesXlsx: ExportarClientesXlsxUseCase,
@@ -64,15 +54,7 @@ export class ExcelReportsController {
 
   @Get('tickets')
   async exportarTickets(
-    @Query(
-      new ValidationPipe({
-        transform: true,
-
-        whitelist: true,
-
-        forbidNonWhitelisted: true,
-      }),
-    )
+    @Query()
     dto: ExportarTicketsReporteDto,
   ): Promise<StreamableFile> {
     const filters = this.toTicketFilters(dto);
@@ -92,15 +74,7 @@ export class ExcelReportsController {
 
   @Get('facturacion')
   async exportarFacturacion(
-    @Query(
-      new ValidationPipe({
-        transform: true,
-
-        whitelist: true,
-
-        forbidNonWhitelisted: true,
-      }),
-    )
+    @Query()
     dto: ExportarFacturacionReporteDto,
   ): Promise<StreamableFile> {
     const filters = this.toFacturacionFilters(dto);

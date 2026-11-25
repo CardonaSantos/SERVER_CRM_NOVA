@@ -6,14 +6,9 @@ import {
   Post,
   Req,
   UnauthorizedException,
-  UseGuards,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
 
 import type { Request } from 'express';
-
-import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 
 import { VerificarAdopcionPppoeUseCase } from '../application/use-cases/verificar-adopcion-pppoe.use-case';
 
@@ -58,16 +53,6 @@ type ContextoAdopcionHttp = {
  * Solamente verifica el estado real y registra
  * localmente una cuenta preexistente.
  */
-@UseGuards(JwtAuthGuard)
-@UsePipes(
-  new ValidationPipe({
-    transform: true,
-
-    whitelist: true,
-
-    forbidNonWhitelisted: true,
-  }),
-)
 @Controller('pppoe-cuentas/adopcion')
 export class PppoeCuentaAdopcionController {
   constructor(

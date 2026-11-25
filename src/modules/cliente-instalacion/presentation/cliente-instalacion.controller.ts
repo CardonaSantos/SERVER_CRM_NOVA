@@ -16,8 +16,6 @@ import {
   UnauthorizedException,
   UploadedFile,
   UseInterceptors,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
 import { CrearClienteInstalacionDto } from '../application/dto/crear-cliente-instalacion.dto';
 import { ClienteInstalacionPresenter } from './cliente-instalacion.presenter';
@@ -34,9 +32,7 @@ import { ReintentarPrealtaPppoeDto } from '../application/dto/reintentar-prealta
 import { ConsultarCredencialesPppoeDto } from '../application/dto/consultar-credenciales-pppoe.dto';
 
 import type { Request } from 'express';
-import { UseGuards } from '@nestjs/common';
 
-import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 import { OperacionSensible } from 'src/auth/step-up/operacion-sensible.decorator';
 import { FiltrarMisInstalacionesAsignadasDto } from '../application/dto/instalaciones-asignadas';
 import {
@@ -59,14 +55,6 @@ type AuthenticatedRequest = Request & {
   };
 };
 
-@UseGuards(JwtAuthGuard)
-@UsePipes(
-  new ValidationPipe({
-    transform: true,
-    whitelist: true,
-    forbidNonWhitelisted: true,
-  }),
-)
 @Controller('cliente-instalaciones')
 export class ClienteInstalacionController {
   private readonly logger = new Logger();
@@ -124,7 +112,6 @@ export class ClienteInstalacionController {
     });
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post(':instalacionId/credenciales-pppoe/revelar')
   @HttpCode(HttpStatus.OK)
   async consultarCredencialesPppoe(
@@ -384,7 +371,6 @@ export class ClienteInstalacionController {
 
   // TECNICO COMPLETAR INSTALACION
   @Post('completar/:id')
-  @UseGuards(JwtAuthGuard)
   async completar(
     @Body()
     dto: CompletarClienteInstalacionDto,

@@ -5,7 +5,6 @@ import {
   Param,
   ParseIntPipe,
   Query,
-  ValidationPipe,
 } from '@nestjs/common';
 import { TicketSoporteHistorialService } from '../application/services/ticket-soporte-historial.service';
 import { ListarTicketSoporteHistorialQueryDto } from '../application/dto/listar-ticket-soporte-historial-query.dto';
@@ -25,12 +24,7 @@ export class TicketSoporteHistorialController {
 
   @Get()
   async findAll(
-    @Query(
-      new ValidationPipe({
-        transform: true,
-        whitelist: true,
-      }),
-    )
+    @Query()
     query: ListarTicketSoporteHistorialQueryDto,
   ) {
     const result = await this.historialService.listar(query);
@@ -40,12 +34,7 @@ export class TicketSoporteHistorialController {
   @Get('ticket/:ticketId')
   async findByTicket(
     @Param('ticketId', ParseIntPipe) ticketId: number,
-    @Query(
-      new ValidationPipe({
-        transform: true,
-        whitelist: true,
-      }),
-    )
+    @Query()
     query: ListarTicketSoporteHistorialQueryDto,
   ) {
     const result = await this.historialService.listarPorTicket(ticketId, query);

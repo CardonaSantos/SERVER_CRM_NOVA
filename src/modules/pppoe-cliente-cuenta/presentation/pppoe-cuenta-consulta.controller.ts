@@ -10,14 +10,9 @@ import {
   Query,
   Req,
   UnauthorizedException,
-  UseGuards,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
 
 import type { Request } from 'express';
-
-import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 
 import { ListarCuentasPppoeUseCase } from '../application/use-cases/listar-cuentas-pppoe.use-case';
 
@@ -41,16 +36,6 @@ type AuthenticatedRequest = Request & {
   };
 };
 
-@UseGuards(JwtAuthGuard)
-@UsePipes(
-  new ValidationPipe({
-    transform: true,
-
-    whitelist: true,
-
-    forbidNonWhitelisted: true,
-  }),
-)
 @Controller('pppoe-cuentas')
 export class PppoeCuentaConsultaController {
   constructor(

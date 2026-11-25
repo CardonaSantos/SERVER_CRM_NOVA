@@ -8,14 +8,10 @@ import {
   Post,
   Req,
   UnauthorizedException,
-  UseGuards,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
 
 import type { Request } from 'express';
 
-import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 import { OperacionSensible } from 'src/auth/step-up/operacion-sensible.decorator';
 
 import { PppoeOperacionAdminService } from '../application/services/pppoe-operacion-admin.service';
@@ -52,14 +48,6 @@ type ContextoAutenticadoHttp = {
   actor: ActorAdministrativoHttp;
 };
 
-@UseGuards(JwtAuthGuard)
-@UsePipes(
-  new ValidationPipe({
-    transform: true,
-    whitelist: true,
-    forbidNonWhitelisted: true,
-  }),
-)
 @Controller('pppoe-cuentas')
 export class PppoeCuentaAccionesController {
   constructor(private readonly adminService: PppoeOperacionAdminService) {}
@@ -233,7 +221,7 @@ export class PppoeCuentaAccionesController {
 
   /**
    * Obtiene la empresa y el operador exclusivamente
-   * del JWT validado por JwtAuthGuard.
+   * del JWT validado por el guard global.
    */
   private getAuthenticatedContext(
     req: AuthenticatedRequest,

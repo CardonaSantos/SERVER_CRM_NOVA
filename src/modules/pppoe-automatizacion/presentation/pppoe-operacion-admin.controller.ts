@@ -10,14 +10,10 @@ import {
   Query,
   Req,
   UnauthorizedException,
-  UseGuards,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
 
 import type { Request } from 'express';
 
-import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 import { OperacionSensible } from 'src/auth/step-up/operacion-sensible.decorator';
 
 import { PppoeOperacionAdminService } from '../application/services/pppoe-operacion-admin.service';
@@ -57,14 +53,6 @@ type ActorAdministrativoHttp = {
   userAgent: string | null;
 };
 
-@UseGuards(JwtAuthGuard)
-@UsePipes(
-  new ValidationPipe({
-    transform: true,
-    whitelist: true,
-    forbidNonWhitelisted: true,
-  }),
-)
 @Controller('pppoe-operaciones')
 export class PppoeOperacionAdminController {
   constructor(private readonly adminService: PppoeOperacionAdminService) {}

@@ -8,12 +8,7 @@ import {
   Post,
   Body,
   Query,
-  UseGuards,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
-
-import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 
 import { GetUserAuthToken } from 'src/CustomDecoratorAuthToken/GetUserAuthToken';
 
@@ -42,16 +37,6 @@ import { ListarUbicacionesTrackingQueryDto } from '../../application/dto/listar-
 import { ObtenerEstadoTrackingTecnicoUseCase } from '../../application/use-cases/obtener-estado-tracking-tecnico.use-case';
 
 @Controller('real-time-location')
-@UseGuards(JwtAuthGuard)
-@UsePipes(
-  new ValidationPipe({
-    transform: true,
-
-    whitelist: true,
-
-    forbidNonWhitelisted: true,
-  }),
-)
 export class RealTimeLocationController {
   constructor(
     private readonly iniciarTracking: IniciarTecnicoTrackingUseCase,

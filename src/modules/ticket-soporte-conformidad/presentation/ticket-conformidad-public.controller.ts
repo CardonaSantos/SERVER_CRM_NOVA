@@ -11,8 +11,6 @@ import {
   Req,
   UploadedFile,
   UseInterceptors,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
 
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -22,15 +20,6 @@ import { TicketConformidadApplicationService } from '../application/services/tic
 import { TicketConformidadTokenParamDto } from '../application/dto/ticket-conformidad-token-param.dto';
 import { RegistrarFirmaClienteDto } from '../application/dto/registrar-firma-cliente.dto';
 
-@UsePipes(
-  new ValidationPipe({
-    transform: true,
-
-    whitelist: true,
-
-    forbidNonWhitelisted: true,
-  }),
-)
 @Controller('ticket-soporte-conformidad/public')
 @Public()
 export class TicketConformidadPublicController {

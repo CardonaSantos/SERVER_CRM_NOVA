@@ -10,13 +10,9 @@ import {
   Req,
   UnauthorizedException,
   UploadedFile,
-  UseGuards,
   UseInterceptors,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 import { TicketConformidadApplicationService } from '../application/services/ticket-soporte-conformidad.service';
 import { TicketIdParamDto } from '../application/dto/ticket-id-param.dto';
 import { GenerarEnlaceTicketConformidadDto } from '../application/dto/generar-enlace-ticket-conformidad.dto';
@@ -37,16 +33,6 @@ type AuthenticatedRequest = Request & {
   };
 };
 
-@UseGuards(JwtAuthGuard)
-@UsePipes(
-  new ValidationPipe({
-    transform: true,
-
-    whitelist: true,
-
-    forbidNonWhitelisted: true,
-  }),
-)
 @Controller('ticket-soporte-conformidad')
 export class TicketConformidadController {
   constructor(private readonly service: TicketConformidadApplicationService) {}

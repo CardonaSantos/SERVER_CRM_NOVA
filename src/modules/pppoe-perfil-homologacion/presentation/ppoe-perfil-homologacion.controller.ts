@@ -9,11 +9,7 @@ import {
   Post,
   Query,
   Req,
-  UseGuards,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
-import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 import { PpoePerfilHomologacionService } from '../application/services/ppoe-perfil-homologacion.service';
 import { ListarPpoePerfilesHomologacionQueryDto } from '../application/dto/listar-ppoe-perfiles-homologacion-query.dto';
 import { CreatePpoePerfilHomologacionDto } from '../dto/create-ppoe-perfil-homologacion.dto';
@@ -25,14 +21,6 @@ import {
 import { UpdatePpoePerfilHomologacionDto } from '../application/dto/update-ppoe-perfil-homologacion.dto';
 import { ListarPerfilesHomologacionSeleccionablesQuery } from '../application/dto/homologacion-query';
 
-@UseGuards(JwtAuthGuard)
-@UsePipes(
-  new ValidationPipe({
-    transform: true,
-    whitelist: true,
-    forbidNonWhitelisted: true,
-  }),
-)
 @Controller('ppoe-perfil-homologacion')
 export class PpoePerfilHomologacionController {
   private readonly logger = new Logger(PpoePerfilHomologacionController.name);

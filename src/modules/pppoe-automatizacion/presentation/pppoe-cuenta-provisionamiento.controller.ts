@@ -8,14 +8,10 @@ import {
   Post,
   Req,
   UnauthorizedException,
-  UseGuards,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
 
 import type { Request } from 'express';
 
-import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 import { OperacionSensible } from 'src/auth/step-up/operacion-sensible.decorator';
 
 import { PppoeCuentaProvisionamientoAdminService } from '../application/services/pppoe-cuenta-provisionamiento-admin.service';
@@ -75,16 +71,6 @@ type ContextoAutenticadoHttp = {
  * - nunca aceptamos identidad administrativa
  *   desde el payload HTTP.
  */
-@UseGuards(JwtAuthGuard)
-@UsePipes(
-  new ValidationPipe({
-    transform: true,
-
-    whitelist: true,
-
-    forbidNonWhitelisted: true,
-  }),
-)
 @Controller('pppoe-cuentas')
 export class PppoeCuentaProvisionamientoController {
   constructor(
@@ -191,7 +177,7 @@ export class PppoeCuentaProvisionamientoController {
 
   /**
    * Toda la identidad administrativa se deriva
-   * exclusivamente del JWT validado por JwtAuthGuard.
+   * exclusivamente del JWT validado por el guard global.
    */
   private getAuthenticatedContext(
     req: AuthenticatedRequest,
