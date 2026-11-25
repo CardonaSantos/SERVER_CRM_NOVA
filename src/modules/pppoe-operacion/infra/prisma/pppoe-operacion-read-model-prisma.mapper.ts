@@ -6,16 +6,10 @@ import { PppoeOperacionPrismaEnumMapper } from './pppoe-operacion-enum-prisma.ma
 import {
   PppoeOperacionDetalle,
   PppoeOperacionListItem,
-  PppoeOperacionPasoReadModel,
+  PppoeOperacionDetallePaso,
   PppoeOperacionReintentoResumen,
 } from '../../domain/read-models/pppoe-operacion.read-model';
 import { PppoeOperacionResultado } from '../../domain/props/pppoe-operacion.props';
-
-/**
- * ============================================================
- * SELECTS REUTILIZABLES
- * ============================================================
- */
 
 /**
  * Campos seguros de un usuario.
@@ -189,12 +183,6 @@ const reintentoResumenSelect = Prisma.validator<Prisma.PppoeOperacionSelect>()({
 });
 
 /**
- * ============================================================
- * INCLUDE DEL LISTADO
- * ============================================================
- */
-
-/**
  * Relaciones utilizadas por el listado paginado.
  *
  * No carga los pasos completos ni las auditorías.
@@ -257,12 +245,6 @@ export type PppoeOperacionListPrismaPayload = Prisma.PppoeOperacionGetPayload<{
 }>;
 
 /**
- * ============================================================
- * INCLUDE DEL DETALLE
- * ============================================================
- */
-
-/**
  * Relaciones utilizadas por el detalle.
  *
  * Extiende el listado con:
@@ -298,12 +280,6 @@ export type PppoeOperacionDetailPrismaPayload =
   }>;
 
 /**
- * ============================================================
- * MAPPER DE READ MODELS
- * ============================================================
- */
-
-/**
  * Convierte payloads Prisma enriquecidos en contratos
  * de lectura seguros para la aplicación y la UI.
  */
@@ -316,12 +292,6 @@ export class PppoeOperacionReadModelPrismaMapper {
     raw: PppoeOperacionListPrismaPayload,
   ): PppoeOperacionListItem {
     return {
-      /**
-       * ======================================================
-       * IDENTIFICADORES
-       * ======================================================
-       */
-
       id: raw.id,
 
       empresaId: raw.empresaId,
@@ -336,23 +306,11 @@ export class PppoeOperacionReadModelPrismaMapper {
 
       desinstalacionId: raw.desinstalacionId,
 
-      /**
-       * ======================================================
-       * REINTENTOS E IDEMPOTENCIA
-       * ======================================================
-       */
-
       reintentoDeId: raw.reintentoDeId,
 
       numeroIntento: raw.numeroIntento,
 
       claveIdempotencia: raw.claveIdempotencia,
-
-      /**
-       * ======================================================
-       * CLASIFICACIÓN
-       * ======================================================
-       */
 
       tipo: PppoeOperacionPrismaEnumMapper.tipoOperacionToDomain(raw.tipo),
 
@@ -366,12 +324,6 @@ export class PppoeOperacionReadModelPrismaMapper {
         raw.estado,
       ),
 
-      /**
-       * ======================================================
-       * AUTORIZACIÓN
-       * ======================================================
-       */
-
       iniciadoPorId: raw.iniciadoPorId,
 
       reautenticadoPorId: raw.reautenticadoPorId,
@@ -382,12 +334,6 @@ export class PppoeOperacionReadModelPrismaMapper {
 
       reautenticadoEn: this.cloneOptionalDate(raw.reautenticadoEn),
 
-      /**
-       * ======================================================
-       * SNAPSHOTS
-       * ======================================================
-       */
-
       usuarioPppoeSnapshot: raw.usuarioPppoeSnapshot,
 
       codigoPerfilSnapshot: raw.codigoPerfilSnapshot,
@@ -396,12 +342,6 @@ export class PppoeOperacionReadModelPrismaMapper {
 
       routerPuertoSnapshot: raw.routerPuertoSnapshot,
 
-      /**
-       * ======================================================
-       * RESULTADO
-       * ======================================================
-       */
-
       motivo: raw.motivo,
 
       resultado: this.resultadoToDomain(raw.resultado),
@@ -409,12 +349,6 @@ export class PppoeOperacionReadModelPrismaMapper {
       errorCodigo: raw.errorCodigo,
 
       errorMensaje: raw.errorMensaje,
-
-      /**
-       * ======================================================
-       * FECHAS
-       * ======================================================
-       */
 
       iniciadoEn: this.cloneOptionalDate(raw.iniciadoEn),
 
@@ -427,12 +361,6 @@ export class PppoeOperacionReadModelPrismaMapper {
       creadoEn: new Date(raw.creadoEn.getTime()),
 
       actualizadoEn: new Date(raw.actualizadoEn.getTime()),
-
-      /**
-       * ======================================================
-       * RELACIONES
-       * ======================================================
-       */
 
       empresa: {
         id: raw.empresa.id,
@@ -683,7 +611,7 @@ export class PppoeOperacionReadModelPrismaMapper {
    */
   private static toPasoReadModel(
     raw: PppoeOperacionDetailPrismaPayload['pasos'][number],
-  ): PppoeOperacionPasoReadModel {
+  ): PppoeOperacionDetallePaso {
     const entity = PppoeOperacionPasoPrismaMapper.toDomain(raw);
 
     const primitives = entity.toPrimitives();

@@ -40,12 +40,6 @@ export type GuardarPppoeOperacionPasoParams = {
 };
 
 /**
- * ============================================================
- * AGREGADO DE OPERACIÓN
- * ============================================================
- */
-
-/**
  * Representa una operación junto con sus pasos técnicos.
  *
  * PppoeOperacion es la raíz del agregado.
@@ -69,12 +63,6 @@ export type CrearPppoeOperacionAggregateParams = {
 
   pasos: CrearPppoeOperacionPasoInicialProps[];
 };
-
-/**
- * ============================================================
- * PARÁMETROS DE BÚSQUEDA POR IDENTIFICADOR
- * ============================================================
- */
 
 /**
  * Parámetros utilizados para localizar una operación
@@ -117,12 +105,6 @@ export type BuscarPppoeOperacionPasoPorOrdenParams = {
 };
 
 /**
- * ============================================================
- * IDEMPOTENCIA
- * ============================================================
- */
-
-/**
  * Parámetros para localizar una operación previamente creada
  * con la misma clave de idempotencia.
  *
@@ -138,12 +120,6 @@ export type BuscarPppoeOperacionPorIdempotenciaParams = {
 
   claveIdempotencia: string;
 };
-
-/**
- * ============================================================
- * OPERACIONES EN CURSO
- * ============================================================
- */
 
 /**
  * Parámetros para revisar si ya existe una operación activa
@@ -186,12 +162,6 @@ export type BuscarPppoeOperacionEnCursoParams = {
 };
 
 /**
- * ============================================================
- * CONSULTAS DE REINTENTOS
- * ============================================================
- */
-
-/**
  * Parámetros para localizar el intento más reciente dentro
  * de una cadena de reintentos.
  *
@@ -217,12 +187,6 @@ export type BuscarUltimaOperacionCuentaPppoeParams = {
 
   tipo?: TipoOperacionPppoe | null;
 };
-
-/**
- * ============================================================
- * PUERTO DE REPOSITORIO
- * ============================================================
- */
 
 /**
  * Puerto de persistencia del agregado PppoeOperacion.

@@ -18,10 +18,6 @@ import {
 } from '../../domain/errors/pppoe-operacion.errors';
 
 /**
- * INPUT
- */
-
-/**
  * Datos necesarios para autorizar una operación PPPoE
  * mediante la reautenticación del operador.
  */
@@ -35,10 +31,6 @@ export type AutorizarPppoeOperacionUseCaseInput = {
   operadorId: number;
   password: string;
 };
-
-/**
- * CASO DE USO
- */
 
 /**
  * Autoriza una operación PPPoE protegida mediante
@@ -76,10 +68,6 @@ export class AutorizarPppoeOperacionUseCase {
   async execute(
     input: AutorizarPppoeOperacionUseCaseInput,
   ): Promise<PppoeOperacionEntity> {
-    /**
-     *  VALIDACIÓN DE ENTRADA
-     */
-
     this.assertPositiveInteger(input.empresaId, 'empresaId');
 
     this.assertPositiveInteger(input.operacionId, 'operacionId');
@@ -87,10 +75,6 @@ export class AutorizarPppoeOperacionUseCase {
     this.assertPositiveInteger(input.operadorId, 'operadorId');
 
     this.assertPassword(input.password);
-
-    /**
-     *  OBTENER OPERACIÓN
-     */
 
     const operacion = await this.repository.findById({
       empresaId: input.empresaId,
@@ -101,10 +85,6 @@ export class AutorizarPppoeOperacionUseCase {
     if (!operacion) {
       throw new OperacionPppoeNoEncontradaError();
     }
-
-    /**
-     *  VALIDAR POLÍTICA DE AUTORIZACIÓN
-     */
 
     if (!operacion.requiereReautenticacion) {
       throw new OperacionPppoeEstadoInvalidoError(
@@ -128,10 +108,6 @@ export class AutorizarPppoeOperacionUseCase {
       );
     }
 
-    /**
-     *  VALIDAR CREDENCIALES
-     */
-
     const fechaReautenticacion = this.reloj.ahora();
 
     const credencialesValidas = await this.operadorReautenticacion.validar({
@@ -144,10 +120,6 @@ export class AutorizarPppoeOperacionUseCase {
        */
       password: input.password,
     });
-
-    /**
-     * REAUTENTICACIÓN FALLIDA
-     */
 
     if (!credencialesValidas) {
       operacion.registrarReautenticacionFallida({
@@ -172,26 +144,14 @@ export class AutorizarPppoeOperacionUseCase {
       throw new ReautenticacionOperadorInvalidaError();
     }
 
-    /**
-     * AUTORIZAR OPERACIÓN
-     */
-
     operacion.autorizar({
       reautenticadoPorId: input.operadorId,
 
       fecha: fechaReautenticacion,
     });
 
-    /**
-     * PERSISTIR OPERACIÓN AUTORIZADA
-     */
-
     return this.repository.saveOperation(operacion);
   }
-
-  /**
-   * VALIDACIONES INTERNAS
-   */
 
   /**
    * Valida identificadores enteros positivos.

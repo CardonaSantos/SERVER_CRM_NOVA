@@ -45,12 +45,6 @@ import {
 import { PppoeOperacionResultado } from '../props/pppoe-operacion.props';
 
 /**
- * ============================================================
- * READ MODEL DE PASOS TÉCNICOS
- * ============================================================
- */
-
-/**
  * Representa un paso técnico ejecutado dentro de una operación.
  *
  * Ejemplos:
@@ -62,7 +56,7 @@ import { PppoeOperacionResultado } from '../props/pppoe-operacion.props';
  *
  * Este modelo puede devolverse en el detalle de una operación.
  */
-export type PppoeOperacionPasoReadModel = {
+export type PppoeOperacionDetallePaso = {
   /**
    * Identificador del paso.
    */
@@ -137,12 +131,6 @@ export type PppoeOperacionPasoReadModel = {
    */
   actualizadoEn: Date;
 };
-
-/**
- * ============================================================
- * RESÚMENES DE RELACIONES
- * ============================================================
- */
 
 /**
  * Información resumida de un usuario relacionado
@@ -374,12 +362,6 @@ export type PppoeOperacionDesinstalacionResumen = {
 };
 
 /**
- * ============================================================
- * REINTENTOS Y CONTEOS
- * ============================================================
- */
-
-/**
  * Información reducida de una operación perteneciente
  * a la misma cadena de reintentos.
  */
@@ -416,12 +398,6 @@ export type PppoeOperacionConteos = {
 };
 
 /**
- * ============================================================
- * ITEM PARA LISTADO PAGINADO
- * ============================================================
- */
-
-/**
  * Representa una operación PPPoE enriquecida para listados.
  *
  * Se utilizará principalmente en:
@@ -432,12 +408,6 @@ export type PppoeOperacionConteos = {
  * todos los pasos ni todos los reintentos.
  */
 export type PppoeOperacionListItem = {
-  /**
-   * ==========================================================
-   * IDENTIFICADORES PRINCIPALES
-   * ==========================================================
-   */
-
   id: number;
 
   empresaId: number;
@@ -451,12 +421,6 @@ export type PppoeOperacionListItem = {
   instalacionId: number | null;
 
   desinstalacionId: number | null;
-
-  /**
-   * ==========================================================
-   * REINTENTOS E IDEMPOTENCIA
-   * ==========================================================
-   */
 
   /**
    * Operación anterior o raíz de la cadena de reintentos.
@@ -473,12 +437,6 @@ export type PppoeOperacionListItem = {
    * la misma operación accidentalmente.
    */
   claveIdempotencia: string;
-
-  /**
-   * ==========================================================
-   * CLASIFICACIÓN DE LA OPERACIÓN
-   * ==========================================================
-   */
 
   /**
    * Acción general que se intenta realizar.
@@ -514,12 +472,6 @@ export type PppoeOperacionListItem = {
   estado: EstadoOperacionPppoe;
 
   /**
-   * ==========================================================
-   * OPERADORES Y AUTORIZACIÓN
-   * ==========================================================
-   */
-
-  /**
    * Usuario que inició la operación.
    */
   iniciadoPorId: number | null;
@@ -545,12 +497,6 @@ export type PppoeOperacionListItem = {
   reautenticadoEn: Date | null;
 
   /**
-   * ==========================================================
-   * SNAPSHOTS HISTÓRICOS NO SENSIBLES
-   * ==========================================================
-   */
-
-  /**
    * Usuario PPPoE utilizado durante el intento.
    */
   usuarioPppoeSnapshot: string;
@@ -569,12 +515,6 @@ export type PppoeOperacionListItem = {
    * Puerto administrativo utilizado durante el intento.
    */
   routerPuertoSnapshot: number | null;
-
-  /**
-   * ==========================================================
-   * RESULTADO GENERAL
-   * ==========================================================
-   */
 
   /**
    * Razón funcional o administrativa de la operación.
@@ -596,12 +536,6 @@ export type PppoeOperacionListItem = {
    */
   errorMensaje: string | null;
 
-  /**
-   * ==========================================================
-   * FECHAS Y DURACIÓN
-   * ==========================================================
-   */
-
   iniciadoEn: Date | null;
 
   finalizadoEn: Date | null;
@@ -613,12 +547,6 @@ export type PppoeOperacionListItem = {
   creadoEn: Date;
 
   actualizadoEn: Date;
-
-  /**
-   * ==========================================================
-   * RELACIONES POBLADAS
-   * ==========================================================
-   */
 
   empresa: PppoeOperacionEmpresaResumen;
 
@@ -648,12 +576,6 @@ export type PppoeOperacionListItem = {
 };
 
 /**
- * ============================================================
- * DETALLE DE OPERACIÓN
- * ============================================================
- */
-
-/**
  * Representa el detalle completo de una operación.
  *
  * Se utilizará principalmente en:
@@ -670,16 +592,10 @@ export type PppoeOperacionListItem = {
  * GET /pppoe-auditoria?operacionId=:id
  */
 export type PppoeOperacionDetalle = PppoeOperacionListItem & {
-  pasos: PppoeOperacionPasoReadModel[];
+  pasos: PppoeOperacionDetallePaso[];
 
   reintentos: PppoeOperacionReintentoResumen[];
 };
-
-/**
- * ============================================================
- * FILTROS DEL LISTADO PAGINADO
- * ============================================================
- */
 
 /**
  * Filtros soportados por el listado administrativo
@@ -710,12 +626,6 @@ export type PppoeOperacionFindManyFilters = {
    */
   search?: string | null;
 
-  /**
-   * ==========================================================
-   * FILTROS POR RELACIONES
-   * ==========================================================
-   */
-
   cuentaPppoeId?: number | null;
 
   mikrotikRouterId?: number | null;
@@ -732,12 +642,6 @@ export type PppoeOperacionFindManyFilters = {
 
   reintentoDeId?: number | null;
 
-  /**
-   * ==========================================================
-   * FILTROS POR ENUMS
-   * ==========================================================
-   */
-
   tipos?: TipoOperacionPppoe[] | null;
 
   origenes?: OrigenOperacionPppoe[] | null;
@@ -746,42 +650,18 @@ export type PppoeOperacionFindManyFilters = {
 
   estados?: EstadoOperacionPppoe[] | null;
 
-  /**
-   * ==========================================================
-   * FILTROS FUNCIONALES
-   * ==========================================================
-   */
-
   requiereReautenticacion?: boolean | null;
 
   numeroIntento?: number | null;
-
-  /**
-   * ==========================================================
-   * RANGO DE FECHAS
-   * ==========================================================
-   */
 
   fechaDesde?: Date | null;
 
   fechaHasta?: Date | null;
 
-  /**
-   * ==========================================================
-   * ORDENAMIENTO
-   * ==========================================================
-   */
-
   ordenPor?: 'creadoEn' | 'iniciadoEn' | 'finalizadoEn' | 'numeroIntento';
 
   ordenDireccion?: 'asc' | 'desc';
 };
-
-/**
- * ============================================================
- * RESULTADO PAGINADO
- * ============================================================
- */
 
 /**
  * Resultado estándar del listado de operaciones PPPoE.

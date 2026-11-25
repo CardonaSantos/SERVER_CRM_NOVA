@@ -38,10 +38,6 @@ export class PppoeOperacionPrismaRepository
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * CREACIÓN
-   */
-
-  /**
    * Crea una operación y todos sus pasos iniciales
    * mediante nested create.
    */

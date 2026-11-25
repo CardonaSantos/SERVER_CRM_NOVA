@@ -31,10 +31,6 @@ export type PppoeOperacionResultado = DomainJsonObject;
 export type PppoeOperacionProps = {
   id: number | null;
 
-  // ==========================================================
-  // CONTEXTO
-  // ==========================================================
-
   empresaId: number;
 
   cuentaPppoeId: number;
@@ -47,10 +43,6 @@ export type PppoeOperacionProps = {
 
   desinstalacionId: number | null;
 
-  // ==========================================================
-  // REINTENTOS E IDEMPOTENCIA
-  // ==========================================================
-
   /**
    * En un reintento apunta a la operación inicial
    * de la cadena.
@@ -61,10 +53,6 @@ export type PppoeOperacionProps = {
 
   claveIdempotencia: string;
 
-  // ==========================================================
-  // CLASIFICACIÓN
-  // ==========================================================
-
   tipo: TipoOperacionPppoe;
 
   origen: OrigenOperacionPppoe;
@@ -72,10 +60,6 @@ export type PppoeOperacionProps = {
   canal: CanalOperacionPppoe;
 
   estado: EstadoOperacionPppoe;
-
-  // ==========================================================
-  // RESPONSABLE Y AUTORIZACIÓN
-  // ==========================================================
 
   iniciadoPorId: number | null;
 
@@ -87,10 +71,6 @@ export type PppoeOperacionProps = {
 
   reautenticadoEn: Date | null;
 
-  // ==========================================================
-  // SNAPSHOTS NO SENSIBLES
-  // ==========================================================
-
   usuarioPppoeSnapshot: string;
 
   codigoPerfilSnapshot: string | null;
@@ -99,10 +79,6 @@ export type PppoeOperacionProps = {
 
   routerPuertoSnapshot: number | null;
 
-  // ==========================================================
-  // RESULTADO
-  // ==========================================================
-
   motivo: string | null;
 
   resultado: PppoeOperacionResultado | null;
@@ -110,10 +86,6 @@ export type PppoeOperacionProps = {
   errorCodigo: string | null;
 
   errorMensaje: string | null;
-
-  // ==========================================================
-  // TIEMPOS
-  // ==========================================================
 
   iniciadoEn: Date | null;
 

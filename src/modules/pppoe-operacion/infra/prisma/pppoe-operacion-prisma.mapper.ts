@@ -220,10 +220,6 @@ export class PppoeOperacionPrismaMapper {
     this.assertInitialSteps(pasos);
 
     return {
-      /**
-       * RELACIONES OBLIGATORIAS
-       */
-
       empresa: {
         connect: {
           id: primitives.empresaId,
@@ -241,10 +237,6 @@ export class PppoeOperacionPrismaMapper {
           id: primitives.mikrotikRouterId,
         },
       },
-
-      /**
-       * RELACIONES OPCIONALES
-       */
 
       perfilHomologacion:
         primitives.perfilHomologacionId === null
@@ -300,27 +292,15 @@ export class PppoeOperacionPrismaMapper {
               },
             },
 
-      /**
-       * PASOS TÉCNICOS INICIALES
-       */
-
       pasos: {
         create: pasos.map((paso) =>
           PppoeOperacionPasoPrismaMapper.toNestedCreatePersistence(paso),
         ),
       },
 
-      /**
-       * REINTENTOS E IDEMPOTENCIA
-       */
-
       numeroIntento: primitives.numeroIntento,
 
       claveIdempotencia: primitives.claveIdempotencia,
-
-      /**
-       * CLASIFICACIÓN
-       */
 
       tipo: PppoeOperacionPrismaEnumMapper.tipoOperacionToPrisma(
         primitives.tipo,
@@ -338,19 +318,11 @@ export class PppoeOperacionPrismaMapper {
         primitives.estado,
       ),
 
-      /**
-       * AUTORIZACIÓN
-       */
-
       requiereReautenticacion: primitives.requiereReautenticacion,
 
       reautenticacionExitosa: primitives.reautenticacionExitosa,
 
       reautenticadoEn: primitives.reautenticadoEn,
-
-      /**
-       * SNAPSHOTS NO SENSIBLES
-       */
 
       usuarioPppoeSnapshot: primitives.usuarioPppoeSnapshot,
 
@@ -360,10 +332,6 @@ export class PppoeOperacionPrismaMapper {
 
       routerPuertoSnapshot: primitives.routerPuertoSnapshot,
 
-      /**
-       * RESULTADO
-       */
-
       motivo: primitives.motivo,
 
       resultado: this.resultadoToPersistence(primitives.resultado),
@@ -371,10 +339,6 @@ export class PppoeOperacionPrismaMapper {
       errorCodigo: primitives.errorCodigo,
 
       errorMensaje: primitives.errorMensaje,
-
-      /**
-       * TIEMPOS
-       */
 
       iniciadoEn: primitives.iniciadoEn,
 
@@ -455,10 +419,6 @@ export class PppoeOperacionPrismaMapper {
   }
 
   /**
-   * RESULTADO JSON
-   */
-
-  /**
    * Convierte el campo Json de Prisma al resultado
    * aceptado por el dominio.
    *
@@ -500,10 +460,6 @@ export class PppoeOperacionPrismaMapper {
 
     return value as Prisma.InputJsonValue;
   }
-
-  /**
-   * VALIDACIÓN DE PASOS INICIALES
-   */
 
   /**
    * Valida la secuencia mínima antes de construir

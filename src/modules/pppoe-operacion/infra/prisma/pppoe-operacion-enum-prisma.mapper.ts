@@ -221,12 +221,6 @@ const estadoPasoToPrismaMap = {
 } satisfies Record<EstadoPasoPppoe, PrismaEstadoPasoPppoe>;
 
 /**
- * ============================================================
- * MAPPER PÚBLICO
- * ============================================================
- */
-
-/**
  * Centraliza todas las conversiones entre enums Prisma
  * y enums del dominio PPPoE.
  *

@@ -145,12 +145,6 @@ export class PppoeOperacionPasoEntity {
   private constructor(private props: PppoeOperacionPasoProps) {}
 
   /**
-   * ==========================================================
-   * CONSTRUCCIÓN
-   * ==========================================================
-   */
-
-  /**
    * Crea un paso nuevo en estado PENDIENTE.
    *
    * No permite definir manualmente estado, errores, fechas
@@ -271,12 +265,6 @@ export class PppoeOperacionPasoEntity {
 
     return new PppoeOperacionPasoEntity(normalizedProps);
   }
-
-  /**
-   * ==========================================================
-   * TRANSICIONES DE ESTADO
-   * ==========================================================
-   */
 
   /**
    * Comienza la ejecución técnica del paso.
@@ -460,12 +448,6 @@ export class PppoeOperacionPasoEntity {
   }
 
   /**
-   * ==========================================================
-   * CONSULTAS DE ESTADO
-   * ==========================================================
-   */
-
-  /**
    * Indica si el paso todavía no comenzó.
    */
   estaPendiente(): boolean {
@@ -511,12 +493,6 @@ export class PppoeOperacionPasoEntity {
     ].includes(this.props.estado);
   }
 
-  /**
-   * ==========================================================
-   * GETTERS
-   * ==========================================================
-   */
-
   get id(): number | null {
     return this.props.id;
   }
@@ -548,12 +524,6 @@ export class PppoeOperacionPasoEntity {
   get duracionMs(): number | null {
     return this.props.duracionMs;
   }
-
-  /**
-   * ==========================================================
-   * CONVERSIÓN A PRIMITIVOS
-   * ==========================================================
-   */
 
   /**
    * Devuelve una copia segura del estado completo.
@@ -596,12 +566,6 @@ export class PppoeOperacionPasoEntity {
       actualizadoEn: new Date(this.props.actualizadoEn.getTime()),
     };
   }
-
-  /**
-   * ==========================================================
-   * VALIDACIONES INTERNAS DE INSTANCIA
-   * ==========================================================
-   */
 
   /**
    * Exige que la entidad se encuentre en un estado concreto.
@@ -679,12 +643,6 @@ export class PppoeOperacionPasoEntity {
   private cloneOptionalDate(value: Date | null): Date | null {
     return value ? new Date(value.getTime()) : null;
   }
-
-  /**
-   * ==========================================================
-   * VALIDACIONES ESTÁTICAS
-   * ==========================================================
-   */
 
   /**
    * Valida identificadores y valores enteros positivos.

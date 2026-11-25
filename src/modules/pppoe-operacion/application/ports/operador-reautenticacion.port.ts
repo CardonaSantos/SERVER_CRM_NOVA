@@ -20,10 +20,6 @@ export type ValidarReautenticacionOperadorParams = {
 };
 
 /**
- * PUERTO
- */
-
-/**
  * Puerto para validar credenciales sin acoplar el módulo
  * de operaciones PPPoE al sistema concreto de autenticación.
  *

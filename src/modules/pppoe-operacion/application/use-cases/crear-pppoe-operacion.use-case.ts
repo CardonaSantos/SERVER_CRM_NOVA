@@ -112,12 +112,6 @@ export class CrearPppoeOperacionUseCase {
   async execute(
     input: CrearPppoeOperacionUseCaseInput,
   ): Promise<CrearPppoeOperacionUseCaseResult> {
-    /**
-     * ========================================================
-     * 1. IDEMPOTENCIA
-     * ========================================================
-     */
-
     const existingOperation = await this.repository.findByIdempotencyKey({
       empresaId: input.empresaId,
 
@@ -167,10 +161,6 @@ export class CrearPppoeOperacionUseCase {
       };
     }
 
-    /**
-     * CONCURRENCIA POR CUENTA
-     */
-
     const runningOperation = await this.repository.findRunningOperation({
       empresaId: input.empresaId,
 
@@ -188,10 +178,6 @@ export class CrearPppoeOperacionUseCase {
         this.buildRunningOperationMessage(runningOperation),
       );
     }
-
-    /**
-     * CONSTRUCCIÓN DE LA ENTIDAD PRINCIPAL
-     */
 
     const operation = PppoeOperacionEntity.create(
       {
@@ -234,15 +220,7 @@ export class CrearPppoeOperacionUseCase {
       this.reloj.ahora(),
     );
 
-    /**
-     *  PLANIFICACIÓN DE PASOS
-     */
-
     const steps = PoliticaPlanPasosPppoe.crearPasos(input.tipo);
-
-    /**
-     *  PERSISTENCIA DEL AGREGADO
-     */
 
     const createdAggregate = await this.repository.createWithSteps({
       operacion: operation,

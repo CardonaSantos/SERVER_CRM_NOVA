@@ -248,12 +248,6 @@ export class PppoeOperacionEntity {
   private constructor(private props: PppoeOperacionProps) {}
 
   /**
-   * ==========================================================
-   * CONSTRUCCIÓN
-   * ==========================================================
-   */
-
-  /**
    * Crea una operación nueva en estado PENDIENTE.
    *
    * No permite definir manualmente:
@@ -560,12 +554,6 @@ export class PppoeOperacionEntity {
   }
 
   /**
-   * ==========================================================
-   * AUTORIZACIÓN
-   * ==========================================================
-   */
-
-  /**
    * Autoriza una operación que requiere reautenticación.
    *
    * Transición:
@@ -646,12 +634,6 @@ export class PppoeOperacionEntity {
 
     this.touch(fecha);
   }
-
-  /**
-   * ==========================================================
-   * EJECUCIÓN
-   * ==========================================================
-   */
 
   /**
    * Inicia la ejecución técnica de la operación.
@@ -847,12 +829,6 @@ export class PppoeOperacionEntity {
   }
 
   /**
-   * ==========================================================
-   * REINTENTOS
-   * ==========================================================
-   */
-
-  /**
    * Construye una operación nueva vinculada a esta operación.
    *
    * Solo se permite reintentar operaciones:
@@ -904,7 +880,6 @@ export class PppoeOperacionEntity {
 
         cuentaPppoeId: this.props.cuentaPppoeId,
 
-        // mikrotikRouterId: input.mikrotikRouterId ?? this.props.mikrotikRouterId,
         mikrotikRouterId: input.mikrotikRouterId,
         perfilHomologacionId:
           input.perfilHomologacionId !== undefined
@@ -949,12 +924,6 @@ export class PppoeOperacionEntity {
       input.fecha,
     );
   }
-
-  /**
-   * ==========================================================
-   * CONSULTAS DE DOMINIO
-   * ==========================================================
-   */
 
   /**
    * Indica si la operación todavía no comenzó.
@@ -1069,12 +1038,6 @@ export class PppoeOperacionEntity {
     return this.props.instalacionId === instalacionId;
   }
 
-  /**
-   * ==========================================================
-   * GETTERS
-   * ==========================================================
-   */
-
   get id(): number | null {
     return this.props.id;
   }
@@ -1154,12 +1117,6 @@ export class PppoeOperacionEntity {
   get duracionMs(): number | null {
     return this.props.duracionMs;
   }
-
-  /**
-   * ==========================================================
-   * CONVERSIÓN PARA MAPPERS
-   * ==========================================================
-   */
 
   /**
    * Devuelve una copia segura del estado completo.
@@ -1273,12 +1230,6 @@ export class PppoeOperacionEntity {
       id: this.props.id,
     };
   }
-
-  /**
-   * ==========================================================
-   * MÉTODOS INTERNOS DE INSTANCIA
-   * ==========================================================
-   */
 
   /**
    * Finalización común para PARCIAL y FALLIDA.
@@ -1407,12 +1358,6 @@ export class PppoeOperacionEntity {
   }
 
   /**
-   * ==========================================================
-   * VALIDACIONES GENERALES
-   * ==========================================================
-   */
-
-  /**
    * Reglas que no dependen del estado actual.
    */
   private static assertGeneralConsistency(props: PppoeOperacionProps): void {
@@ -1536,12 +1481,6 @@ export class PppoeOperacionEntity {
       );
     }
   }
-
-  /**
-   * ==========================================================
-   * VALIDACIONES POR ESTADO
-   * ==========================================================
-   */
 
   /**
    * Verifica que el contenido persistido sea coherente
@@ -1771,12 +1710,6 @@ export class PppoeOperacionEntity {
   }
 
   /**
-   * ==========================================================
-   * VALIDACIONES TEMPORALES
-   * ==========================================================
-   */
-
-  /**
    * Valida la cronología de una operación restaurada.
    */
   private static assertTemporalConsistency(props: PppoeOperacionProps): void {
@@ -1836,12 +1769,6 @@ export class PppoeOperacionEntity {
       );
     }
   }
-
-  /**
-   * ==========================================================
-   * NORMALIZADORES
-   * ==========================================================
-   */
 
   private static normalizePositiveInteger(
     value: number,
@@ -2028,12 +1955,6 @@ export class PppoeOperacionEntity {
 
     return value as TEnum[keyof TEnum];
   }
-
-  /**
-   * ==========================================================
-   * RESULTADO JSON SANITIZADO
-   * ==========================================================
-   */
 
   /**
    * Valida, limita y clona el resultado general.

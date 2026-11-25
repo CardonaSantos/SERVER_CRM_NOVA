@@ -5,22 +5,10 @@ import {
 } from '../read-models/pppoe-operacion.read-model';
 
 /**
- * ============================================================
- * TOKEN DE INYECCIÓN
- * ============================================================
- */
-
-/**
  * Token utilizado para inyectar el repositorio
  * de consultas enriquecidas de operaciones PPPoE.
  */
 export const PPPOE_OPERACION_QUERY = Symbol('PPPOE_OPERACION_QUERY');
-
-/**
- * ============================================================
- * PARÁMETROS DEL DETALLE
- * ============================================================
- */
 
 /**
  * Parámetros utilizados para consultar el detalle completo
@@ -31,12 +19,6 @@ export type BuscarPppoeOperacionDetalleParams = {
 
   operacionId: number;
 };
-
-/**
- * ============================================================
- * PUERTO DE CONSULTAS
- * ============================================================
- */
 
 /**
  * Puerto de lectura para consultas administrativas y UI.
