@@ -21,9 +21,7 @@ import { PppoeAuditoriaInstalacionPresenter } from './pppoe-auditoria-instalacio
 
 @Controller('cliente-instalaciones')
 export class PppoeAuditoriaInstalacionController {
-  constructor(
-    private readonly pppoeAuditoriaService: PppoeAuditoriaService,
-  ) {}
+  constructor(private readonly pppoeAuditoriaService: PppoeAuditoriaService) {}
 
   @Get(':instalacionId/auditoria-pppoe')
   @HttpCode(HttpStatus.OK)
@@ -39,13 +37,12 @@ export class PppoeAuditoriaInstalacionController {
   ) {
     const actor = this.getAdministrativeActor(req);
 
-    const result =
-      await this.pppoeAuditoriaService.findTimelineByInstalacion({
-        instalacionId,
-        empresaId: actor.empresaId,
-        actorRol: actor.rol,
-        query,
-      });
+    const result = await this.pppoeAuditoriaService.findTimelineByInstalacion({
+      instalacionId,
+      empresaId: actor.empresaId,
+      actorRol: actor.rol,
+      query,
+    });
 
     if (!result) {
       throw new NotFoundException(
@@ -56,9 +53,7 @@ export class PppoeAuditoriaInstalacionController {
     return PppoeAuditoriaInstalacionPresenter.paginatedToHttp(result);
   }
 
-  private getAdministrativeActor(
-    req: RequestWithAuthenticatedUser,
-  ): {
+  private getAdministrativeActor(req: RequestWithAuthenticatedUser): {
     empresaId: number;
     rol: string;
   } {
