@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
-
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaTransaccional } from 'src/common/transaccion/prisma-transaccional.service';
 
 import {
   BuscarAccesoInternetDelClienteParams,
@@ -20,14 +19,19 @@ import {
 export class ClienteAccesoInternetPrismaRepository
   implements ClienteAccesoInternetRepositoryPort
 {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly transaccional: PrismaTransaccional) {}
+
+  /** La transacción abierta por una unidad de trabajo, o el cliente normal. */
+  private get db() {
+    return this.transaccional.cliente;
+  }
 
   async create(
     entity: ClienteAccesoInternetEntity,
   ): Promise<ClienteAccesoInternetEntity> {
     const data = ClienteAccesoInternetPrismaMapper.toCreatePersistence(entity);
 
-    const record = await this.prisma.clienteAccesoInternet.create({
+    const record = await this.db.clienteAccesoInternet.create({
       data,
     });
 
@@ -45,7 +49,7 @@ export class ClienteAccesoInternetPrismaRepository
 
     const data = ClienteAccesoInternetPrismaMapper.toUpdatePersistence(entity);
 
-    const record = await this.prisma.clienteAccesoInternet.update({
+    const record = await this.db.clienteAccesoInternet.update({
       where: {
         id,
       },
@@ -59,7 +63,7 @@ export class ClienteAccesoInternetPrismaRepository
   async findById(
     accesoInternetId: number,
   ): Promise<ClienteAccesoInternetEntity | null> {
-    const record = await this.prisma.clienteAccesoInternet.findUnique({
+    const record = await this.db.clienteAccesoInternet.findUnique({
       where: { id: accesoInternetId },
     });
 
@@ -73,7 +77,7 @@ export class ClienteAccesoInternetPrismaRepository
   async findByIdForClient(
     params: BuscarAccesoInternetDelClienteParams,
   ): Promise<ClienteAccesoInternetEntity | null> {
-    const record = await this.prisma.clienteAccesoInternet.findFirst({
+    const record = await this.db.clienteAccesoInternet.findFirst({
       where: {
         id: params.accesoInternetId,
         clienteId: params.clienteId,
@@ -90,7 +94,7 @@ export class ClienteAccesoInternetPrismaRepository
   async findPppoeVigenteByClienteId(
     clienteId: number,
   ): Promise<ClienteAccesoInternetEntity | null> {
-    const record = await this.prisma.clienteAccesoInternet.findFirst({
+    const record = await this.db.clienteAccesoInternet.findFirst({
       where: {
         clienteId,
         metodoAutenticacion: MetodoAutenticacionInternet.PPPOE,

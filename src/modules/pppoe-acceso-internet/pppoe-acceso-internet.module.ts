@@ -6,6 +6,7 @@ import { PppoeAccesoInternetFacade } from './application/facade/pppoe-acceso-int
 import { BuscarAccesoInternetUseCase } from './application/use-cases/buscar-acceso-internet.use-case';
 import { CambiarEstadoAccesoInternetUseCase } from './application/use-cases/cambiar-estado-acceso-internet.use-case';
 import { CrearAccesoInternetUseCase } from './application/use-cases/crear-acceso-internet.use-case';
+import { RegistrarAccesoInternetAdoptadoUseCase } from './application/use-cases/registrar-acceso-internet-adoptado.use-case';
 import { CLIENTE_ACCESO_INTERNET_REPOSITORY } from './domain/ports/cliente-acceso-internet-repository.port';
 import { ClienteAccesoInternetPrismaRepository } from './infra/prisma/cliente-acceso-internet-prisma.repository';
 import { PPPOE_ACCESO_INTERNET } from './public/pppoe-acceso-internet.facade.port';
@@ -22,6 +23,7 @@ import { PPPOE_ACCESO_INTERNET } from './public/pppoe-acceso-internet.facade.por
     // Casos de uso
     BuscarAccesoInternetUseCase,
     CrearAccesoInternetUseCase,
+    RegistrarAccesoInternetAdoptadoUseCase,
     CambiarEstadoAccesoInternetUseCase,
 
     // Fachada

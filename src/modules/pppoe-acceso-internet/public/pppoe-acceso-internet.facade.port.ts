@@ -1,9 +1,15 @@
-import { CrearClienteAccesoInternetProps } from '../domain/props/cliente-acceso-internet.props';
+import {
+  AdoptarClienteAccesoInternetProps,
+  CrearClienteAccesoInternetProps,
+} from '../domain/props/cliente-acceso-internet.props';
 import { AccesoInternetReadModel } from '../domain/read-models/acceso-internet.read-model';
 
 export const PPPOE_ACCESO_INTERNET = Symbol('PPPOE_ACCESO_INTERNET');
 
 export type CrearAccesoInternetInput = CrearClienteAccesoInternetProps;
+
+export type RegistrarAccesoInternetAdoptadoInput =
+  AdoptarClienteAccesoInternetProps;
 
 export type TransicionAccesoInternet =
   | 'INICIAR_CONFIGURACION'
@@ -41,6 +47,10 @@ export interface PppoeAccesoInternetFacadePort {
 
   /** Registra un acceso nuevo; siempre nace PENDIENTE. */
   crear(input: CrearAccesoInternetInput): Promise<AccesoInternetReadModel>;
+  /** Acceso que ya funcionaba en el router (adopción); nace en su estado remoto. */
+  registrarAdoptado(
+    input: RegistrarAccesoInternetAdoptadoInput,
+  ): Promise<AccesoInternetReadModel>;
 
   /**
    * Aplica la transición con las reglas de la entidad y la persiste.

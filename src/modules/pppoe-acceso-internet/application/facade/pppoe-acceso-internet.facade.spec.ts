@@ -10,6 +10,7 @@ import { ClienteAccesoInternetRepositoryFake } from '../../test/fakes/cliente-ac
 import { BuscarAccesoInternetUseCase } from '../use-cases/buscar-acceso-internet.use-case';
 import { CambiarEstadoAccesoInternetUseCase } from '../use-cases/cambiar-estado-acceso-internet.use-case';
 import { CrearAccesoInternetUseCase } from '../use-cases/crear-acceso-internet.use-case';
+import { RegistrarAccesoInternetAdoptadoUseCase } from '../use-cases/registrar-acceso-internet-adoptado.use-case';
 
 import { PppoeAccesoInternetFacade } from './pppoe-acceso-internet.facade';
 
@@ -21,6 +22,7 @@ describe('PppoeAccesoInternetFacade', () => {
       new BuscarAccesoInternetUseCase(repo),
       new CrearAccesoInternetUseCase(repo, reloj),
       new CambiarEstadoAccesoInternetUseCase(repo, reloj),
+      new RegistrarAccesoInternetAdoptadoUseCase(repo),
     );
     return { fachada, reloj };
   }
@@ -96,5 +98,22 @@ describe('PppoeAccesoInternetFacade', () => {
 
     const nuevo = await fachada.crear(pppoe);
     expect((await fachada.buscarPppoeVigenteDelCliente(20))!.id).toBe(nuevo.id);
+  });
+
+  it('registrarAdoptado guarda el acceso en su estado remoto y con la fecha de adopción', async () => {
+    const { fachada } = preparar();
+    const fechaAdopcion = new Date('2026-11-20T10:00:00Z');
+
+    const acceso = await fachada.registrarAdoptado({
+      ...pppoe,
+      estadoRemoto: EstadoAccesoInternet.SUSPENDIDO,
+      fechaAdopcion,
+    });
+
+    expect(acceso.id).toBeGreaterThan(0);
+    expect(acceso.estado).toBe(EstadoAccesoInternet.SUSPENDIDO);
+    expect(
+      await fachada.buscarPppoeVigenteDelCliente(pppoe.clienteId),
+    ).toMatchObject({ id: acceso.id });
   });
 });

@@ -5,10 +5,12 @@ import {
   CambiarEstadoAccesoInternetInput,
   CrearAccesoInternetInput,
   PppoeAccesoInternetFacadePort,
+  RegistrarAccesoInternetAdoptadoInput,
 } from '../../public/pppoe-acceso-internet.facade.port';
 import { BuscarAccesoInternetUseCase } from '../use-cases/buscar-acceso-internet.use-case';
 import { CambiarEstadoAccesoInternetUseCase } from '../use-cases/cambiar-estado-acceso-internet.use-case';
 import { CrearAccesoInternetUseCase } from '../use-cases/crear-acceso-internet.use-case';
+import { RegistrarAccesoInternetAdoptadoUseCase } from '../use-cases/registrar-acceso-internet-adoptado.use-case';
 
 @Injectable()
 export class PppoeAccesoInternetFacade
@@ -18,7 +20,14 @@ export class PppoeAccesoInternetFacade
     private readonly buscar: BuscarAccesoInternetUseCase,
     private readonly crearAcceso: CrearAccesoInternetUseCase,
     private readonly cambiarEstadoAcceso: CambiarEstadoAccesoInternetUseCase,
+    private readonly registrarAccesoAdoptado: RegistrarAccesoInternetAdoptadoUseCase,
   ) {}
+
+  registrarAdoptado(
+    input: RegistrarAccesoInternetAdoptadoInput,
+  ): Promise<AccesoInternetReadModel> {
+    return this.registrarAccesoAdoptado.execute(input);
+  }
 
   buscarPorId(
     accesoInternetId: number,
