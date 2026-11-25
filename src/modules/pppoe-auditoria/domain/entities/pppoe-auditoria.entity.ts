@@ -156,8 +156,6 @@ export class PppoeAuditoriaEntity {
 
   /**
    * Reconstruye un registro existente.
-   *
-   * Será utilizado por el mapper Prisma.
    */
   static hydrate(input: PppoeAuditoriaEntityProps): PppoeAuditoriaEntity {
     this.assertPositiveId(input.id, 'id');
@@ -235,10 +233,6 @@ export class PppoeAuditoriaEntity {
     return new PppoeAuditoriaEntity(props);
   }
 
-  /*
-   * Factories semánticos
-   */
-
   /**
    * Registra cualquier evento relacionado con una cuenta
    * PPPoE concreta.
@@ -304,10 +298,6 @@ export class PppoeAuditoriaEntity {
   ): PppoeAuditoriaEntity {
     return this.create(input);
   }
-
-  /*
-   * Getters principales
-   */
 
   get id(): number | null {
     return this.props.id;
@@ -397,10 +387,6 @@ export class PppoeAuditoriaEntity {
     return new Date(this.props.creadoEn);
   }
 
-  /*
-   * Consultas semánticas
-   */
-
   get tieneTransicionCuenta(): boolean {
     return (
       this.props.estadoCuentaAnterior !== null ||
@@ -438,10 +424,6 @@ export class PppoeAuditoriaEntity {
   get perteneceACuenta(): boolean {
     return this.props.cuentaPppoeId !== null;
   }
-
-  /*
-   * Salida para mapper y repositorio
-   */
 
   toPrimitives(): PppoeAuditoriaEntityProps {
     return {
@@ -489,10 +471,6 @@ export class PppoeAuditoriaEntity {
       creadoEn: new Date(this.props.creadoEn),
     };
   }
-
-  /*
-   * Validaciones internas
-   */
 
   private static assertConsistency(props: PppoeAuditoriaEntityProps): void {
     this.assertHasContext(props);
@@ -614,10 +592,6 @@ export class PppoeAuditoriaEntity {
       throw new Error(`${field} debe ser una fecha válida.`);
     }
   }
-
-  /*
-   * Manejo seguro del JSON
-   */
 
   private static normalizeDatos(
     value: DatosAuditoriaPppoe | null,

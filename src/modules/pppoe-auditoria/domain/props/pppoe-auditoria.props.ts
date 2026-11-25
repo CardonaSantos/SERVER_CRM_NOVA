@@ -41,17 +41,11 @@ export type DatosAuditoriaPppoe = Record<string, PppoeAuditoriaJsonValue>;
 export type CrearPppoeAuditoriaEntityProps = {
   empresaId: number;
 
-  /*
-   * Contexto comercial y PPPoE.
-   */
   clienteId?: number | null;
   accesoInternetId?: number | null;
   cuentaPppoeId?: number | null;
   perfilHomologacionId?: number | null;
 
-  /*
-   * Contexto operativo.
-   */
   instalacionId?: number | null;
   desinstalacionId?: number | null;
   operacionId?: number | null;
@@ -89,9 +83,6 @@ export type CrearPppoeAuditoriaEntityProps = {
   perfilCodigoSnapshot?: string | null;
   operadorNombreSnapshot?: string | null;
 
-  /*
-   * Información adicional no sensible.
-   */
   datos?: DatosAuditoriaPppoe | null;
 
   /*
@@ -109,12 +100,6 @@ export type CrearPppoeAuditoriaEntityProps = {
 
 /**
  * Estado completo de una auditoría PPPoE.
- *
- * Esta estructura será utilizada por:
- * - hydrate()
- * - toPrimitives()
- * - mapper Prisma
- * - repositorio
  */
 export type PppoeAuditoriaEntityProps = {
   id: number | null;
