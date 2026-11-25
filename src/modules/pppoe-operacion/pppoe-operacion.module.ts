@@ -18,6 +18,8 @@ import { PPPOE_OPERACION_REPOSITORY } from './domain/ports/pppoe-operacion-repos
 import { OperadorReautenticacionPrismaAdapter } from './infra/prisma/operador-reautenticacion-prisma.adapter';
 import { PppoeOperacionPrismaRepository } from './infra/prisma/pppoe-operacion-prisma.repository';
 import { CrearPppoeOperacionUseCase } from './application/use-cases/crear-pppoe-operacion.use-case';
+import { PppoeOperacionFacade } from './application/facade/pppoe-operacion.facade';
+import { PPPOE_OPERACION } from './public/pppoe-operacion.facade.port';
 
 const useCases = [
   CrearPppoeOperacionUseCase,
@@ -46,6 +48,9 @@ const useCases = [
      */
     ...useCases,
 
+    PppoeOperacionFacade,
+    { provide: PPPOE_OPERACION, useExisting: PppoeOperacionFacade },
+
     {
       provide: PPPOE_OPERACION_REPOSITORY,
       useExisting: PppoeOperacionPrismaRepository,
@@ -68,6 +73,13 @@ const useCases = [
     },
   ],
 
-  exports: [...useCases, PPPOE_OPERACION_REPOSITORY, PPPOE_OPERACION_QUERY],
+  exports: [
+    PPPOE_OPERACION,
+    // Temporal hasta C3: el motor de pppoe-automatizacion todavía usa los
+    // casos de uso y el repositorio directamente. Se quitan al pasarlo a la fachada.
+    ...useCases,
+    PPPOE_OPERACION_REPOSITORY,
+    PPPOE_OPERACION_QUERY,
+  ],
 })
 export class PppoeOperacionModule {}
