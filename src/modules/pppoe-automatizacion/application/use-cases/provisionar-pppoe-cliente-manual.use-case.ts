@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 
@@ -35,6 +29,11 @@ import {
   CrearYEjecutarActivacionPppoeUseCase,
   ModoActivacionPppoe,
 } from './crear-y-ejecutar-activacion-pppoe.use-case';
+import { CuentaPppoeNoEncontradaError } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
+import {
+  ProvisionamientoPppoeDatosInvalidosError,
+  ProvisionamientoPppoeEstadoInvalidoError,
+} from '../../domain/errors/pppoe-automatizacion.errors';
 
 export type ProvisionarPppoeClienteManualInput = {
   empresaId: number;
@@ -116,13 +115,11 @@ export class ProvisionarPppoeClienteManualUseCase {
     const cuenta = await this.cuentasPppoe.buscarPorId(input.cuentaPppoeId);
 
     if (!cuenta) {
-      throw new NotFoundException(
-        `No existe la cuenta PPPoE ${input.cuentaPppoeId}.`,
-      );
+      throw new CuentaPppoeNoEncontradaError();
     }
 
     if (cuenta.empresaId !== input.empresaId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE no pertenece a la empresa indicada.',
       );
     }
@@ -225,7 +222,7 @@ export class ProvisionarPppoeClienteManualUseCase {
      * este caso de uso sólo representa ALTA_MANUAL.
      */
     if (accion.flujo !== FlujoActivacionCuentaPppoe.ALTA_MANUAL) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE no pertenece al flujo de alta manual.',
       );
     }
@@ -235,7 +232,7 @@ export class ProvisionarPppoeClienteManualUseCase {
      * ClienteInstalacion.
      */
     if (accion.instalacionId !== null) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE presenta un contexto de instalación incompatible con el flujo de alta manual.',
       );
     }
@@ -247,7 +244,7 @@ export class ProvisionarPppoeClienteManualUseCase {
      * impedir la activación.
      */
     if (!accion.habilitada) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         accion.motivo ?? 'La cuenta PPPoE no puede activarse actualmente.',
       );
     }
@@ -275,7 +272,9 @@ export class ProvisionarPppoeClienteManualUseCase {
     this.assertPositiveInteger(input.cuentaPppoeId, 'cuentaPppoeId');
 
     if (!input.actor) {
-      throw new BadRequestException('actor es obligatorio.');
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        'actor es obligatorio.',
+      );
     }
 
     if (input.actor.iniciadoPorId !== null) {
@@ -289,7 +288,7 @@ export class ProvisionarPppoeClienteManualUseCase {
       input.actor.origen === OrigenOperacionPppoe.OPERADOR &&
       input.actor.iniciadoPorId === null
     ) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'actor.iniciadoPorId es obligatorio cuando el origen es OPERADOR.',
       );
     }
@@ -297,7 +296,9 @@ export class ProvisionarPppoeClienteManualUseCase {
 
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 

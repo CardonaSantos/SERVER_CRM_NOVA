@@ -1,4 +1,4 @@
-import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import {
   CodigoErrorMikrotikSsh,
@@ -28,6 +28,7 @@ import {
   PppoeOperacionPasoReadModel,
   PppoeOperacionResultado,
 } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
+import { ProvisionamientoPppoeEstadoInvalidoError } from '../../domain/errors/pppoe-automatizacion.errors';
 
 export type EjecutarSuspenderServicioPppoeParams = {
   contexto: ContextoEjecucionPppoe;
@@ -102,7 +103,7 @@ export class EjecutorSuspenderServicioPppoeService {
     const operacionId = contexto.operacion.id;
 
     if (operacionId === null) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La operación PPPoE debe estar persistida antes de ejecutarse.',
       );
     }
@@ -475,19 +476,19 @@ export class EjecutorSuspenderServicioPppoeService {
    */
   private validateContext(contexto: ContextoEjecucionPppoe): void {
     if (contexto.operacion.tipo !== TipoOperacionPppoe.SUSPENDER_SERVICIO) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         `EjecutorSuspenderServicioPppoeService no puede procesar una operación de tipo ${contexto.operacion.tipo}.`,
       );
     }
 
     if (contexto.cuenta.id === null) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE debe estar persistida antes de suspender el servicio.',
       );
     }
 
     if (contexto.cuenta.empresaId !== contexto.operacion.empresaId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE y la operación pertenecen a empresas diferentes.',
       );
     }
@@ -497,7 +498,7 @@ export class EjecutorSuspenderServicioPppoeService {
      * un Secret creado en RouterOS.
      */
     if (!contexto.cuenta.tieneSecretCreado) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE no tiene confirmado un secret creado.',
       );
     }
@@ -512,7 +513,7 @@ export class EjecutorSuspenderServicioPppoeService {
       contexto.cuenta.activadoEn !== null || contexto.cuenta.esAdoptada;
 
     if (!tieneActivacionConfirmada) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE no tiene una activación confirmada y no puede suspenderse.',
       );
     }
@@ -521,7 +522,7 @@ export class EjecutorSuspenderServicioPppoeService {
      * la contraseña PPPoE.
      */
     if (contexto.passwordPppoe !== null) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'SUSPENDER_SERVICIO no debe contener la contraseña PPPoE descifrada.',
       );
     }
@@ -538,11 +539,13 @@ export class EjecutorSuspenderServicioPppoeService {
     const matches = pasos.filter((paso) => paso.tipo === tipo);
 
     if (matches.length === 0) {
-      throw new ConflictException(`La operación no contiene el paso ${tipo}.`);
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
+        `La operación no contiene el paso ${tipo}.`,
+      );
     }
 
     if (matches.length > 1) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         `La operación contiene más de un paso ${tipo}.`,
       );
     }
@@ -557,7 +560,7 @@ export class EjecutorSuspenderServicioPppoeService {
     session: MikrotikSshSessionPort | null,
   ): MikrotikSshSessionPort {
     if (!session || !session.estaAbierta()) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La sesión SSH no quedó disponible después de la conexión.',
       );
     }

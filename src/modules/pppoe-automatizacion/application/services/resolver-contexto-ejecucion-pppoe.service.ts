@@ -1,9 +1,4 @@
-import {
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   PPPOE_SECRET_CIPHER,
   PppoeSecretCipherPort,
@@ -25,6 +20,9 @@ import {
   MikrotikRouterConnectionContextPort,
 } from 'src/mikro-tik/domain/ports/mikrotik-router-connection-context.port';
 import { PppoeOperacionReadModel } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
+import { ProvisionamientoPppoeEstadoInvalidoError } from '../../domain/errors/pppoe-automatizacion.errors';
+import { CuentaPppoeNoEncontradaError } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
+import { PerfilHomologacionNoEncontradoError } from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.types';
 
 /**
  * Ajusta únicamente esta ruta a la ubicación real
@@ -53,7 +51,7 @@ export class ResolverContextoEjecucionPppoeService {
     const operacionProps = operacion;
 
     if (operacionProps.id === null) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La operación PPPoE debe estar persistida antes de resolver su contexto.',
       );
     }
@@ -61,9 +59,7 @@ export class ResolverContextoEjecucionPppoeService {
     const cuenta = await this.cuentasPppoe.buscarPorId(operacion.cuentaPppoeId);
 
     if (!cuenta) {
-      throw new NotFoundException(
-        `No existe la cuenta PPPoE ${operacion.cuentaPppoeId}.`,
-      );
+      throw new CuentaPppoeNoEncontradaError();
     }
 
     this.validarCuenta({
@@ -76,9 +72,7 @@ export class ResolverContextoEjecucionPppoeService {
     );
 
     if (!perfil) {
-      throw new NotFoundException(
-        `No existe la homologación PPPoE ${cuenta.perfilHomologacionId}.`,
-      );
+      throw new PerfilHomologacionNoEncontradoError();
     }
 
     this.validarPerfil({
@@ -127,19 +121,19 @@ export class ResolverContextoEjecucionPppoeService {
     const { operacion, cuenta } = params;
 
     if (cuenta.empresaId !== operacion.empresaId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE no pertenece a la empresa de la operación.',
       );
     }
 
     if (cuenta.id !== operacion.cuentaPppoeId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE no coincide con la operación solicitada.',
       );
     }
 
     if (cuenta.estaEliminada) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'No puede ejecutarse una operación sobre una cuenta PPPoE eliminada.',
       );
     }
@@ -148,7 +142,7 @@ export class ResolverContextoEjecucionPppoeService {
       operacion.perfilHomologacionId !== null &&
       operacion.perfilHomologacionId !== cuenta.perfilHomologacionId
     ) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La homologación de la operación no coincide con la cuenta PPPoE.',
       );
     }
@@ -166,19 +160,19 @@ export class ResolverContextoEjecucionPppoeService {
     const perfilProps = perfil;
 
     if (perfilProps.empresaId !== operacion.empresaId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La homologación PPPoE no pertenece a la empresa de la operación.',
       );
     }
 
     if (perfilProps.id !== cuenta.perfilHomologacionId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La homologación recuperada no coincide con la cuenta PPPoE.',
       );
     }
 
     if (perfilProps.mikrotikRouterId !== operacion.mikrotikRouterId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La homologación PPPoE pertenece a un router diferente al indicado en la operación.',
       );
     }
@@ -196,7 +190,9 @@ export class ResolverContextoEjecucionPppoeService {
     ].includes(operacion.tipo);
 
     if (requierePerfilActivo && !perfilProps.activo) {
-      throw new ConflictException('La homologación PPPoE está inactiva.');
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
+        'La homologación PPPoE está inactiva.',
+      );
     }
   }
 
@@ -213,7 +209,7 @@ export class ResolverContextoEjecucionPppoeService {
       props.routerHostSnapshot === null ||
       props.routerPuertoSnapshot === null
     ) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La operación PPPoE no contiene el snapshot del router.',
       );
     }
@@ -226,7 +222,7 @@ export class ResolverContextoEjecucionPppoeService {
       hostActual !== hostSnapshot ||
       router.port !== props.routerPuertoSnapshot
     ) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La configuración actual del router no coincide con el snapshot de la operación. Debe generarse una operación nueva con el contexto actualizado.',
       );
     }

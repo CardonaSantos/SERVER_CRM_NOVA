@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-} from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 
 import { AuthService } from 'src/auth/auth.service';
 
@@ -16,6 +12,7 @@ import {
   ProvisionarPppoeClienteManualResult,
   ProvisionarPppoeClienteManualUseCase,
 } from '../use-cases/provisionar-pppoe-cliente-manual.use-case';
+import { ProvisionamientoPppoeDatosInvalidosError } from '../../domain/errors/pppoe-automatizacion.errors';
 
 export type ActorProvisionamientoPppoeAdmin = {
   operadorId: number;
@@ -151,7 +148,9 @@ export class PppoeCuentaProvisionamientoAdminService {
       typeof params.contrasenaActual !== 'string' ||
       params.contrasenaActual.length === 0
     ) {
-      throw new BadRequestException('contrasenaActual es obligatoria.');
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        'contrasenaActual es obligatoria.',
+      );
     }
 
     /**
@@ -193,7 +192,9 @@ export class PppoeCuentaProvisionamientoAdminService {
 
   private validateActor(actor: ActorProvisionamientoPppoeAdmin): void {
     if (!actor) {
-      throw new BadRequestException('El actor administrativo es obligatorio.');
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        'El actor administrativo es obligatorio.',
+      );
     }
 
     this.assertPositiveInteger(actor.operadorId, 'actor.operadorId');
@@ -231,7 +232,9 @@ export class PppoeCuentaProvisionamientoAdminService {
 
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 }

@@ -16,3 +16,7 @@ export type {
   PppoeOperacionDetalle,
   PppoeOperacionPaginatedResult,
 } from '../domain/read-models/pppoe-operacion.read-model';
+export {
+  OperacionPppoeIdempotenciaError,
+  OperacionPppoeNoEncontradaError,
+} from '../domain/errors/pppoe-operacion.errors';

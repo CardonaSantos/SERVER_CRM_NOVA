@@ -1,15 +1,6 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
-import {
-  EstadoOperacionPppoe,
-  TipoOperacionPppoe,
-} from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
+import { TipoOperacionPppoe } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 import {
   PPPOE_CLIENTE_CUENTA,
@@ -40,6 +31,13 @@ import {
   PppoeOperacionFacadePort,
 } from 'src/modules/pppoe-operacion/public/pppoe-operacion.facade.port';
 import { PppoeOperacionReadModel } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
+import { CuentaPppoeNoEncontradaError } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
+import {
+  ProvisionamientoPppoeDatosInvalidosError,
+  ProvisionamientoPppoeEstadoInvalidoError,
+  RouterMikrotikNoEncontradoError,
+} from '../../domain/errors/pppoe-automatizacion.errors';
+import { PerfilHomologacionNoEncontradoError } from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.types';
 
 /**
  * Determina el origen comercial de CREAR_SECRET.
@@ -120,19 +118,17 @@ export class CrearYEjecutarOperacionPppoeUseCase {
     const cuenta = await this.cuentasPppoe.buscarPorId(input.cuentaPppoeId);
 
     if (!cuenta) {
-      throw new NotFoundException(
-        `No existe la cuenta PPPoE ${input.cuentaPppoeId}.`,
-      );
+      throw new CuentaPppoeNoEncontradaError();
     }
 
     if (cuenta.empresaId !== input.empresaId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE no pertenece a la empresa indicada.',
       );
     }
 
     if (cuenta.estaEliminada) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'No puede crearse un secret para una cuenta PPPoE eliminada.',
       );
     }
@@ -148,21 +144,19 @@ export class CrearYEjecutarOperacionPppoeUseCase {
     );
 
     if (!perfil) {
-      throw new NotFoundException(
-        `No existe la homologación PPPoE ${cuenta.perfilHomologacionId}.`,
-      );
+      throw new PerfilHomologacionNoEncontradoError();
     }
 
     const perfilProps = perfil;
 
     if (perfilProps.id !== cuenta.perfilHomologacionId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La homologación recuperada no coincide con la cuenta PPPoE.',
       );
     }
 
     if (perfilProps.empresaId !== input.empresaId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La homologación PPPoE no pertenece a la empresa indicada.',
       );
     }
@@ -178,19 +172,17 @@ export class CrearYEjecutarOperacionPppoeUseCase {
     );
 
     if (!router) {
-      throw new NotFoundException(
-        `No existe el router MikroTik ${perfilProps.mikrotikRouterId}.`,
-      );
+      throw new RouterMikrotikNoEncontradoError();
     }
 
     if (router.empresaId !== input.empresaId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'El router MikroTik no pertenece a la empresa indicada.',
       );
     }
 
     if (router.id === null) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'El router MikroTik no contiene un identificador persistido.',
       );
     }
@@ -297,14 +289,14 @@ export class CrearYEjecutarOperacionPppoeUseCase {
     }
 
     if (operacion.estaAutorizada) {
-      throw new ConflictException(
-        `La operación PPPoE ${operacionId} está AUTORIZADA, pero este flujo automático no utiliza reautenticación.`,
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
+        'La operación PPPoE está AUTORIZADA, pero este flujo automático no utiliza reautenticación.',
       );
     }
 
     if (!operacion.estaPendiente) {
-      throw new ConflictException(
-        `La operación PPPoE ${operacionId} no puede ejecutarse desde el estado ${operacion.estado}.`,
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
+        `La operación PPPoE no puede ejecutarse desde el estado ${operacion.estado}.`,
       );
     }
 
@@ -357,7 +349,7 @@ export class CrearYEjecutarOperacionPppoeUseCase {
 
   private requireOperationId(operacion: PppoeOperacionReadModel): number {
     if (operacion.id === null) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La operación PPPoE no contiene un identificador persistido.',
       );
     }
@@ -373,7 +365,9 @@ export class CrearYEjecutarOperacionPppoeUseCase {
     this.assertRequiredString(input.claveIdempotencia, 'claveIdempotencia');
 
     if (!input.actor) {
-      throw new BadRequestException('actor es obligatorio.');
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        'actor es obligatorio.',
+      );
     }
 
     if (input.actor.iniciadoPorId !== null) {
@@ -387,7 +381,7 @@ export class CrearYEjecutarOperacionPppoeUseCase {
       input.actor.origen === OrigenOperacionPppoe.OPERADOR &&
       input.actor.iniciadoPorId === null
     ) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'actor.iniciadoPorId es obligatorio cuando el origen es OPERADOR.',
       );
     }
@@ -410,13 +404,17 @@ export class CrearYEjecutarOperacionPppoeUseCase {
 
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 
   private assertRequiredString(value: string, field: string): void {
     if (typeof value !== 'string' || !value.trim()) {
-      throw new BadRequestException(`${field} es obligatorio.`);
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        `${field} es obligatorio.`,
+      );
     }
   }
 

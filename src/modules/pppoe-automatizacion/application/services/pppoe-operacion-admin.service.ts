@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 import {
   PPPOE_PROVISIONAMIENTO,
@@ -20,6 +15,10 @@ import {
   ListarPppoeOperacionesInput,
 } from 'src/modules/pppoe-operacion/public/pppoe-operacion.facade.port';
 import { PppoeOperacionReadModel } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
+import {
+  ProvisionamientoPppoeDatosInvalidosError,
+  ProvisionamientoPppoeEstadoInvalidoError,
+} from '../../domain/errors/pppoe-automatizacion.errors';
 
 /**
  * Contexto funcional de una operación ELIMINAR_SECRET.
@@ -149,16 +148,6 @@ type AccionManualCuentaPppoeConIdempotenciaParams =
   AccionManualCuentaPppoeBaseParams & {
     claveIdempotencia: string;
   };
-
-type AccionManualCuentaPppoeParams = {
-  empresaId: number;
-
-  cuentaPppoeId: number;
-
-  claveIdempotencia: string;
-
-  motivo: string;
-};
 
 export type DarDeBajaPppoeManualParams = {
   empresaId: number;
@@ -354,7 +343,7 @@ export class PppoeOperacionAdminService {
      * combinación estructural no reconocida.
      */
     if (contextoEliminacion === ContextoEliminacionPppoe.CONTEXTO_INVALIDO) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La operación ELIMINAR_SECRET contiene un contexto funcional inválido y no puede reintentarse automáticamente.',
       );
     }
@@ -598,17 +587,19 @@ export class PppoeOperacionAdminService {
     },
   ): void {
     if (!Number.isInteger(params.empresaId) || params.empresaId <= 0) {
-      throw new BadRequestException('empresaId debe ser un entero positivo.');
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        'empresaId debe ser un entero positivo.',
+      );
     }
 
     if (!Number.isInteger(params.cuentaPppoeId) || params.cuentaPppoeId <= 0) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'cuentaPppoeId debe ser un entero positivo.',
       );
     }
 
     if (typeof params.motivo !== 'string' || params.motivo.trim().length < 5) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'El motivo de baja debe contener al menos 5 caracteres.',
       );
     }
@@ -617,7 +608,7 @@ export class PppoeOperacionAdminService {
       typeof params.contrasenaActual !== 'string' ||
       !params.contrasenaActual.trim()
     ) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'La contraseña actual es obligatoria para dar de baja la cuenta PPPoE.',
       );
     }
@@ -657,11 +648,13 @@ export class PppoeOperacionAdminService {
     accion: 'suspensión' | 'reactivación',
   ): void {
     if (!Number.isInteger(params.empresaId) || params.empresaId <= 0) {
-      throw new BadRequestException('empresaId debe ser un entero positivo.');
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        'empresaId debe ser un entero positivo.',
+      );
     }
 
     if (!Number.isInteger(params.cuentaPppoeId) || params.cuentaPppoeId <= 0) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'cuentaPppoeId debe ser un entero positivo.',
       );
     }
@@ -670,18 +663,20 @@ export class PppoeOperacionAdminService {
       typeof params.claveIdempotencia !== 'string' ||
       !params.claveIdempotencia.trim()
     ) {
-      throw new BadRequestException('claveIdempotencia es obligatoria.');
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        'claveIdempotencia es obligatoria.',
+      );
     }
 
     if (typeof params.motivo !== 'string' || params.motivo.trim().length < 5) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         `El motivo de ${accion} debe contener al menos 5 caracteres.`,
       );
     }
   }
   private requireOperationId(operacion: PppoeOperacionReadModel): number {
     if (operacion.id === null) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La operación PPPoE autorizada no contiene identificador persistido.',
       );
     }
@@ -691,11 +686,13 @@ export class PppoeOperacionAdminService {
 
   private validateActor(actor: ActorAdministrativoPppoe): void {
     if (!actor) {
-      throw new BadRequestException('El actor administrativo es obligatorio.');
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        'El actor administrativo es obligatorio.',
+      );
     }
 
     if (!Number.isInteger(actor.operadorId) || actor.operadorId <= 0) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'actor.operadorId debe ser un entero positivo.',
       );
     }
@@ -758,7 +755,7 @@ export class PppoeOperacionAdminService {
     contrasenaActual: string | null | undefined,
   ): void {
     if (typeof contrasenaActual !== 'string' || !contrasenaActual.trim()) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'La contraseña actual es obligatoria para reintentar una baja manual PPPoE.',
       );
     }
@@ -770,22 +767,28 @@ export class PppoeOperacionAdminService {
    */
   private validateRetryRequest(params: ReintentarPppoeAdminParams): void {
     if (!Number.isInteger(params.empresaId) || params.empresaId <= 0) {
-      throw new BadRequestException('empresaId debe ser un entero positivo.');
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        'empresaId debe ser un entero positivo.',
+      );
     }
 
     if (!Number.isInteger(params.operacionId) || params.operacionId <= 0) {
-      throw new BadRequestException('operacionId debe ser un entero positivo.');
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        'operacionId debe ser un entero positivo.',
+      );
     }
 
     if (
       typeof params.claveIdempotencia !== 'string' ||
       !params.claveIdempotencia.trim()
     ) {
-      throw new BadRequestException('claveIdempotencia es obligatoria.');
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        'claveIdempotencia es obligatoria.',
+      );
     }
 
     if (params.claveIdempotencia.trim().length > 200) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'claveIdempotencia no puede superar 200 caracteres.',
       );
     }

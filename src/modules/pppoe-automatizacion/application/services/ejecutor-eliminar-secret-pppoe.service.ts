@@ -1,4 +1,4 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import {
   CodigoErrorMikrotikSsh,
@@ -28,6 +28,7 @@ import {
   PppoeOperacionPasoReadModel,
   PppoeOperacionResultado,
 } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
+import { ProvisionamientoPppoeEstadoInvalidoError } from '../../domain/errors/pppoe-automatizacion.errors';
 
 export type EjecutarEliminarSecretPppoeParams = {
   contexto: ContextoEjecucionPppoe;
@@ -109,7 +110,7 @@ export class EjecutorEliminarSecretPppoeService {
     this.validateContext(contexto);
 
     if (operacionId === null) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La operación PPPoE debe estar persistida antes de ejecutarse.',
       );
     }
@@ -490,19 +491,19 @@ export class EjecutorEliminarSecretPppoeService {
    */
   private validateContext(contexto: ContextoEjecucionPppoe): void {
     if (contexto.operacion.tipo !== TipoOperacionPppoe.ELIMINAR_SECRET) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         `EjecutorEliminarSecretPppoeService no puede procesar una operación de tipo ${contexto.operacion.tipo}.`,
       );
     }
 
     if (contexto.cuenta.id === null) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE debe estar persistida antes de eliminar el secret.',
       );
     }
 
     if (contexto.cuenta.empresaId !== contexto.operacion.empresaId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE y la operación pertenecen a empresas diferentes.',
       );
     }
@@ -512,7 +513,7 @@ export class EjecutorEliminarSecretPppoeService {
      * la contraseña PPPoE.
      */
     if (contexto.passwordPppoe !== null) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'ELIMINAR_SECRET no debe contener la contraseña PPPoE descifrada.',
       );
     }
@@ -529,11 +530,13 @@ export class EjecutorEliminarSecretPppoeService {
     const matches = pasos.filter((paso) => paso.tipo === tipo);
 
     if (matches.length === 0) {
-      throw new ConflictException(`La operación no contiene el paso ${tipo}.`);
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
+        `La operación no contiene el paso ${tipo}.`,
+      );
     }
 
     if (matches.length > 1) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         `La operación contiene más de un paso ${tipo}.`,
       );
     }
@@ -549,7 +552,7 @@ export class EjecutorEliminarSecretPppoeService {
     session: MikrotikSshSessionPort | null,
   ): MikrotikSshSessionPort {
     if (!session || !session.estaAbierta()) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La sesión SSH no quedó disponible después de la conexión.',
       );
     }
@@ -616,7 +619,7 @@ export class EjecutorEliminarSecretPppoeService {
     );
 
     if (orderedSteps.length !== expectedPlan.length) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         `ELIMINAR_SECRET requiere exactamente ${expectedPlan.length} pasos técnicos. Se recibieron ${orderedSteps.length}.`,
       );
     }
@@ -625,13 +628,13 @@ export class EjecutorEliminarSecretPppoeService {
       const step = orderedSteps[index];
 
       if (step.orden !== index + 1) {
-        throw new ConflictException(
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
           `El plan ELIMINAR_SECRET contiene un orden inválido en la posición ${index + 1}.`,
         );
       }
 
       if (step.tipo !== expectedType) {
-        throw new ConflictException(
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
           `El plan ELIMINAR_SECRET esperaba ${expectedType} en el paso ${index + 1}, pero recibió ${step.tipo}.`,
         );
       }

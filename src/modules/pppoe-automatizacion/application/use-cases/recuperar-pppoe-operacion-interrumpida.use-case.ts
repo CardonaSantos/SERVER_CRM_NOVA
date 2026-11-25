@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import {
   ClientePppoeCuentaReadModel,
@@ -35,6 +29,12 @@ import {
   PppoeOperacionPasoReadModel,
   PppoeOperacionReadModel,
 } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
+import {
+  ProvisionamientoPppoeDatosInvalidosError,
+  ProvisionamientoPppoeEstadoInvalidoError,
+} from '../../domain/errors/pppoe-automatizacion.errors';
+import { CuentaPppoeNoEncontradaError } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
+import { OperacionPppoeNoEncontradaError } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 /**
  * Datos necesarios para recuperar una operación
@@ -130,8 +130,8 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
     }
 
     if (!operacion.estaEjecutando) {
-      throw new ConflictException(
-        `La operación PPPoE ${input.operacionId} no está EJECUTANDO. Estado actual: ${operacion.estado}.`,
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
+        `La operación PPPoE no está EJECUTANDO. Estado actual: ${operacion.estado}.`,
       );
     }
 
@@ -270,13 +270,11 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
     );
 
     if (!cuenta) {
-      throw new NotFoundException(
-        `No existe la cuenta PPPoE ${params.operacion.cuentaPppoeId} vinculada a la operación.`,
-      );
+      throw new CuentaPppoeNoEncontradaError();
     }
 
     if (cuenta.empresaId !== params.empresaId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE no pertenece a la empresa de la operación.',
       );
     }
@@ -354,7 +352,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
         }
 
         if (params.cuenta.estado !== EstadoCuentaPppoe.EN_INSTALACION) {
-          throw new ConflictException(
+          throw new ProvisionamientoPppoeEstadoInvalidoError(
             `No puede reconciliarse CREAR_SECRET con la cuenta en estado ${params.cuenta.estado}.`,
           );
         }
@@ -371,7 +369,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
         }
 
         if (params.cuenta.estado !== EstadoCuentaPppoe.EN_ACTIVACION) {
-          throw new ConflictException(
+          throw new ProvisionamientoPppoeEstadoInvalidoError(
             `No puede reconciliarse ACTIVAR_SECRET con la cuenta en estado ${params.cuenta.estado}.`,
           );
         }
@@ -391,7 +389,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
           params.cuenta.estado !== EstadoCuentaPppoe.ACTIVA &&
           params.cuenta.estado !== EstadoCuentaPppoe.ERROR
         ) {
-          throw new ConflictException(
+          throw new ProvisionamientoPppoeEstadoInvalidoError(
             `No puede reconciliarse SUSPENDER_SERVICIO con la cuenta en estado ${params.cuenta.estado}.`,
           );
         }
@@ -412,7 +410,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
         }
 
         if (params.cuenta.estado !== EstadoCuentaPppoe.EN_DESINSTALACION) {
-          throw new ConflictException(
+          throw new ProvisionamientoPppoeEstadoInvalidoError(
             `No puede reconciliarse ELIMINAR_SECRET con la cuenta en estado ${params.cuenta.estado}.`,
           );
         }
@@ -424,7 +422,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
         });
 
       default:
-        throw new ConflictException(
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
           `La recuperación todavía no admite operaciones de tipo ${params.operacion.tipo}.`,
         );
     }
@@ -475,7 +473,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
       .find((paso) => paso.estaPendiente);
 
     if (!pendingStep) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La operación PPPoE no contiene un paso disponible para registrar la interrupción.',
       );
     }
@@ -581,9 +579,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
     });
 
     if (!aggregate) {
-      throw new NotFoundException(
-        `No existe la operación PPPoE ${params.operacionId}.`,
-      );
+      throw new OperacionPppoeNoEncontradaError();
     }
 
     return aggregate;
@@ -621,7 +617,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
 
   private requireOperationId(operacion: PppoeOperacionReadModel): number {
     if (operacion.id === null) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La operación PPPoE no contiene un identificador persistido.',
       );
     }
@@ -638,7 +634,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
       operacion.iniciadoEn &&
       fecha.getTime() < operacion.iniciadoEn.getTime()
     ) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'La fecha de recuperación no puede ser anterior al inicio de la operación.',
       );
     }
@@ -650,7 +646,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
     this.assertPositiveInteger(input.operacionId, 'operacionId');
 
     if (input.confirmarAbandono !== true) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'confirmarAbandono debe ser true para recuperar la operación.',
       );
     }
@@ -659,13 +655,17 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
       input.fecha !== undefined &&
       (!(input.fecha instanceof Date) || Number.isNaN(input.fecha.getTime()))
     ) {
-      throw new BadRequestException('fecha debe contener una fecha válida.');
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        'fecha debe contener una fecha válida.',
+      );
     }
   }
 
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 }

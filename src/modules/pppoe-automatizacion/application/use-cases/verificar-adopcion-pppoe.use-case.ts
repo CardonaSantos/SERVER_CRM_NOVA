@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   PPPOE_CLIENTE_CUENTA,
   PppoeClienteCuentaFacadePort,
@@ -26,6 +20,12 @@ import { MetodoAutenticacionMikrotikSsh } from 'src/modules/mikrotik-ssh/public/
 import { MikrotikRouterConnectionContextPort } from 'src/mikro-tik/domain/ports/mikrotik-router-connection-context.port';
 import { MIKROTIK_ROUTER_CONNECTION_CONTEXT } from 'src/mikro-tik/infra/tokens/mikrotik-router.tokens';
 import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
+import {
+  ProvisionamientoPppoeDatosInvalidosError,
+  ProvisionamientoPppoeEstadoInvalidoError,
+  UsuarioPppoeEnUsoError,
+} from '../../domain/errors/pppoe-automatizacion.errors';
+import { PerfilHomologacionNoEncontradoError } from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.types';
 
 export type VerificarAdopcionPppoeInput = {
   empresaId: number;
@@ -117,7 +117,7 @@ export class VerificarAdopcionPppoeUseCase {
       );
 
     if (accesoExistente) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'El cliente ya posee un acceso PPPoE registrado en el CRM.',
       );
     }
@@ -134,7 +134,7 @@ export class VerificarAdopcionPppoeUseCase {
       await this.cuentasPppoe.buscarVigentePorUsuario(normalized.usuarioPppoe);
 
     if (cuentaVigenteConMismoUsuario) {
-      throw new ConflictException(
+      throw new UsuarioPppoeEnUsoError(
         `El usuario PPPoE "${normalized.usuarioPppoe}" ya está asociado a una cuenta vigente dentro del CRM.`,
       );
     }
@@ -149,19 +149,17 @@ export class VerificarAdopcionPppoeUseCase {
     );
 
     if (!perfil) {
-      throw new NotFoundException(
-        `No existe la homologación PPPoE ${normalized.perfilHomologacionId}.`,
-      );
+      throw new PerfilHomologacionNoEncontradoError();
     }
 
     if (perfil.empresaId !== normalized.empresaId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La homologación PPPoE no pertenece a la empresa actual.',
       );
     }
 
     if (!perfil.activo) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La homologación PPPoE seleccionada se encuentra inactiva.',
       );
     }
@@ -215,7 +213,7 @@ export class VerificarAdopcionPppoeUseCase {
       });
 
       if (!session.estaAbierta()) {
-        throw new ConflictException(
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
           'La sesión SSH no quedó disponible después de conectarse al MikroTik.',
         );
       }
@@ -484,19 +482,23 @@ export class VerificarAdopcionPppoeUseCase {
     );
 
     if (typeof input.usuarioPppoe !== 'string') {
-      throw new BadRequestException('usuarioPppoe debe ser una cadena.');
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        'usuarioPppoe debe ser una cadena.',
+      );
     }
 
     const usuarioPppoe = input.usuarioPppoe.trim();
 
     if (!usuarioPppoe) {
-      throw new BadRequestException('usuarioPppoe es obligatorio.');
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        'usuarioPppoe es obligatorio.',
+      );
     }
 
     if (
       usuarioPppoe.length > VerificarAdopcionPppoeUseCase.MAX_USUARIO_LENGTH
     ) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         `usuarioPppoe no puede superar ${VerificarAdopcionPppoeUseCase.MAX_USUARIO_LENGTH} caracteres.`,
       );
     }
@@ -512,14 +514,16 @@ export class VerificarAdopcionPppoeUseCase {
       typeof input.passwordPppoe !== 'string' ||
       input.passwordPppoe.length === 0
     ) {
-      throw new BadRequestException('passwordPppoe es obligatorio.');
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        'passwordPppoe es obligatorio.',
+      );
     }
 
     if (
       input.passwordPppoe.length >
       VerificarAdopcionPppoeUseCase.MAX_PASSWORD_LENGTH
     ) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         `passwordPppoe no puede superar ${VerificarAdopcionPppoeUseCase.MAX_PASSWORD_LENGTH} caracteres.`,
       );
     }
@@ -538,7 +542,9 @@ export class VerificarAdopcionPppoeUseCase {
 
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 

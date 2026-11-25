@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { EstadoCliente, TipoCambioEstadoCliente } from '@prisma/client';
 
@@ -9,6 +9,7 @@ import {
   EstadoOperativoClienteInternet,
   SincronizarEstadoOperativoClienteParams,
 } from '../../application/ports/cliente-internet-estado-operativo.port';
+import { ProvisionamientoPppoeEstadoInvalidoError } from '../../domain/errors/pppoe-automatizacion.errors';
 
 @Injectable()
 export class ClienteInternetEstadoOperativoPrismaAdapter
@@ -43,8 +44,8 @@ export class ClienteInternetEstadoOperativoPrismaAdapter
       });
 
       if (!cliente) {
-        throw new ConflictException(
-          `No existe un cliente operativo ${params.clienteId} para la empresa ${params.empresaId}.`,
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
+          'No existe un cliente operativo para la empresa.',
         );
       }
 
@@ -84,8 +85,8 @@ export class ClienteInternetEstadoOperativoPrismaAdapter
       });
 
       if (updated.count !== 1) {
-        throw new ConflictException(
-          `El estado operativo del cliente ${cliente.id} cambió durante la sincronización PPPoE.`,
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
+          'El estado operativo del cliente cambió durante la sincronización PPPoE.',
         );
       }
 

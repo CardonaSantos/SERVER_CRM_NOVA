@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import {
   PrepararPrealtaPppoeInput,
@@ -45,6 +39,12 @@ import {
   PPPOE_PERFIL_HOMOLOGACION,
   PppoePerfilHomologacionFacadePort,
 } from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.facade.port';
+import { PerfilHomologacionNoEncontradoError } from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.types';
+import {
+  ProvisionamientoPppoeDatosInvalidosError,
+  ProvisionamientoPppoeEstadoInvalidoError,
+  UsuarioPppoeEnUsoError,
+} from '../../domain/errors/pppoe-automatizacion.errors';
 
 @Injectable()
 export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
@@ -77,9 +77,7 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
       });
 
     if (!perfil || perfil.id === null) {
-      throw new NotFoundException(
-        'No existe una homologación PPPoE activa para el router y el servicio de internet indicados.',
-      );
+      throw new PerfilHomologacionNoEncontradoError();
     }
 
     const cuentaExistente = await this.cuentasPppoe.buscarPorAccesoInternet(
@@ -103,7 +101,7 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
       await this.cuentasPppoe.buscarVigentePorUsuario(credenciales.usuario);
 
     if (cuentaVigenteConMismoUsuario) {
-      throw new ConflictException(
+      throw new UsuarioPppoeEnUsoError(
         `El usuario PPPoE ${credenciales.usuario} ya está asignado a una cuenta vigente.`,
       );
     }
@@ -169,13 +167,13 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
     }
 
     if (cuenta.empresaId !== input.empresaId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'El acceso de internet ya tiene una cuenta PPPoE perteneciente a otra empresa.',
       );
     }
 
     if (cuenta.perfilHomologacionId !== perfilHomologacionId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'El acceso ya tiene una cuenta PPPoE asociada a una homologación diferente.',
       );
     }
@@ -184,7 +182,7 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
       cuenta.estado === EstadoCuentaPppoe.ELIMINADA ||
       cuenta.estado === EstadoCuentaPppoe.CANCELADA
     ) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE asociada al acceso pertenece a un ciclo terminado. Debe utilizarse un nuevo acceso PPPoE.',
       );
     }
@@ -352,7 +350,7 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
       (!(input.fechaReferencia instanceof Date) ||
         Number.isNaN(input.fechaReferencia.getTime()))
     ) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'fechaReferencia debe ser una fecha válida.',
       );
     }
@@ -360,7 +358,9 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
 
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 }

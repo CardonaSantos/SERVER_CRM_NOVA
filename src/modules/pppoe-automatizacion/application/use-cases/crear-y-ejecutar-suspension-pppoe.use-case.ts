@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 
@@ -39,6 +33,14 @@ import {
   PppoeOperacionFacadePort,
 } from 'src/modules/pppoe-operacion/public/pppoe-operacion.facade.port';
 import { PppoeOperacionReadModel } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
+import { CuentaPppoeNoEncontradaError } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
+import {
+  ProvisionamientoPppoeDatosInvalidosError,
+  ProvisionamientoPppoeEstadoInvalidoError,
+  RouterMikrotikNoEncontradoError,
+} from '../../domain/errors/pppoe-automatizacion.errors';
+import { PerfilHomologacionNoEncontradoError } from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.types';
+import { OperacionPppoeIdempotenciaError } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 /**
  * Actor que solicita la suspensión.
@@ -116,25 +118,23 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
     const cuenta = await this.cuentasPppoe.buscarPorId(input.cuentaPppoeId);
 
     if (!cuenta) {
-      throw new NotFoundException(
-        `No existe la cuenta PPPoE ${input.cuentaPppoeId}.`,
-      );
+      throw new CuentaPppoeNoEncontradaError();
     }
 
     if (cuenta.id === null) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE no contiene un identificador persistido.',
       );
     }
 
     if (cuenta.empresaId !== input.empresaId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE no pertenece a la empresa indicada.',
       );
     }
 
     if (cuenta.estaEliminada) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'No puede suspenderse una cuenta PPPoE eliminada.',
       );
     }
@@ -162,27 +162,25 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
     );
 
     if (!perfil) {
-      throw new NotFoundException(
-        `No existe la homologación PPPoE ${cuenta.perfilHomologacionId}.`,
-      );
+      throw new PerfilHomologacionNoEncontradoError();
     }
 
     const perfilProps = perfil;
 
     if (perfilProps.id === null) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La homologación PPPoE no contiene un identificador persistido.',
       );
     }
 
     if (perfilProps.id !== cuenta.perfilHomologacionId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La homologación recuperada no coincide con la cuenta PPPoE.',
       );
     }
 
     if (perfilProps.empresaId !== input.empresaId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La homologación PPPoE no pertenece a la empresa indicada.',
       );
     }
@@ -198,19 +196,17 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
     );
 
     if (!router) {
-      throw new NotFoundException(
-        `No existe el router MikroTik ${perfilProps.mikrotikRouterId}.`,
-      );
+      throw new RouterMikrotikNoEncontradoError();
     }
 
     if (router.id === null) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'El router MikroTik no contiene un identificador persistido.',
       );
     }
 
     if (router.empresaId !== input.empresaId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'El router MikroTik no pertenece a la empresa indicada.',
       );
     }
@@ -384,14 +380,14 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
     }
 
     if (params.operacion.estaAutorizada) {
-      throw new ConflictException(
-        `La operación PPPoE ${operacionId} está AUTORIZADA, pero este flujo de suspensión no utiliza reautenticación.`,
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
+        'La operación PPPoE está AUTORIZADA, pero este flujo de suspensión no utiliza reautenticación.',
       );
     }
 
     if (!params.operacion.estaPendiente) {
-      throw new ConflictException(
-        `La operación PPPoE ${operacionId} no puede ejecutarse desde el estado ${params.operacion.estado}.`,
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
+        `La operación PPPoE no puede ejecutarse desde el estado ${params.operacion.estado}.`,
       );
     }
 
@@ -436,25 +432,25 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
     tieneActivacionConfirmada: boolean;
   }): void {
     if (!params.tieneSecret) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE no tiene un secret confirmado que pueda suspenderse.',
       );
     }
 
     if (!params.tieneActivacionConfirmada) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE no tiene una activación confirmada y no puede suspenderse.',
       );
     }
 
     if (params.estado === EstadoCuentaPppoe.ERROR) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE está en ERROR. Debe utilizarse el flujo de reintento de operación.',
       );
     }
 
     if (params.estado !== EstadoCuentaPppoe.ACTIVA) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         `No puede suspenderse la cuenta PPPoE desde el estado ${params.estado}.`,
       );
     }
@@ -493,7 +489,7 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
       return;
     }
 
-    throw new ConflictException(
+    throw new OperacionPppoeIdempotenciaError(
       'La clave de idempotencia ya pertenece a una operación PPPoE diferente.',
     );
   }
@@ -534,7 +530,7 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
 
   private requireOperationId(operacion: PppoeOperacionReadModel): number {
     if (operacion.id === null) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La operación PPPoE no contiene un identificador persistido.',
       );
     }
@@ -552,13 +548,15 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
     this.assertRequiredString(input.motivo, 'motivo');
 
     if (input.motivo.trim().length < 5) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'motivo debe contener al menos 5 caracteres.',
       );
     }
 
     if (!input.actor) {
-      throw new BadRequestException('actor es obligatorio.');
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        'actor es obligatorio.',
+      );
     }
 
     if (input.actor.iniciadoPorId !== null) {
@@ -572,7 +570,7 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
       input.actor.origen === OrigenOperacionPppoe.OPERADOR &&
       input.actor.iniciadoPorId === null
     ) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'actor.iniciadoPorId es obligatorio cuando el origen es OPERADOR.',
       );
     }
@@ -582,13 +580,17 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
 
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 
   private assertRequiredString(value: string, field: string): void {
     if (typeof value !== 'string' || !value.trim()) {
-      throw new BadRequestException(`${field} es obligatorio.`);
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        `${field} es obligatorio.`,
+      );
     }
   }
 }

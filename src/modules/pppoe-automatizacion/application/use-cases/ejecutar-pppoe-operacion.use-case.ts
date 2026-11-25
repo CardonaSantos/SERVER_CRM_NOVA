@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import {
   EstadoCuentaPppoe,
@@ -66,6 +60,11 @@ import {
   PppoeOperacionReadModel,
   PppoeOperacionResultado,
 } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
+import {
+  OperacionPppoeRequiereRecuperacionError,
+  ProvisionamientoPppoeDatosInvalidosError,
+  ProvisionamientoPppoeEstadoInvalidoError,
+} from '../../domain/errors/pppoe-automatizacion.errors';
 
 /**
  * Ejecuta una operación PPPoE previamente creada.
@@ -381,8 +380,8 @@ export class EjecutarPppoeOperacionUseCase {
        * recuperador reconcilie el estado local.
        */
       if (remoteStateConfirmed) {
-        throw new ConflictException(
-          `La operación PPPoE ${input.operacionId} confirmó el estado remoto, pero no pudo completar su sincronización local. Requiere recuperación.`,
+        throw new OperacionPppoeRequiereRecuperacionError(
+          'La operación PPPoE confirmó el estado remoto, pero no pudo completar su sincronización local. Requiere recuperación.',
         );
       }
 
@@ -577,7 +576,7 @@ export class EjecutarPppoeOperacionUseCase {
         });
 
       default:
-        throw new ConflictException(
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
           `No existe transición exitosa del acceso para la operación ${params.operacion.tipo}.`,
         );
     }
@@ -624,7 +623,7 @@ export class EjecutarPppoeOperacionUseCase {
         return this.prepareAccountForDeletion(params.cuenta);
 
       default:
-        throw new ConflictException(
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
           `No existe preparación local para la operación ${params.operacion.tipo}.`,
         );
     }
@@ -648,7 +647,7 @@ export class EjecutarPppoeOperacionUseCase {
         return params.acceso;
 
       default:
-        throw new ConflictException(
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
           `No existe preparación del acceso para la operación ${params.operacion.tipo}.`,
         );
     }
@@ -664,8 +663,8 @@ export class EjecutarPppoeOperacionUseCase {
     );
 
     if (!acceso) {
-      throw new ConflictException(
-        `No existe el acceso de internet ${params.cuenta.accesoInternetId} asociado a la cuenta PPPoE.`,
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
+        'No existe el acceso de internet asociado a la cuenta PPPoE.',
       );
     }
 
@@ -785,12 +784,12 @@ export class EjecutarPppoeOperacionUseCase {
         return cuenta;
 
       case EstadoCuentaPppoe.ELIMINADA:
-        throw new ConflictException(
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
           'La cuenta PPPoE ya se encuentra eliminada.',
         );
 
       default:
-        throw new ConflictException(
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
           `No puede ejecutarse ELIMINAR_SECRET con la cuenta en estado ${cuenta.estado}.`,
         );
     }
@@ -827,7 +826,7 @@ export class EjecutarPppoeOperacionUseCase {
      * cuenta.tieneSecretCreado.
      */
     if (!cuenta.tieneSecretCreado) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'No puede suspenderse una cuenta cuyo secret no está confirmado como existente.',
       );
     }
@@ -844,7 +843,7 @@ export class EjecutarPppoeOperacionUseCase {
       cuenta.activadoEn !== null || cuenta.esAdoptada;
 
     if (!tieneActivacionConfirmada) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'No puede suspenderse una cuenta que no tiene una activación confirmada.',
       );
     }
@@ -863,7 +862,7 @@ export class EjecutarPppoeOperacionUseCase {
         return cuenta;
 
       default:
-        throw new ConflictException(
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
           `No puede ejecutarse SUSPENDER_SERVICIO con la cuenta en estado ${cuenta.estado}.`,
         );
     }
@@ -904,7 +903,7 @@ export class EjecutarPppoeOperacionUseCase {
         return cuenta;
 
       default:
-        throw new ConflictException(
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
           `No puede ejecutarse CREAR_SECRET con la cuenta en estado ${cuenta.estado}.`,
         );
     }
@@ -973,7 +972,7 @@ export class EjecutarPppoeOperacionUseCase {
         return cuenta;
 
       default:
-        throw new ConflictException(
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
           `No puede ejecutarse ACTIVAR_SECRET con la cuenta en estado ${cuenta.estado}.`,
         );
     }
@@ -1017,7 +1016,7 @@ export class EjecutarPppoeOperacionUseCase {
         });
 
       default:
-        throw new ConflictException(
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
           `No existe ejecutor técnico para la operación ${params.contexto.operacion.tipo}.`,
         );
     }
@@ -1061,7 +1060,7 @@ export class EjecutarPppoeOperacionUseCase {
         });
 
       default:
-        throw new ConflictException(
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
           `No existe transición local exitosa para la operación ${params.operacion.tipo}.`,
         );
     }
@@ -1128,8 +1127,8 @@ export class EjecutarPppoeOperacionUseCase {
     const executingStep = aggregate.pasos.find((paso) => paso.estaEjecutando);
 
     if (executingStep) {
-      throw new ConflictException(
-        `La operación PPPoE ${params.operacionId} conserva el paso ${executingStep.orden} en estado EJECUTANDO y requiere recuperación.`,
+      throw new OperacionPppoeRequiereRecuperacionError(
+        `La operación PPPoE conserva el paso ${executingStep.orden} en estado EJECUTANDO y requiere recuperación.`,
       );
     }
 
@@ -1144,8 +1143,8 @@ export class EjecutarPppoeOperacionUseCase {
       .find((paso) => paso.estaPendiente);
 
     if (!pendingStep) {
-      throw new ConflictException(
-        `La operación PPPoE ${params.operacionId} no contiene un paso disponible para registrar el fallo y requiere recuperación.`,
+      throw new OperacionPppoeRequiereRecuperacionError(
+        'La operación PPPoE no contiene un paso disponible para registrar el fallo y requiere recuperación.',
       );
     }
 
@@ -1181,16 +1180,16 @@ export class EjecutarPppoeOperacionUseCase {
     );
 
     if (persistedExecutingStep) {
-      throw new ConflictException(
-        `El paso ${persistedExecutingStep.orden} no pudo finalizarse y la operación PPPoE ${params.operacionId} requiere recuperación.`,
+      throw new OperacionPppoeRequiereRecuperacionError(
+        `El paso ${persistedExecutingStep.orden} no pudo finalizarse y la operación PPPoE requiere recuperación.`,
       );
     }
 
     const persistedFailedStep = aggregate.pasos.find((paso) => paso.fueFallido);
 
     if (!persistedFailedStep) {
-      throw new ConflictException(
-        `No pudo registrarse el fallo técnico de la operación PPPoE ${params.operacionId}.`,
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
+        'No pudo registrarse el fallo técnico de la operación PPPoE.',
       );
     }
 
@@ -1280,8 +1279,8 @@ export class EjecutarPppoeOperacionUseCase {
     });
 
     if (!aggregate) {
-      throw new ConflictException(
-        `No pudo recargarse la operación PPPoE ${params.operacionId}.`,
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
+        'No pudo recargarse la operación PPPoE.',
       );
     }
 
@@ -1297,7 +1296,7 @@ export class EjecutarPppoeOperacionUseCase {
         return;
 
       default:
-        throw new ConflictException(
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
           `EjecutarPppoeOperacionUseCase todavía no admite operaciones de tipo ${operacion.tipo}.`,
         );
     }
@@ -1315,8 +1314,8 @@ export class EjecutarPppoeOperacionUseCase {
       return;
     }
 
-    throw new ConflictException(
-      `La operación PPPoE ${aggregate.operacion.id} ya contiene el paso ${processedStep.orden} en estado ${processedStep.estado}. Debe pasar por recuperación antes de continuar.`,
+    throw new OperacionPppoeRequiereRecuperacionError(
+      `La operación PPPoE ya contiene el paso ${processedStep.orden} en estado ${processedStep.estado}. Debe pasar por recuperación antes de continuar.`,
     );
   }
 
@@ -1372,7 +1371,7 @@ export class EjecutarPppoeOperacionUseCase {
       (!(input.fechaInicio instanceof Date) ||
         Number.isNaN(input.fechaInicio.getTime()))
     ) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'fechaInicio debe contener una fecha válida.',
       );
     }
@@ -1380,7 +1379,9 @@ export class EjecutarPppoeOperacionUseCase {
 
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 
@@ -1408,8 +1409,8 @@ export class EjecutarPppoeOperacionUseCase {
    */
   private assertValidDeletionContext(operacion: PppoeOperacionReadModel): void {
     if (operacion.tipo !== TipoOperacionPppoe.ELIMINAR_SECRET) {
-      throw new ConflictException(
-        `La operación PPPoE ${operacion.id ?? 'sin-id'} no corresponde a ELIMINAR_SECRET.`,
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
+        'La operación PPPoE no corresponde a ELIMINAR_SECRET.',
       );
     }
 
@@ -1442,7 +1443,7 @@ export class EjecutarPppoeOperacionUseCase {
      * No admitimos que una instalación por sí sola
      * origine una eliminación definitiva.
      */
-    throw new ConflictException(
+    throw new ProvisionamientoPppoeEstadoInvalidoError(
       'La operación ELIMINAR_SECRET contiene un contexto inválido: una eliminación sin desinstalación no puede estar vinculada únicamente a una instalación.',
     );
   }

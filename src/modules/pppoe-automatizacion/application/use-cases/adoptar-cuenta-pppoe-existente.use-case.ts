@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   PPPOE_CLIENTE_CUENTA,
   PppoeClienteCuentaFacadePort,
@@ -35,6 +29,12 @@ import {
   PppoePerfilHomologacionFacadePort,
 } from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.facade.port';
 import { EstadoAccesoInternet } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
+import {
+  ProvisionamientoPppoeDatosInvalidosError,
+  ProvisionamientoPppoeEstadoInvalidoError,
+  UsuarioPppoeEnUsoError,
+} from '../../domain/errors/pppoe-automatizacion.errors';
+import { PerfilHomologacionNoEncontradoError } from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.types';
 
 export type AdoptarCuentaPppoeExistenteInput = {
   empresaId: number;
@@ -122,7 +122,7 @@ export class AdoptarCuentaPppoeExistenteUseCase {
       );
 
     if (accesoVigente) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         `El cliente ya posee un acceso PPPoE vigente en estado ${accesoVigente.estado}.`,
       );
     }
@@ -131,7 +131,7 @@ export class AdoptarCuentaPppoeExistenteUseCase {
       await this.cuentasPppoe.buscarVigentePorUsuario(normalized.usuarioPppoe);
 
     if (cuentaVigenteConMismoUsuario) {
-      throw new ConflictException(
+      throw new UsuarioPppoeEnUsoError(
         `El usuario PPPoE "${normalized.usuarioPppoe}" ya se encuentra asociado a una cuenta vigente en el CRM.`,
       );
     }
@@ -141,19 +141,17 @@ export class AdoptarCuentaPppoeExistenteUseCase {
     );
 
     if (!perfil) {
-      throw new NotFoundException(
-        `No existe la homologación PPPoE ${normalized.perfilHomologacionId}.`,
-      );
+      throw new PerfilHomologacionNoEncontradoError();
     }
 
     if (perfil.empresaId !== normalized.empresaId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La homologación PPPoE no pertenece a la empresa actual.',
       );
     }
 
     if (!perfil.activo) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La homologación PPPoE seleccionada se encuentra inactiva.',
       );
     }
@@ -192,7 +190,7 @@ export class AdoptarCuentaPppoeExistenteUseCase {
       });
 
       if (!session.estaAbierta()) {
-        throw new ConflictException(
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
           'La sesión SSH no quedó disponible después de conectarse al MikroTik.',
         );
       }
@@ -204,25 +202,25 @@ export class AdoptarCuentaPppoeExistenteUseCase {
       });
 
       if (!verification.encontrado) {
-        throw new ConflictException(
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
           `No existe un secret PPPoE con el usuario "${normalized.usuarioPppoe}" en el MikroTik seleccionado.`,
         );
       }
 
       if (verification.passwordCoincide !== true) {
-        throw new ConflictException(
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
           'La contraseña suministrada no coincide con la configurada actualmente en MikroTik.',
         );
       }
 
       if (!verification.secret) {
-        throw new ConflictException(
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
           'MikroTik confirmó el usuario, pero no devolvió la información necesaria para completar la adopción.',
         );
       }
 
       if (verification.secret.codigoPerfil !== codigoPerfilEsperado) {
-        throw new ConflictException(
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
           `El secret utiliza el profile "${verification.secret.codigoPerfil ?? 'sin perfil'}", pero la homologación seleccionada requiere "${codigoPerfilEsperado}".`,
         );
       }
@@ -230,7 +228,7 @@ export class AdoptarCuentaPppoeExistenteUseCase {
       servicioRemoto = verification.secret.servicio;
 
       if (!this.isCompatibleService(servicioRemoto)) {
-        throw new ConflictException(
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
           `El secret utiliza service="${servicioRemoto ?? 'sin servicio'}", por lo que no puede adoptarse como cuenta PPPoE.`,
         );
       }
@@ -357,20 +355,24 @@ export class AdoptarCuentaPppoeExistenteUseCase {
     this.assertPositiveInteger(input.operadorId, 'operadorId');
 
     if (typeof input.usuarioPppoe !== 'string') {
-      throw new BadRequestException('usuarioPppoe debe ser una cadena.');
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        'usuarioPppoe debe ser una cadena.',
+      );
     }
 
     const usuarioPppoe = input.usuarioPppoe.trim();
 
     if (!usuarioPppoe) {
-      throw new BadRequestException('usuarioPppoe es obligatorio.');
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        'usuarioPppoe es obligatorio.',
+      );
     }
 
     if (
       usuarioPppoe.length >
       AdoptarCuentaPppoeExistenteUseCase.MAX_USUARIO_LENGTH
     ) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         `usuarioPppoe no puede superar ${AdoptarCuentaPppoeExistenteUseCase.MAX_USUARIO_LENGTH} caracteres.`,
       );
     }
@@ -379,14 +381,16 @@ export class AdoptarCuentaPppoeExistenteUseCase {
       typeof input.passwordPppoe !== 'string' ||
       input.passwordPppoe.length === 0
     ) {
-      throw new BadRequestException('passwordPppoe es obligatorio.');
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        'passwordPppoe es obligatorio.',
+      );
     }
 
     if (
       input.passwordPppoe.length >
       AdoptarCuentaPppoeExistenteUseCase.MAX_PASSWORD_LENGTH
     ) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         `passwordPppoe no puede superar ${AdoptarCuentaPppoeExistenteUseCase.MAX_PASSWORD_LENGTH} caracteres.`,
       );
     }
@@ -396,7 +400,7 @@ export class AdoptarCuentaPppoeExistenteUseCase {
       (!(input.fechaReferencia instanceof Date) ||
         Number.isNaN(input.fechaReferencia.getTime()))
     ) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'fechaReferencia debe ser una fecha válida.',
       );
     }
@@ -422,7 +426,9 @@ export class AdoptarCuentaPppoeExistenteUseCase {
 
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 

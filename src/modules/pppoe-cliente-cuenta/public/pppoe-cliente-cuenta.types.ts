@@ -6,3 +6,4 @@ export type {
   ClientePppoeCuentaDetalleActivacionAccion,
   ClientePppoeCuentaDetalleResult,
 } from '../domain/read-models/cliente-pppoe-cuenta-detalle.read-model';
+export { CuentaPppoeNoEncontradaError } from '../domain/errors/pppoe-cliente-cuenta.errors';

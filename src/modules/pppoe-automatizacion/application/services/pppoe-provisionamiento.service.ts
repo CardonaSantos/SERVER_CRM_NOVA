@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 
@@ -48,6 +42,11 @@ import {
   PppoeOperacionFacadePort,
 } from 'src/modules/pppoe-operacion/public/pppoe-operacion.facade.port';
 import { PppoeOperacionReadModel } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
+import {
+  ProvisionamientoPppoeDatosInvalidosError,
+  ProvisionamientoPppoeEstadoInvalidoError,
+} from '../../domain/errors/pppoe-automatizacion.errors';
+import { OperacionPppoeNoEncontradaError } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 /**
  * Implementación de la fachada pública
@@ -111,7 +110,7 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
       !Number.isInteger(instalacionId) ||
       instalacionId <= 0
     ) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'instalacionId es obligatorio para activar el servicio desde una instalación.',
       );
     }
@@ -263,7 +262,7 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
 
     if (aggregate.creada) {
       if (aggregate.operacionAnteriorId === null) {
-        throw new ConflictException(
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
           'El nuevo reintento no contiene la referencia a la operación anterior.',
         );
       }
@@ -307,8 +306,8 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
      * PENDIENTE hasta que otro flujo la autorice.
      */
     if (operacion.estaPendiente && operacion.requiereReautenticacion) {
-      throw new ConflictException(
-        `El reintento PPPoE ${operacionId} requiere autorización antes de ejecutarse.`,
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
+        'El reintento PPPoE requiere autorización antes de ejecutarse.',
       );
     }
 
@@ -316,8 +315,8 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
      * Una operación ya AUTORIZADA puede comenzar.
      */
     if (!operacion.estaPendiente && !operacion.estaAutorizada) {
-      throw new ConflictException(
-        `El reintento PPPoE ${operacionId} no puede ejecutarse desde el estado ${operacion.estado}.`,
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
+        `El reintento PPPoE no puede ejecutarse desde el estado ${operacion.estado}.`,
       );
     }
 
@@ -351,9 +350,7 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
     });
 
     if (!operacionSolicitada) {
-      throw new NotFoundException(
-        `No existe la operación PPPoE ${params.operacionId}.`,
-      );
+      throw new OperacionPppoeNoEncontradaError();
     }
 
     const operacionRaizId =
@@ -373,9 +370,7 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
     });
 
     if (!ultimoIntento) {
-      throw new NotFoundException(
-        `No se encontró la cadena de intentos de la operación ${operacionRaizId}.`,
-      );
+      throw new OperacionPppoeNoEncontradaError();
     }
 
     const router = await this.routerContext.resolve(
@@ -385,8 +380,8 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
     const host = router.host?.trim();
 
     if (!host) {
-      throw new ConflictException(
-        `El router MikroTik ${ultimoIntento.mikrotikRouterId} no contiene un host válido.`,
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
+        'El router MikroTik no contiene un host válido.',
       );
     }
 
@@ -395,8 +390,8 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
       router.port < 1 ||
       router.port > 65_535
     ) {
-      throw new ConflictException(
-        `El router MikroTik ${ultimoIntento.mikrotikRouterId} no contiene un puerto SSH válido.`,
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
+        'El router MikroTik no contiene un puerto SSH válido.',
       );
     }
 
@@ -471,7 +466,7 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
 
   private requireOperationId(operacion: PppoeOperacionReadModel): number {
     if (operacion.id === null) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La operación PPPoE no contiene un identificador persistido.',
       );
     }
@@ -487,7 +482,9 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
     this.assertRequiredString(input.claveIdempotencia, 'claveIdempotencia');
 
     if (!input.actor) {
-      throw new BadRequestException('actor es obligatorio.');
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        'actor es obligatorio.',
+      );
     }
 
     if (input.actor.iniciadoPorId !== null) {
@@ -501,7 +498,7 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
       input.actor.origen === OrigenOperacionPppoe.OPERADOR &&
       input.actor.iniciadoPorId === null
     ) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'actor.iniciadoPorId es obligatorio cuando el origen es OPERADOR.',
       );
     }
@@ -509,13 +506,17 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
 
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 
   private assertRequiredString(value: string, field: string): void {
     if (typeof value !== 'string' || !value.trim()) {
-      throw new BadRequestException(`${field} es obligatorio.`);
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        `${field} es obligatorio.`,
+      );
     }
   }
 }

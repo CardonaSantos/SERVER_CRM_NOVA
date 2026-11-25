@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 
@@ -44,6 +38,14 @@ import {
   PppoeOperacionFacadePort,
 } from 'src/modules/pppoe-operacion/public/pppoe-operacion.facade.port';
 import { PppoeOperacionReadModel } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
+import { CuentaPppoeNoEncontradaError } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
+import {
+  ProvisionamientoPppoeDatosInvalidosError,
+  ProvisionamientoPppoeEstadoInvalidoError,
+  RouterMikrotikNoEncontradoError,
+} from '../../domain/errors/pppoe-automatizacion.errors';
+import { PerfilHomologacionNoEncontradoError } from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.types';
+import { OperacionPppoeIdempotenciaError } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 /**
  * Contexto funcional desde el que se solicita
@@ -195,19 +197,17 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
     const cuenta = await this.cuentasPppoe.buscarPorId(input.cuentaPppoeId);
 
     if (!cuenta) {
-      throw new NotFoundException(
-        `No existe la cuenta PPPoE ${input.cuentaPppoeId}.`,
-      );
+      throw new CuentaPppoeNoEncontradaError();
     }
 
     if (cuenta.id === null) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE no contiene un identificador persistido.',
       );
     }
 
     if (cuenta.empresaId !== input.empresaId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE no pertenece a la empresa indicada.',
       );
     }
@@ -223,27 +223,25 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
     );
 
     if (!perfil) {
-      throw new NotFoundException(
-        `No existe la homologación PPPoE ${cuenta.perfilHomologacionId}.`,
-      );
+      throw new PerfilHomologacionNoEncontradoError();
     }
 
     const perfilProps = perfil;
 
     if (perfilProps.id === null) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La homologación PPPoE no contiene un identificador persistido.',
       );
     }
 
     if (perfilProps.id !== cuenta.perfilHomologacionId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La homologación recuperada no coincide con la cuenta PPPoE.',
       );
     }
 
     if (perfilProps.empresaId !== input.empresaId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La homologación PPPoE no pertenece a la empresa indicada.',
       );
     }
@@ -259,19 +257,17 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
     );
 
     if (!router) {
-      throw new NotFoundException(
-        `No existe el router MikroTik ${perfilProps.mikrotikRouterId}.`,
-      );
+      throw new RouterMikrotikNoEncontradoError();
     }
 
     if (router.id === null) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'El router MikroTik no contiene un identificador persistido.',
       );
     }
 
     if (router.empresaId !== input.empresaId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'El router MikroTik no pertenece a la empresa indicada.',
       );
     }
@@ -441,14 +437,14 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
      *   el operador fue reautenticado antes de llegar aquí.
      */
     if (params.operacion.estaAutorizada) {
-      throw new ConflictException(
-        `La operación PPPoE ${operacionId} está AUTORIZADA, pero este flujo ejecuta ELIMINAR_SECRET después de una autorización administrativa previa.`,
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
+        'La operación PPPoE está AUTORIZADA, pero este flujo ejecuta ELIMINAR_SECRET después de una autorización administrativa previa.',
       );
     }
 
     if (!params.operacion.estaPendiente) {
-      throw new ConflictException(
-        `La operación PPPoE ${operacionId} no puede ejecutarse desde el estado ${params.operacion.estado}.`,
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
+        `La operación PPPoE no puede ejecutarse desde el estado ${params.operacion.estado}.`,
       );
     }
 
@@ -481,7 +477,9 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
     modo: ModoEliminacionPppoe;
   }): void {
     if (params.estado === EstadoCuentaPppoe.ELIMINADA) {
-      throw new ConflictException('La cuenta PPPoE ya se encuentra eliminada.');
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
+        'La cuenta PPPoE ya se encuentra eliminada.',
+      );
     }
 
     if (params.modo === ModoEliminacionPppoe.BAJA_MANUAL) {
@@ -495,7 +493,7 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
         return;
       }
 
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         `No puede darse de baja manualmente una cuenta PPPoE desde el estado ${params.estado}.`,
       );
     }
@@ -520,7 +518,7 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
       return;
     }
 
-    throw new ConflictException(
+    throw new ProvisionamientoPppoeEstadoInvalidoError(
       `No puede eliminarse el secret PPPoE desde el estado ${params.estado}.`,
     );
   }
@@ -564,7 +562,7 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
       return;
     }
 
-    throw new ConflictException(
+    throw new OperacionPppoeIdempotenciaError(
       'La clave de idempotencia ya pertenece a una operación PPPoE diferente.',
     );
   }
@@ -584,8 +582,8 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
     operacion: PppoeOperacionReadModel,
   ): ModoEliminacionPppoe {
     if (operacion.tipo !== TipoOperacionPppoe.ELIMINAR_SECRET) {
-      throw new ConflictException(
-        `La operación ${operacion.id ?? 'sin-id'} no es ELIMINAR_SECRET.`,
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
+        'La operación no es ELIMINAR_SECRET.',
       );
     }
 
@@ -597,7 +595,7 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
       return ModoEliminacionPppoe.BAJA_MANUAL;
     }
 
-    throw new ConflictException(
+    throw new ProvisionamientoPppoeEstadoInvalidoError(
       'La operación ELIMINAR_SECRET no contiene un contexto funcional válido.',
     );
   }
@@ -637,7 +635,7 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
 
   private requireOperationId(operacion: PppoeOperacionReadModel): number {
     if (operacion.id === null) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La operación PPPoE no contiene un identificador persistido.',
       );
     }
@@ -657,7 +655,9 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
     this.assertRequiredString(input.claveIdempotencia, 'claveIdempotencia');
 
     if (!input.actor) {
-      throw new BadRequestException('actor es obligatorio.');
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        'actor es obligatorio.',
+      );
     }
 
     if (input.actor.iniciadoPorId !== null) {
@@ -671,7 +671,7 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
       input.actor.origen === OrigenOperacionPppoe.OPERADOR &&
       input.actor.iniciadoPorId === null
     ) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'actor.iniciadoPorId es obligatorio cuando el origen es OPERADOR.',
       );
     }
@@ -686,7 +686,7 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
         return;
 
       default:
-        throw new BadRequestException(
+        throw new ProvisionamientoPppoeDatosInvalidosError(
           `Modo de eliminación PPPoE no soportado: ${String(input.modo)}.`,
         );
     }
@@ -696,7 +696,7 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
     input: EjecutarEliminacionPppoeInternaInput,
   ): void {
     if (input.desinstalacionId === null) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'desinstalacionId es obligatorio para una eliminación originada por desinstalación.',
       );
     }
@@ -710,25 +710,25 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
     input: EjecutarEliminacionPppoeInternaInput,
   ): void {
     if (input.desinstalacionId !== null) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'Una baja manual PPPoE no puede estar vinculada a una desinstalación.',
       );
     }
 
     if (input.instalacionId !== null) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'Una baja manual PPPoE no puede estar vinculada a una instalación.',
       );
     }
 
     if (input.actor.origen !== OrigenOperacionPppoe.OPERADOR) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'Una baja manual PPPoE debe ser iniciada por un operador.',
       );
     }
 
     if (input.actor.iniciadoPorId === null) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'actor.iniciadoPorId es obligatorio para una baja manual PPPoE.',
       );
     }
@@ -759,7 +759,9 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
 
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 
@@ -779,7 +781,9 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
     field: string,
   ): void {
     if (typeof value !== 'string' || !value.trim()) {
-      throw new BadRequestException(`${field} es obligatorio.`);
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        `${field} es obligatorio.`,
+      );
     }
   }
 }

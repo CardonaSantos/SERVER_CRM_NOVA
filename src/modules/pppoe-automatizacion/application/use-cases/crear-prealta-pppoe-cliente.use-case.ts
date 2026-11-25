@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import {
   AccesoInternetReadModel,
@@ -27,6 +22,10 @@ import {
   PppoePrealtaPort,
   PrepararPrealtaPppoeResult,
 } from '../../public/pppoe-prealta.port';
+import {
+  ProvisionamientoPppoeDatosInvalidosError,
+  ProvisionamientoPppoeEstadoInvalidoError,
+} from '../../domain/errors/pppoe-automatizacion.errors';
 
 export type CrearPrealtaPppoeClienteInput = {
   empresaId: number;
@@ -117,7 +116,7 @@ export class CrearPrealtaPppoeClienteUseCase {
     );
 
     if (cuentaExistente) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'El cliente ya posee una cuenta PPPoE asociada.',
       );
     }
@@ -132,19 +131,19 @@ export class CrearPrealtaPppoeClienteUseCase {
      * Reutilizamos únicamente un acceso todavía PENDIENTE.
      */
     if (accesoExistente.estado !== EstadoAccesoInternet.PENDIENTE) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         `El cliente ya posee un acceso PPPoE en estado ${accesoExistente.estado}, pero no tiene una cuenta PPPoE asociada. Se requiere revisión antes de continuar.`,
       );
     }
 
     if (accesoExistente.tecnologia !== TecnologiaAccesoInternet.FIBRA_GPON) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'El acceso PPPoE pendiente del cliente no utiliza tecnología FIBRA_GPON.',
       );
     }
 
     if (accesoExistente.servicioInternetId !== input.servicioInternetId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'El acceso PPPoE pendiente del cliente pertenece a un servicio de internet diferente.',
       );
     }
@@ -178,7 +177,7 @@ export class CrearPrealtaPppoeClienteUseCase {
       (!(input.fechaReferencia instanceof Date) ||
         Number.isNaN(input.fechaReferencia.getTime()))
     ) {
-      throw new BadRequestException(
+      throw new ProvisionamientoPppoeDatosInvalidosError(
         'fechaReferencia debe ser una fecha válida.',
       );
     }
@@ -186,7 +185,9 @@ export class CrearPrealtaPppoeClienteUseCase {
 
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
+      throw new ProvisionamientoPppoeDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 }

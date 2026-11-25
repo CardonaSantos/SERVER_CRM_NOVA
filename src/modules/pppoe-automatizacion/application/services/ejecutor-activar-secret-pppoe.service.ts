@@ -1,4 +1,4 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import {
   MIKROTIK_SSH_PORT,
@@ -28,6 +28,7 @@ import {
   PppoeOperacionPasoReadModel,
   PppoeOperacionResultado,
 } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
+import { ProvisionamientoPppoeEstadoInvalidoError } from '../../domain/errors/pppoe-automatizacion.errors';
 
 export type EjecutarActivarSecretPppoeParams = {
   contexto: ContextoEjecucionPppoe;
@@ -83,7 +84,7 @@ export class EjecutorActivarSecretPppoeService {
     const operacionId = contexto.operacion.id;
 
     if (operacionId === null) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La operación PPPoE debe estar persistida antes de ejecutarse.',
       );
     }
@@ -174,7 +175,7 @@ export class EjecutorActivarSecretPppoeService {
       });
 
       if (!session || !session.estaAbierta()) {
-        throw new ConflictException(
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
           'La sesión SSH no quedó disponible después de la conexión.',
         );
       }
@@ -419,19 +420,19 @@ export class EjecutorActivarSecretPppoeService {
    */
   private validateContext(contexto: ContextoEjecucionPppoe): void {
     if (contexto.operacion.tipo !== TipoOperacionPppoe.ACTIVAR_SECRET) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         `EjecutorActivarSecretPppoeService no puede procesar una operación de tipo ${contexto.operacion.tipo}.`,
       );
     }
 
     if (contexto.cuenta.id === null) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE debe estar persistida antes de activar el secret.',
       );
     }
 
     if (contexto.cuenta.empresaId !== contexto.operacion.empresaId) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE y la operación pertenecen a empresas diferentes.',
       );
     }
@@ -441,7 +442,7 @@ export class EjecutorActivarSecretPppoeService {
      * del Secret ya fue confirmada previamente.
      */
     if (!contexto.cuenta.tieneSecretCreado) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'La cuenta PPPoE no tiene confirmado un secret creado.',
       );
     }
@@ -451,7 +452,7 @@ export class EjecutorActivarSecretPppoeService {
      * la contraseña PPPoE.
      */
     if (contexto.passwordPppoe !== null) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         'ACTIVAR_SECRET no debe contener la contraseña PPPoE descifrada.',
       );
     }
@@ -468,11 +469,13 @@ export class EjecutorActivarSecretPppoeService {
     const matches = pasos.filter((paso) => paso.tipo === tipo);
 
     if (matches.length === 0) {
-      throw new ConflictException(`La operación no contiene el paso ${tipo}.`);
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
+        `La operación no contiene el paso ${tipo}.`,
+      );
     }
 
     if (matches.length > 1) {
-      throw new ConflictException(
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
         `La operación contiene más de un paso ${tipo}.`,
       );
     }

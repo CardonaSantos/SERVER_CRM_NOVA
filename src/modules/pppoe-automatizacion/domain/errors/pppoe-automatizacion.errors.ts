@@ -1,3 +1,4 @@
+import { DomainError } from 'src/common/hexagonal/domain-error';
 import {
   EfectoRemotoMikrotik,
   FaseFalloMikrotikSsh,
@@ -144,5 +145,56 @@ export class PppoeOperacionStepError extends Error {
 
       errorMensaje: this.message,
     };
+  }
+}
+
+export class ProvisionamientoPppoeDatosInvalidosError extends DomainError {
+  readonly codigo = 'PROVISIONAMIENTO_PPPOE_DATOS_INVALIDOS';
+  readonly tipo = 'INVALIDO';
+  constructor(mensaje: string) {
+    super(mensaje);
+  }
+}
+
+/** La cuenta, la operación o el router no están en el estado que la acción exige. */
+export class ProvisionamientoPppoeEstadoInvalidoError extends DomainError {
+  readonly codigo = 'PROVISIONAMIENTO_PPPOE_ESTADO_INVALIDO';
+  readonly tipo = 'CONFLICTO';
+  constructor(mensaje: string) {
+    super(mensaje);
+  }
+}
+
+/** La operación quedó a medias y hay que pasarla por recuperación antes de seguir. */
+export class OperacionPppoeRequiereRecuperacionError extends DomainError {
+  readonly codigo = 'OPERACION_PPPOE_REQUIERE_RECUPERACION';
+  readonly tipo = 'CONFLICTO';
+  constructor(mensaje: string) {
+    super(mensaje);
+  }
+}
+
+/** El usuario PPPoE ya pertenece a otra cuenta vigente. */
+export class UsuarioPppoeEnUsoError extends DomainError {
+  readonly codigo = 'USUARIO_PPPOE_EN_USO';
+  readonly tipo = 'CONFLICTO';
+  constructor(mensaje: string) {
+    super(mensaje);
+  }
+}
+
+export class RouterMikrotikNoEncontradoError extends DomainError {
+  readonly codigo = 'ROUTER_MIKROTIK_NO_ENCONTRADO';
+  readonly tipo = 'NO_ENCONTRADO';
+  constructor() {
+    super('No se encontró el router MikroTik.');
+  }
+}
+
+export class ProvisionamientoPppoeNoEncontradoError extends DomainError {
+  readonly codigo = 'PROVISIONAMIENTO_PPPOE_NO_ENCONTRADO';
+  readonly tipo = 'NO_ENCONTRADO';
+  constructor(mensaje: string) {
+    super(mensaje);
   }
 }
