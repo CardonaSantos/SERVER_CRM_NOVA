@@ -1,5 +1,4 @@
 import { RelojFijo } from 'src/common/reloj/reloj-fijo';
-import { dayjs } from 'src/Utils/dayjs.config';
 
 import { PppoeCredentialGeneratorNovaAdapter } from './pppoe-credential-generator-nova.adapter';
 
@@ -10,16 +9,31 @@ describe('PppoeCredentialGeneratorNovaAdapter', () => {
 
     const credenciales = generador.generate({ clienteId: 1234 });
 
-    // Mismo formato que antes: dayjs(fecha) en la zona del proceso.
-    const esperado = `NV-${dayjs(reloj.ahora()).format('YYYY/MM/DD[MH]HH:mm[#]')}`;
-
+    // 18:36 UTC = 12:36 en Guatemala (UTC-6), sin importar la zona del proceso.
     expect(credenciales.usuario).toBe('1234');
-    expect(credenciales.secretoPlano).toBe(esperado);
-    expect(credenciales.secretoPlano).toMatch(
-      /^NV-\d{4}\/\d{2}\/\d{2}MH\d{2}:\d{2}#$/,
-    );
+    expect(credenciales.secretoPlano).toBe('NV-2026/11/24MH12:36#');
     expect(credenciales.generadoEn.toISOString()).toBe(
       '2026-11-24T18:36:00.000Z',
+    );
+  });
+
+  it('cerca de medianoche usa la fecha de Guatemala, no la de UTC', () => {
+    // 03:10 UTC del 25 = 21:10 del 24 en Guatemala.
+    const generador = new PppoeCredentialGeneratorNovaAdapter(
+      new RelojFijo('2026-11-25T03:10:00Z'),
+    );
+
+    expect(generador.generate({ clienteId: 5 }).secretoPlano).toBe(
+      'NV-2026/11/24MH21:10#',
+    );
+  });
+
+  it('mantiene exactamente el formato de la convención', () => {
+    const generador = new PppoeCredentialGeneratorNovaAdapter(new RelojFijo());
+    const credenciales = generador.generate({ clienteId: 1 });
+
+    expect(credenciales.secretoPlano).toMatch(
+      /^NV-\d{4}\/\d{2}\/\d{2}MH\d{2}:\d{2}#$/,
     );
   });
 
