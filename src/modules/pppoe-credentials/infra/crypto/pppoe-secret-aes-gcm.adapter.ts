@@ -5,10 +5,10 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import {
   PppoeSecretCipherPort,
   SecretoPppoeProtegido,
-} from '../../application/ports/pppoe-secret-cipher.port';
+} from '../../public/pppoe-secret-cipher.port';
 
 @Injectable()
-export class AesGcmPppoeSecretCipher implements PppoeSecretCipherPort {
+export class PppoeSecretAesGcmAdapter implements PppoeSecretCipherPort {
   private static readonly ALGORITHM = 'aes-256-gcm';
 
   /**
@@ -27,10 +27,10 @@ export class AesGcmPppoeSecretCipher implements PppoeSecretCipherPort {
 
     const key = this.getKey(versionClave);
 
-    const iv = randomBytes(AesGcmPppoeSecretCipher.IV_LENGTH);
+    const iv = randomBytes(PppoeSecretAesGcmAdapter.IV_LENGTH);
 
-    const cipher = createCipheriv(AesGcmPppoeSecretCipher.ALGORITHM, key, iv, {
-      authTagLength: AesGcmPppoeSecretCipher.AUTH_TAG_LENGTH,
+    const cipher = createCipheriv(PppoeSecretAesGcmAdapter.ALGORITHM, key, iv, {
+      authTagLength: PppoeSecretAesGcmAdapter.AUTH_TAG_LENGTH,
     });
 
     const encrypted = Buffer.concat([
@@ -66,11 +66,11 @@ export class AesGcmPppoeSecretCipher implements PppoeSecretCipherPort {
 
     const authTag = this.decodeBase64(secreto.secretoAuthTag, 'secretoAuthTag');
 
-    if (iv.length !== AesGcmPppoeSecretCipher.IV_LENGTH) {
+    if (iv.length !== PppoeSecretAesGcmAdapter.IV_LENGTH) {
       throw new Error('El IV del secreto PPPoE no tiene una longitud válida.');
     }
 
-    if (authTag.length !== AesGcmPppoeSecretCipher.AUTH_TAG_LENGTH) {
+    if (authTag.length !== PppoeSecretAesGcmAdapter.AUTH_TAG_LENGTH) {
       throw new Error(
         'El auth tag del secreto PPPoE no tiene una longitud válida.',
       );
@@ -78,11 +78,11 @@ export class AesGcmPppoeSecretCipher implements PppoeSecretCipherPort {
 
     try {
       const decipher = createDecipheriv(
-        AesGcmPppoeSecretCipher.ALGORITHM,
+        PppoeSecretAesGcmAdapter.ALGORITHM,
         key,
         iv,
         {
-          authTagLength: AesGcmPppoeSecretCipher.AUTH_TAG_LENGTH,
+          authTagLength: PppoeSecretAesGcmAdapter.AUTH_TAG_LENGTH,
         },
       );
 

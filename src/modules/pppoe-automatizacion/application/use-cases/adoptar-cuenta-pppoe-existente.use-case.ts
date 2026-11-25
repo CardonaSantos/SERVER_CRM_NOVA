@@ -13,10 +13,10 @@ import {
 
 import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
 
-import { PPPOE_SECRET_CIPHER } from 'src/modules/pppoe-cliente-cuenta/infra/tokens/pppoe-cliente-cuenta.token';
-
-import { PppoeSecretCipherPort } from 'src/modules/pppoe-credentials/application/ports/pppoe-secret-cipher.port';
-
+import {
+  PPPOE_SECRET_CIPHER,
+  PppoeSecretCipherPort,
+} from 'src/modules/pppoe-credentials/public/pppoe-secret-cipher.port';
 import {
   MIKROTIK_SSH_PORT,
   MikrotikSshPort,

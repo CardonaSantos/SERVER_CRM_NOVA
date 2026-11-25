@@ -20,13 +20,14 @@ import {
 } from 'src/modules/pppoe-cliente-cuenta/domain/ports/pppoe-cliente-cuenta.port';
 
 import {
-  PPPOE_CREDENTIAL_GENERATOR,
   PPPOE_SECRET_CIPHER,
-} from 'src/modules/pppoe-cliente-cuenta/infra/tokens/pppoe-cliente-cuenta.token';
+  PppoeSecretCipherPort,
+} from 'src/modules/pppoe-credentials/public/pppoe-secret-cipher.port';
 
-import { PppoeCredentialGeneratorPort } from 'src/modules/pppoe-credentials/application/ports/pppoe-credential-generator.port';
-
-import { PppoeSecretCipherPort } from 'src/modules/pppoe-credentials/application/ports/pppoe-secret-cipher.port';
+import {
+  PPPOE_CREDENTIAL_GENERATOR,
+  PppoeCredentialGeneratorPort,
+} from 'src/modules/pppoe-credentials/public/pppoe-credential-generator.port';
 
 import {
   PPPOE_AUDITORIA_REPOSITORY,

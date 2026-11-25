@@ -2,8 +2,7 @@ import { EstadoAccesoInternet } from 'src/modules/pppoe-acceso-internet/domain/e
 
 import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
 
-import { SecretoPppoeProtegido } from 'src/modules/pppoe-credentials/application/ports/pppoe-secret-cipher.port';
-
+import { SecretoPppoeProtegido } from 'src/modules/pppoe-credentials/public/pppoe-secret-cipher.port';
 /**
  * Token de infraestructura encargado de persistir
  * una adopción PPPoE completa dentro de una única

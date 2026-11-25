@@ -15,10 +15,10 @@ import {
   ClientePppoeCuentaQueryPort,
 } from '../../domain/ports/pppoe-cliente-cuenta-query.port';
 
-import { PPPOE_SECRET_CIPHER } from '../../infra/tokens/pppoe-cliente-cuenta.token';
-
-import { PppoeSecretCipherPort } from 'src/modules/pppoe-credentials/application/ports/pppoe-secret-cipher.port';
-
+import {
+  PPPOE_SECRET_CIPHER,
+  PppoeSecretCipherPort,
+} from 'src/modules/pppoe-credentials/public/pppoe-secret-cipher.port';
 import {
   PPPOE_AUDITORIA_REPOSITORY,
   PppoeAuditoriaRepositoryPort,

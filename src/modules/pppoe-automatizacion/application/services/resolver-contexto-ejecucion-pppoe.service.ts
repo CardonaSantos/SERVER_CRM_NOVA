@@ -5,10 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { PPPOE_SECRET_CIPHER } from 'src/modules/pppoe-cliente-cuenta/infra/tokens/pppoe-cliente-cuenta.token';
-
-import { PppoeSecretCipherPort } from 'src/modules/pppoe-credentials/application/ports/pppoe-secret-cipher.port';
-
+import {
+  PPPOE_SECRET_CIPHER,
+  PppoeSecretCipherPort,
+} from 'src/modules/pppoe-credentials/public/pppoe-secret-cipher.port';
 import { PerfilHomologacionRepositoryPort } from 'src/modules/pppoe-perfil-homologacion/domain/ports/ppoe-perfil-homologacion.port';
 import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/ppoe-cliente-cuenta.entity';
 
