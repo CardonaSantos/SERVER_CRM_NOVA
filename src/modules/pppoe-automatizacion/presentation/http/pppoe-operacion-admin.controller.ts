@@ -11,6 +11,8 @@ import {
 } from '@nestjs/common';
 
 import { Actor, ActorHttp } from 'src/auth/decoradores/actor.decorator';
+import { Roles } from 'src/auth/decoradores/roles.decorator';
+import { ROLES_OFICINA } from 'src/auth/roles/grupos-roles';
 import { OperacionSensible } from 'src/auth/step-up/operacion-sensible.decorator';
 
 import { PppoeOperacionAdminService } from '../../application/services/pppoe-operacion-admin.service';
@@ -58,6 +60,7 @@ export class PppoeOperacionAdminController {
 
   /** Reautentica al operador, autoriza la operación PENDIENTE y la ejecuta. */
   @Post(':operacionId/autorizar')
+  @Roles(...ROLES_OFICINA)
   @OperacionSensible({ campoContrasena: 'password' })
   @HttpCode(HttpStatus.OK)
   autorizar(
@@ -78,6 +81,7 @@ export class PppoeOperacionAdminController {
    * Las bajas manuales vuelven a pedir la contraseña.
    */
   @Post(':operacionId/reintentar')
+  @Roles(...ROLES_OFICINA)
   @OperacionSensible()
   @HttpCode(HttpStatus.OK)
   reintentar(
@@ -97,6 +101,7 @@ export class PppoeOperacionAdminController {
 
   /** Cierra una operación que quedó EJECUTANDO tras una caída; no repite comandos SSH. */
   @Post(':operacionId/recuperar')
+  @Roles(...ROLES_OFICINA)
   @HttpCode(HttpStatus.OK)
   recuperar(
     @Param('operacionId', ParseIntPipe) operacionId: number,
@@ -114,6 +119,7 @@ export class PppoeOperacionAdminController {
 
   /** Solo PENDIENTE o AUTORIZADA, antes de ejecutar pasos. */
   @Post(':operacionId/cancelar')
+  @Roles(...ROLES_OFICINA)
   @HttpCode(HttpStatus.OK)
   cancelar(
     @Param('operacionId', ParseIntPipe) operacionId: number,

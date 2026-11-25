@@ -1,6 +1,8 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 
 import { Actor, ActorHttp } from 'src/auth/decoradores/actor.decorator';
+import { Roles } from 'src/auth/decoradores/roles.decorator';
+import { ROLES_OFICINA } from 'src/auth/roles/grupos-roles';
 
 import { AdoptarCuentaPppoeExistenteUseCase } from '../../application/use-cases/adoptar-cuenta-pppoe-existente.use-case';
 import { VerificarAdopcionPppoeUseCase } from '../../application/use-cases/verificar-adopcion-pppoe.use-case';
@@ -25,6 +27,7 @@ export class PppoeCuentaAdopcionController {
    * (contraseña, profile, service) y que el cliente y el usuario estén libres.
    */
   @Post('verificar')
+  @Roles(...ROLES_OFICINA)
   @HttpCode(HttpStatus.OK)
   verificar(@Body() dto: VerificarAdopcionPppoeDto, @Actor() actor: ActorHttp) {
     return this.verificarAdopcion.execute({
@@ -42,6 +45,7 @@ export class PppoeCuentaAdopcionController {
    * comprobar el router y guarda acceso, cuenta y auditoría en una transacción.
    */
   @Post()
+  @Roles(...ROLES_OFICINA)
   @HttpCode(HttpStatus.CREATED)
   adoptar(
     @Body() dto: AdoptarCuentaPppoeExistenteDto,

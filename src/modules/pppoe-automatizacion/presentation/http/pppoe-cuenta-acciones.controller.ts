@@ -9,6 +9,8 @@ import {
 } from '@nestjs/common';
 
 import { Actor, ActorHttp } from 'src/auth/decoradores/actor.decorator';
+import { Roles } from 'src/auth/decoradores/roles.decorator';
+import { ROLES_OFICINA } from 'src/auth/roles/grupos-roles';
 import { OperacionSensible } from 'src/auth/step-up/operacion-sensible.decorator';
 
 import { PppoeOperacionAdminService } from '../../application/services/pppoe-operacion-admin.service';
@@ -26,6 +28,7 @@ export class PppoeCuentaAccionesController {
 
   /** Cuenta y acceso a SUSPENDIDO; el cliente queda SUSPENDIDO en su historial. */
   @Post(':cuentaPppoeId/suspender')
+  @Roles(...ROLES_OFICINA)
   @OperacionSensible()
   @HttpCode(HttpStatus.OK)
   suspender(
@@ -45,6 +48,7 @@ export class PppoeCuentaAccionesController {
 
   /** Cuenta y acceso a ACTIVO; el cliente queda ACTIVO en su historial. */
   @Post(':cuentaPppoeId/reactivar')
+  @Roles(...ROLES_OFICINA)
   @OperacionSensible()
   @HttpCode(HttpStatus.OK)
   reactivar(
@@ -67,6 +71,7 @@ export class PppoeCuentaAccionesController {
    * router; la cuenta termina ELIMINADA y el acceso en BAJA.
    */
   @Post(':cuentaPppoeId/dar-de-baja')
+  @Roles(...ROLES_OFICINA)
   @OperacionSensible()
   @HttpCode(HttpStatus.OK)
   darDeBaja(
