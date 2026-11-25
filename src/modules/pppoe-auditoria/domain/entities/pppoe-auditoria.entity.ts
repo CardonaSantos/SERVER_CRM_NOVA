@@ -1,8 +1,8 @@
-import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
+import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 import {
   AccionAuditoriaPppoe,
   OrigenOperacionPppoe,
-} from '../enums/pppoe-auditoria-enums';
+} from '../enums/pppoe-auditoria.enum';
 import {
   CrearPppoeAuditoriaEntityProps,
   DatosAuditoriaPppoe,
@@ -13,7 +13,7 @@ import {
   RegistrarEventoInstalacionPppoeProps,
   RegistrarEventoOperacionPppoeProps,
   RegistrarTransicionCuentaPppoeProps,
-} from '../props/auditoria-entity-props';
+} from '../props/pppoe-auditoria.props';
 
 export class PppoeAuditoriaEntity {
   private static readonly SENSITIVE_DATA_KEYS = new Set([

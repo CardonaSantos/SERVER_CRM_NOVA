@@ -11,7 +11,7 @@ import { PppoeOperacionEntity } from 'src/modules/pppoe-operacion/domain/entitie
 import {
   EstadoOperacionPppoe,
   TipoOperacionPppoe,
-} from 'src/modules/pppoe-operacion/domain/enums/pppoe-operacion-operacion-paso.enums';
+} from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 import {
   CLIENTE_PPPOE_CUENTA_REPOSITORY,
@@ -35,7 +35,7 @@ import {
   PPPOE_OPERACION_AUDITORIA,
   PppoeOperacionAuditoriaPort,
 } from '../../domain/ports/pppoe-operacion-auditoria.port';
-import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
+import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 import { EjecutarProvisionamientoPppoeBaseInput } from '../../domain/props/pppoe-provisionamiento.props';
 
 /**

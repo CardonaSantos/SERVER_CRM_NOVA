@@ -15,7 +15,7 @@ import {
 import {
   AccionAuditoriaPppoe,
   OrigenOperacionPppoe,
-} from '../../domain/enums/pppoe-auditoria-enums';
+} from '../../domain/enums/pppoe-auditoria.enum';
 
 export class ListarPppoeAuditoriasQueryDto {
   @Type(() => Number)

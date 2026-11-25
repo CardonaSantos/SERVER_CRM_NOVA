@@ -15,7 +15,7 @@ import { EstadoAccesoInternet } from 'src/modules/pppoe-acceso-internet/domain/e
 import {
   EstadoOperacionPppoe,
   TipoOperacionPppoe,
-} from 'src/modules/pppoe-operacion/domain/enums/pppoe-operacion-operacion-paso.enums';
+} from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 import { EstadoCuentaPppoe } from '../../domain/enums/pppoe-cliente-cuenta.enum';
 

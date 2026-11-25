@@ -6,7 +6,7 @@ import {
 
 import { AuthService } from 'src/auth/auth.service';
 
-import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
+import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 
 import { PrepararPrealtaPppoeResult } from '../results/preparar-prealta-pppoe.result';
 

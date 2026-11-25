@@ -12,19 +12,19 @@ import {
   PppoeAuditoriaOrdenCampo,
   PppoeAuditoriaOrdenDireccion,
   PppoeAuditoriaRepositoryPort,
-} from '../../domain/ports/pppoe-auditoria-repository';
+} from '../../domain/ports/pppoe-auditoria-repository.port';
 import { PppoeAuditoriaEntity } from '../../domain/entities/pppoe-auditoria.entity';
-import { PppoeAuditoriaPrismaMapper } from './pppoe-auditoria-mapper.prisma';
+import { PppoeAuditoriaPrismaMapper } from './pppoe-auditoria-prisma.mapper';
 import {
   AccionAuditoriaPppoe,
   OrigenOperacionPppoe,
-} from '../../domain/enums/pppoe-auditoria-enums';
+} from '../../domain/enums/pppoe-auditoria.enum';
 import {
   PppoeAuditoriaFindManyFilters,
   PppoeAuditoriaListItem,
   PppoeAuditoriaPaginatedResult,
 } from '../../domain/read-models/pppoe-auditoria-list.read-model';
-import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
+import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 const pppoeAuditoriaListSelect = {
   id: true,

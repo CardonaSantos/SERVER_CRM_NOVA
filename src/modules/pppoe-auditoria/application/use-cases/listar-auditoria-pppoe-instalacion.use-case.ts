@@ -5,7 +5,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 
-import { ListarAuditoriaPppoeInstalacionQueryDto } from '../dto/listar-auditoria-pppoe-instalacion-query.dto';
+import { ListarAuditoriaPppoeInstalacionQueryDto } from '../../presentation/dto/listar-auditoria-pppoe-instalacion-query.dto';
 
 import {
   PPPOE_AUDITORIA_INSTALACION_QUERY,

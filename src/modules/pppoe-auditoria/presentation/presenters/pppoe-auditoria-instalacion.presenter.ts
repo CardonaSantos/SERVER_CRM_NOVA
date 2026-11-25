@@ -6,7 +6,7 @@ import {
   PppoeAuditoriaInstalacionOperacionItem,
   PppoeAuditoriaInstalacionPaginatedResult,
   PppoeAuditoriaInstalacionPaso,
-} from '../domain/read-models/pppoe-auditoria-instalacion.read-model';
+} from '../../domain/read-models/pppoe-auditoria-instalacion.read-model';
 
 export class PppoeAuditoriaInstalacionPresenter {
   static paginatedToHttp(result: PppoeAuditoriaInstalacionPaginatedResult) {

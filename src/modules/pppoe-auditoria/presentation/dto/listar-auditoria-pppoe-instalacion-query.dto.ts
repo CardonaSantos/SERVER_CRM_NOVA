@@ -14,12 +14,12 @@ import {
 import {
   AccionAuditoriaPppoe,
   OrigenOperacionPppoe,
-} from '../../domain/enums/pppoe-auditoria-enums';
+} from '../../domain/enums/pppoe-auditoria.enum';
 
 import {
   EstadoOperacionPppoe,
   TipoOperacionPppoe,
-} from 'src/modules/pppoe-operacion/domain/enums/pppoe-operacion-operacion-paso.enums';
+} from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 export class ListarAuditoriaPppoeInstalacionQueryDto {
   @IsOptional()

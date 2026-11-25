@@ -1,4 +1,4 @@
-import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
+import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 export type EstadoRemotoAdopcionPppoe =
   | EstadoCuentaPppoe.ACTIVA

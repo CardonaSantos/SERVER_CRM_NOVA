@@ -8,7 +8,7 @@ import {
 
 import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/ppoe-cliente-cuenta.entity';
 
-import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
+import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 import { FinalizarPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/finalizar-pppoe-operacion.use-case';
 
@@ -20,7 +20,7 @@ import {
   EstadoOperacionPppoe,
   TipoOperacionPppoe,
   TipoPasoPppoe,
-} from 'src/modules/pppoe-operacion/domain/enums/pppoe-operacion-operacion-paso.enums';
+} from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 import {
   PPPOE_OPERACION_REPOSITORY,

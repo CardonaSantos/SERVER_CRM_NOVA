@@ -14,7 +14,7 @@ import {
   PPPOE_PROVISIONAMIENTO,
   PppoeProvisionamientoPort,
 } from 'src/modules/pppoe-automatizacion/domain/ports/pppoe-provisionamiento.port';
-import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
+import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entitie';
 import { ClienteDesinstalacionAutorizacionEntity } from '../../domain/entities/cliente-desintalacion-autorizacion.entitie';
 import { ClienteDesinstalacionAutorizacionRepositoryPort } from '../../domain/ports/cliente-desinstalacion-autorizacion.repository.port';
@@ -25,7 +25,7 @@ import {
 } from '../../infra/tokens/cliente-desinstalacion.token';
 import { AprobarDesinstalacionAutorizacionDto } from '../dto/autorizacion-desinstalacion.dto';
 import { ValidarAccesoDesinstalacionService } from '../services/validar-acceso-desinstalacion.service';
-import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
+import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 export type AprobarAutorizacionDesinstalacionCommand =
   AprobarDesinstalacionAutorizacionDto & {

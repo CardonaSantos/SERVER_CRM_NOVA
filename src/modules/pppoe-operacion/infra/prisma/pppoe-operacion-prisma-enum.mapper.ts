@@ -7,7 +7,7 @@ import {
   TipoPasoPppoe as PrismaTipoPasoPppoe,
 } from '@prisma/client';
 
-import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
+import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 import {
   CanalOperacionPppoe,
   EstadoOperacionPppoe,

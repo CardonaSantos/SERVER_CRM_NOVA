@@ -6,11 +6,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
+import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 
-import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
+import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
-import { FlujoActivacionCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/flujo-activacion-cuenta-pppoe.enum';
+import { FlujoActivacionCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 import {
   CLIENTE_PPPOE_CUENTA_REPOSITORY,
@@ -21,7 +21,7 @@ import { ClientePppoeCuentaDetalleActivacionAccion } from 'src/modules/pppoe-cli
 
 import { ObtenerDetalleCuentaPppoeUseCase } from 'src/modules/pppoe-cliente-cuenta/application/use-cases/obtener-detalle-cuenta-pppoe.use-case';
 
-import { EstadoOperacionPppoe } from 'src/modules/pppoe-operacion/domain/enums/pppoe-operacion-operacion-paso.enums';
+import { EstadoOperacionPppoe } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 import {
   ActorOperacionPppoeInput,

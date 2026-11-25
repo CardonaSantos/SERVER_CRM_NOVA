@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
+import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 
 import { CrearReintentoPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/crear-reintento-pppoe-operacion.use-case';
 

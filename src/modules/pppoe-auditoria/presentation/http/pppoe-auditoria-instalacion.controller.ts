@@ -13,11 +13,11 @@ import {
 
 import { RequestWithAuthenticatedUser } from 'src/auth/interfaces/request-with-authenticated-user.interface';
 
-import { ListarAuditoriaPppoeInstalacionQueryDto } from '../application/dto/listar-auditoria-pppoe-instalacion-query.dto';
+import { ListarAuditoriaPppoeInstalacionQueryDto } from '../dto/listar-auditoria-pppoe-instalacion-query.dto';
 
-import { PppoeAuditoriaService } from '../application/services/pppoe-auditoria.service';
+import { PppoeAuditoriaService } from '../../application/services/pppoe-auditoria.service';
 
-import { PppoeAuditoriaInstalacionPresenter } from './pppoe-auditoria-instalacion.presenter';
+import { PppoeAuditoriaInstalacionPresenter } from '../presenters/pppoe-auditoria-instalacion.presenter';
 
 @Controller('cliente-instalaciones')
 export class PppoeAuditoriaInstalacionController {

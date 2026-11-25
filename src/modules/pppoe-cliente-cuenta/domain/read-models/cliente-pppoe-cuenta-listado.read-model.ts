@@ -4,7 +4,7 @@ import { EstadoCuentaPppoe } from '../enums/pppoe-cliente-cuenta.enum';
 import {
   EstadoOperacionPppoe,
   TipoOperacionPppoe,
-} from 'src/modules/pppoe-operacion/domain/enums/pppoe-operacion-operacion-paso.enums';
+} from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 import { PaginatedResult } from 'src/Utils/pagination';
 
 export enum OrigenCuentaPppoe {

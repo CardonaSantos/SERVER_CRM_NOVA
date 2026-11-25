@@ -18,7 +18,7 @@ import {
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { PrismaService } from 'src/prisma/prisma.service';
 
-import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
+import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 
 import { PppoeAutomatizacionModule } from 'src/modules/pppoe-automatizacion/pppoe-automatizacion.module';
 import {

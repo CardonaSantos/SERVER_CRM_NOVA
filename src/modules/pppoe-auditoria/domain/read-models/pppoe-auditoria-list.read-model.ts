@@ -2,7 +2,7 @@ import { PaginatedResult } from 'src/Utils/pagination';
 import {
   AccionAuditoriaPppoe,
   OrigenOperacionPppoe,
-} from '../enums/pppoe-auditoria-enums';
+} from '../enums/pppoe-auditoria.enum';
 
 export type PppoeAuditoriaPaginatedResult =
   PaginatedResult<PppoeAuditoriaListItem>;
@@ -92,7 +92,7 @@ export type PppoeAuditoriaRouterResumen = {
 };
 
 // OTROS
-import { EstadoCuentaPppoe } from '../../../pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
+import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 export type PppoeAuditoriaListItem = {
   id: number;

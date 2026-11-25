@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
-import { ListarPppoeAuditoriasQueryDto } from '../dto/listar-pppoe-auditorias-query.dto';
-import { ListarAuditoriaPppoeInstalacionQueryDto } from '../dto/listar-auditoria-pppoe-instalacion-query.dto';
+import { ListarPppoeAuditoriasQueryDto } from '../../presentation/dto/listar-pppoe-auditorias-query.dto';
+import { ListarAuditoriaPppoeInstalacionQueryDto } from '../../presentation/dto/listar-auditoria-pppoe-instalacion-query.dto';
 
 import { PppoeAuditoriaPaginatedResult } from '../../domain/read-models/pppoe-auditoria-list.read-model';
 import { PppoeAuditoriaInstalacionPaginatedResult } from '../../domain/read-models/pppoe-auditoria-instalacion.read-model';

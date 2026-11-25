@@ -1,7 +1,7 @@
 import {
   PppoeAuditoriaListItem,
   PppoeAuditoriaPaginatedResult,
-} from '../domain/read-models/pppoe-auditoria-list.read-model';
+} from '../../domain/read-models/pppoe-auditoria-list.read-model';
 
 export class PppoeAuditoriaPresenter {
   static paginatedToHttp(result: PppoeAuditoriaPaginatedResult) {

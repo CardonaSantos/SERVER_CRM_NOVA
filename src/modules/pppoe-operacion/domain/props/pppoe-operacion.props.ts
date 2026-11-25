@@ -1,4 +1,4 @@
-import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
+import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 import {
   CanalOperacionPppoe,
   EstadoOperacionPppoe,

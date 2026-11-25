@@ -1,7 +1,7 @@
 import {
   AccionAuditoriaPppoe,
   OrigenOperacionPppoe,
-} from '../enums/pppoe-auditoria-enums';
+} from '../enums/pppoe-auditoria.enum';
 
 import {
   CanalOperacionPppoe,
@@ -9,9 +9,9 @@ import {
   EstadoPasoPppoe,
   TipoOperacionPppoe,
   TipoPasoPppoe,
-} from 'src/modules/pppoe-operacion/domain/enums/pppoe-operacion-operacion-paso.enums';
+} from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
-import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
+import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 export type PppoeAuditoriaInstalacionFindFilters = {
   empresaId: number;

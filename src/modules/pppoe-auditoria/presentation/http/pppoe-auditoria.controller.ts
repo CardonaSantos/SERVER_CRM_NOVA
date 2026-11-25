@@ -1,7 +1,7 @@
 import { Controller, Get, Logger, Query } from '@nestjs/common';
-import { PppoeAuditoriaService } from '../application/services/pppoe-auditoria.service';
-import { ListarPppoeAuditoriasQueryDto } from '../application/dto/listar-pppoe-auditorias-query.dto';
-import { PppoeAuditoriaPresenter } from './pppoe-auditoria-presenter.presenter';
+import { PppoeAuditoriaService } from '../../application/services/pppoe-auditoria.service';
+import { ListarPppoeAuditoriasQueryDto } from '../dto/listar-pppoe-auditorias-query.dto';
+import { PppoeAuditoriaPresenter } from '../presenters/pppoe-auditoria.presenter';
 
 @Controller('pppoe-auditoria')
 export class PppoeAuditoriaController {

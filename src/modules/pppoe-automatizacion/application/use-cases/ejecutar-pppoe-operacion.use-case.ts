@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 
-import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
+import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 import {
   CLIENTE_PPPOE_CUENTA_REPOSITORY,
@@ -25,7 +25,7 @@ import {
   EstadoOperacionPppoe,
   TipoOperacionPppoe,
   TipoPasoPppoe,
-} from 'src/modules/pppoe-operacion/domain/enums/pppoe-operacion-operacion-paso.enums';
+} from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 import {
   PPPOE_OPERACION_REPOSITORY,

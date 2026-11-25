@@ -5,11 +5,11 @@ import { dayjs } from 'src/Utils/dayjs.config';
 import {
   PPPOE_AUDITORIA_REPOSITORY,
   PppoeAuditoriaRepositoryPort,
-} from '../../domain/ports/pppoe-auditoria-repository';
+} from '../../domain/ports/pppoe-auditoria-repository.port';
 
 import { PppoeAuditoriaPaginatedResult } from '../../domain/read-models/pppoe-auditoria-list.read-model';
 
-import { ListarPppoeAuditoriasQueryDto } from '../dto/listar-pppoe-auditorias-query.dto';
+import { ListarPppoeAuditoriasQueryDto } from '../../presentation/dto/listar-pppoe-auditorias-query.dto';
 
 @Injectable()
 export class ListarPppoeAuditoriasUseCase {

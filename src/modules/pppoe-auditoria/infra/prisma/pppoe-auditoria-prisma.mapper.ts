@@ -9,12 +9,12 @@ import { PppoeAuditoriaEntity } from '../../domain/entities/pppoe-auditoria.enti
 import {
   AccionAuditoriaPppoe,
   OrigenOperacionPppoe,
-} from '../../domain/enums/pppoe-auditoria-enums';
-import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
+} from '../../domain/enums/pppoe-auditoria.enum';
+import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 import {
   DatosAuditoriaPppoe,
   PppoeAuditoriaJsonValue,
-} from '../../domain/props/auditoria-entity-props';
+} from '../../domain/props/pppoe-auditoria.props';
 
 export class PppoeAuditoriaPrismaMapper {
   /**

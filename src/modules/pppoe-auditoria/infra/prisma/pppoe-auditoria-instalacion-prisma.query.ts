@@ -35,7 +35,7 @@ import {
 import {
   AccionAuditoriaPppoe,
   OrigenOperacionPppoe,
-} from '../../domain/enums/pppoe-auditoria-enums';
+} from '../../domain/enums/pppoe-auditoria.enum';
 
 import {
   CanalOperacionPppoe,
@@ -43,9 +43,9 @@ import {
   EstadoPasoPppoe,
   TipoOperacionPppoe,
   TipoPasoPppoe,
-} from 'src/modules/pppoe-operacion/domain/enums/pppoe-operacion-operacion-paso.enums';
+} from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
-import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
+import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 const usuarioResumenSelect = {
   id: true,

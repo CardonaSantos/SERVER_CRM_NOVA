@@ -20,7 +20,7 @@ import { PerfilHomologacionEntity } from 'src/modules/pppoe-perfil-homologacion/
 
 import { PppoeOperacionEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion.entity';
 
-import { TipoOperacionPppoe } from 'src/modules/pppoe-operacion/domain/enums/pppoe-operacion-operacion-paso.enums';
+import { TipoOperacionPppoe } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 import { ContextoEjecucionPppoe } from '../models/contexto-ejecucion-pppoe.model';
 import {

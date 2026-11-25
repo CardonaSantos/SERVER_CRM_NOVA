@@ -2,7 +2,7 @@ import { PppoeAuditoriaEntity } from '../entities/pppoe-auditoria.entity';
 import {
   AccionAuditoriaPppoe,
   OrigenOperacionPppoe,
-} from '../enums/pppoe-auditoria-enums';
+} from '../enums/pppoe-auditoria.enum';
 import {
   PppoeAuditoriaFindManyFilters,
   PppoeAuditoriaPaginatedResult,

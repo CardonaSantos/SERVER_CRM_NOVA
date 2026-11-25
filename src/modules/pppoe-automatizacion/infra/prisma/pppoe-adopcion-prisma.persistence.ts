@@ -22,9 +22,9 @@ import { PppoeAuditoriaEntity } from 'src/modules/pppoe-auditoria/domain/entitie
 import {
   AccionAuditoriaPppoe,
   OrigenOperacionPppoe,
-} from 'src/modules/pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
+} from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 
-import { PppoeAuditoriaPrismaMapper } from 'src/modules/pppoe-auditoria/infra/prisma/pppoe-auditoria-mapper.prisma';
+import { PppoeAuditoriaPrismaMapper } from 'src/modules/pppoe-auditoria/infra/prisma/pppoe-auditoria-prisma.mapper';
 
 import {
   PersistirAdopcionPppoeParams,
@@ -32,7 +32,7 @@ import {
   PppoeAdopcionPersistencePort,
 } from '../../domain/ports/pppoe-adopcion-persistence.port';
 import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/ppoe-cliente-cuenta.entity';
-import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
+import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 @Injectable()
 export class PppoeAdopcionPrismaPersistence

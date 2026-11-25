@@ -4,7 +4,7 @@ import {
   Inject,
   Injectable,
 } from '@nestjs/common';
-import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
+import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 import { AutorizarPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/autorizar-pppoe-operacion.use-case';
 import { CancelarPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/cancelar-pppoe-operacion.use-case';
 import {
@@ -21,7 +21,7 @@ import { EjecutarOperacionPppoeResult } from '../../domain/props/pppoe-provision
 import { EjecutarPppoeOperacionUseCase } from '../use-cases/ejecutar-pppoe-operacion.use-case';
 import { RecuperarPppoeOperacionInterrumpidaUseCase } from '../use-cases/recuperar-pppoe-operacion-interrumpida.use-case';
 import { AuthService } from 'src/auth/auth.service';
-import { TipoOperacionPppoe } from 'src/modules/pppoe-operacion/domain/enums/pppoe-operacion-operacion-paso.enums';
+import { TipoOperacionPppoe } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 /**
  * Contexto funcional de una operación ELIMINAR_SECRET.

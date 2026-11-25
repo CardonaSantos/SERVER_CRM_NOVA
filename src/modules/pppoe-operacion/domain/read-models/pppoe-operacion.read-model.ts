@@ -17,7 +17,7 @@ import { PaginatedResult } from 'src/Utils/pagination';
  * Estado de negocio de la cuenta PPPoE asociada
  * a una operación técnica.
  */
-import { EstadoCuentaPppoe } from '../../../pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
+import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 /**
  * Enum compartido con el módulo de auditoría.
@@ -25,7 +25,7 @@ import { EstadoCuentaPppoe } from '../../../pppoe-cliente-cuenta/domain/enums/pp
  * Indica quién o qué originó la operación:
  * operador, sistema, cobranza automática, etc.
  */
-import { OrigenOperacionPppoe } from '../../../pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
+import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 
 /**
  * Enums propios del módulo de operaciones PPPoE.

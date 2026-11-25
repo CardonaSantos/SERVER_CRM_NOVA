@@ -1,8 +1,8 @@
-import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
+import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 import {
   AccionAuditoriaPppoe,
   OrigenOperacionPppoe,
-} from '../enums/pppoe-auditoria-enums';
+} from '../enums/pppoe-auditoria.enum';
 
 /**
  * Valores permitidos dentro del campo JSON `datos`.

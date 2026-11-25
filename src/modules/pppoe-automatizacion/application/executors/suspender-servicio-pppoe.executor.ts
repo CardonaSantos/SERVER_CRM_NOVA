@@ -19,7 +19,7 @@ import { PppoeOperacionPasoEntity } from 'src/modules/pppoe-operacion/domain/ent
 import {
   TipoOperacionPppoe,
   TipoPasoPppoe,
-} from 'src/modules/pppoe-operacion/domain/enums/pppoe-operacion-operacion-paso.enums';
+} from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 import { PppoeOperacionResultado } from 'src/modules/pppoe-operacion/domain/props/pppoe-operacion.props';
 
@@ -606,7 +606,7 @@ export class SuspenderServicioPppoeExecutor {
 // import {
 //   TipoOperacionPppoe,
 //   TipoPasoPppoe,
-// } from 'src/modules/pppoe-operacion/domain/enums/pppoe-operacion-operacion-paso.enums';
+// } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 // import { PppoeOperacionResultado } from 'src/modules/pppoe-operacion/domain/props/pppoe-operacion.props';
 

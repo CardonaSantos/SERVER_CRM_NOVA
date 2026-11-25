@@ -12,14 +12,14 @@ import {
 import {
   PPPOE_AUDITORIA_REPOSITORY,
   PppoeAuditoriaRepositoryPort,
-} from 'src/modules/pppoe-auditoria/domain/ports/pppoe-auditoria-repository';
+} from 'src/modules/pppoe-auditoria/domain/ports/pppoe-auditoria-repository.port';
 
 import { PppoeAuditoriaEntity } from 'src/modules/pppoe-auditoria/domain/entities/pppoe-auditoria.entity';
 
 import {
   AccionAuditoriaPppoe,
   OrigenOperacionPppoe,
-} from 'src/modules/pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
+} from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 import { PppoeCredencialesInstalacionPort } from 'src/modules/pppoe-automatizacion/domain/ports/pppoe-credenciales-instalacion.port';
 import { ConsultarCredencialesPppoeInstalacionInput } from 'src/modules/pppoe-automatizacion/application/inputs/consultar-credenciales-pppoe-instalacion.input';
 import {

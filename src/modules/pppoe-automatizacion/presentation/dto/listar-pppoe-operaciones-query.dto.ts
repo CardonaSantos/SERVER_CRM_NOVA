@@ -14,13 +14,13 @@ import {
   MaxLength,
 } from 'class-validator';
 
-import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
+import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 
 import {
   CanalOperacionPppoe,
   EstadoOperacionPppoe,
   TipoOperacionPppoe,
-} from 'src/modules/pppoe-operacion/domain/enums/pppoe-operacion-operacion-paso.enums';
+} from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 function normalizeArrayQuery(value: unknown): string[] | undefined {
   if (value === undefined || value === null || value === '') {

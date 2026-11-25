@@ -32,14 +32,14 @@ import {
 import {
   PPPOE_AUDITORIA_REPOSITORY,
   PppoeAuditoriaRepositoryPort,
-} from 'src/modules/pppoe-auditoria/domain/ports/pppoe-auditoria-repository';
+} from 'src/modules/pppoe-auditoria/domain/ports/pppoe-auditoria-repository.port';
 
-import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
+import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 import {
   AccionAuditoriaPppoe,
   OrigenOperacionPppoe,
-} from 'src/modules/pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
+} from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 import { PPPOE_PERFIL_HOMOLOGACION_REPOSITORY } from 'src/modules/pppoe-perfil-homologacion/infra/tokens/ppoe-perfil-homologacion.token';
 import { PerfilHomologacionRepositoryPort } from 'src/modules/pppoe-perfil-homologacion/domain/ports/ppoe-perfil-homologacion.port';
 import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/ppoe-cliente-cuenta.entity';

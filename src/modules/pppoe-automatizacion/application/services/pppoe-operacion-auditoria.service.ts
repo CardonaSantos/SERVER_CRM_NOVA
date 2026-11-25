@@ -5,21 +5,21 @@ import { PppoeAuditoriaEntity } from 'src/modules/pppoe-auditoria/domain/entitie
 import {
   AccionAuditoriaPppoe,
   OrigenOperacionPppoe,
-} from 'src/modules/pppoe-auditoria/domain/enums/pppoe-auditoria-enums';
+} from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 
 import {
   PPPOE_AUDITORIA_REPOSITORY,
   PppoeAuditoriaRepositoryPort,
-} from 'src/modules/pppoe-auditoria/domain/ports/pppoe-auditoria-repository';
+} from 'src/modules/pppoe-auditoria/domain/ports/pppoe-auditoria-repository.port';
 
-import { DatosAuditoriaPppoe } from 'src/modules/pppoe-auditoria/domain/props/auditoria-entity-props';
+import { DatosAuditoriaPppoe } from 'src/modules/pppoe-auditoria/domain/props/pppoe-auditoria.props';
 
 import { PppoeOperacionEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion.entity';
 
 import {
   EstadoOperacionPppoe,
   TipoOperacionPppoe,
-} from 'src/modules/pppoe-operacion/domain/enums/pppoe-operacion-operacion-paso.enums';
+} from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 import {
   PppoeOperacionAuditoriaPort,
@@ -27,7 +27,7 @@ import {
   RegistrarAuditoriaRecuperacionPppoeParams,
   RegistrarAuditoriaReintentoPppoeParams,
 } from '../../domain/ports/pppoe-operacion-auditoria.port';
-import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/domain/enums/pppoe-cliente-cuenta.enum';
+import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
 /**
  * Registra la bitácora principal de las operaciones PPPoE.
