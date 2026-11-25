@@ -543,10 +543,17 @@ Listar<Recurso>QueryDto ──▶ Listar<Recurso>Input ──▶ <Recurso>QueryP
   filtros propios del recurso con nombres de negocio (`estado`, `zonaId`, `desde`, `hasta`).
 - Respuesta: `{ data: [...], meta: { total, page, limit, totalPages } }`.
 
-Piezas comunes 🆕 en `src/common/hexagonal/paginacion.ts` y `src/common/http/paginacion-query.dto.ts`:
-`PaginacionQueryDto` (base con `page`, `limit`, `search`, `sortDir`, ya con `@Type`/`@Max`),
-`ResultadoPaginado<T>`, `RespuestaPaginada<T>` y `presentarPaginado()`. Reemplazan a
-`src/Utils/pagination.ts` y `src/shared/application/page/Pagination.ts`.
+Piezas comunes (creadas en H0, `refactorizacion comun #3`):
+- `src/common/hexagonal/paginacion.ts`: `Paginacion`, `ResultadoPaginado<T>` (`items`, `total`,
+  `page`, `limit`: lo devuelve el puerto), `RespuestaPaginada<T>` (`{ data, meta }`: lo devuelve el
+  controlador), `normalizarPaginacion()` (por defecto `page` 1 y `limit` 10, máximo 100),
+  `aDesplazamiento()` (`skip`/`take`, solo en infra), `crearResultadoPaginado()` y
+  `presentarPaginado(resultado, Presenter.item)`.
+- `src/common/http/paginacion-query.dto.ts`: `PaginacionQueryDto` (`page`, `limit`, `search`
+  recortado, `sortDir`).
+- `src/common/http/transformaciones-query.ts`: `@ComoArreglo()`, `@ComoBooleano()`, `@Recortar()`.
+- Reemplazan a `src/Utils/pagination.ts` y `src/shared/application/page/Pagination.ts` (se
+  retiran cuando sus usuarios se re-conforman).
 
 Reglas:
 1. `Listar<Recurso>QueryDto extends PaginacionQueryDto` y agrega sus filtros. `sortBy` es un
