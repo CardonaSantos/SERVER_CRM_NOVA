@@ -14,7 +14,6 @@ import {
 } from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.facade.port';
 import { ClientePppoeCuentaReadModel } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 import { PerfilHomologacionReadModel } from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.types';
-import { PppoeOperacionEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion.entity';
 import { TipoOperacionPppoe } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 import {
   PPPOE_CLIENTE_CUENTA,
@@ -25,6 +24,7 @@ import {
   MikrotikRouterConnectionContext,
   MikrotikRouterConnectionContextPort,
 } from 'src/mikro-tik/domain/ports/mikrotik-router-connection-context.port';
+import { PppoeOperacionReadModel } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 /**
  * Ajusta únicamente esta ruta a la ubicación real
@@ -48,9 +48,9 @@ export class ResolverContextoEjecucionPppoeService {
   ) {}
 
   async resolve(
-    operacion: PppoeOperacionEntity,
+    operacion: PppoeOperacionReadModel,
   ): Promise<ContextoEjecucionPppoe> {
-    const operacionProps = operacion.toPrimitives();
+    const operacionProps = operacion;
 
     if (operacionProps.id === null) {
       throw new ConflictException(
@@ -120,7 +120,7 @@ export class ResolverContextoEjecucionPppoeService {
   }
 
   private validarCuenta(params: {
-    operacion: PppoeOperacionEntity;
+    operacion: PppoeOperacionReadModel;
 
     cuenta: ClientePppoeCuentaReadModel;
   }): void {
@@ -155,7 +155,7 @@ export class ResolverContextoEjecucionPppoeService {
   }
 
   private validarPerfil(params: {
-    operacion: PppoeOperacionEntity;
+    operacion: PppoeOperacionReadModel;
 
     cuenta: ClientePppoeCuentaReadModel;
 
@@ -201,13 +201,13 @@ export class ResolverContextoEjecucionPppoeService {
   }
 
   private validarRouterSnapshot(params: {
-    operacion: PppoeOperacionEntity;
+    operacion: PppoeOperacionReadModel;
 
     router: MikrotikRouterConnectionContext;
   }): void {
     const { operacion, router } = params;
 
-    const props = operacion.toPrimitives();
+    const props = operacion;
 
     if (
       props.routerHostSnapshot === null ||
@@ -247,7 +247,7 @@ export class ResolverContextoEjecucionPppoeService {
  * - serializarse.
  */
 export type ContextoEjecucionPppoe = {
-  operacion: PppoeOperacionEntity;
+  operacion: PppoeOperacionReadModel;
 
   cuenta: ClientePppoeCuentaReadModel;
 

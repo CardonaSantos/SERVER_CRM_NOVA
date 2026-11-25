@@ -5,14 +5,6 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
-import { AutorizarPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/autorizar-pppoe-operacion.use-case';
-import { CancelarPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/cancelar-pppoe-operacion.use-case';
-import {
-  ListarPppoeOperacionesUseCase,
-  ListarPppoeOperacionesUseCaseInput,
-} from 'src/modules/pppoe-operacion/application/use-cases/listar-pppoe-operaciones.use-case';
-import { ObtenerDetallePppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/obtener-detalle-pppoe-operacion.use-case';
-import { PppoeOperacionEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion.entity';
 import {
   PPPOE_PROVISIONAMIENTO,
   PppoeProvisionamientoPort,
@@ -22,6 +14,12 @@ import { EjecutarPppoeOperacionUseCase } from '../use-cases/ejecutar-pppoe-opera
 import { RecuperarPppoeOperacionInterrumpidaUseCase } from '../use-cases/recuperar-pppoe-operacion-interrumpida.use-case';
 import { AuthService } from 'src/auth/auth.service';
 import { TipoOperacionPppoe } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
+import {
+  PPPOE_OPERACION,
+  PppoeOperacionFacadePort,
+  ListarPppoeOperacionesInput,
+} from 'src/modules/pppoe-operacion/public/pppoe-operacion.facade.port';
+import { PppoeOperacionReadModel } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 /**
  * Contexto funcional de una operación ELIMINAR_SECRET.
@@ -195,14 +193,8 @@ export type DarDeBajaPppoeManualParams = {
 @Injectable()
 export class PppoeOperacionAdminService {
   constructor(
-    private readonly listarOperacionesUseCase: ListarPppoeOperacionesUseCase,
-
-    private readonly obtenerDetalleUseCase: ObtenerDetallePppoeOperacionUseCase,
-
-    private readonly autorizarOperacionUseCase: AutorizarPppoeOperacionUseCase,
-
-    private readonly cancelarOperacionUseCase: CancelarPppoeOperacionUseCase,
-
+    @Inject(PPPOE_OPERACION)
+    private readonly operaciones: PppoeOperacionFacadePort,
     private readonly ejecutarOperacionUseCase: EjecutarPppoeOperacionUseCase,
 
     private readonly recuperarOperacionUseCase: RecuperarPppoeOperacionInterrumpidaUseCase,
@@ -219,8 +211,8 @@ export class PppoeOperacionAdminService {
    * contextoEliminacion es un dato derivado y no
    * requiere persistencia adicional.
    */
-  async listar(input: ListarPppoeOperacionesUseCaseInput) {
-    const result = await this.listarOperacionesUseCase.execute(input);
+  async listar(input: ListarPppoeOperacionesInput) {
+    const result = await this.operaciones.listar(input);
 
     return {
       ...result,
@@ -241,7 +233,7 @@ export class PppoeOperacionAdminService {
 
     operacionId: number;
   }) {
-    const operacion = await this.obtenerDetalleUseCase.execute({
+    const operacion = await this.operaciones.obtenerDetalle({
       empresaId: params.empresaId,
 
       operacionId: params.operacionId,
@@ -266,7 +258,7 @@ export class PppoeOperacionAdminService {
   ): Promise<EjecutarOperacionPppoeResult> {
     this.validateActor(params.actor);
 
-    const operacion = await this.autorizarOperacionUseCase.execute({
+    const operacion = await this.operaciones.autorizar({
       empresaId: params.empresaId,
 
       operacionId: params.operacionId,
@@ -291,7 +283,7 @@ export class PppoeOperacionAdminService {
   async cancelar(params: CancelarPppoeAdminParams) {
     this.validateActor(params.actor);
 
-    const aggregate = await this.cancelarOperacionUseCase.execute({
+    const aggregate = await this.operaciones.cancelar({
       empresaId: params.empresaId,
 
       operacionId: params.operacionId,
@@ -305,7 +297,7 @@ export class PppoeOperacionAdminService {
      * Se devuelve el read model enriquecido,
      * no la entidad de dominio directamente.
      */
-    return this.obtenerDetalleUseCase.execute({
+    return this.operaciones.obtenerDetalle({
       empresaId: params.empresaId,
 
       operacionId,
@@ -348,7 +340,7 @@ export class PppoeOperacionAdminService {
      * Puede recibirse la operación raíz o cualquier
      * intento perteneciente a la cadena.
      */
-    const operacion = await this.obtenerDetalleUseCase.execute({
+    const operacion = await this.operaciones.obtenerDetalle({
       empresaId: params.empresaId,
 
       operacionId: params.operacionId,
@@ -687,7 +679,7 @@ export class PppoeOperacionAdminService {
       );
     }
   }
-  private requireOperationId(operacion: PppoeOperacionEntity): number {
+  private requireOperationId(operacion: PppoeOperacionReadModel): number {
     if (operacion.id === null) {
       throw new ConflictException(
         'La operación PPPoE autorizada no contiene identificador persistido.',

@@ -19,6 +19,8 @@ import { PppoeOperacionRepositoryFake } from '../../test/fakes/pppoe-operacion-r
 import { OperadorReautenticacionPort } from '../ports/operador-reautenticacion.port';
 import { ActualizarPasoPppoeOperacionUseCase } from '../use-cases/actualizar-paso-pppoe-operacion.use-case';
 import { AutorizarPppoeOperacionUseCase } from '../use-cases/autorizar-pppoe-operacion.use-case';
+import { BuscarAgregadoPppoeOperacionUseCase } from '../use-cases/buscar-agregado-pppoe-operacion.use-case';
+import { BuscarPppoeOperacionUseCase } from '../use-cases/buscar-pppoe-operacion.use-case';
 import { CancelarPppoeOperacionUseCase } from '../use-cases/cancelar-pppoe-operacion.use-case';
 import { CrearPppoeOperacionUseCase } from '../use-cases/crear-pppoe-operacion.use-case';
 import { CrearReintentoPppoeOperacionUseCase } from '../use-cases/crear-reintento-pppoe-operacion.use-case';
@@ -75,6 +77,8 @@ function armar() {
     new CrearReintentoPppoeOperacionUseCase(repo, reloj),
     new ListarPppoeOperacionesUseCase(query),
     new ObtenerDetallePppoeOperacionUseCase(query),
+    new BuscarPppoeOperacionUseCase(repo),
+    new BuscarAgregadoPppoeOperacionUseCase(repo),
   );
   return { fachada, repo, reloj };
 }

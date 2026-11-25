@@ -15,14 +15,7 @@ import {
   PppoeClienteCuentaFacadePort,
 } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
 
-import { PppoeOperacionEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion.entity';
-
 import { TipoOperacionPppoe } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
-
-import {
-  PPPOE_OPERACION_REPOSITORY,
-  PppoeOperacionRepositoryPort,
-} from 'src/modules/pppoe-operacion/domain/ports/pppoe-operacion-repository.port';
 
 import {
   PPPOE_PERFIL_HOMOLOGACION,
@@ -33,8 +26,6 @@ import { EjecutarOperacionPppoeResult } from '../../public/pppoe-provisionamient
 
 import { EjecutarPppoeOperacionUseCase } from './ejecutar-pppoe-operacion.use-case';
 
-import { CrearPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/crear-pppoe-operacion.use-case';
-
 import { MIKROTIK_ROUTER_REPOSITORY } from 'src/mikro-tik/infra/tokens/mikrotik-router.tokens';
 
 import { MikrotikRouterRepositoryPort } from 'src/mikro-tik/domain/ports/mikrotik-router-repository.port';
@@ -43,6 +34,11 @@ import {
   PPPOE_OPERACION_AUDITORIA,
   PppoeOperacionAuditoriaPort,
 } from '../ports/pppoe-operacion-auditoria.port';
+import {
+  PPPOE_OPERACION,
+  PppoeOperacionFacadePort,
+} from 'src/modules/pppoe-operacion/public/pppoe-operacion.facade.port';
+import { PppoeOperacionReadModel } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 /**
  * Actor que solicita la suspensión.
@@ -89,8 +85,8 @@ export type CrearYEjecutarSuspensionPppoeInput = {
 @Injectable()
 export class CrearYEjecutarSuspensionPppoeUseCase {
   constructor(
-    private readonly crearOperacion: CrearPppoeOperacionUseCase,
-
+    @Inject(PPPOE_OPERACION)
+    private readonly operaciones: PppoeOperacionFacadePort,
     private readonly ejecutarOperacion: EjecutarPppoeOperacionUseCase,
 
     @Inject(PPPOE_OPERACION_AUDITORIA)
@@ -98,9 +94,6 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
 
     @Inject(PPPOE_CLIENTE_CUENTA)
     private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
-
-    @Inject(PPPOE_OPERACION_REPOSITORY)
-    private readonly operacionRepository: PppoeOperacionRepositoryPort,
 
     @Inject(PPPOE_PERFIL_HOMOLOGACION)
     private readonly perfilesHomologacion: PppoePerfilHomologacionFacadePort,
@@ -228,12 +221,12 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
      * ========================================================
      */
 
-    const existingOperation =
-      await this.operacionRepository.findByIdempotencyKey({
-        empresaId: input.empresaId,
+    const existingOperation = await this.operaciones.buscar({
+      por: 'CLAVE_IDEMPOTENCIA',
+      empresaId: input.empresaId,
 
-        claveIdempotencia: input.claveIdempotencia,
-      });
+      claveIdempotencia: input.claveIdempotencia,
+    });
 
     if (existingOperation) {
       this.assertCompatibleExistingOperation({
@@ -278,7 +271,7 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
      * ========================================================
      */
 
-    const aggregate = await this.crearOperacion.execute({
+    const aggregate = await this.operaciones.crear({
       empresaId: input.empresaId,
 
       cuentaPppoeId: cuenta.id,
@@ -359,7 +352,7 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
   private async resolveOperation(params: {
     empresaId: number;
 
-    operacion: PppoeOperacionEntity;
+    operacion: PppoeOperacionReadModel;
 
     estadoCuenta: EstadoCuentaPppoe;
 
@@ -369,7 +362,7 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
   }): Promise<EjecutarOperacionPppoeResult> {
     const operacionId = this.requireOperationId(params.operacion);
 
-    if (params.operacion.esTerminal()) {
+    if (params.operacion.esTerminal) {
       return this.buildExistingResult({
         operacion: params.operacion,
 
@@ -377,7 +370,7 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
       });
     }
 
-    if (params.operacion.estaEjecutando()) {
+    if (params.operacion.estaEjecutando) {
       /*
        * Otra solicitud ya reclamó la operación.
        *
@@ -390,13 +383,13 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
       });
     }
 
-    if (params.operacion.estaAutorizada()) {
+    if (params.operacion.estaAutorizada) {
       throw new ConflictException(
         `La operación PPPoE ${operacionId} está AUTORIZADA, pero este flujo de suspensión no utiliza reautenticación.`,
       );
     }
 
-    if (!params.operacion.estaPendiente()) {
+    if (!params.operacion.estaPendiente) {
       throw new ConflictException(
         `La operación PPPoE ${operacionId} no puede ejecutarse desde el estado ${params.operacion.estado}.`,
       );
@@ -474,7 +467,7 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
   private assertCompatibleExistingOperation(params: {
     input: CrearYEjecutarSuspensionPppoeInput;
 
-    operacion: PppoeOperacionEntity;
+    operacion: PppoeOperacionReadModel;
 
     routerId: number;
   }): void {
@@ -510,11 +503,11 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
    * acciones contra MikroTik.
    */
   private buildExistingResult(params: {
-    operacion: PppoeOperacionEntity;
+    operacion: PppoeOperacionReadModel;
 
     estadoCuenta: EstadoCuentaPppoe;
   }): EjecutarOperacionPppoeResult {
-    const primitives = params.operacion.toPrimitives();
+    const primitives = params.operacion;
 
     return {
       operacionId: this.requireOperationId(params.operacion),
@@ -529,7 +522,7 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
 
       numeroIntento: params.operacion.numeroIntento,
 
-      reintentable: params.operacion.puedeReintentarse(),
+      reintentable: params.operacion.puedeReintentarse,
 
       resultado: primitives.resultado,
 
@@ -539,7 +532,7 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
     };
   }
 
-  private requireOperationId(operacion: PppoeOperacionEntity): number {
+  private requireOperationId(operacion: PppoeOperacionReadModel): number {
     if (operacion.id === null) {
       throw new ConflictException(
         'La operación PPPoE no contiene un identificador persistido.',

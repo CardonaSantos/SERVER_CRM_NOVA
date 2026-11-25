@@ -11,8 +11,6 @@ import {
   PppoeAuditoriaFacadePort,
 } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.facade.port';
 
-import { PppoeOperacionEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion.entity';
-
 import {
   EstadoOperacionPppoe,
   TipoOperacionPppoe,
@@ -25,6 +23,7 @@ import {
   RegistrarAuditoriaReintentoPppoeParams,
 } from '../ports/pppoe-operacion-auditoria.port';
 import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
+import { PppoeOperacionReadModel } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 /**
  * Registra la bitácora principal de las operaciones PPPoE.
@@ -90,7 +89,7 @@ export class PppoeOperacionAuditoriaService
       return;
     }
 
-    const primitives = params.operacion.toPrimitives();
+    const primitives = params.operacion;
 
     const datos: DatosAuditoriaPppoe = {
       ...this.buildCommonData(params.operacion),
@@ -99,7 +98,7 @@ export class PppoeOperacionAuditoriaService
 
       resultadoDisponible: primitives.resultado !== null,
 
-      reintentable: params.operacion.puedeReintentarse(),
+      reintentable: params.operacion.puedeReintentarse,
     };
 
     /*
@@ -194,7 +193,7 @@ export class PppoeOperacionAuditoriaService
     }
 
     try {
-      const primitives = operacion.toPrimitives();
+      const primitives = operacion;
 
       const operadorId =
         input.params.actor?.operadorId ?? operacion.iniciadoPorId;
@@ -260,9 +259,9 @@ export class PppoeOperacionAuditoriaService
    * Datos comunes, deliberadamente sanitizados.
    */
   private buildCommonData(
-    operacion: PppoeOperacionEntity,
+    operacion: PppoeOperacionReadModel,
   ): DatosAuditoriaPppoe {
-    const primitives = operacion.toPrimitives();
+    const primitives = operacion;
 
     return {
       tipoOperacion: operacion.tipo,
@@ -326,7 +325,7 @@ export class PppoeOperacionAuditoriaService
       return;
     }
 
-    const primitives = operacion.toPrimitives();
+    const primitives = operacion;
 
     const resultado = this.asPlainObject(primitives.resultado);
 
@@ -416,7 +415,7 @@ export class PppoeOperacionAuditoriaService
   }
 
   private resolveFinalAction(
-    operacion: PppoeOperacionEntity,
+    operacion: PppoeOperacionReadModel,
   ): AccionAuditoriaPppoe | null {
     switch (operacion.estado) {
       case EstadoOperacionPppoe.EXITOSA:
@@ -436,7 +435,7 @@ export class PppoeOperacionAuditoriaService
     }
   }
 
-  private buildFinalDescription(operacion: PppoeOperacionEntity): string {
+  private buildFinalDescription(operacion: PppoeOperacionReadModel): string {
     switch (operacion.estado) {
       case EstadoOperacionPppoe.EXITOSA:
         return `La operación PPPoE ${operacion.tipo} finalizó correctamente.`;
@@ -485,7 +484,7 @@ export class PppoeOperacionAuditoriaService
       return;
     }
 
-    const primitives = operacion.toPrimitives();
+    const primitives = operacion;
 
     const motivo =
       primitives.motivo?.trim() || 'Activación autorizada desde oficina';

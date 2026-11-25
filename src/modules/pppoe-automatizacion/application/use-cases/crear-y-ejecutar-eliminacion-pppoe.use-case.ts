@@ -15,16 +15,7 @@ import {
   PppoeClienteCuentaFacadePort,
 } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
 
-import { CrearPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/crear-pppoe-operacion.use-case';
-
-import { PppoeOperacionEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion.entity';
-
 import { TipoOperacionPppoe } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
-
-import {
-  PPPOE_OPERACION_REPOSITORY,
-  PppoeOperacionRepositoryPort,
-} from 'src/modules/pppoe-operacion/domain/ports/pppoe-operacion-repository.port';
 
 import {
   PPPOE_PERFIL_HOMOLOGACION,
@@ -48,6 +39,11 @@ import {
 } from '../../public/pppoe-provisionamiento.port';
 
 import { EjecutarPppoeOperacionUseCase } from './ejecutar-pppoe-operacion.use-case';
+import {
+  PPPOE_OPERACION,
+  PppoeOperacionFacadePort,
+} from 'src/modules/pppoe-operacion/public/pppoe-operacion.facade.port';
+import { PppoeOperacionReadModel } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 /**
  * Contexto funcional desde el que se solicita
@@ -108,8 +104,8 @@ type EjecutarEliminacionPppoeInternaInput = {
 @Injectable()
 export class CrearYEjecutarEliminacionPppoeUseCase {
   constructor(
-    private readonly crearOperacion: CrearPppoeOperacionUseCase,
-
+    @Inject(PPPOE_OPERACION)
+    private readonly operaciones: PppoeOperacionFacadePort,
     private readonly ejecutarOperacion: EjecutarPppoeOperacionUseCase,
 
     @Inject(PPPOE_OPERACION_AUDITORIA)
@@ -117,9 +113,6 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
 
     @Inject(PPPOE_CLIENTE_CUENTA)
     private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
-
-    @Inject(PPPOE_OPERACION_REPOSITORY)
-    private readonly operacionRepository: PppoeOperacionRepositoryPort,
 
     @Inject(PPPOE_PERFIL_HOMOLOGACION)
     private readonly perfilesHomologacion: PppoePerfilHomologacionFacadePort,
@@ -289,12 +282,12 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
      * ========================================================
      */
 
-    const existingOperation =
-      await this.operacionRepository.findByIdempotencyKey({
-        empresaId: input.empresaId,
+    const existingOperation = await this.operaciones.buscar({
+      por: 'CLAVE_IDEMPOTENCIA',
+      empresaId: input.empresaId,
 
-        claveIdempotencia: input.claveIdempotencia,
-      });
+      claveIdempotencia: input.claveIdempotencia,
+    });
 
     if (existingOperation) {
       this.assertCompatibleExistingOperation({
@@ -336,7 +329,7 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
      * ========================================================
      */
 
-    const aggregate = await this.crearOperacion.execute({
+    const aggregate = await this.operaciones.crear({
       empresaId: input.empresaId,
 
       cuentaPppoeId: cuenta.id,
@@ -412,7 +405,7 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
   private async resolveOperation(params: {
     empresaId: number;
 
-    operacion: PppoeOperacionEntity;
+    operacion: PppoeOperacionReadModel;
 
     estadoCuenta: EstadoCuentaPppoe;
 
@@ -420,7 +413,7 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
   }): Promise<EjecutarOperacionPppoeResult> {
     const operacionId = this.requireOperationId(params.operacion);
 
-    if (params.operacion.esTerminal()) {
+    if (params.operacion.esTerminal) {
       return this.buildExistingResult({
         operacion: params.operacion,
 
@@ -428,7 +421,7 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
       });
     }
 
-    if (params.operacion.estaEjecutando()) {
+    if (params.operacion.estaEjecutando) {
       return this.buildExistingResult({
         operacion: params.operacion,
 
@@ -447,13 +440,13 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
      * BAJA_MANUAL:
      *   el operador fue reautenticado antes de llegar aquí.
      */
-    if (params.operacion.estaAutorizada()) {
+    if (params.operacion.estaAutorizada) {
       throw new ConflictException(
         `La operación PPPoE ${operacionId} está AUTORIZADA, pero este flujo ejecuta ELIMINAR_SECRET después de una autorización administrativa previa.`,
       );
     }
 
-    if (!params.operacion.estaPendiente()) {
+    if (!params.operacion.estaPendiente) {
       throw new ConflictException(
         `La operación PPPoE ${operacionId} no puede ejecutarse desde el estado ${params.operacion.estado}.`,
       );
@@ -539,7 +532,7 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
   private assertCompatibleExistingOperation(params: {
     input: EjecutarEliminacionPppoeInternaInput;
 
-    operacion: PppoeOperacionEntity;
+    operacion: PppoeOperacionReadModel;
 
     routerId: number;
   }): void {
@@ -588,7 +581,7 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
    *   instalacionId == null
    */
   private resolveOperationMode(
-    operacion: PppoeOperacionEntity,
+    operacion: PppoeOperacionReadModel,
   ): ModoEliminacionPppoe {
     if (operacion.tipo !== TipoOperacionPppoe.ELIMINAR_SECRET) {
       throw new ConflictException(
@@ -613,11 +606,11 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
    * Devuelve una operación existente sin repetir SSH.
    */
   private buildExistingResult(params: {
-    operacion: PppoeOperacionEntity;
+    operacion: PppoeOperacionReadModel;
 
     estadoCuenta: EstadoCuentaPppoe;
   }): EjecutarOperacionPppoeResult {
-    const primitives = params.operacion.toPrimitives();
+    const primitives = params.operacion;
 
     return {
       operacionId: this.requireOperationId(params.operacion),
@@ -632,7 +625,7 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
 
       numeroIntento: params.operacion.numeroIntento,
 
-      reintentable: params.operacion.puedeReintentarse(),
+      reintentable: params.operacion.puedeReintentarse,
 
       resultado: primitives.resultado,
 
@@ -642,7 +635,7 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
     };
   }
 
-  private requireOperationId(operacion: PppoeOperacionEntity): number {
+  private requireOperationId(operacion: PppoeOperacionReadModel): number {
     if (operacion.id === null) {
       throw new ConflictException(
         'La operación PPPoE no contiene un identificador persistido.',

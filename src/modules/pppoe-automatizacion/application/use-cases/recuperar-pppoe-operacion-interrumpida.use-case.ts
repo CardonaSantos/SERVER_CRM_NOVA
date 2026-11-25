@@ -11,23 +11,11 @@ import {
   EstadoCuentaPppoe,
 } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
-import { FinalizarPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/finalizar-pppoe-operacion.use-case';
-
-import { PppoeOperacionEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion.entity';
-
-import { PppoeOperacionPasoEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion-paso.entity';
-
 import {
   EstadoOperacionPppoe,
   TipoOperacionPppoe,
   TipoPasoPppoe,
 } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
-
-import {
-  PPPOE_OPERACION_REPOSITORY,
-  PppoeOperacionAggregate,
-  PppoeOperacionRepositoryPort,
-} from 'src/modules/pppoe-operacion/domain/ports/pppoe-operacion-repository.port';
 
 import { EjecutarOperacionPppoeResult } from '../../public/pppoe-provisionamiento.port';
 import {
@@ -38,6 +26,15 @@ import {
   PPPOE_OPERACION_AUDITORIA,
   PppoeOperacionAuditoriaPort,
 } from '../ports/pppoe-operacion-auditoria.port';
+import {
+  PPPOE_OPERACION,
+  PppoeOperacionFacadePort,
+} from 'src/modules/pppoe-operacion/public/pppoe-operacion.facade.port';
+import {
+  PppoeOperacionAgregadoReadModel,
+  PppoeOperacionPasoReadModel,
+  PppoeOperacionReadModel,
+} from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 /**
  * Datos necesarios para recuperar una operación
@@ -96,13 +93,10 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
   ]);
 
   constructor(
-    private readonly finalizarOperacion: FinalizarPppoeOperacionUseCase,
-
+    @Inject(PPPOE_OPERACION)
+    private readonly operaciones: PppoeOperacionFacadePort,
     @Inject(PPPOE_OPERACION_AUDITORIA)
     private readonly operacionAuditoria: PppoeOperacionAuditoriaPort,
-
-    @Inject(PPPOE_OPERACION_REPOSITORY)
-    private readonly operacionRepository: PppoeOperacionRepositoryPort,
 
     @Inject(PPPOE_CLIENTE_CUENTA)
     private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
@@ -127,7 +121,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
      * La recuperación es idempotente cuando la operación
      * ya alcanzó un estado terminal.
      */
-    if (operacion.esTerminal()) {
+    if (operacion.esTerminal) {
       return this.buildResult({
         operacion,
 
@@ -135,7 +129,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
       });
     }
 
-    if (!operacion.estaEjecutando()) {
+    if (!operacion.estaEjecutando) {
       throw new ConflictException(
         `La operación PPPoE ${input.operacionId} no está EJECUTANDO. Estado actual: ${operacion.estado}.`,
       );
@@ -193,7 +187,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
 
     const finalAggregate =
       estadoFinal === EstadoOperacionPppoe.PARCIAL
-        ? await this.finalizarOperacion.execute({
+        ? await this.operaciones.finalizar({
             empresaId: input.empresaId,
 
             operacionId: input.operacionId,
@@ -208,7 +202,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
 
             fecha,
           })
-        : await this.finalizarOperacion.execute({
+        : await this.operaciones.finalizar({
             empresaId: input.empresaId,
 
             operacionId: input.operacionId,
@@ -267,7 +261,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
   private async reconcileSuccessfulExecution(params: {
     empresaId: number;
 
-    operacion: PppoeOperacionEntity;
+    operacion: PppoeOperacionReadModel;
 
     fecha: Date;
   }): Promise<EjecutarOperacionPppoeResult> {
@@ -297,7 +291,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
       fecha: params.fecha,
     });
 
-    const finalAggregate = await this.finalizarOperacion.execute({
+    const finalAggregate = await this.operaciones.finalizar({
       empresaId: params.empresaId,
 
       operacionId: this.requireOperationId(params.operacion),
@@ -347,7 +341,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
    * confirmado sobre la cuenta local.
    */
   private async applyConfirmedRemoteResult(params: {
-    operacion: PppoeOperacionEntity;
+    operacion: PppoeOperacionReadModel;
 
     cuenta: ClientePppoeCuentaReadModel;
 
@@ -441,89 +435,71 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
    * al menos un paso FALLIDO.
    */
   private async ensureInterruptedFailure(params: {
-    aggregate: PppoeOperacionAggregate;
+    aggregate: PppoeOperacionAgregadoReadModel;
 
     fecha: Date;
-  }): Promise<PppoeOperacionAggregate> {
+  }): Promise<PppoeOperacionAgregadoReadModel> {
     const { operacion, pasos } = params.aggregate;
 
-    const failedStep = pasos.find((paso) => paso.fueFallido());
+    const failedStep = pasos.find((paso) => paso.fueFallido);
 
     if (failedStep) {
       return params.aggregate;
     }
 
-    const executingStep = pasos.find((paso) => paso.estaEjecutando());
+    const executingStep = pasos.find((paso) => paso.estaEjecutando);
+
+    const operacionId = this.requireOperationId(operacion);
+    const empresaId = operacion.empresaId;
+    const fallo = {
+      accion: 'MARCAR_FALLIDO' as const,
+      errorCodigo: 'PPPOE_OPERACION_INTERRUMPIDA',
+      fecha: params.fecha,
+    };
 
     if (executingStep) {
-      executingStep.marcarFallido({
-        errorCodigo: 'PPPOE_OPERACION_INTERRUMPIDA',
-
+      return this.operaciones.actualizarPaso({
+        ...fallo,
+        empresaId,
+        operacionId,
+        selector: { pasoId: executingStep.id },
         errorMensaje:
           'El proceso terminó mientras este paso se encontraba EJECUTANDO.',
-
         respuestaSanitizada:
           'Paso cerrado durante la recuperación de una operación interrumpida.',
-
-        fecha: params.fecha,
-      });
-
-      await this.operacionRepository.saveStep({
-        empresaId: operacion.empresaId,
-
-        paso: executingStep,
-      });
-
-      return this.loadAggregate({
-        empresaId: operacion.empresaId,
-
-        operacionId: this.requireOperationId(operacion),
       });
     }
 
     const pendingStep = [...pasos]
       .sort((left, right) => left.orden - right.orden)
-      .find((paso) => paso.estaPendiente());
+      .find((paso) => paso.estaPendiente);
 
     if (!pendingStep) {
       throw new ConflictException(
-        `La operación PPPoE ${operacion.id} no contiene un paso disponible para registrar la interrupción.`,
+        'La operación PPPoE no contiene un paso disponible para registrar la interrupción.',
       );
     }
 
-    /**
-     * El paso nunca comenzó técnicamente.
-     *
-     * Se inicia y falla con la misma fecha únicamente para
-     * dejar un estado terminal coherente y duración cero.
-     */
-    pendingStep.iniciar({
+    // El paso nunca comenzó: se inicia y falla con la misma fecha para dejar
+    // un estado terminal coherente y duración cero.
+    const selector = { pasoId: pendingStep.id };
+    await this.operaciones.actualizarPaso({
+      empresaId,
+      operacionId,
+      selector,
+      accion: 'INICIAR',
       comandoSanitizado: 'RECUPERAR_OPERACION_INTERRUMPIDA',
-
       fecha: params.fecha,
     });
 
-    pendingStep.marcarFallido({
-      errorCodigo: 'PPPOE_OPERACION_INTERRUMPIDA',
-
+    return this.operaciones.actualizarPaso({
+      ...fallo,
+      empresaId,
+      operacionId,
+      selector,
       errorMensaje: 'La operación fue abandonada antes de ejecutar este paso.',
-
       respuestaSanitizada:
         'Interrupción registrada durante recuperación controlada.',
-
-      fecha: params.fecha,
-    });
-
-    await this.operacionRepository.saveStep({
-      empresaId: operacion.empresaId,
-
-      paso: pendingStep,
-    });
-
-    return this.loadAggregate({
-      empresaId: operacion.empresaId,
-
-      operacionId: this.requireOperationId(operacion),
     });
   }
 
@@ -533,14 +509,14 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
    * Sin esa evidencia la operación se considera FALLIDA.
    */
   private resolveInterruptedFinalState(
-    pasos: PppoeOperacionPasoEntity[],
+    pasos: PppoeOperacionPasoReadModel[],
   ): EstadoOperacionPppoe.PARCIAL | EstadoOperacionPppoe.FALLIDA {
     const possibleRemoteEffect = pasos.some(
       (paso) =>
         RecuperarPppoeOperacionInterrumpidaUseCase.PASOS_CON_EFECTO_REMOTO.has(
           paso.tipo,
         ) &&
-        (paso.fueExitoso() || paso.fueFallido()),
+        (paso.fueExitoso || paso.fueFallido),
     );
 
     return possibleRemoteEffect
@@ -552,10 +528,10 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
    * Todos los pasos deben haber terminado correctamente
    * o haber sido omitidos idempotentemente.
    */
-  private allStepsSuccessful(pasos: PppoeOperacionPasoEntity[]): boolean {
+  private allStepsSuccessful(pasos: PppoeOperacionPasoReadModel[]): boolean {
     return (
       pasos.length > 0 &&
-      pasos.every((paso) => paso.fueExitoso() || paso.fueOmitido())
+      pasos.every((paso) => paso.fueExitoso || paso.fueOmitido)
     );
   }
 
@@ -597,8 +573,8 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
     empresaId: number;
 
     operacionId: number;
-  }): Promise<PppoeOperacionAggregate> {
-    const aggregate = await this.operacionRepository.findAggregateById({
+  }): Promise<PppoeOperacionAgregadoReadModel> {
+    const aggregate = await this.operaciones.buscarAgregado({
       empresaId: params.empresaId,
 
       operacionId: params.operacionId,
@@ -614,11 +590,11 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
   }
 
   private buildResult(params: {
-    operacion: PppoeOperacionEntity;
+    operacion: PppoeOperacionReadModel;
 
     cuenta: ClientePppoeCuentaReadModel | null;
   }): EjecutarOperacionPppoeResult {
-    const primitives = params.operacion.toPrimitives();
+    const primitives = params.operacion;
 
     return {
       operacionId: this.requireOperationId(params.operacion),
@@ -633,7 +609,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
 
       numeroIntento: params.operacion.numeroIntento,
 
-      reintentable: params.operacion.puedeReintentarse(),
+      reintentable: params.operacion.puedeReintentarse,
 
       resultado: primitives.resultado,
 
@@ -643,7 +619,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
     };
   }
 
-  private requireOperationId(operacion: PppoeOperacionEntity): number {
+  private requireOperationId(operacion: PppoeOperacionReadModel): number {
     if (operacion.id === null) {
       throw new ConflictException(
         'La operación PPPoE no contiene un identificador persistido.',
@@ -654,7 +630,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
   }
 
   private assertRecoveryDate(
-    operacion: PppoeOperacionEntity,
+    operacion: PppoeOperacionReadModel,
 
     fecha: Date,
   ): void {

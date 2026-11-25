@@ -14,25 +14,25 @@ import {
 
 import { MikrotikSshSessionPort } from 'src/modules/mikrotik-ssh/public/mikrotik-ssh-session.port';
 
-import { PppoeOperacionPasoEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion-paso.entity';
-
 import {
   TipoOperacionPppoe,
   TipoPasoPppoe,
 } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
-
-import { PppoeOperacionResultado } from 'src/modules/pppoe-operacion/domain/props/pppoe-operacion.props';
 
 import { PppoeOperacionStepError } from '../../domain/errors/pppoe-automatizacion.errors';
 
 import { ContextoEjecucionPppoe } from './resolver-contexto-ejecucion-pppoe.service';
 
 import { PppoeOperacionStepRunnerService } from './pppoe-operacion-step-runner.service';
+import {
+  PppoeOperacionPasoReadModel,
+  PppoeOperacionResultado,
+} from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 export type EjecutarEliminarSecretPppoeParams = {
   contexto: ContextoEjecucionPppoe;
 
-  pasos: PppoeOperacionPasoEntity[];
+  pasos: PppoeOperacionPasoReadModel[];
 };
 
 /**
@@ -523,7 +523,7 @@ export class EjecutorEliminarSecretPppoeService {
    * persistido.
    */
   private getStepOrder(
-    pasos: PppoeOperacionPasoEntity[],
+    pasos: PppoeOperacionPasoReadModel[],
     tipo: TipoPasoPppoe,
   ): number {
     const matches = pasos.filter((paso) => paso.tipo === tipo);
@@ -602,7 +602,7 @@ export class EjecutorEliminarSecretPppoeService {
    * El executor no necesita conocer cuál de los dos
    * contextos funcionales originó la operación.
    */
-  private validatePlan(pasos: PppoeOperacionPasoEntity[]): void {
+  private validatePlan(pasos: PppoeOperacionPasoReadModel[]): void {
     const expectedPlan: TipoPasoPppoe[] = [
       TipoPasoPppoe.CONECTAR_ROUTER,
       TipoPasoPppoe.BUSCAR_SECRET,

@@ -8,10 +8,6 @@ import {
 
 import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 
-import { CrearReintentoPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/crear-reintento-pppoe-operacion.use-case';
-
-import { PppoeOperacionEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion.entity';
-
 import {
   PppoeProvisionamientoPort,
   ActivarSecretPppoeInput,
@@ -44,14 +40,14 @@ import {
 } from '../ports/pppoe-operacion-auditoria.port';
 import { CrearYEjecutarEliminacionPppoeUseCase } from '../use-cases/crear-y-ejecutar-eliminacion-pppoe.use-case';
 
-import {
-  PPPOE_OPERACION_REPOSITORY,
-  PppoeOperacionRepositoryPort,
-} from 'src/modules/pppoe-operacion/domain/ports/pppoe-operacion-repository.port';
-
 import { MIKROTIK_ROUTER_CONNECTION_CONTEXT } from 'src/mikro-tik/infra/tokens/mikrotik-router.tokens';
 
 import { MikrotikRouterConnectionContextPort } from 'src/mikro-tik/domain/ports/mikrotik-router-connection-context.port';
+import {
+  PPPOE_OPERACION,
+  PppoeOperacionFacadePort,
+} from 'src/modules/pppoe-operacion/public/pppoe-operacion.facade.port';
+import { PppoeOperacionReadModel } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 /**
  * Implementación de la fachada pública
@@ -68,6 +64,8 @@ import { MikrotikRouterConnectionContextPort } from 'src/mikro-tik/domain/ports/
 @Injectable()
 export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
   constructor(
+    @Inject(PPPOE_OPERACION)
+    private readonly operaciones: PppoeOperacionFacadePort,
     private readonly crearSecretUseCase: CrearYEjecutarOperacionPppoeUseCase,
 
     private readonly activarSecretUseCase: CrearYEjecutarActivacionPppoeUseCase,
@@ -76,12 +74,7 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
 
     private readonly eliminarSecretUseCase: CrearYEjecutarEliminacionPppoeUseCase,
 
-    private readonly crearReintentoUseCase: CrearReintentoPppoeOperacionUseCase,
-
     private readonly ejecutarOperacionUseCase: EjecutarPppoeOperacionUseCase,
-
-    @Inject(PPPOE_OPERACION_REPOSITORY)
-    private readonly operacionRepository: PppoeOperacionRepositoryPort,
 
     @Inject(MIKROTIK_ROUTER_CONNECTION_CONTEXT)
     private readonly routerContext: MikrotikRouterConnectionContextPort,
@@ -239,7 +232,7 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
       operacionId: input.operacionId,
     });
 
-    const aggregate = await this.crearReintentoUseCase.execute({
+    const aggregate = await this.operaciones.crearReintento({
       empresaId: input.empresaId,
 
       operacionId: input.operacionId,
@@ -296,7 +289,7 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
      * La misma clave puede repetirse después de que
      * el reintento ya terminó.
      */
-    if (operacion.esTerminal()) {
+    if (operacion.esTerminal) {
       return this.buildExistingResult(operacion);
     }
 
@@ -305,7 +298,7 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
      *
      * No repetimos comandos SSH.
      */
-    if (operacion.estaEjecutando()) {
+    if (operacion.estaEjecutando) {
       return this.buildExistingResult(operacion);
     }
 
@@ -313,7 +306,7 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
      * Una operación protegida recién creada permanecerá
      * PENDIENTE hasta que otro flujo la autorice.
      */
-    if (operacion.estaPendiente() && operacion.requiereReautenticacion) {
+    if (operacion.estaPendiente && operacion.requiereReautenticacion) {
       throw new ConflictException(
         `El reintento PPPoE ${operacionId} requiere autorización antes de ejecutarse.`,
       );
@@ -322,7 +315,7 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
     /**
      * Una operación ya AUTORIZADA puede comenzar.
      */
-    if (!operacion.estaPendiente() && !operacion.estaAutorizada()) {
+    if (!operacion.estaPendiente && !operacion.estaAutorizada) {
       throw new ConflictException(
         `El reintento PPPoE ${operacionId} no puede ejecutarse desde el estado ${operacion.estado}.`,
       );
@@ -350,7 +343,8 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
      * El endpoint permite enviar la operación raíz
      * o cualquier intento perteneciente a la cadena.
      */
-    const operacionSolicitada = await this.operacionRepository.findById({
+    const operacionSolicitada = await this.operaciones.buscar({
+      por: 'ID',
       empresaId: params.empresaId,
 
       operacionId: params.operacionId,
@@ -371,7 +365,8 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
      * intento de la cadena, no necesariamente para el ID
      * enviado por el controlador.
      */
-    const ultimoIntento = await this.operacionRepository.findLatestAttempt({
+    const ultimoIntento = await this.operaciones.buscar({
+      por: 'ULTIMO_INTENTO',
       empresaId: params.empresaId,
 
       operacionRaizId,
@@ -419,9 +414,9 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
    * que no debe volver a ejecutarse.
    */
   private async buildExistingResult(
-    operacion: PppoeOperacionEntity,
+    operacion: PppoeOperacionReadModel,
   ): Promise<EjecutarOperacionPppoeResult> {
-    const primitives = operacion.toPrimitives();
+    const primitives = operacion;
 
     const estadoCuenta = await this.findAccountStateSafely({
       empresaId: operacion.empresaId,
@@ -442,7 +437,7 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
 
       numeroIntento: operacion.numeroIntento,
 
-      reintentable: operacion.puedeReintentarse(),
+      reintentable: operacion.puedeReintentarse,
 
       resultado: primitives.resultado,
 
@@ -474,7 +469,7 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
     }
   }
 
-  private requireOperationId(operacion: PppoeOperacionEntity): number {
+  private requireOperationId(operacion: PppoeOperacionReadModel): number {
     if (operacion.id === null) {
       throw new ConflictException(
         'La operación PPPoE no contiene un identificador persistido.',

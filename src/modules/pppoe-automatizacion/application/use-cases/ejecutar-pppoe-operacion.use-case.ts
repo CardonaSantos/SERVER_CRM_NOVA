@@ -16,25 +16,11 @@ import {
   PppoeClienteCuentaFacadePort,
 } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
 
-import { FinalizarPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/finalizar-pppoe-operacion.use-case';
-
-import { IniciarPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/iniciar-pppoe-operacion.use-case';
-
-import { PppoeOperacionEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion.entity';
-
-import { PppoeOperacionPasoEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion-paso.entity';
-
 import {
   EstadoOperacionPppoe,
   TipoOperacionPppoe,
   TipoPasoPppoe,
 } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
-
-import {
-  PPPOE_OPERACION_REPOSITORY,
-  PppoeOperacionAggregate,
-  PppoeOperacionRepositoryPort,
-} from 'src/modules/pppoe-operacion/domain/ports/pppoe-operacion-repository.port';
 
 import {
   EfectoRemotoMikrotik,
@@ -55,7 +41,6 @@ import { EjecutarOperacionPppoeResult } from '../../public/pppoe-provisionamient
 import { PppoeOperacionStepRunnerService } from '../services/pppoe-operacion-step-runner.service';
 import { EjecutorSuspenderServicioPppoeService } from '../services/ejecutor-suspender-servicio-pppoe.service';
 import { EjecutorActivarSecretPppoeService } from '../services/ejecutor-activar-secret-pppoe.service';
-import { PppoeOperacionResultado } from 'src/modules/pppoe-operacion/domain/props/pppoe-operacion.props';
 import {
   PPPOE_OPERACION_AUDITORIA,
   PppoeOperacionAuditoriaPort,
@@ -71,6 +56,16 @@ import {
   ClienteInternetEstadoOperativoPort,
   EstadoOperativoClienteInternet,
 } from '../ports/cliente-internet-estado-operativo.port';
+import {
+  PPPOE_OPERACION,
+  PppoeOperacionFacadePort,
+} from 'src/modules/pppoe-operacion/public/pppoe-operacion.facade.port';
+import {
+  PppoeOperacionAgregadoReadModel,
+  PppoeOperacionPasoReadModel,
+  PppoeOperacionReadModel,
+  PppoeOperacionResultado,
+} from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 /**
  * Ejecuta una operación PPPoE previamente creada.
@@ -137,10 +132,8 @@ export class EjecutarPppoeOperacionUseCase {
   ]);
 
   constructor(
-    private readonly iniciarOperacion: IniciarPppoeOperacionUseCase,
-
-    private readonly finalizarOperacion: FinalizarPppoeOperacionUseCase,
-
+    @Inject(PPPOE_OPERACION)
+    private readonly operaciones: PppoeOperacionFacadePort,
     private readonly resolverContexto: ResolverContextoEjecucionPppoeService,
 
     private readonly ejecutorCrearSecret: EjecutorCrearSecretPppoeService,
@@ -158,9 +151,6 @@ export class EjecutarPppoeOperacionUseCase {
 
     @Inject(PPPOE_CLIENTE_CUENTA)
     private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
-
-    @Inject(PPPOE_OPERACION_REPOSITORY)
-    private readonly operacionRepository: PppoeOperacionRepositoryPort,
 
     @Inject(PPPOE_ACCESO_INTERNET)
     private readonly accesosInternet: PppoeAccesoInternetFacadePort,
@@ -184,7 +174,7 @@ export class EjecutarPppoeOperacionUseCase {
      * La operación se persiste como EJECUTANDO antes
      * de comenzar cualquier acción técnica.
      */
-    const aggregate = await this.iniciarOperacion.execute({
+    const aggregate = await this.operaciones.iniciar({
       empresaId: input.empresaId,
 
       operacionId: input.operacionId,
@@ -354,7 +344,7 @@ export class EjecutarPppoeOperacionUseCase {
        * ======================================================
        */
 
-      const finalAggregate = await this.finalizarOperacion.execute({
+      const finalAggregate = await this.operaciones.finalizar({
         empresaId: input.empresaId,
 
         operacionId: input.operacionId,
@@ -454,7 +444,7 @@ export class EjecutarPppoeOperacionUseCase {
 
       const finalAggregate =
         finalState === EstadoOperacionPppoe.PARCIAL
-          ? await this.finalizarOperacion.execute({
+          ? await this.operaciones.finalizar({
               empresaId: input.empresaId,
 
               operacionId: input.operacionId,
@@ -467,7 +457,7 @@ export class EjecutarPppoeOperacionUseCase {
 
               resultado: null,
             })
-          : await this.finalizarOperacion.execute({
+          : await this.operaciones.finalizar({
               empresaId: input.empresaId,
 
               operacionId: input.operacionId,
@@ -510,7 +500,7 @@ export class EjecutarPppoeOperacionUseCase {
   }
 
   private async applySuccessfulAccessResult(params: {
-    operacion: PppoeOperacionEntity;
+    operacion: PppoeOperacionReadModel;
 
     acceso: AccesoInternetReadModel;
 
@@ -601,7 +591,7 @@ export class EjecutarPppoeOperacionUseCase {
    * Prepara la cuenta según el tipo de operación.
    */
   private async prepareAccountForOperation(params: {
-    operacion: PppoeOperacionEntity;
+    operacion: PppoeOperacionReadModel;
 
     cuenta: ClientePppoeCuentaReadModel;
   }): Promise<ClientePppoeCuentaReadModel> {
@@ -641,7 +631,7 @@ export class EjecutarPppoeOperacionUseCase {
   }
 
   private async prepareAccessForOperation(params: {
-    operacion: PppoeOperacionEntity;
+    operacion: PppoeOperacionReadModel;
 
     acceso: AccesoInternetReadModel;
   }): Promise<AccesoInternetReadModel> {
@@ -700,11 +690,11 @@ export class EjecutarPppoeOperacionUseCase {
    * a completar una ClienteDesinstalacion.
    */
   private async applySuccessfulClientResult(params: {
-    operacion: PppoeOperacionEntity;
+    operacion: PppoeOperacionReadModel;
 
     acceso: AccesoInternetReadModel;
   }): Promise<void> {
-    const operacion = params.operacion.toPrimitives();
+    const operacion = params.operacion;
 
     switch (params.operacion.tipo) {
       case TipoOperacionPppoe.ACTIVAR_SECRET:
@@ -995,7 +985,7 @@ export class EjecutarPppoeOperacionUseCase {
   private async executeTechnicalOperation(params: {
     contexto: ContextoEjecucionPppoe;
 
-    pasos: PppoeOperacionPasoEntity[];
+    pasos: PppoeOperacionPasoReadModel[];
   }): Promise<PppoeOperacionResultado> {
     switch (params.contexto.operacion.tipo) {
       case TipoOperacionPppoe.CREAR_SECRET:
@@ -1037,7 +1027,7 @@ export class EjecutarPppoeOperacionUseCase {
    * Aplica a la cuenta el resultado remoto ya confirmado.
    */
   private async applySuccessfulAccountResult(params: {
-    operacion: PppoeOperacionEntity;
+    operacion: PppoeOperacionReadModel;
     cuenta: ClientePppoeCuentaReadModel;
     fecha: Date;
   }): Promise<ClientePppoeCuentaReadModel> {
@@ -1128,14 +1118,14 @@ export class EjecutarPppoeOperacionUseCase {
     operacionId: number;
 
     error: PppoeOperacionStepError;
-  }): Promise<PppoeOperacionAggregate> {
+  }): Promise<PppoeOperacionAgregadoReadModel> {
     let aggregate = await this.loadAggregate({
       empresaId: params.empresaId,
 
       operacionId: params.operacionId,
     });
 
-    const executingStep = aggregate.pasos.find((paso) => paso.estaEjecutando());
+    const executingStep = aggregate.pasos.find((paso) => paso.estaEjecutando);
 
     if (executingStep) {
       throw new ConflictException(
@@ -1143,7 +1133,7 @@ export class EjecutarPppoeOperacionUseCase {
       );
     }
 
-    const failedStep = aggregate.pasos.find((paso) => paso.fueFallido());
+    const failedStep = aggregate.pasos.find((paso) => paso.fueFallido);
 
     if (failedStep) {
       return aggregate;
@@ -1151,7 +1141,7 @@ export class EjecutarPppoeOperacionUseCase {
 
     const pendingStep = [...aggregate.pasos]
       .sort((left, right) => left.orden - right.orden)
-      .find((paso) => paso.estaPendiente());
+      .find((paso) => paso.estaPendiente);
 
     if (!pendingStep) {
       throw new ConflictException(
@@ -1186,8 +1176,8 @@ export class EjecutarPppoeOperacionUseCase {
       operacionId: params.operacionId,
     });
 
-    const persistedExecutingStep = aggregate.pasos.find((paso) =>
-      paso.estaEjecutando(),
+    const persistedExecutingStep = aggregate.pasos.find(
+      (paso) => paso.estaEjecutando,
     );
 
     if (persistedExecutingStep) {
@@ -1196,9 +1186,7 @@ export class EjecutarPppoeOperacionUseCase {
       );
     }
 
-    const persistedFailedStep = aggregate.pasos.find((paso) =>
-      paso.fueFallido(),
-    );
+    const persistedFailedStep = aggregate.pasos.find((paso) => paso.fueFallido);
 
     if (!persistedFailedStep) {
       throw new ConflictException(
@@ -1218,7 +1206,7 @@ export class EjecutarPppoeOperacionUseCase {
   private resolveFailedOperationState(params: {
     error: PppoeOperacionStepError;
 
-    pasos: PppoeOperacionPasoEntity[];
+    pasos: PppoeOperacionPasoReadModel[];
   }): EstadoOperacionPppoe.PARCIAL | EstadoOperacionPppoe.FALLIDA {
     if (!params.error.debeFinalizarComoParcial()) {
       return EstadoOperacionPppoe.FALLIDA;
@@ -1227,7 +1215,7 @@ export class EjecutarPppoeOperacionUseCase {
     const hasRemoteEffectEvidence = params.pasos.some(
       (paso) =>
         EjecutarPppoeOperacionUseCase.PASOS_CON_EFECTO_REMOTO.has(paso.tipo) &&
-        (paso.fueExitoso() || paso.fueFallido()),
+        (paso.fueExitoso || paso.fueFallido),
     );
 
     return hasRemoteEffectEvidence
@@ -1284,8 +1272,8 @@ export class EjecutarPppoeOperacionUseCase {
     empresaId: number;
 
     operacionId: number;
-  }): Promise<PppoeOperacionAggregate> {
-    const aggregate = await this.operacionRepository.findAggregateById({
+  }): Promise<PppoeOperacionAgregadoReadModel> {
+    const aggregate = await this.operaciones.buscarAgregado({
       empresaId: params.empresaId,
 
       operacionId: params.operacionId,
@@ -1300,7 +1288,7 @@ export class EjecutarPppoeOperacionUseCase {
     return aggregate;
   }
 
-  private assertSupportedOperation(operacion: PppoeOperacionEntity): void {
+  private assertSupportedOperation(operacion: PppoeOperacionReadModel): void {
     switch (operacion.tipo) {
       case TipoOperacionPppoe.CREAR_SECRET:
       case TipoOperacionPppoe.ACTIVAR_SECRET:
@@ -1318,8 +1306,10 @@ export class EjecutarPppoeOperacionUseCase {
   /**
    * Evita reanudar ciegamente una ejecución previa.
    */
-  private assertNotInterrupted(aggregate: PppoeOperacionAggregate): void {
-    const processedStep = aggregate.pasos.find((paso) => !paso.estaPendiente());
+  private assertNotInterrupted(
+    aggregate: PppoeOperacionAgregadoReadModel,
+  ): void {
+    const processedStep = aggregate.pasos.find((paso) => !paso.estaPendiente);
 
     if (!processedStep) {
       return;
@@ -1331,13 +1321,13 @@ export class EjecutarPppoeOperacionUseCase {
   }
 
   private toResult(params: {
-    operacion: PppoeOperacionEntity;
+    operacion: PppoeOperacionReadModel;
 
     cuenta: ClientePppoeCuentaReadModel | null;
 
     technicalError: PppoeOperacionStepError | null;
   }): EjecutarOperacionPppoeResult {
-    const operationProps = params.operacion.toPrimitives();
+    const operationProps = params.operacion;
 
     return {
       operacionId: this.requirePersistedId(params.operacion),
@@ -1353,7 +1343,7 @@ export class EjecutarPppoeOperacionUseCase {
       numeroIntento: params.operacion.numeroIntento,
 
       reintentable:
-        params.operacion.puedeReintentarse() &&
+        params.operacion.puedeReintentarse &&
         (params.technicalError?.reintentable ?? true),
 
       resultado: operationProps.resultado,
@@ -1364,7 +1354,7 @@ export class EjecutarPppoeOperacionUseCase {
     };
   }
 
-  private requirePersistedId(operacion: PppoeOperacionEntity): number {
+  private requirePersistedId(operacion: PppoeOperacionReadModel): number {
     if (operacion.id === null) {
       throw new Error('La operación PPPoE no contiene identificador.');
     }
@@ -1416,7 +1406,7 @@ export class EjecutarPppoeOperacionUseCase {
    * recibe operaciones previamente creadas por los
    * flujos de aplicación correspondientes.
    */
-  private assertValidDeletionContext(operacion: PppoeOperacionEntity): void {
+  private assertValidDeletionContext(operacion: PppoeOperacionReadModel): void {
     if (operacion.tipo !== TipoOperacionPppoe.ELIMINAR_SECRET) {
       throw new ConflictException(
         `La operación PPPoE ${operacion.id ?? 'sin-id'} no corresponde a ELIMINAR_SECRET.`,

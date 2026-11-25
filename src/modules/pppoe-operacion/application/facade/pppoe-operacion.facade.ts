@@ -13,6 +13,7 @@ import {
 import {
   PppoeOperacionCreadaReadModel,
   PppoeOperacionFacadePort,
+  PppoeOperacionReintentoReadModel,
 } from '../../public/pppoe-operacion.facade.port';
 import {
   ActualizarPasoPppoeOperacionUseCase,
@@ -22,6 +23,14 @@ import {
   AutorizarPppoeOperacionUseCase,
   AutorizarPppoeOperacionUseCaseInput,
 } from '../use-cases/autorizar-pppoe-operacion.use-case';
+import {
+  BuscarAgregadoPppoeOperacionUseCase,
+  BuscarAgregadoPppoeOperacionUseCaseInput,
+} from '../use-cases/buscar-agregado-pppoe-operacion.use-case';
+import {
+  BuscarPppoeOperacionUseCase,
+  BuscarPppoeOperacionUseCaseInput,
+} from '../use-cases/buscar-pppoe-operacion.use-case';
 import {
   CancelarPppoeOperacionUseCase,
   CancelarPppoeOperacionUseCaseInput,
@@ -63,7 +72,23 @@ export class PppoeOperacionFacade implements PppoeOperacionFacadePort {
     private readonly crearReintentoOperacion: CrearReintentoPppoeOperacionUseCase,
     private readonly listarOperaciones: ListarPppoeOperacionesUseCase,
     private readonly obtenerDetalleOperacion: ObtenerDetallePppoeOperacionUseCase,
+    private readonly buscarOperacion: BuscarPppoeOperacionUseCase,
+    private readonly buscarAgregadoOperacion: BuscarAgregadoPppoeOperacionUseCase,
   ) {}
+
+  async buscar(
+    input: BuscarPppoeOperacionUseCaseInput,
+  ): Promise<PppoeOperacionReadModel | null> {
+    const operacion = await this.buscarOperacion.execute(input);
+    return operacion ? aPppoeOperacionReadModel(operacion) : null;
+  }
+
+  async buscarAgregado(
+    input: BuscarAgregadoPppoeOperacionUseCaseInput,
+  ): Promise<PppoeOperacionAgregadoReadModel | null> {
+    const agregado = await this.buscarAgregadoOperacion.execute(input);
+    return agregado ? aPppoeOperacionAgregadoReadModel(agregado) : null;
+  }
 
   async crear(
     input: CrearPppoeOperacionUseCaseInput,
@@ -114,9 +139,13 @@ export class PppoeOperacionFacade implements PppoeOperacionFacadePort {
 
   async crearReintento(
     input: CrearReintentoPppoeOperacionUseCaseInput,
-  ): Promise<PppoeOperacionCreadaReadModel> {
+  ): Promise<PppoeOperacionReintentoReadModel> {
     const r = await this.crearReintentoOperacion.execute(input);
-    return { ...aPppoeOperacionAgregadoReadModel(r), creada: r.creada };
+    return {
+      ...aPppoeOperacionAgregadoReadModel(r),
+      creada: r.creada,
+      operacionAnteriorId: r.operacionAnteriorId,
+    };
   }
 
   listar(

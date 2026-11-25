@@ -1,8 +1,10 @@
-import { Injectable } from '@nestjs/common';
-
-import { ActualizarPasoPppoeOperacionUseCase } from 'src/modules/pppoe-operacion/application/use-cases/actualizar-paso-pppoe-operacion.use-case';
+import { Injectable, Inject } from '@nestjs/common';
 
 import { PppoeOperacionStepError } from '../../domain/errors/pppoe-automatizacion.errors';
+import {
+  PPPOE_OPERACION,
+  PppoeOperacionFacadePort,
+} from 'src/modules/pppoe-operacion/public/pppoe-operacion.facade.port';
 
 /**
  * Resultado interno devuelto por la acción técnica
@@ -72,7 +74,8 @@ export type OmitirPasoPppoeParams = {
 @Injectable()
 export class PppoeOperacionStepRunnerService {
   constructor(
-    private readonly actualizarPaso: ActualizarPasoPppoeOperacionUseCase,
+    @Inject(PPPOE_OPERACION)
+    private readonly operaciones: PppoeOperacionFacadePort,
   ) {}
 
   async ejecutar<TValue>(
@@ -85,7 +88,7 @@ export class PppoeOperacionStepRunnerService {
      *
      * Si esto falla, no se ejecuta ninguna acción remota.
      */
-    await this.actualizarPaso.execute({
+    await this.operaciones.actualizarPaso({
       empresaId: params.empresaId,
 
       operacionId: params.operacionId,
@@ -102,7 +105,7 @@ export class PppoeOperacionStepRunnerService {
     try {
       const executionResult = await params.ejecutar();
 
-      await this.actualizarPaso.execute({
+      await this.operaciones.actualizarPaso({
         empresaId: params.empresaId,
 
         operacionId: params.operacionId,
@@ -128,7 +131,7 @@ export class PppoeOperacionStepRunnerService {
        * operación finaliza FALLIDA o PARCIAL.
        */
       try {
-        await this.actualizarPaso.execute({
+        await this.operaciones.actualizarPaso({
           empresaId: params.empresaId,
 
           operacionId: params.operacionId,
@@ -172,7 +175,7 @@ export class PppoeOperacionStepRunnerService {
   async omitir(params: OmitirPasoPppoeParams): Promise<void> {
     this.validateBaseParams(params);
 
-    await this.actualizarPaso.execute({
+    await this.operaciones.actualizarPaso({
       empresaId: params.empresaId,
 
       operacionId: params.operacionId,

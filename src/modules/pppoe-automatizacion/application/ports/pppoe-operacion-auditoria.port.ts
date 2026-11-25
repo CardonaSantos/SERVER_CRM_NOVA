@@ -1,6 +1,5 @@
 import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
-
-import { PppoeOperacionEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion.entity';
+import { PppoeOperacionReadModel } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 /**
  * Token interno para registrar los eventos principales
@@ -27,7 +26,7 @@ export type ActorAuditoriaOperacionPppoe = {
  * Datos comunes de un evento de operación.
  */
 export type RegistrarAuditoriaOperacionPppoeParams = {
-  operacion: PppoeOperacionEntity;
+  operacion: PppoeOperacionReadModel;
 
   actor?: ActorAuditoriaOperacionPppoe | null;
 

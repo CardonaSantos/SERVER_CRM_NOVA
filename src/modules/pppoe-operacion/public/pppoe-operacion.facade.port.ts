@@ -1,5 +1,7 @@
 import type { ActualizarPasoPppoeOperacionUseCaseInput } from '../application/use-cases/actualizar-paso-pppoe-operacion.use-case';
 import type { AutorizarPppoeOperacionUseCaseInput } from '../application/use-cases/autorizar-pppoe-operacion.use-case';
+import type { BuscarAgregadoPppoeOperacionUseCaseInput } from '../application/use-cases/buscar-agregado-pppoe-operacion.use-case';
+import type { BuscarPppoeOperacionUseCaseInput } from '../application/use-cases/buscar-pppoe-operacion.use-case';
 import type { CancelarPppoeOperacionUseCaseInput } from '../application/use-cases/cancelar-pppoe-operacion.use-case';
 import type { CrearPppoeOperacionUseCaseInput } from '../application/use-cases/crear-pppoe-operacion.use-case';
 import type { CrearReintentoPppoeOperacionUseCaseInput } from '../application/use-cases/crear-reintento-pppoe-operacion.use-case';
@@ -21,6 +23,8 @@ export const PPPOE_OPERACION = Symbol('PPPOE_OPERACION');
 export type {
   ActualizarPasoPppoeOperacionUseCaseInput as ActualizarPasoPppoeOperacionInput,
   AutorizarPppoeOperacionUseCaseInput as AutorizarPppoeOperacionInput,
+  BuscarAgregadoPppoeOperacionUseCaseInput as BuscarAgregadoPppoeOperacionInput,
+  BuscarPppoeOperacionUseCaseInput as BuscarPppoeOperacionInput,
   CancelarPppoeOperacionUseCaseInput as CancelarPppoeOperacionInput,
   CrearPppoeOperacionUseCaseInput as CrearPppoeOperacionInput,
   CrearReintentoPppoeOperacionUseCaseInput as CrearReintentoPppoeOperacionInput,
@@ -35,12 +39,24 @@ export type PppoeOperacionCreadaReadModel = PppoeOperacionAgregadoReadModel & {
   creada: boolean;
 };
 
+/** Intento anterior de la cadena (null si la clave ya existía y no se creó nada). */
+export type PppoeOperacionReintentoReadModel = PppoeOperacionCreadaReadModel & {
+  operacionAnteriorId: number | null;
+};
+
 /**
  * Ciclo de vida de una operación PPPoE (crear → autorizar → iniciar →
- * pasos → finalizar, o cancelar/reintentar). Lo usará el motor de
- * pppoe-automatizacion en C3, en lugar de las entidades y los casos de uso.
+ * pasos → finalizar, o cancelar/reintentar). La usa el motor de
+ * pppoe-automatizacion, que ejecuta los pasos contra el router.
  */
 export interface PppoeOperacionFacadePort {
+  /** Por id, por clave de idempotencia o el último intento de una cadena. */
+  buscar(
+    input: BuscarPppoeOperacionUseCaseInput,
+  ): Promise<PppoeOperacionReadModel | null>;
+  buscarAgregado(
+    input: BuscarAgregadoPppoeOperacionUseCaseInput,
+  ): Promise<PppoeOperacionAgregadoReadModel | null>;
   crear(
     input: CrearPppoeOperacionUseCaseInput,
   ): Promise<PppoeOperacionCreadaReadModel>;
@@ -62,7 +78,7 @@ export interface PppoeOperacionFacadePort {
   ): Promise<PppoeOperacionAgregadoReadModel>;
   crearReintento(
     input: CrearReintentoPppoeOperacionUseCaseInput,
-  ): Promise<PppoeOperacionCreadaReadModel>;
+  ): Promise<PppoeOperacionReintentoReadModel>;
   listar(
     input: ListarPppoeOperacionesUseCaseInput,
   ): Promise<PppoeOperacionPaginatedResult>;
