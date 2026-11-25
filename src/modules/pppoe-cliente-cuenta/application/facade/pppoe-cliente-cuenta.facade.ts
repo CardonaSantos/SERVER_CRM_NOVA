@@ -9,12 +9,14 @@ import {
   CrearCuentaPppoeInput,
   ObtenerDetalleCuentaPppoeInput,
   PppoeClienteCuentaFacadePort,
+  RegistrarCuentaPppoeAdoptadaInput,
   RegistrarErrorCuentaPppoeInput,
 } from '../../public/pppoe-cliente-cuenta.facade.port';
 import { BuscarCuentaPppoeUseCase } from '../use-cases/buscar-cuenta-pppoe.use-case';
 import { CambiarEstadoCuentaPppoeUseCase } from '../use-cases/cambiar-estado-cuenta-pppoe.use-case';
 import { ConsultarCredencialesPppoeInstalacionUseCase } from '../use-cases/consultar-credenciales-pppoe-instalacion.use-case';
 import { CrearCuentaPppoeUseCase } from '../use-cases/crear-cuenta-pppoe.use-case';
+import { RegistrarCuentaPppoeAdoptadaUseCase } from '../use-cases/registrar-cuenta-pppoe-adoptada.use-case';
 import { ObtenerDetalleCuentaPppoeUseCase } from '../use-cases/obtener-detalle-cuenta-pppoe.use-case';
 import { RegistrarErrorCuentaPppoeUseCase } from '../use-cases/registrar-error-cuenta-pppoe.use-case';
 
@@ -27,7 +29,14 @@ export class PppoeClienteCuentaFacade implements PppoeClienteCuentaFacadePort {
     private readonly registrarErrorCuenta: RegistrarErrorCuentaPppoeUseCase,
     private readonly obtenerDetalleCuenta: ObtenerDetalleCuentaPppoeUseCase,
     private readonly credencialesInstalacion: ConsultarCredencialesPppoeInstalacionUseCase,
+    private readonly registrarCuentaAdoptada: RegistrarCuentaPppoeAdoptadaUseCase,
   ) {}
+
+  registrarAdoptada(
+    input: RegistrarCuentaPppoeAdoptadaInput,
+  ): Promise<ClientePppoeCuentaReadModel> {
+    return this.registrarCuentaAdoptada.execute(input);
+  }
 
   buscarPorId(
     cuentaPppoeId: number,

@@ -1,11 +1,16 @@
 import { EstadoCuentaPppoe } from '../domain/enums/estado-cuenta-pppoe.enum';
-import { CrearClientePppoeCuentaProps } from '../domain/props/cliente-pppoe-cuenta.props';
+import {
+  AdoptarClientePppoeCuentaProps,
+  CrearClientePppoeCuentaProps,
+} from '../domain/props/cliente-pppoe-cuenta.props';
 import { ClientePppoeCuentaReadModel } from '../domain/read-models/cliente-pppoe-cuenta.read-model';
 import { ClientePppoeCuentaDetalleResult } from '../domain/read-models/cliente-pppoe-cuenta-detalle.read-model';
 
 export const PPPOE_CLIENTE_CUENTA = Symbol('PPPOE_CLIENTE_CUENTA');
 
 export type CrearCuentaPppoeInput = CrearClientePppoeCuentaProps;
+
+export type RegistrarCuentaPppoeAdoptadaInput = AdoptarClientePppoeCuentaProps;
 
 export type TransicionCuentaPppoe =
   | 'INICIAR_INSTALACION'
@@ -81,6 +86,10 @@ export interface PppoeClienteCuentaFacadePort {
 
   /** Cuenta nueva en PENDIENTE_ACTIVACION; el secreto llega ya cifrado. */
   crear(input: CrearCuentaPppoeInput): Promise<ClientePppoeCuentaReadModel>;
+  /** Cuenta cuyo secret ya existía en el router (adopción); no lo modifica. */
+  registrarAdoptada(
+    input: RegistrarCuentaPppoeAdoptadaInput,
+  ): Promise<ClientePppoeCuentaReadModel>;
 
   /**
    * Aplica la transición con las reglas de la entidad y la persiste.

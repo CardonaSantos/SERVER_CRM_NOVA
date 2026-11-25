@@ -11,6 +11,7 @@ import { CambiarEstadoCuentaPppoeUseCase } from './application/use-cases/cambiar
 import { ConsultarCredencialesPppoeCuentaUseCase } from './application/use-cases/consultar-credenciales-pppoe-cuenta.use-case';
 import { ConsultarCredencialesPppoeInstalacionUseCase } from './application/use-cases/consultar-credenciales-pppoe-instalacion.use-case';
 import { CrearCuentaPppoeUseCase } from './application/use-cases/crear-cuenta-pppoe.use-case';
+import { RegistrarCuentaPppoeAdoptadaUseCase } from './application/use-cases/registrar-cuenta-pppoe-adoptada.use-case';
 import { ListarCuentasPppoeUseCase } from './application/use-cases/listar-cuentas-pppoe.use-case';
 import { ObtenerDetalleCuentaPppoeUseCase } from './application/use-cases/obtener-detalle-cuenta-pppoe.use-case';
 import { RegistrarErrorCuentaPppoeUseCase } from './application/use-cases/registrar-error-cuenta-pppoe.use-case';
@@ -38,6 +39,7 @@ import { PPPOE_CLIENTE_CUENTA } from './public/pppoe-cliente-cuenta.facade.port'
     ConsultarCredencialesPppoeInstalacionUseCase,
     BuscarCuentaPppoeUseCase,
     CrearCuentaPppoeUseCase,
+    RegistrarCuentaPppoeAdoptadaUseCase,
     CambiarEstadoCuentaPppoeUseCase,
     RegistrarErrorCuentaPppoeUseCase,
 

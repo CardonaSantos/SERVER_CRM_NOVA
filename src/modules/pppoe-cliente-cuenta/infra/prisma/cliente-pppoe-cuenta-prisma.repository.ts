@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
-
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaTransaccional } from 'src/common/transaccion/prisma-transaccional.service';
 
 import { ClientePppoeCuentaRepositoryPort } from '../../domain/ports/cliente-pppoe-cuenta-repository.port';
 
@@ -15,12 +14,17 @@ import { ClientePppoeCuentaEntity } from '../../domain/entities/cliente-pppoe-cu
 export class ClientePppoeCuentaPrismaRepository
   implements ClientePppoeCuentaRepositoryPort
 {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly transaccional: PrismaTransaccional) {}
+
+  /** La transacción abierta por una unidad de trabajo, o el cliente normal. */
+  private get db() {
+    return this.transaccional.cliente;
+  }
 
   async create(
     entity: ClientePppoeCuentaEntity,
   ): Promise<ClientePppoeCuentaEntity> {
-    const record = await this.prisma.clientePppoeCuenta.create({
+    const record = await this.db.clientePppoeCuenta.create({
       data: ClientePppoeCuentaPrismaMapper.toCreatePersistence(entity),
     });
 
@@ -38,7 +42,7 @@ export class ClientePppoeCuentaPrismaRepository
       );
     }
 
-    const record = await this.prisma.clientePppoeCuenta.update({
+    const record = await this.db.clientePppoeCuenta.update({
       where: {
         id,
       },
@@ -50,7 +54,7 @@ export class ClientePppoeCuentaPrismaRepository
   }
 
   async findById(id: number): Promise<ClientePppoeCuentaEntity | null> {
-    const record = await this.prisma.clientePppoeCuenta.findUnique({
+    const record = await this.db.clientePppoeCuenta.findUnique({
       where: {
         id,
       },
@@ -62,7 +66,7 @@ export class ClientePppoeCuentaPrismaRepository
   async findByAccesoInternetId(
     accesoInternetId: number,
   ): Promise<ClientePppoeCuentaEntity | null> {
-    const record = await this.prisma.clientePppoeCuenta.findUnique({
+    const record = await this.db.clientePppoeCuenta.findUnique({
       where: {
         accesoInternetId,
       },
@@ -74,7 +78,7 @@ export class ClientePppoeCuentaPrismaRepository
   async findVigenteByUsuario(
     usuario: string,
   ): Promise<ClientePppoeCuentaEntity | null> {
-    const record = await this.prisma.clientePppoeCuenta.findFirst({
+    const record = await this.db.clientePppoeCuenta.findFirst({
       where: {
         usuario,
 
@@ -94,7 +98,7 @@ export class ClientePppoeCuentaPrismaRepository
   async findProtectedByInstalacionId(
     instalacionId: number,
   ): Promise<ClientePppoeCuentaProtegidaInstalacion[]> {
-    const records = await this.prisma.clientePppoeCuenta.findMany({
+    const records = await this.db.clientePppoeCuenta.findMany({
       where: {
         accesoInternet: {
           is: {

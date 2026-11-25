@@ -6,6 +6,7 @@ import { ClientePppoeCuentaRepositoryFake } from '../../test/fakes/cliente-pppoe
 import { BuscarCuentaPppoeUseCase } from '../use-cases/buscar-cuenta-pppoe.use-case';
 import { CambiarEstadoCuentaPppoeUseCase } from '../use-cases/cambiar-estado-cuenta-pppoe.use-case';
 import { CrearCuentaPppoeUseCase } from '../use-cases/crear-cuenta-pppoe.use-case';
+import { RegistrarCuentaPppoeAdoptadaUseCase } from '../use-cases/registrar-cuenta-pppoe-adoptada.use-case';
 import { RegistrarErrorCuentaPppoeUseCase } from '../use-cases/registrar-error-cuenta-pppoe.use-case';
 
 import { PppoeClienteCuentaFacade } from './pppoe-cliente-cuenta.facade';
@@ -22,6 +23,7 @@ describe('PppoeClienteCuentaFacade', () => {
       new RegistrarErrorCuentaPppoeUseCase(repo, reloj),
       sinUso,
       sinUso,
+      new RegistrarCuentaPppoeAdoptadaUseCase(repo),
     );
     return { fachada, reloj };
   }
@@ -109,5 +111,22 @@ describe('PppoeClienteCuentaFacade', () => {
     });
 
     expect(await fachada.buscarVigentePorUsuario('cliente.prueba')).toBeNull();
+  });
+
+  it('registrarAdoptada guarda la cuenta en su estado remoto, marcada como adoptada', async () => {
+    const { fachada } = preparar();
+
+    const cuenta = await fachada.registrarAdoptada({
+      ...alta,
+      estadoRemoto: EstadoCuentaPppoe.ACTIVA,
+      adoptadoPorId: 7,
+      fechaAdopcion: new Date('2026-11-20T10:00:00Z'),
+    });
+
+    expect(cuenta.estado).toBe(EstadoCuentaPppoe.ACTIVA);
+    expect(cuenta.esAdoptada).toBe(true);
+    expect(await fachada.buscarVigentePorUsuario(alta.usuario)).toMatchObject({
+      id: cuenta.id,
+    });
   });
 });
