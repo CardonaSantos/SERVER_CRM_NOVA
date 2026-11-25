@@ -47,4 +47,7 @@ grep -rnP "from '[^']*modules/$N/(?!public/|$N\.module')" --include=*.ts src | g
 
 seccion "12. Entidades sin spec"
 for e in $(find $M -name '*.entity.ts' 2>/dev/null); do [ -f "${e%.ts}.spec.ts" ] || echo "$e"; done
+
+seccion "13. Validación de rol en dominio/aplicación (va en @Roles del controlador)"
+[ -n "$DA" ] && grep -rnE "actorRol|rolNormalizado|normalizedRole|RolUsuario\.|'(OFICINA|TECNICO|COORDINADOR_OPERACIONES)'" $DA
 echo

@@ -135,6 +135,22 @@ El último segmento antes de `.ts` dice **qué es** el archivo. Solo estos roles
 - Nombre = interfaz sin `Port`: `ZonaFacturacionRepositoryPort` → `ZONA_FACTURACION_REPOSITORY`.
 - Nunca tokens de texto (`provide: 'ALGO'`).
 
+### 3.4 Un tipo, un nombre
+- Cada forma de datos existe **una sola vez**, en el módulo dueño. Si otro módulo la necesita, la
+  importa de ese `public/`; no la copia ni la redeclara con otro nombre
+  (p. ej. el material cifrado PPPoE es solo `SecretoPppoeProtegido`, de `pppoe-credentials/public/`).
+- Dos tipos con el mismo nombre en archivos distintos, o dos nombres para la misma forma, se
+  unifican al re-conformar el módulo.
+
+### 3.5 Comentarios
+- **Se quedan:** el JSDoc de puertos, fachadas, casos de uso y campos de DTO (Swagger lo
+  publica), y los comentarios que explican un **por qué** que el código no dice (una regla de
+  negocio, una limitación de RouterOS, una decisión del dueño).
+- **Se van:** los que repiten el código (`/** Busca la cuenta por id. */` sobre `findById`),
+  los separadores decorativos (`/* ===== */`, `/* Estado */`), las listas de "este archivo no
+  conoce…", y todo código comentado (el historial está en git).
+- Breves: una línea si alcanza. En español.
+
 ---
 
 ## 4. Dominio
@@ -313,8 +329,10 @@ Reglas:
 4. Depende **solo de puertos** (`@Inject(TOKEN)`), nunca de un repositorio Prisma concreto ni
    de un caso de uso de **otro** módulo (para eso está la fachada, §8).
 5. Lanza `DomainError`; **nunca** `NotFoundException` ni otras excepciones HTTP.
-6. No valida roles (eso es `@Roles` en el controlador). No repite validaciones de forma que
-   ya hace el DTO.
+6. **No recibe ni valida el rol** (eso es `@Roles` en el controlador): el `Input` no lleva
+   `actorRol`. Sí valida la **pertenencia** cuando depende de los datos ("solo el técnico
+   asignado"), con un `DomainError` de tipo `PROHIBIDO`. No repite validaciones de forma que ya
+   hace el DTO.
 7. Si pasa de ~300 líneas, extraer policies (dominio) o services (aplicación).
 
 ### 5.2 Services (`application/services`)
@@ -334,7 +352,9 @@ implementación vive en `infra/<tecnologia>/`.
 | Forma y formato de la entrada HTTP (tipos, longitudes, enums, requeridos) | DTO en `presentation/dto` (pipe global estricto) |
 | Invariantes del concepto (estado válido, transiciones, rangos de negocio) | Entidad / value object |
 | Reglas que cruzan agregados o necesitan datos (existe, pertenece a la empresa, no hay duplicado) | Caso de uso o policy |
-| Rol del usuario | `@Roles(...)` en el controlador |
+| Rol del usuario ("solo oficina puede…") | `@Roles(...GRUPO)` en el controlador |
+| Pertenencia ("solo el técnico asignado…") | Caso de uso o policy, `DomainError` `PROHIBIDO` |
+| Contraseña para operaciones sensibles | `@OperacionSensible()` en el controlador |
 
 ### 5.5 Transacciones
 - `$transaction` **solo en `infra/prisma`**.
@@ -421,8 +441,13 @@ Reglas:
    sin Prisma.
 2. **Sin** `@UseGuards(JwtAuthGuard)` ni `@UsePipes(new ValidationPipe(...))`: el guard y el
    pipe globales ya actúan.
-3. Autorización con `@Roles(...)`. Operaciones que piden contraseña con `@OperacionSensible()`.
-   Endpoints públicos con `@Public()` **más** su propia protección.
+3. Autorización con `@Roles(...GRUPO)`, usando los grupos con nombre de
+   `src/auth/roles/grupos-roles.ts` (`ROLES_OFICINA`, `ROLES_TECNICO`); un grupo nuevo se agrega
+   ahí, no se escribe la lista en el controlador. El 403 es el genérico del guard ("No tiene
+   permisos para esta operación.", `codigo: PROHIBIDO`). Al quitar una validación de rol de un
+   caso de uso, **toda** ruta que llegue a él recibe su `@Roles` en el mismo commit.
+   Operaciones que piden contraseña con `@OperacionSensible()`. Endpoints públicos con
+   `@Public()` **más** su propia protección.
 4. El actor sale de `@Actor()` 🆕 (usuario, empresa, rol, IP desde `req.ip`, user-agent).
    **Prohibido** leer `x-forwarded-for` a mano o declarar tipos `AuthenticatedRequest` locales.
 5. Parámetros numéricos con `ParseIntPipe`/`ParseUUIDPipe`.
