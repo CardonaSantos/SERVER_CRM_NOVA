@@ -123,6 +123,8 @@ El último segmento antes de `.ts` dice **qué es** el archivo. Solo estos roles
 | `.repository.ts` · `.query.ts` · `.mapper.ts` · `.transaction.ts` · `.adapter.ts` | `ZonaFacturacionPrismaRepository`… | `infra/…` |
 | `.controller.ts` · `.dto.ts` · `.presenter.ts` · `.gateway.ts` · `.cron.ts` · `.listener.ts` | `ZonaFacturacionController`… | `presentation/…` |
 | `.fake.ts` · `.spec.ts` | `ZonaFacturacionRepositoryFake` | `test/fakes`, junto al archivo |
+| `.types.ts` | Tipos auxiliares de un adaptador (`ComandoRouterOsConstruido`) o re-exportes de `public/` | `infra/<tecnologia>`, `public/` |
+| `.provider.ts` | Provider de configuración armado desde variables de entorno | `infra/config` |
 
 - Nombres de negocio en **español**; roles y carpetas de capa en **inglés** (como ya está el repo).
 - Un archivo = una clase principal. Nada de `.ts.ts`, espacios ni mayúsculas en nombres de archivo.
@@ -223,7 +225,10 @@ export class ZonaFacturacionNoEncontradaError extends DomainError {
 - Los errores **técnicos** de un adaptador (como `MikrotikSshError`) viven en
   `domain/errors` del módulo dueño de esa capacidad y siguen el modelo de `mikrotik-ssh`:
   código, fase, si es reintentable y una versión segura para logs.
-- `throw new Error()` solo se permite para el chequeo exhaustivo de un `switch` (`never`).
+- `throw new Error()` en `domain/` y `application/` solo para **errores de programación**: el
+  chequeo exhaustivo de un `switch` (`never`) o argumentos imposibles por contrato al construir
+  un objeto técnico (p. ej. validar los props de `MikrotikSshError`). Nunca para reglas de
+  negocio. En `infra/` un `Error` técnico es válido: sale como 500 genérico.
 
 ### 4.6 Policies
 Reglas puras que involucran más de una entidad o datos de lectura (p. ej. "¿esta zona corta
@@ -581,9 +586,13 @@ Reglas:
 
 ## 8. API pública y relación entre módulos
 
-1. Lo **único** que otro módulo puede importar es `src/modules/<modulo>/public/`.
+1. Lo **único** que otro módulo puede importar es `src/modules/<modulo>/public/`, más su
+   `<modulo>.module.ts` (solo desde otro `.module.ts`, para el `imports: []` de Nest).
 2. `public/<modulo>.facade.port.ts` contiene la interfaz de la fachada, su `Symbol` y los tipos
-   `Input`/`Result` que usa. Ejemplo existente: `PPPOE_PROVISIONAMIENTO`.
+   `Input`/`Result` que usa. Ejemplo existente: `PPPOE_PROVISIONAMIENTO`. Un módulo que ofrece
+   **una capacidad técnica** (cifrar, abrir una sesión SSH) publica directamente ese puerto:
+   `public/<capacidad>.port.ts` (ej. `mikrotik-router-credentials/public/mikrotik-router-secret-cipher.port.ts`),
+   implementado por un adaptador de su `infra/`.
 3. La fachada la implementa `application/facade/<modulo>.facade.ts`, que delega en los casos
    de uso. Se registra con `{ provide: TOKEN, useExisting: <Modulo>Facade }`.
 4. `public/<modulo>.types.ts` re-exporta los enums y read models que otros módulos necesitan.
@@ -656,6 +665,9 @@ El objetivo no es solo mover código a hexagonal: es dejar el módulo **completo
 Un módulo está **conforme** cuando todos estos comandos (Git Bash, desde la raíz del repo)
 devuelven vacío. Se corre al terminar cada paso y se pega el resultado en el commit.
 
+**Script:** `bash scripts/conformidad-hexagonal.sh <modulo>` corre todas las comprobaciones
+(las de abajo más "otros módulos que entran en este" y "entidades sin spec").
+
 ```bash
 export LC_ALL=C.UTF-8
 M=src/modules/<modulo>; N=<modulo>
@@ -725,7 +737,7 @@ sus consumidores:
 | Tanda | Módulos | Nota |
 |---|---|---|
 | C0 ✅ | Arreglos rápidos en todos: IP desde `req.ip`, borrar código muerto y archivos vacíos, quitar guards/pipes redundantes | **Hecho** en `refactorizacion conformidad #1–#5`: 8 lecturas de `x-forwarded-for` → `req.ip`; 97 archivos inalcanzables borrados (incluida la carpeta huérfana `pppoe-instalacion-acceso/`); `.ts.ts` renombrado; guards JWT y `ValidationPipe` locales fuera de 16 controladores. Lint 410 → 368. El paso a `@Actor()` y `new Date()` van en C1–C5 |
-| C1 | `mikrotik-ssh`, `mikrotik-router-credentials`, `pppoe-credentials`, `digital-ocean-media` | Hojas: nadie del grupo depende de otros |
+| C1 | `mikrotik-ssh` ✅, `mikrotik-router-credentials` ✅, `pppoe-credentials` ✅, `digital-ocean-media` (pendiente: nombre y fachada) | Hojas: nadie del grupo depende de otros. Hecho en `refactorizacion mikrotik-router-credentials #1–#2`, `pppoe-credentials #1–#2`, `mikrotik-ssh #1–#3` |
 | C2 | `pppoe-auditoria`, `pppoe-operacion`, `pppoe-acceso-internet`, `pppoe-perfil-homologacion`, `pppoe-cliente-cuenta` | Núcleo PPPoE: aquí se rompen los ciclos con fachadas |
 | C3 | `pppoe-automatizacion` | El más grande y el más acoplado |
 | C4 | `cliente-instalacion`, `cliente-desinstalacion` | Consumidores del núcleo PPPoE |
