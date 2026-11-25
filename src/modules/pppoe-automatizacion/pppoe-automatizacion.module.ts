@@ -46,9 +46,6 @@ import { PrismaModule } from 'src/prisma/prisma.module';
 
 import { VerificarAdopcionPppoeUseCase } from './application/use-cases/verificar-adopcion-pppoe.use-case';
 
-import { PPPOE_ADOPCION_TRANSACTION } from './application/ports/pppoe-adopcion-transaction.port';
-
-import { PppoeAdopcionPrismaTransaction } from './infra/prisma/pppoe-adopcion-prisma.transaction';
 import { AdoptarCuentaPppoeExistenteUseCase } from './application/use-cases/adoptar-cuenta-pppoe-existente.use-case';
 import { PppoeCuentaAdopcionController } from './presentation/http/pppoe-cuenta-adopcion.controller';
 import { CLIENTE_INTERNET_ESTADO_OPERATIVO } from './application/ports/cliente-internet-estado-operativo.port';
@@ -86,7 +83,6 @@ import { ClienteInternetEstadoOperativoPrismaAdapter } from './infra/prisma/clie
      * Adopción de cuentas existentes
      */
     VerificarAdopcionPppoeUseCase,
-    PppoeAdopcionPrismaTransaction,
 
     /*
      * Servicios internos
@@ -135,12 +131,6 @@ import { ClienteInternetEstadoOperativoPrismaAdapter } from './infra/prisma/clie
     {
       provide: PPPOE_OPERACION_AUDITORIA,
       useExisting: PppoeOperacionAuditoriaService,
-    },
-
-    {
-      provide: PPPOE_ADOPCION_TRANSACTION,
-
-      useExisting: PppoeAdopcionPrismaTransaction,
     },
     {
       provide: CLIENTE_INTERNET_ESTADO_OPERATIVO,

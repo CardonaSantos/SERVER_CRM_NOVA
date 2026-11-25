@@ -8,6 +8,7 @@ import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe
 import {
   PPPOE_SECRET_CIPHER,
   PppoeSecretCipherPort,
+  SecretoPppoeProtegido,
 } from 'src/modules/pppoe-credentials/public/pppoe-secret-cipher.port';
 import {
   MIKROTIK_SSH_PORT,
@@ -18,9 +19,17 @@ import { MetodoAutenticacionMikrotikSsh } from 'src/modules/mikrotik-ssh/public/
 import { MikrotikRouterConnectionContextPort } from 'src/mikro-tik/domain/ports/mikrotik-router-connection-context.port';
 import { MIKROTIK_ROUTER_CONNECTION_CONTEXT } from 'src/mikro-tik/infra/tokens/mikrotik-router.tokens';
 import {
-  PPPOE_ADOPCION_TRANSACTION,
-  PppoeAdopcionTransactionPort,
-} from '../ports/pppoe-adopcion-transaction.port';
+  UNIDAD_DE_TRABAJO,
+  UnidadDeTrabajoPort,
+} from 'src/common/transaccion/unidad-de-trabajo.port';
+import {
+  PPPOE_AUDITORIA,
+  PppoeAuditoriaFacadePort,
+} from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.facade.port';
+import {
+  AccionAuditoriaPppoe,
+  OrigenOperacionPppoe,
+} from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 import {
   PPPOE_ACCESO_INTERNET,
   PppoeAccesoInternetFacadePort,
@@ -29,7 +38,11 @@ import {
   PPPOE_PERFIL_HOMOLOGACION,
   PppoePerfilHomologacionFacadePort,
 } from 'src/modules/pppoe-perfil-homologacion/public/pppoe-perfil-homologacion.facade.port';
-import { EstadoAccesoInternet } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
+import {
+  EstadoAccesoInternet,
+  MetodoAutenticacionInternet,
+  TecnologiaAccesoInternet,
+} from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
 import {
   ProvisionamientoPppoeDatosInvalidosError,
   ProvisionamientoPppoeEstadoInvalidoError,
@@ -109,8 +122,11 @@ export class AdoptarCuentaPppoeExistenteUseCase {
     @Inject(PPPOE_SECRET_CIPHER)
     private readonly secretCipher: PppoeSecretCipherPort,
 
-    @Inject(PPPOE_ADOPCION_TRANSACTION)
-    private readonly persistence: PppoeAdopcionTransactionPort,
+    @Inject(PPPOE_AUDITORIA)
+    private readonly auditorias: PppoeAuditoriaFacadePort,
+
+    @Inject(UNIDAD_DE_TRABAJO)
+    private readonly unidadDeTrabajo: UnidadDeTrabajoPort,
   ) {}
 
   async execute(
@@ -259,35 +275,29 @@ export class AdoptarCuentaPppoeExistenteUseCase {
       ? new Date(normalized.fechaReferencia)
       : this.reloj.ahora();
 
-    const persisted = await this.persistence.persistir({
-      empresaId: normalized.empresaId,
-
-      clienteId: normalized.clienteId,
-
-      servicioInternetId,
-
-      perfilHomologacionId: normalized.perfilHomologacionId,
-
-      mikrotikRouterId,
-
-      usuarioPppoe: normalized.usuarioPppoe,
-
-      secretoProtegido,
-
-      estado,
-
-      adoptadoPorId: normalized.operadorId,
-
-      fechaAdopcion,
-
-      auditoria: {
-        codigoPerfil: codigoPerfilEsperado,
-
-        servicioRemoto,
-
-        cumpleFormatoNova,
-      },
-    });
+    const persistida = await this.unidadDeTrabajo.ejecutar(
+      () =>
+        this.registrarAdopcion({
+          normalized,
+          servicioInternetId,
+          estado,
+          secretoProtegido,
+          fechaAdopcion,
+          auditoria: {
+            tipo: 'ADOPCION_CUENTA_EXISTENTE',
+            mikrotikRouterId,
+            servicioInternetId,
+            servicioRemoto,
+            cumpleFormatoNova,
+            estadoCuentaRemoto: estado.estadoCuenta,
+            estadoAccesoRemoto: estado.estadoAcceso,
+            modificacionRemota: false,
+          },
+          codigoPerfil: codigoPerfilEsperado,
+        }),
+      // Dos adopciones simultáneas del mismo cliente o usuario no deben pasar.
+      { aislamiento: 'SERIALIZABLE' },
+    );
 
     const advertencias: string[] = [];
 
@@ -304,35 +314,112 @@ export class AdoptarCuentaPppoeExistenteUseCase {
     }
 
     return {
-      empresaId: persisted.empresaId,
-
-      clienteId: persisted.clienteId,
-
-      accesoInternetId: persisted.accesoInternetId,
-
-      cuentaPppoeId: persisted.cuentaPppoeId,
-
-      perfilHomologacionId: persisted.perfilHomologacionId,
-
-      mikrotikRouterId: persisted.mikrotikRouterId,
-
-      servicioInternetId: persisted.servicioInternetId,
-
-      usuarioPppoe: persisted.usuarioPppoe,
-
-      estadoCuenta: persisted.estadoCuenta,
-
-      estadoAcceso: persisted.estadoAcceso,
-
-      adoptadoPorId: persisted.adoptadoPorId,
-
-      adoptadoEn: persisted.adoptadoEn,
-
-      auditoriaId: persisted.auditoriaId,
+      empresaId: normalized.empresaId,
+      clienteId: normalized.clienteId,
+      accesoInternetId: persistida.accesoInternetId,
+      cuentaPppoeId: persistida.cuentaPppoeId,
+      perfilHomologacionId: normalized.perfilHomologacionId,
+      mikrotikRouterId,
+      servicioInternetId,
+      usuarioPppoe: normalized.usuarioPppoe,
+      estadoCuenta: estado.estadoCuenta,
+      estadoAcceso: estado.estadoAcceso,
+      adoptadoPorId: normalized.operadorId,
+      adoptadoEn: fechaAdopcion,
+      auditoriaId: persistida.auditoriaId,
 
       cumpleFormatoNova,
 
       advertencias,
+    };
+  }
+
+  /**
+   * Corre dentro de la unidad de trabajo: vuelve a comprobar que el cliente y
+   * el usuario sigan libres y registra acceso, cuenta y auditoría a la vez.
+   */
+  private async registrarAdopcion(params: {
+    normalized: AdoptarCuentaPppoeExistenteInput;
+    servicioInternetId: number;
+    estado: {
+      estadoCuenta: EstadoCuentaPppoe.ACTIVA | EstadoCuentaPppoe.SUSPENDIDA;
+      estadoAcceso:
+        | EstadoAccesoInternet.ACTIVO
+        | EstadoAccesoInternet.SUSPENDIDO;
+    };
+    secretoProtegido: SecretoPppoeProtegido;
+    fechaAdopcion: Date;
+    codigoPerfil: string;
+    auditoria: Record<string, string | number | boolean | null>;
+  }): Promise<{
+    accesoInternetId: number;
+    cuentaPppoeId: number;
+    auditoriaId: number;
+  }> {
+    const { normalized, estado, fechaAdopcion } = params;
+
+    const accesoVigente =
+      await this.accesosInternet.buscarPppoeVigenteDelCliente(
+        normalized.clienteId,
+      );
+    if (accesoVigente) {
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
+        `El cliente ya posee un acceso PPPoE vigente en estado ${accesoVigente.estado}.`,
+      );
+    }
+    if (
+      await this.cuentasPppoe.buscarVigentePorUsuario(normalized.usuarioPppoe)
+    ) {
+      throw new UsuarioPppoeEnUsoError(
+        `El usuario PPPoE "${normalized.usuarioPppoe}" ya se encuentra asociado a una cuenta vigente en el CRM.`,
+      );
+    }
+
+    const acceso = await this.accesosInternet.registrarAdoptado({
+      empresaId: normalized.empresaId,
+      clienteId: normalized.clienteId,
+      servicioInternetId: params.servicioInternetId,
+      tecnologia: TecnologiaAccesoInternet.FIBRA_GPON,
+      metodoAutenticacion: MetodoAutenticacionInternet.PPPOE,
+      estadoRemoto: estado.estadoAcceso,
+      fechaAdopcion,
+    });
+
+    const cuenta = await this.cuentasPppoe.registrarAdoptada({
+      empresaId: normalized.empresaId,
+      accesoInternetId: acceso.id,
+      perfilHomologacionId: normalized.perfilHomologacionId,
+      usuario: normalized.usuarioPppoe,
+      ...params.secretoProtegido,
+      estadoRemoto: estado.estadoCuenta,
+      adoptadoPorId: normalized.operadorId,
+      fechaAdopcion,
+    });
+
+    // Sin contraseña ni material cifrado en la auditoría.
+    const auditoriaId = await this.auditorias.registrarEventoCuenta({
+      empresaId: normalized.empresaId,
+      clienteId: normalized.clienteId,
+      accesoInternetId: acceso.id,
+      cuentaPppoeId: cuenta.id,
+      perfilHomologacionId: normalized.perfilHomologacionId,
+      operadorId: normalized.operadorId,
+      origen: OrigenOperacionPppoe.OPERADOR,
+      accion: AccionAuditoriaPppoe.CUENTA_EXTERNA_ADOPTADA,
+      descripcion:
+        'Cuenta PPPoE preexistente verificada y adoptada por el CRM sin modificar MikroTik.',
+      estadoCuentaAnterior: null,
+      estadoCuentaNuevo: estado.estadoCuenta,
+      usuarioPppoeSnapshot: normalized.usuarioPppoe,
+      perfilCodigoSnapshot: params.codigoPerfil,
+      datos: params.auditoria,
+      creadoEn: fechaAdopcion,
+    });
+
+    return {
+      accesoInternetId: acceso.id,
+      cuentaPppoeId: cuenta.id,
+      auditoriaId,
     };
   }
 
