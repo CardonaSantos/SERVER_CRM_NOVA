@@ -3,16 +3,16 @@ import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import {
   MIKROTIK_SSH_PORT,
   MikrotikSshPort,
-} from 'src/modules/mikrotik-ssh/domain/ports/mikrotik-ssh.port';
+} from 'src/modules/mikrotik-ssh/public/mikrotik-ssh.port';
 
-import { MikrotikSshSessionPort } from 'src/modules/mikrotik-ssh/domain/ports/mikrotik-ssh-session.port';
+import { MikrotikSshSessionPort } from 'src/modules/mikrotik-ssh/public/mikrotik-ssh-session.port';
 
 import {
   CodigoErrorMikrotikSsh,
   EfectoRemotoMikrotik,
   FaseFalloMikrotikSsh,
   MetodoAutenticacionMikrotikSsh,
-} from 'src/modules/mikrotik-ssh/domain/enums/mikrotik-ssh.enums';
+} from 'src/modules/mikrotik-ssh/public/mikrotik-ssh.types';
 
 import { PppoeOperacionPasoEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion-paso.entity';
 
@@ -508,16 +508,16 @@ export class ActivarSecretPppoeExecutor {
 // import {
 //   MIKROTIK_SSH_PORT,
 //   MikrotikSshPort,
-// } from 'src/modules/mikrotik-ssh/domain/ports/mikrotik-ssh.port';
+// } from 'src/modules/mikrotik-ssh/public/mikrotik-ssh.port';
 
-// import { MikrotikSshSessionPort } from 'src/modules/mikrotik-ssh/domain/ports/mikrotik-ssh-session.port';
+// import { MikrotikSshSessionPort } from 'src/modules/mikrotik-ssh/public/mikrotik-ssh-session.port';
 
 // import {
 //   CodigoErrorMikrotikSsh,
 //   EfectoRemotoMikrotik,
 //   FaseFalloMikrotikSsh,
 //   MetodoAutenticacionMikrotikSsh,
-// } from 'src/modules/mikrotik-ssh/domain/enums/mikrotik-ssh.enums';
+// } from 'src/modules/mikrotik-ssh/public/mikrotik-ssh.types';
 
 // import { PppoeOperacionPasoEntity } from 'src/modules/pppoe-operacion/domain/entities/pppoe-operacion-paso.entity';
 

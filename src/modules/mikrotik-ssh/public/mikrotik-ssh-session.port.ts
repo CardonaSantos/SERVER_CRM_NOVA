@@ -5,9 +5,9 @@ import {
   GestionarSecretMikrotikParams,
   RemoverSesionActivaMikrotikParams,
   VerificarCredencialesSecretMikrotikParams,
-} from '../props/mikrotik-ssh-secret.props';
+} from '../domain/props/mikrotik-ssh-secret.props';
 
-import { SesionMikrotikSshInfo } from '../props/mikrotik-ssh-session.props';
+import { SesionMikrotikSshInfo } from '../domain/props/mikrotik-ssh-session.props';
 
 import {
   BuscarSecretMikrotikResult,
@@ -16,7 +16,7 @@ import {
   GestionarSecretMikrotikResult,
   RemoverSesionActivaMikrotikResult,
   VerificarCredencialesSecretMikrotikResult,
-} from '../results/mikrotik-ssh-secret.result';
+} from '../domain/read-models/mikrotik-ssh-secret.read-model';
 
 /**
  * Sesión SSH abierta contra un router MikroTik.

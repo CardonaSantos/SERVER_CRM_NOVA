@@ -2,7 +2,7 @@ import {
   ResultadoBaseMikrotikSsh,
   SecretMikrotikSnapshot,
   SesionActivaMikrotikSnapshot,
-} from './mikrotik-ssh-common.result';
+} from './mikrotik-ssh-common.read-model';
 
 /**
  * Resultado de buscar un secret PPPoE.

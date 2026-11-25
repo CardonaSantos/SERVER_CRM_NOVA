@@ -1,57 +1,33 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
 
-import { mikrotikSshConfigProvider } from './config/mikrotik-ssh-config.provider';
-
-import { MIKROTIK_SSH_PORT } from './domain/ports/mikrotik-ssh.port';
-
+import { mikrotikSshConfigProvider } from './infra/config/mikrotik-ssh-config.provider';
 import { MikrotikPppoeCommandBuilder } from './infra/routeros/mikrotik-pppoe-command.builder';
 import { MikrotikPppoeResponseParser } from './infra/routeros/mikrotik-pppoe-response.parser';
 import { RouterOsValueEscaper } from './infra/routeros/routeros-value-escaper';
-
-import { MikrotikSshAdapter } from './infra/ssh/mikrotik-ssh.adapter';
 import { MikrotikSshCommandExecutor } from './infra/ssh/mikrotik-ssh-command.executor';
+import { MikrotikSshAdapter } from './infra/ssh/mikrotik-ssh.adapter';
+import { MIKROTIK_SSH_PORT } from './public/mikrotik-ssh.port';
 
+/**
+ * Conexión SSH a routers MikroTik y comandos PPPoE de RouterOS.
+ *
+ * API pública (`public/`): MIKROTIK_SSH_PORT (abre sesiones), el puerto de
+ * sesión y los tipos de `mikrotik-ssh.types.ts`. ConfigService es global.
+ */
 @Module({
-  imports: [
-    /**
-     * Necesario para que el provider SSH pueda
-     * inyectar ConfigService.
-     */
-    ConfigModule,
-  ],
-
   providers: [
-    /**
-     * Configuración obtenida desde variables de entorno.
-     */
+    // Configuración desde variables de entorno (MIKROTIK_SSH_CONFIG)
     mikrotikSshConfigProvider,
 
-    /**
-     * Componentes internos de RouterOS.
-     */
+    // Componentes internos de RouterOS y SSH
     RouterOsValueEscaper,
     MikrotikPppoeCommandBuilder,
     MikrotikPppoeResponseParser,
-
-    /**
-     * Infraestructura SSH.
-     */
     MikrotikSshCommandExecutor,
-    MikrotikSshAdapter,
 
-    /**
-     * Implementación del puerto público.
-     */
-    {
-      provide: MIKROTIK_SSH_PORT,
-      useExisting: MikrotikSshAdapter,
-    },
+    // Adaptadores
+    { provide: MIKROTIK_SSH_PORT, useClass: MikrotikSshAdapter },
   ],
-
-  /**
-   * Otros módulos solo deben acceder al puerto.
-   */
   exports: [MIKROTIK_SSH_PORT],
 })
 export class MikrotikSshModule {}

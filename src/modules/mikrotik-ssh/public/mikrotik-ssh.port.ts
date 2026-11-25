@@ -1,4 +1,4 @@
-import { AbrirSesionMikrotikSshParams } from '../props/mikrotik-ssh-session.props';
+import { AbrirSesionMikrotikSshParams } from '../domain/props/mikrotik-ssh-session.props';
 
 import { MikrotikSshSessionPort } from './mikrotik-ssh-session.port';
 

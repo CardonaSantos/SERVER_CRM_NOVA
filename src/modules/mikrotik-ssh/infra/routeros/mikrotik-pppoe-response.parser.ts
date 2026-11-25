@@ -24,16 +24,16 @@ import {
   CrearSecretMikrotikResult,
   GestionarSecretMikrotikResult,
   VerificarCredencialesSecretMikrotikResult,
-} from '../../domain/results/mikrotik-ssh-secret.result';
+} from '../../domain/read-models/mikrotik-ssh-secret.read-model';
 
-import { SesionActivaMikrotikSnapshot } from '../../domain/results/mikrotik-ssh-common.result';
+import { SesionActivaMikrotikSnapshot } from '../../domain/read-models/mikrotik-ssh-common.read-model';
 
-import { ResultadoEjecucionComandoMikrotikSsh } from '../ssh/types/mikrotik-ssh-command.types';
+import { ResultadoEjecucionComandoMikrotikSsh } from '../ssh/mikrotik-ssh-command.types';
 
 import {
   BuscarSesionesActivasRouterOsResult,
   RemoverSesionesActivasRouterOsResult,
-} from './types/routeros-response-parser.types';
+} from './routeros-response-parser.types';
 
 /**
  * Convierte respuestas técnicas de RouterOS
@@ -962,16 +962,16 @@ export class MikrotikPppoeResponseParser {
 //   ConfirmarSecretMikrotikResult,
 //   CrearSecretMikrotikResult,
 //   GestionarSecretMikrotikResult,
-// } from '../../domain/results/mikrotik-ssh-secret.result';
+// } from '../../domain/read-models/mikrotik-ssh-secret.read-model';
 
-// import { SesionActivaMikrotikSnapshot } from '../../domain/results/mikrotik-ssh-common.result';
+// import { SesionActivaMikrotikSnapshot } from '../../domain/read-models/mikrotik-ssh-common.read-model';
 
-// import { ResultadoEjecucionComandoMikrotikSsh } from '../ssh/types/mikrotik-ssh-command.types';
+// import { ResultadoEjecucionComandoMikrotikSsh } from '../ssh/mikrotik-ssh-command.types';
 
 // import {
 //   BuscarSesionesActivasRouterOsResult,
 //   RemoverSesionesActivasRouterOsResult,
-// } from './types/routeros-response-parser.types';
+// } from './routeros-response-parser.types';
 
 // type AccionGestionSecretMikrotik = 'HABILITAR' | 'DESHABILITAR' | 'ELIMINAR';
 

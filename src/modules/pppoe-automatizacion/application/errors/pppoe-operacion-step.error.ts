@@ -1,9 +1,8 @@
-import { MikrotikSshError } from 'src/modules/mikrotik-ssh/domain/errors/mikrotik-ssh.error';
-
 import {
   EfectoRemotoMikrotik,
   FaseFalloMikrotikSsh,
-} from 'src/modules/mikrotik-ssh/domain/enums/mikrotik-ssh.enums';
+  MikrotikSshError,
+} from 'src/modules/mikrotik-ssh/public/mikrotik-ssh.types';
 
 export type PppoeOperacionStepErrorProps = {
   errorCodigo: string;

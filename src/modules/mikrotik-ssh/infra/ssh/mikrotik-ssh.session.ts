@@ -9,7 +9,7 @@ import {
 
 import { MikrotikSshError } from '../../domain/errors/mikrotik-ssh.error';
 
-import { MikrotikSshSessionPort } from '../../domain/ports/mikrotik-ssh-session.port';
+import { MikrotikSshSessionPort } from '../../public/mikrotik-ssh-session.port';
 
 import { ConfiguracionMikrotikSsh } from '../../domain/props/mikrotik-ssh-config.props';
 
@@ -32,20 +32,20 @@ import {
   GestionarSecretMikrotikResult,
   RemoverSesionActivaMikrotikResult,
   VerificarCredencialesSecretMikrotikResult,
-} from '../../domain/results/mikrotik-ssh-secret.result';
+} from '../../domain/read-models/mikrotik-ssh-secret.read-model';
 
 import { MikrotikPppoeCommandBuilder } from '../routeros/mikrotik-pppoe-command.builder';
 
 import { MikrotikPppoeResponseParser } from '../routeros/mikrotik-pppoe-response.parser';
 
-import { ComandoRouterOsConstruido } from '../routeros/types/routeros-command.types';
-import { BuscarSesionesActivasRouterOsResult } from '../routeros/types/routeros-response-parser.types';
+import { ComandoRouterOsConstruido } from '../routeros/routeros-command.types';
+import { BuscarSesionesActivasRouterOsResult } from '../routeros/routeros-response-parser.types';
 import { MikrotikSshCommandExecutor } from './mikrotik-ssh-command.executor';
 
 import {
   FaseComandoMikrotikSsh,
   ResultadoEjecucionComandoMikrotikSsh,
-} from './types/mikrotik-ssh-command.types';
+} from './mikrotik-ssh-command.types';
 
 type ConfirmacionRemocionSesionesActivasResult = {
   estadoFinal: BuscarSesionesActivasRouterOsResult;
@@ -1142,7 +1142,7 @@ export class MikrotikSshSession implements MikrotikSshSessionPort {
 
 // import { MikrotikSshError } from '../../domain/errors/mikrotik-ssh.error';
 
-// import { MikrotikSshSessionPort } from '../../domain/ports/mikrotik-ssh-session.port';
+// import { MikrotikSshSessionPort } from '../../public/mikrotik-ssh-session.port';
 
 // import { ConfiguracionMikrotikSsh } from '../../domain/props/mikrotik-ssh-config.props';
 
@@ -1162,20 +1162,20 @@ export class MikrotikSshSession implements MikrotikSshSessionPort {
 //   CrearSecretMikrotikResult,
 //   GestionarSecretMikrotikResult,
 //   RemoverSesionActivaMikrotikResult,
-// } from '../../domain/results/mikrotik-ssh-secret.result';
+// } from '../../domain/read-models/mikrotik-ssh-secret.read-model';
 
 // import { MikrotikPppoeCommandBuilder } from '../routeros/mikrotik-pppoe-command.builder';
 
 // import { MikrotikPppoeResponseParser } from '../routeros/mikrotik-pppoe-response.parser';
 
-// import { ComandoRouterOsConstruido } from '../routeros/types/routeros-command.types';
+// import { ComandoRouterOsConstruido } from '../routeros/routeros-command.types';
 
 // import { MikrotikSshCommandExecutor } from './mikrotik-ssh-command.executor';
 
 // import {
 //   FaseComandoMikrotikSsh,
 //   ResultadoEjecucionComandoMikrotikSsh,
-// } from './types/mikrotik-ssh-command.types';
+// } from './mikrotik-ssh-command.types';
 
 // /**
 //  * Sesión SSH individual contra un router MikroTik.

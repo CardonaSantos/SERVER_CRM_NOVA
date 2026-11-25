@@ -36,7 +36,7 @@ import {
 import {
   EfectoRemotoMikrotik,
   FaseFalloMikrotikSsh,
-} from 'src/modules/mikrotik-ssh/domain/enums/mikrotik-ssh.enums';
+} from 'src/modules/mikrotik-ssh/public/mikrotik-ssh.types';
 
 import { PppoeOperacionStepError } from '../errors/pppoe-operacion-step.error';
 

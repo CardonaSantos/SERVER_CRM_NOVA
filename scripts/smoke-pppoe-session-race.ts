@@ -25,8 +25,8 @@ import { MikrotikSshModule } from 'src/modules/mikrotik-ssh/mikrotik-ssh.module'
 import {
   MIKROTIK_SSH_PORT,
   MikrotikSshPort,
-} from 'src/modules/mikrotik-ssh/domain/ports/mikrotik-ssh.port';
-import { MikrotikSshSessionPort } from 'src/modules/mikrotik-ssh/domain/ports/mikrotik-ssh-session.port';
+} from 'src/modules/mikrotik-ssh/public/mikrotik-ssh.port';
+import { MikrotikSshSessionPort } from 'src/modules/mikrotik-ssh/public/mikrotik-ssh-session.port';
 import { MetodoAutenticacionMikrotikSsh } from 'src/modules/mikrotik-ssh/domain/enums/mikrotik-ssh.enums';
 import { MikrotikPppoeCommandBuilder } from 'src/modules/mikrotik-ssh/infra/routeros/mikrotik-pppoe-command.builder';
 import { RouterOsValueEscaper } from 'src/modules/mikrotik-ssh/infra/routeros/routeros-value-escaper';

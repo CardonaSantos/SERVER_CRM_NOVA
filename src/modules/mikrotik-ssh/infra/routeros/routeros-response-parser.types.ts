@@ -1,7 +1,7 @@
 import {
   ResultadoBaseMikrotikSsh,
   SesionActivaMikrotikSnapshot,
-} from '../../../domain/results/mikrotik-ssh-common.result';
+} from '../../domain/read-models/mikrotik-ssh-common.read-model';
 
 /**
  * Resultado interno de consultar las sesiones PPPoE

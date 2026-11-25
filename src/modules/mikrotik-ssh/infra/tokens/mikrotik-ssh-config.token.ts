@@ -1,1 +1,0 @@
-export const MIKROTIK_SSH_CONFIG = Symbol('MIKROTIK_SSH_CONFIG');

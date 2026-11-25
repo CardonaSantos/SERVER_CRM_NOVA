@@ -8,7 +8,7 @@ import {
   VerificarCredencialesSecretMikrotikParams,
 } from '../../domain/props/mikrotik-ssh-secret.props';
 
-import { ComandoRouterOsConstruido } from './types/routeros-command.types';
+import { ComandoRouterOsConstruido } from './routeros-command.types';
 
 import { RouterOsValueEscaper } from './routeros-value-escaper';
 
@@ -584,7 +584,7 @@ export class MikrotikPppoeCommandBuilder {
 //   RemoverSesionActivaMikrotikParams,
 // } from '../../domain/props/mikrotik-ssh-secret.props';
 
-// import { ComandoRouterOsConstruido } from './types/routeros-command.types';
+// import { ComandoRouterOsConstruido } from './routeros-command.types';
 
 // import { RouterOsValueEscaper } from './routeros-value-escaper';
 

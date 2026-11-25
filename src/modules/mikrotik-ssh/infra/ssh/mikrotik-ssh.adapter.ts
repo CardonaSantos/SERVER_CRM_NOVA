@@ -13,9 +13,9 @@ import {
 
 import { MikrotikSshError } from '../../domain/errors/mikrotik-ssh.error';
 
-import { MikrotikSshPort } from '../../domain/ports/mikrotik-ssh.port';
+import { MikrotikSshPort } from '../../public/mikrotik-ssh.port';
 
-import { MikrotikSshSessionPort } from '../../domain/ports/mikrotik-ssh-session.port';
+import { MikrotikSshSessionPort } from '../../public/mikrotik-ssh-session.port';
 
 import { ConfiguracionMikrotikSsh } from '../../domain/props/mikrotik-ssh-config.props';
 
@@ -28,7 +28,7 @@ import { MikrotikPppoeResponseParser } from '../routeros/mikrotik-pppoe-response
 import { MikrotikSshCommandExecutor } from './mikrotik-ssh-command.executor';
 
 import { MikrotikSshSession } from './mikrotik-ssh.session';
-import { MIKROTIK_SSH_CONFIG } from '../tokens/mikrotik-ssh-config.token';
+import { MIKROTIK_SSH_CONFIG } from '../../application/ports/mikrotik-ssh-config.port';
 
 type Ssh2ConnectionError = Error & {
   code?: string;

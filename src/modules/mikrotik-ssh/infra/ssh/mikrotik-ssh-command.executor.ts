@@ -14,7 +14,7 @@ import { ConfiguracionMikrotikSsh } from '../../domain/props/mikrotik-ssh-config
 import {
   EjecutarComandoMikrotikSshParams,
   ResultadoEjecucionComandoMikrotikSsh,
-} from './types/mikrotik-ssh-command.types';
+} from './mikrotik-ssh-command.types';
 
 /**
  * Ejecuta comandos sobre un Client de ssh2

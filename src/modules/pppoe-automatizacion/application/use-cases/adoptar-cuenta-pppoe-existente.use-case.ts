@@ -20,11 +20,11 @@ import {
 import {
   MIKROTIK_SSH_PORT,
   MikrotikSshPort,
-} from 'src/modules/mikrotik-ssh/domain/ports/mikrotik-ssh.port';
+} from 'src/modules/mikrotik-ssh/public/mikrotik-ssh.port';
 
-import { MikrotikSshSessionPort } from 'src/modules/mikrotik-ssh/domain/ports/mikrotik-ssh-session.port';
+import { MikrotikSshSessionPort } from 'src/modules/mikrotik-ssh/public/mikrotik-ssh-session.port';
 
-import { MetodoAutenticacionMikrotikSsh } from 'src/modules/mikrotik-ssh/domain/enums/mikrotik-ssh.enums';
+import { MetodoAutenticacionMikrotikSsh } from 'src/modules/mikrotik-ssh/public/mikrotik-ssh.types';
 
 import { MikrotikRouterConnectionContextPort } from 'src/mikro-tik/domain/ports/mikrotik-router-connection-context.port';
 

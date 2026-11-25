@@ -1,7 +1,7 @@
 import {
   EfectoRemotoMikrotik,
   FaseFalloMikrotikSsh,
-} from '../../../domain/enums/mikrotik-ssh.enums';
+} from '../../domain/enums/mikrotik-ssh.enums';
 
 /**
  * Fases admitidas durante la ejecución de comandos.

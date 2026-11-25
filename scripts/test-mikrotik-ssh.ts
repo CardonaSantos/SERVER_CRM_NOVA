@@ -3,11 +3,11 @@ import { ConfigModule } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { MetodoAutenticacionMikrotikSsh } from 'src/modules/mikrotik-ssh/domain/enums/mikrotik-ssh.enums';
 import { MikrotikSshError } from 'src/modules/mikrotik-ssh/domain/errors/mikrotik-ssh.error';
-import { MikrotikSshSessionPort } from 'src/modules/mikrotik-ssh/domain/ports/mikrotik-ssh-session.port';
+import { MikrotikSshSessionPort } from 'src/modules/mikrotik-ssh/public/mikrotik-ssh-session.port';
 import {
   MIKROTIK_SSH_PORT,
   MikrotikSshPort,
-} from 'src/modules/mikrotik-ssh/domain/ports/mikrotik-ssh.port';
+} from 'src/modules/mikrotik-ssh/public/mikrotik-ssh.port';
 import { VerificacionHostMikrotikSsh } from 'src/modules/mikrotik-ssh/domain/props/mikrotik-ssh-auth.props';
 import { MikrotikSshModule } from 'src/modules/mikrotik-ssh/mikrotik-ssh.module';
 
