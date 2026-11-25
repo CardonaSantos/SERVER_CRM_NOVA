@@ -1,490 +1,213 @@
-import {
-  CrearPppoeOperacionPasoProps,
-  PppoeOperacionPasoProps,
-} from '../props/pppoe-operacion-paso.props';
-
 import { EstadoPasoPppoe, TipoPasoPppoe } from '../enums/pppoe-operacion.enum';
 import {
   OperacionPppoeDatosInvalidosError,
   OperacionPppoeEstadoInvalidoError,
 } from '../errors/pppoe-operacion.errors';
+import { verificarConsistenciaPaso } from '../policies/consistencia-pppoe-operacion.policy';
+import {
+  clonarFecha,
+  codigoError,
+  codigoErrorObligatorio,
+  duracionOpcional,
+  enteroPositivo,
+  fechaOpcional,
+  fechaValida,
+  textoTecnico,
+  textoTecnicoObligatorio,
+  valorDeEnum,
+} from '../policies/normalizacion-pppoe-operacion.policy';
+import {
+  CrearPppoeOperacionPasoProps,
+  PppoeOperacionPasoProps,
+} from '../props/pppoe-operacion-paso.props';
 
-/**
- * Datos permitidos al comenzar la ejecución de un paso.
- */
 export type IniciarPppoeOperacionPasoInput = {
-  /**
-   * Comando técnico sin contraseñas ni secretos.
-   */
+  /** Sin contraseñas ni secretos; igual se redacta por defensa. */
   comandoSanitizado?: string | null;
-
-  /**
-   * Fecha efectiva de inicio.
-   *
-   * Si se omite, se utiliza la fecha actual.
-   */
   fecha: Date;
 };
 
-/**
- * Datos permitidos al finalizar exitosamente un paso.
- */
 export type CompletarPppoeOperacionPasoInput = {
-  /**
-   * Resultado técnico limpio y seguro.
-   */
   respuestaSanitizada?: string | null;
-
-  /**
-   * Fecha efectiva de finalización.
-   *
-   * Si se omite, se utiliza la fecha actual.
-   */
   fecha: Date;
 };
 
-/**
- * Datos requeridos para registrar el fallo de un paso.
- */
 export type FallarPppoeOperacionPasoInput = {
-  /**
-   * Código técnico estable y apto para filtros.
-   *
-   * Ejemplos:
-   *
-   * - SSH_TIMEOUT
-   * - SSH_AUTH_REJECTED
-   * - SECRET_CONFLICT
-   */
+  /** Código técnico estable, apto para filtros (SSH_TIMEOUT, SECRET_CONFLICT…). */
   errorCodigo: string;
-
-  /**
-   * Mensaje seguro que no debe contener credenciales.
-   */
   errorMensaje: string;
-
-  /**
-   * Respuesta técnica limpia obtenida antes del fallo.
-   */
   respuestaSanitizada?: string | null;
-
-  /**
-   * Fecha efectiva del fallo.
-   *
-   * Si se omite, se utiliza la fecha actual.
-   */
   fecha: Date;
 };
 
-/**
- * Datos utilizados cuando un paso no necesita ejecutarse.
- *
- * Ejemplo:
- *
- * El secret ya existe y coincide, por lo que
- * AGREGAR_SECRET se marca como OMITIDO.
- */
 export type OmitirPppoeOperacionPasoInput = {
-  /**
-   * Explicación segura de por qué se omitió.
-   */
   motivo?: string | null;
-
-  /**
-   * Fecha efectiva de la omisión.
-   *
-   * Si se omite, se utiliza la fecha actual.
-   */
   fecha: Date;
 };
 
 /**
- * Entidad de dominio que representa una acción técnica
- * dentro de una operación PPPoE.
+ * Una acción técnica dentro de una operación (conectar, buscar, agregar,
+ * confirmar el secret…).
  *
- * Ejemplos de pasos:
- *
- * - CONECTAR_ROUTER
- * - BUSCAR_SECRET
- * - AGREGAR_SECRET
- * - CONFIRMAR_SECRET
- *
- * Ciclo normal:
- *
- * PENDIENTE -> EJECUTANDO -> EXITOSO
- *
- * Ciclo con error:
- *
- * PENDIENTE -> EJECUTANDO -> FALLIDO
- *
- * Ciclo idempotente:
- *
- * PENDIENTE -> OMITIDO
+ * PENDIENTE → EJECUTANDO → EXITOSO | FALLIDO, o PENDIENTE → OMITIDO cuando la
+ * acción ya no hace falta (p. ej. el secret ya existe y coincide).
  */
 export class PppoeOperacionPasoEntity {
-  /**
-   * Límite defensivo para evitar almacenar respuestas
-   * técnicas excesivamente grandes.
-   *
-   * Puede ajustarse posteriormente según el comportamiento
-   * real de RouterOS.
-   */
-  private static readonly MAX_TEXTO_TECNICO_LENGTH = 10_000;
-
-  /**
-   * Límite defensivo para códigos técnicos de error.
-   */
-  private static readonly MAX_ERROR_CODIGO_LENGTH = 120;
-
-  /**
-   * El constructor permanece privado para obligar a utilizar:
-   *
-   * - create(): nuevas entidades;
-   * - restore(): entidades provenientes de persistencia.
-   */
   private constructor(private props: PppoeOperacionPasoProps) {}
 
-  /**
-   * Crea un paso nuevo en estado PENDIENTE.
-   *
-   * No permite definir manualmente estado, errores, fechas
-   * de ejecución ni resultados técnicos.
-   */
   static create(
     input: CrearPppoeOperacionPasoProps,
     ahora: Date,
   ): PppoeOperacionPasoEntity {
-    this.assertPositiveInteger(input.operacionId, 'operacionId');
-
-    this.assertPositiveInteger(input.orden, 'orden');
-
-    this.assertEnumValue(input.tipo, TipoPasoPppoe, 'tipo');
-
-    const now = PppoeOperacionPasoEntity.normalizeRequiredDate(ahora, 'ahora');
-
+    const creadoEn = fechaValida(ahora, 'ahora');
     return new PppoeOperacionPasoEntity({
       id: null,
-
-      operacionId: input.operacionId,
-
-      tipo: input.tipo,
-
-      orden: input.orden,
-
+      operacionId: enteroPositivo(input.operacionId, 'operacionId'),
+      tipo: valorDeEnum(input.tipo, TipoPasoPppoe, 'tipo'),
+      orden: enteroPositivo(input.orden, 'orden'),
       estado: EstadoPasoPppoe.PENDIENTE,
-
       comandoSanitizado: null,
-
       respuestaSanitizada: null,
-
       errorCodigo: null,
-
       errorMensaje: null,
-
       iniciadoEn: null,
-
       finalizadoEn: null,
-
       duracionMs: null,
-
-      creadoEn: now,
-
-      actualizadoEn: now,
+      creadoEn,
+      actualizadoEn: new Date(creadoEn.getTime()),
     });
   }
 
-  /**
-   * Restaura una entidad previamente persistida.
-   *
-   * Este método es el que debe utilizar el mapper Prisma
-   * al convertir un registro de base de datos al dominio.
-   */
-  static restore(props: PppoeOperacionPasoProps): PppoeOperacionPasoEntity {
-    if (props.id === null) {
-      throw new Error('No se puede restaurar un paso PPPoE sin id.');
+  static hydrate(p: PppoeOperacionPasoProps): PppoeOperacionPasoEntity {
+    if (p.id === null) {
+      throw new Error('No se puede hidratar un paso PPPoE sin id.');
     }
 
-    this.assertPositiveInteger(props.id, 'id');
-
-    this.assertPositiveInteger(props.operacionId, 'operacionId');
-
-    this.assertPositiveInteger(props.orden, 'orden');
-
-    this.assertEnumValue(props.tipo, TipoPasoPppoe, 'tipo');
-
-    this.assertEnumValue(props.estado, EstadoPasoPppoe, 'estado');
-
-    const normalizedProps: PppoeOperacionPasoProps = {
-      id: props.id,
-
-      operacionId: props.operacionId,
-
-      tipo: props.tipo,
-
-      orden: props.orden,
-
-      estado: props.estado,
-
-      comandoSanitizado: this.sanitizeTechnicalText(
-        props.comandoSanitizado,
-        'comandoSanitizado',
-      ),
-
-      respuestaSanitizada: this.sanitizeTechnicalText(
-        props.respuestaSanitizada,
+    const props: PppoeOperacionPasoProps = {
+      id: enteroPositivo(p.id, 'id'),
+      operacionId: enteroPositivo(p.operacionId, 'operacionId'),
+      tipo: valorDeEnum(p.tipo, TipoPasoPppoe, 'tipo'),
+      orden: enteroPositivo(p.orden, 'orden'),
+      estado: valorDeEnum(p.estado, EstadoPasoPppoe, 'estado'),
+      comandoSanitizado: textoTecnico(p.comandoSanitizado, 'comandoSanitizado'),
+      respuestaSanitizada: textoTecnico(
+        p.respuestaSanitizada,
         'respuestaSanitizada',
       ),
-
-      errorCodigo: this.normalizeErrorCode(props.errorCodigo),
-
-      errorMensaje: this.sanitizeTechnicalText(
-        props.errorMensaje,
-        'errorMensaje',
-      ),
-
-      iniciadoEn: this.normalizeOptionalDate(props.iniciadoEn, 'iniciadoEn'),
-
-      finalizadoEn: this.normalizeOptionalDate(
-        props.finalizadoEn,
-        'finalizadoEn',
-      ),
-
-      duracionMs: this.normalizeOptionalDuration(props.duracionMs),
-
-      creadoEn: this.normalizeRequiredDate(props.creadoEn, 'creadoEn'),
-
-      actualizadoEn: this.normalizeRequiredDate(
-        props.actualizadoEn,
-        'actualizadoEn',
-      ),
+      errorCodigo: codigoError(p.errorCodigo),
+      errorMensaje: textoTecnico(p.errorMensaje, 'errorMensaje'),
+      iniciadoEn: fechaOpcional(p.iniciadoEn, 'iniciadoEn'),
+      finalizadoEn: fechaOpcional(p.finalizadoEn, 'finalizadoEn'),
+      duracionMs: duracionOpcional(p.duracionMs),
+      creadoEn: fechaValida(p.creadoEn, 'creadoEn'),
+      actualizadoEn: fechaValida(p.actualizadoEn, 'actualizadoEn'),
     };
 
-    this.assertTemporalConsistency(normalizedProps);
-
-    this.assertStateConsistency(normalizedProps);
-
-    return new PppoeOperacionPasoEntity(normalizedProps);
+    verificarConsistenciaPaso(props);
+    return new PppoeOperacionPasoEntity(props);
   }
 
-  /**
-   * Comienza la ejecución técnica del paso.
-   *
-   * Transición válida:
-   *
-   * PENDIENTE -> EJECUTANDO
-   */
   iniciar(input: IniciarPppoeOperacionPasoInput): void {
-    this.assertCurrentState(
+    this.exigirEstado(
       EstadoPasoPppoe.PENDIENTE,
       'Solo un paso PENDIENTE puede comenzar su ejecución.',
     );
-
-    const fecha = PppoeOperacionPasoEntity.normalizeActionDate(
-      input.fecha,
-      'fecha de inicio',
-    );
-
-    this.assertDateNotBeforeCreation(fecha);
+    const fecha = this.fechaDesdeCreacion(input.fecha, 'fecha de inicio');
 
     this.props.estado = EstadoPasoPppoe.EJECUTANDO;
-
-    this.props.comandoSanitizado =
-      PppoeOperacionPasoEntity.sanitizeTechnicalText(
-        input.comandoSanitizado,
-        'comandoSanitizado',
-      );
-
+    this.props.comandoSanitizado = textoTecnico(
+      input.comandoSanitizado,
+      'comandoSanitizado',
+    );
     this.props.respuestaSanitizada = null;
-
     this.props.errorCodigo = null;
-
     this.props.errorMensaje = null;
-
     this.props.iniciadoEn = fecha;
-
     this.props.finalizadoEn = null;
-
     this.props.duracionMs = null;
-
-    this.touch(fecha);
+    this.tocar(fecha);
   }
 
-  /**
-   * Finaliza exitosamente un paso en ejecución.
-   *
-   * Transición válida:
-   *
-   * EJECUTANDO -> EXITOSO
-   */
   marcarExitoso(input: CompletarPppoeOperacionPasoInput): void {
-    this.assertCurrentState(
+    this.exigirEstado(
       EstadoPasoPppoe.EJECUTANDO,
       'Solo un paso EJECUTANDO puede marcarse como EXITOSO.',
     );
-
-    const fecha = PppoeOperacionPasoEntity.normalizeActionDate(
-      input.fecha,
-      'fecha de finalización',
-    );
-
-    this.assertDateNotBeforeStart(fecha);
+    const fecha = this.fechaDesdeInicio(input.fecha);
 
     this.props.estado = EstadoPasoPppoe.EXITOSO;
-
-    this.props.respuestaSanitizada =
-      PppoeOperacionPasoEntity.sanitizeTechnicalText(
-        input.respuestaSanitizada,
-        'respuestaSanitizada',
-      );
-
+    this.props.respuestaSanitizada = textoTecnico(
+      input.respuestaSanitizada,
+      'respuestaSanitizada',
+    );
     this.props.errorCodigo = null;
-
     this.props.errorMensaje = null;
-
-    this.props.finalizadoEn = fecha;
-
-    this.props.duracionMs = this.calculateDuration(fecha);
-
-    this.touch(fecha);
+    this.terminar(fecha);
   }
 
-  /**
-   * Finaliza con error un paso en ejecución.
-   *
-   * Transición válida:
-   *
-   * EJECUTANDO -> FALLIDO
-   */
   marcarFallido(input: FallarPppoeOperacionPasoInput): void {
-    this.assertCurrentState(
+    this.exigirEstado(
       EstadoPasoPppoe.EJECUTANDO,
       'Solo un paso EJECUTANDO puede marcarse como FALLIDO.',
     );
-
-    const errorCodigo = PppoeOperacionPasoEntity.normalizeRequiredErrorCode(
-      input.errorCodigo,
+    const errorCodigo = codigoErrorObligatorio(input.errorCodigo);
+    const errorMensaje = textoTecnicoObligatorio(
+      input.errorMensaje,
+      'errorMensaje',
     );
-
-    const errorMensaje =
-      PppoeOperacionPasoEntity.normalizeRequiredTechnicalText(
-        input.errorMensaje,
-        'errorMensaje',
-      );
-
-    const fecha = PppoeOperacionPasoEntity.normalizeActionDate(
-      input.fecha,
-      'fecha del fallo',
-    );
-
-    this.assertDateNotBeforeStart(fecha);
+    const fecha = this.fechaDesdeInicio(input.fecha);
 
     this.props.estado = EstadoPasoPppoe.FALLIDO;
-
-    this.props.respuestaSanitizada =
-      PppoeOperacionPasoEntity.sanitizeTechnicalText(
-        input.respuestaSanitizada,
-        'respuestaSanitizada',
-      );
-
+    this.props.respuestaSanitizada = textoTecnico(
+      input.respuestaSanitizada,
+      'respuestaSanitizada',
+    );
     this.props.errorCodigo = errorCodigo;
-
     this.props.errorMensaje = errorMensaje;
-
-    this.props.finalizadoEn = fecha;
-
-    this.props.duracionMs = this.calculateDuration(fecha);
-
-    this.touch(fecha);
+    this.terminar(fecha);
   }
 
-  /**
-   * Omite un paso que no necesita ejecutarse.
-   *
-   * Transición válida:
-   *
-   * PENDIENTE -> OMITIDO
-   *
-   * Caso típico:
-   *
-   * BUSCAR_SECRET confirma que el secret ya existe y coincide,
-   * por lo que AGREGAR_SECRET se omite.
-   */
+  /** El motivo queda en respuestaSanitizada; un paso omitido nunca se inició. */
   omitir(input: OmitirPppoeOperacionPasoInput): void {
-    this.assertCurrentState(
+    this.exigirEstado(
       EstadoPasoPppoe.PENDIENTE,
       'Solo un paso PENDIENTE puede marcarse como OMITIDO.',
     );
-
-    const fecha = PppoeOperacionPasoEntity.normalizeActionDate(
-      input.fecha,
-      'fecha de omisión',
-    );
-
-    this.assertDateNotBeforeCreation(fecha);
+    const fecha = this.fechaDesdeCreacion(input.fecha, 'fecha de omisión');
 
     this.props.estado = EstadoPasoPppoe.OMITIDO;
-
-    this.props.respuestaSanitizada =
-      PppoeOperacionPasoEntity.sanitizeTechnicalText(
-        input.motivo,
-        'motivo de omisión',
-      );
-
+    this.props.respuestaSanitizada = textoTecnico(
+      input.motivo,
+      'motivo de omisión',
+    );
     this.props.errorCodigo = null;
-
     this.props.errorMensaje = null;
-
-    /**
-     * Un paso omitido nunca comenzó realmente
-     * su ejecución técnica.
-     */
     this.props.iniciadoEn = null;
-
     this.props.finalizadoEn = fecha;
-
     this.props.duracionMs = 0;
-
-    this.touch(fecha);
+    this.tocar(fecha);
   }
 
-  /**
-   * Indica si el paso todavía no comenzó.
-   */
   estaPendiente(): boolean {
     return this.props.estado === EstadoPasoPppoe.PENDIENTE;
   }
 
-  /**
-   * Indica si el paso está ejecutándose.
-   */
   estaEjecutando(): boolean {
     return this.props.estado === EstadoPasoPppoe.EJECUTANDO;
   }
 
-  /**
-   * Indica si el paso terminó exitosamente.
-   */
   fueExitoso(): boolean {
     return this.props.estado === EstadoPasoPppoe.EXITOSO;
   }
 
-  /**
-   * Indica si el paso terminó con error.
-   */
   fueFallido(): boolean {
     return this.props.estado === EstadoPasoPppoe.FALLIDO;
   }
 
-  /**
-   * Indica si el paso fue omitido.
-   */
   fueOmitido(): boolean {
     return this.props.estado === EstadoPasoPppoe.OMITIDO;
   }
 
-  /**
-   * Indica si el paso ya alcanzó un estado terminal.
-   */
   esTerminal(): boolean {
     return [
       EstadoPasoPppoe.EXITOSO,
@@ -514,492 +237,63 @@ export class PppoeOperacionPasoEntity {
   }
 
   get iniciadoEn(): Date | null {
-    return this.cloneOptionalDate(this.props.iniciadoEn);
+    return clonarFecha(this.props.iniciadoEn);
   }
 
   get finalizadoEn(): Date | null {
-    return this.cloneOptionalDate(this.props.finalizadoEn);
+    return clonarFecha(this.props.finalizadoEn);
   }
 
   get duracionMs(): number | null {
     return this.props.duracionMs;
   }
 
-  /**
-   * Devuelve una copia segura del estado completo.
-   *
-   * Este método puede ser utilizado por:
-   *
-   * - mappers;
-   * - repositorios;
-   * - casos de uso;
-   * - pruebas unitarias.
-   */
   toPrimitives(): PppoeOperacionPasoProps {
     return {
-      id: this.props.id,
-
-      operacionId: this.props.operacionId,
-
-      tipo: this.props.tipo,
-
-      orden: this.props.orden,
-
-      estado: this.props.estado,
-
-      comandoSanitizado: this.props.comandoSanitizado,
-
-      respuestaSanitizada: this.props.respuestaSanitizada,
-
-      errorCodigo: this.props.errorCodigo,
-
-      errorMensaje: this.props.errorMensaje,
-
-      iniciadoEn: this.cloneOptionalDate(this.props.iniciadoEn),
-
-      finalizadoEn: this.cloneOptionalDate(this.props.finalizadoEn),
-
-      duracionMs: this.props.duracionMs,
-
+      ...this.props,
+      iniciadoEn: clonarFecha(this.props.iniciadoEn),
+      finalizadoEn: clonarFecha(this.props.finalizadoEn),
       creadoEn: new Date(this.props.creadoEn.getTime()),
-
       actualizadoEn: new Date(this.props.actualizadoEn.getTime()),
     };
   }
 
-  /**
-   * Exige que la entidad se encuentre en un estado concreto.
-   */
-  private assertCurrentState(expected: EstadoPasoPppoe, message: string): void {
-    if (this.props.estado !== expected) {
+  private terminar(fecha: Date): void {
+    this.props.finalizadoEn = fecha;
+    this.props.duracionMs = fecha.getTime() - this.props.iniciadoEn!.getTime();
+    this.tocar(fecha);
+  }
+
+  private exigirEstado(esperado: EstadoPasoPppoe, mensaje: string): void {
+    if (this.props.estado !== esperado) {
       throw new OperacionPppoeEstadoInvalidoError(
-        `${message} Estado actual: ${this.props.estado}.`,
+        `${mensaje} Estado actual: ${this.props.estado}.`,
       );
     }
   }
 
-  /**
-   * Verifica que una fecha de acción no sea anterior
-   * a la creación del paso.
-   */
-  private assertDateNotBeforeCreation(fecha: Date): void {
+  private fechaDesdeCreacion(valor: Date, campo: string): Date {
+    const fecha = fechaValida(valor, campo);
     if (fecha.getTime() < this.props.creadoEn.getTime()) {
       throw new OperacionPppoeDatosInvalidosError(
         'La fecha de la acción no puede ser anterior a creadoEn.',
       );
     }
+    return fecha;
   }
 
-  /**
-   * Verifica que la finalización no sea anterior
-   * al inicio de la ejecución.
-   */
-  private assertDateNotBeforeStart(fecha: Date): void {
-    if (!this.props.iniciadoEn) {
-      throw new OperacionPppoeDatosInvalidosError(
-        'El paso no contiene una fecha de inicio válida.',
-      );
-    }
-
-    if (fecha.getTime() < this.props.iniciadoEn.getTime()) {
+  /** Solo se llama en EJECUTANDO, que siempre tiene iniciadoEn. */
+  private fechaDesdeInicio(valor: Date): Date {
+    const fecha = fechaValida(valor, 'fecha de finalización');
+    if (fecha.getTime() < this.props.iniciadoEn!.getTime()) {
       throw new OperacionPppoeDatosInvalidosError(
         'La fecha de finalización no puede ser anterior a iniciadoEn.',
       );
     }
+    return fecha;
   }
 
-  /**
-   * Calcula la duración total desde iniciadoEn.
-   */
-  private calculateDuration(finalizadoEn: Date): number {
-    if (!this.props.iniciadoEn) {
-      throw new OperacionPppoeDatosInvalidosError(
-        'No se puede calcular la duración de un paso sin iniciadoEn.',
-      );
-    }
-
-    const duration = finalizadoEn.getTime() - this.props.iniciadoEn.getTime();
-
-    if (duration < 0) {
-      throw new OperacionPppoeDatosInvalidosError(
-        'La duración calculada del paso no puede ser negativa.',
-      );
-    }
-
-    return duration;
-  }
-
-  /**
-   * Actualiza la fecha interna de modificación.
-   */
-  private touch(fecha: Date): void {
+  private tocar(fecha: Date): void {
     this.props.actualizadoEn = new Date(fecha.getTime());
-  }
-
-  /**
-   * Clona una fecha opcional para evitar entregar
-   * referencias internas mutables.
-   */
-  private cloneOptionalDate(value: Date | null): Date | null {
-    return value ? new Date(value.getTime()) : null;
-  }
-
-  /**
-   * Valida identificadores y valores enteros positivos.
-   */
-  private static assertPositiveInteger(value: number, field: string): void {
-    if (!Number.isInteger(value) || value <= 0) {
-      throw new OperacionPppoeDatosInvalidosError(
-        `${field} debe ser un entero positivo.`,
-      );
-    }
-  }
-
-  /**
-   * Valida que un valor exista en el enum recibido.
-   */
-  private static assertEnumValue<TEnum extends Record<string, string>>(
-    value: string,
-    enumObject: TEnum,
-    field: string,
-  ): void {
-    const allowedValues = Object.values(enumObject);
-
-    if (!allowedValues.includes(value)) {
-      throw new OperacionPppoeDatosInvalidosError(
-        `${field} contiene un valor no soportado: ${value}.`,
-      );
-    }
-  }
-
-  /**
-   * Convierte una fecha opcional en una copia segura.
-   */
-  private static normalizeOptionalDate(
-    value: Date | null,
-    field: string,
-  ): Date | null {
-    if (value === null) {
-      return null;
-    }
-
-    return this.normalizeRequiredDate(value, field);
-  }
-
-  /**
-   * Valida y clona una fecha obligatoria.
-   */
-  private static normalizeRequiredDate(value: Date, field: string): Date {
-    const normalized = new Date(value);
-
-    if (Number.isNaN(normalized.getTime())) {
-      throw new OperacionPppoeDatosInvalidosError(
-        `${field} debe contener una fecha válida.`,
-      );
-    }
-
-    return normalized;
-  }
-
-  /**
-   * Normaliza una fecha recibida por una transición.
-   */
-  private static normalizeActionDate(value: Date, field: string): Date {
-    return this.normalizeRequiredDate(value, field);
-  }
-
-  /**
-   * Valida una duración opcional.
-   */
-  private static normalizeOptionalDuration(
-    value: number | null,
-  ): number | null {
-    if (value === null) {
-      return null;
-    }
-
-    if (!Number.isInteger(value) || value < 0) {
-      throw new OperacionPppoeDatosInvalidosError(
-        'duracionMs debe ser un entero mayor o igual que cero.',
-      );
-    }
-
-    return value;
-  }
-
-  /**
-   * Normaliza un código de error opcional.
-   */
-  private static normalizeErrorCode(value: string | null): string | null {
-    if (value === null) {
-      return null;
-    }
-
-    const normalized = value.trim().toUpperCase();
-
-    if (!normalized) {
-      return null;
-    }
-
-    if (normalized.length > this.MAX_ERROR_CODIGO_LENGTH) {
-      throw new OperacionPppoeDatosInvalidosError(
-        `errorCodigo no puede superar ${this.MAX_ERROR_CODIGO_LENGTH} caracteres.`,
-      );
-    }
-
-    if (!/^[A-Z0-9_.:-]+$/.test(normalized)) {
-      throw new OperacionPppoeDatosInvalidosError(
-        'errorCodigo solo puede contener letras, números, guion bajo, punto, dos puntos y guion.',
-      );
-    }
-
-    return normalized;
-  }
-
-  /**
-   * Normaliza un código de error obligatorio.
-   */
-  private static normalizeRequiredErrorCode(value: string): string {
-    const normalized = this.normalizeErrorCode(value);
-
-    if (!normalized) {
-      throw new OperacionPppoeDatosInvalidosError(
-        'errorCodigo es obligatorio al marcar un paso como FALLIDO.',
-      );
-    }
-
-    return normalized;
-  }
-
-  /**
-   * Normaliza texto técnico opcional y aplica
-   * una sanitización defensiva.
-   *
-   * Esta protección no sustituye la sanitización
-   * que debe realizar el módulo mikrotik-ssh.
-   */
-  private static sanitizeTechnicalText(
-    value: string | null | undefined,
-    field: string,
-  ): string | null {
-    if (value == null) {
-      return null;
-    }
-
-    const normalized = value.trim();
-
-    if (!normalized) {
-      return null;
-    }
-
-    const sanitized = normalized
-      /**
-       * Redacta asignaciones comunes:
-       *
-       * password=valor
-       * token: valor
-       * authorization=valor
-       */
-      .replace(
-        /(\b(?:password|passwd|pass|token|authorization|private[_ -]?key|secretoCifrado|secretoIv|secretoAuthTag)\b\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,;]+)/gi,
-        '$1[REDACTED]',
-      )
-
-      /**
-       * Redacta variables de entorno AES del proyecto.
-       */
-      .replace(/(PPPOE_SECRET_KEY_V\d+\s*=\s*)[^\s]+/gi, '$1[REDACTED]');
-
-    if (sanitized.length > this.MAX_TEXTO_TECNICO_LENGTH) {
-      throw new OperacionPppoeDatosInvalidosError(
-        `${field} no puede superar ${this.MAX_TEXTO_TECNICO_LENGTH} caracteres.`,
-      );
-    }
-
-    return sanitized;
-  }
-
-  /**
-   * Normaliza texto técnico obligatorio.
-   */
-  private static normalizeRequiredTechnicalText(
-    value: string,
-    field: string,
-  ): string {
-    const normalized = this.sanitizeTechnicalText(value, field);
-
-    if (!normalized) {
-      throw new OperacionPppoeDatosInvalidosError(`${field} es obligatorio.`);
-    }
-
-    return normalized;
-  }
-
-  /**
-   * Valida la relación cronológica de las fechas
-   * restauradas desde persistencia.
-   */
-  private static assertTemporalConsistency(
-    props: PppoeOperacionPasoProps,
-  ): void {
-    if (props.actualizadoEn.getTime() < props.creadoEn.getTime()) {
-      throw new OperacionPppoeDatosInvalidosError(
-        'actualizadoEn no puede ser anterior a creadoEn.',
-      );
-    }
-
-    if (
-      props.iniciadoEn &&
-      props.iniciadoEn.getTime() < props.creadoEn.getTime()
-    ) {
-      throw new OperacionPppoeDatosInvalidosError(
-        'iniciadoEn no puede ser anterior a creadoEn.',
-      );
-    }
-
-    if (
-      props.finalizadoEn &&
-      props.finalizadoEn.getTime() < props.creadoEn.getTime()
-    ) {
-      throw new OperacionPppoeDatosInvalidosError(
-        'finalizadoEn no puede ser anterior a creadoEn.',
-      );
-    }
-
-    if (
-      props.iniciadoEn &&
-      props.finalizadoEn &&
-      props.finalizadoEn.getTime() < props.iniciadoEn.getTime()
-    ) {
-      throw new OperacionPppoeDatosInvalidosError(
-        'finalizadoEn no puede ser anterior a iniciadoEn.',
-      );
-    }
-  }
-
-  /**
-   * Valida que fechas, errores y duración sean coherentes
-   * con el estado persistido.
-   */
-  private static assertStateConsistency(props: PppoeOperacionPasoProps): void {
-    switch (props.estado) {
-      case EstadoPasoPppoe.PENDIENTE: {
-        if (
-          props.iniciadoEn !== null ||
-          props.finalizadoEn !== null ||
-          props.duracionMs !== null
-        ) {
-          throw new OperacionPppoeDatosInvalidosError(
-            'Un paso PENDIENTE no puede contener fechas de ejecución ni duración.',
-          );
-        }
-
-        if (props.errorCodigo !== null || props.errorMensaje !== null) {
-          throw new OperacionPppoeDatosInvalidosError(
-            'Un paso PENDIENTE no puede contener datos de error.',
-          );
-        }
-
-        return;
-      }
-
-      case EstadoPasoPppoe.EJECUTANDO: {
-        if (props.iniciadoEn === null) {
-          throw new OperacionPppoeDatosInvalidosError(
-            'Un paso EJECUTANDO debe contener iniciadoEn.',
-          );
-        }
-
-        if (props.finalizadoEn !== null || props.duracionMs !== null) {
-          throw new OperacionPppoeDatosInvalidosError(
-            'Un paso EJECUTANDO no puede contener finalizadoEn ni duracionMs.',
-          );
-        }
-
-        if (props.errorCodigo !== null || props.errorMensaje !== null) {
-          throw new OperacionPppoeDatosInvalidosError(
-            'Un paso EJECUTANDO no puede contener un error final.',
-          );
-        }
-
-        return;
-      }
-
-      case EstadoPasoPppoe.EXITOSO: {
-        this.assertCompletedExecutionFields(props, 'EXITOSO');
-
-        if (props.errorCodigo !== null || props.errorMensaje !== null) {
-          throw new OperacionPppoeDatosInvalidosError(
-            'Un paso EXITOSO no puede contener datos de error.',
-          );
-        }
-
-        return;
-      }
-
-      case EstadoPasoPppoe.FALLIDO: {
-        this.assertCompletedExecutionFields(props, 'FALLIDO');
-
-        if (!props.errorCodigo || !props.errorMensaje) {
-          throw new OperacionPppoeDatosInvalidosError(
-            'Un paso FALLIDO debe contener errorCodigo y errorMensaje.',
-          );
-        }
-
-        return;
-      }
-
-      case EstadoPasoPppoe.OMITIDO: {
-        if (props.iniciadoEn !== null) {
-          throw new OperacionPppoeDatosInvalidosError(
-            'Un paso OMITIDO no debe contener iniciadoEn.',
-          );
-        }
-
-        if (props.finalizadoEn === null) {
-          throw new OperacionPppoeDatosInvalidosError(
-            'Un paso OMITIDO debe contener finalizadoEn.',
-          );
-        }
-
-        if (props.duracionMs !== 0) {
-          throw new OperacionPppoeDatosInvalidosError(
-            'Un paso OMITIDO debe tener duracionMs igual a cero.',
-          );
-        }
-
-        if (props.errorCodigo !== null || props.errorMensaje !== null) {
-          throw new OperacionPppoeDatosInvalidosError(
-            'Un paso OMITIDO no puede contener datos de error.',
-          );
-        }
-
-        return;
-      }
-
-      default: {
-        const exhaustiveCheck: never = props.estado;
-
-        throw new Error(`Estado de paso no soportado: ${exhaustiveCheck}.`);
-      }
-    }
-  }
-
-  /**
-   * Valida los campos comunes de una ejecución terminada.
-   */
-  private static assertCompletedExecutionFields(
-    props: PppoeOperacionPasoProps,
-    estado: 'EXITOSO' | 'FALLIDO',
-  ): void {
-    if (
-      props.iniciadoEn === null ||
-      props.finalizadoEn === null ||
-      props.duracionMs === null
-    ) {
-      throw new OperacionPppoeDatosInvalidosError(
-        `Un paso ${estado} debe contener iniciadoEn, finalizadoEn y duracionMs.`,
-      );
-    }
   }
 }

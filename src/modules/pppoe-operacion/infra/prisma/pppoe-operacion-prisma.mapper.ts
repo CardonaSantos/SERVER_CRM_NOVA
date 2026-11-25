@@ -21,7 +21,7 @@ export class PppoeOperacionPrismaMapper {
    *
    * No necesita cargar relaciones.
    *
-   * El método restore() de la entidad validará:
+   * El método hydrate() de la entidad validará:
    *
    * - identificadores;
    * - cadena de reintentos;
@@ -35,75 +35,43 @@ export class PppoeOperacionPrismaMapper {
    * - duración.
    */
   static toDomain(raw: PrismaPppoeOperacion): PppoeOperacionEntity {
-    return PppoeOperacionEntity.restore({
+    return PppoeOperacionEntity.hydrate({
       id: raw.id,
-
       empresaId: raw.empresaId,
-
       cuentaPppoeId: raw.cuentaPppoeId,
-
       mikrotikRouterId: raw.mikrotikRouterId,
-
       perfilHomologacionId: raw.perfilHomologacionId,
-
       instalacionId: raw.instalacionId,
-
       desinstalacionId: raw.desinstalacionId,
-
       reintentoDeId: raw.reintentoDeId,
-
       numeroIntento: raw.numeroIntento,
-
       claveIdempotencia: raw.claveIdempotencia,
-
       tipo: PppoeOperacionPrismaEnumMapper.tipoOperacionToDomain(raw.tipo),
-
       origen: PppoeOperacionPrismaEnumMapper.origenOperacionToDomain(
         raw.origen,
       ),
-
       canal: PppoeOperacionPrismaEnumMapper.canalOperacionToDomain(raw.canal),
-
       estado: PppoeOperacionPrismaEnumMapper.estadoOperacionToDomain(
         raw.estado,
       ),
-
       iniciadoPorId: raw.iniciadoPorId,
-
       reautenticadoPorId: raw.reautenticadoPorId,
-
       requiereReautenticacion: raw.requiereReautenticacion,
-
       reautenticacionExitosa: raw.reautenticacionExitosa,
-
       reautenticadoEn: raw.reautenticadoEn,
-
       usuarioPppoeSnapshot: raw.usuarioPppoeSnapshot,
-
       codigoPerfilSnapshot: raw.codigoPerfilSnapshot,
-
       routerHostSnapshot: raw.routerHostSnapshot,
-
       routerPuertoSnapshot: raw.routerPuertoSnapshot,
-
       motivo: raw.motivo,
-
       resultado: this.resultadoToDomain(raw.resultado),
-
       errorCodigo: raw.errorCodigo,
-
       errorMensaje: raw.errorMensaje,
-
       iniciadoEn: raw.iniciadoEn,
-
       finalizadoEn: raw.finalizadoEn,
-
       canceladoEn: raw.canceladoEn,
-
       duracionMs: raw.duracionMs,
-
       creadoEn: raw.creadoEn,
-
       actualizadoEn: raw.actualizadoEn,
     });
   }
@@ -123,75 +91,44 @@ export class PppoeOperacionPrismaMapper {
 
     return {
       empresaId: primitives.empresaId,
-
       cuentaPppoeId: primitives.cuentaPppoeId,
-
       mikrotikRouterId: primitives.mikrotikRouterId,
-
       perfilHomologacionId: primitives.perfilHomologacionId,
-
       instalacionId: primitives.instalacionId,
-
       desinstalacionId: primitives.desinstalacionId,
-
       reintentoDeId: primitives.reintentoDeId,
-
       numeroIntento: primitives.numeroIntento,
-
       claveIdempotencia: primitives.claveIdempotencia,
-
       tipo: PppoeOperacionPrismaEnumMapper.tipoOperacionToPrisma(
         primitives.tipo,
       ),
-
       origen: PppoeOperacionPrismaEnumMapper.origenOperacionToPrisma(
         primitives.origen,
       ),
-
       canal: PppoeOperacionPrismaEnumMapper.canalOperacionToPrisma(
         primitives.canal,
       ),
-
       estado: PppoeOperacionPrismaEnumMapper.estadoOperacionToPrisma(
         primitives.estado,
       ),
-
       iniciadoPorId: primitives.iniciadoPorId,
-
       reautenticadoPorId: primitives.reautenticadoPorId,
-
       requiereReautenticacion: primitives.requiereReautenticacion,
-
       reautenticacionExitosa: primitives.reautenticacionExitosa,
-
       reautenticadoEn: primitives.reautenticadoEn,
-
       usuarioPppoeSnapshot: primitives.usuarioPppoeSnapshot,
-
       codigoPerfilSnapshot: primitives.codigoPerfilSnapshot,
-
       routerHostSnapshot: primitives.routerHostSnapshot,
-
       routerPuertoSnapshot: primitives.routerPuertoSnapshot,
-
       motivo: primitives.motivo,
-
       resultado: this.resultadoToPersistence(primitives.resultado),
-
       errorCodigo: primitives.errorCodigo,
-
       errorMensaje: primitives.errorMensaje,
-
       iniciadoEn: primitives.iniciadoEn,
-
       finalizadoEn: primitives.finalizadoEn,
-
       canceladoEn: primitives.canceladoEn,
-
       duracionMs: primitives.duracionMs,
-
       creadoEn: primitives.creadoEn,
-
       actualizadoEn: primitives.actualizadoEn,
     } satisfies Prisma.PppoeOperacionUncheckedCreateInput;
   }
@@ -225,19 +162,16 @@ export class PppoeOperacionPrismaMapper {
           id: primitives.empresaId,
         },
       },
-
       cuentaPppoe: {
         connect: {
           id: primitives.cuentaPppoeId,
         },
       },
-
       mikrotikRouter: {
         connect: {
           id: primitives.mikrotikRouterId,
         },
       },
-
       perfilHomologacion:
         primitives.perfilHomologacionId === null
           ? undefined
@@ -246,7 +180,6 @@ export class PppoeOperacionPrismaMapper {
                 id: primitives.perfilHomologacionId,
               },
             },
-
       instalacion:
         primitives.instalacionId === null
           ? undefined
@@ -255,7 +188,6 @@ export class PppoeOperacionPrismaMapper {
                 id: primitives.instalacionId,
               },
             },
-
       desinstalacion:
         primitives.desinstalacionId === null
           ? undefined
@@ -264,7 +196,6 @@ export class PppoeOperacionPrismaMapper {
                 id: primitives.desinstalacionId,
               },
             },
-
       iniciadoPor:
         primitives.iniciadoPorId === null
           ? undefined
@@ -273,7 +204,6 @@ export class PppoeOperacionPrismaMapper {
                 id: primitives.iniciadoPorId,
               },
             },
-
       reautenticadoPor:
         primitives.reautenticadoPorId === null
           ? undefined
@@ -282,7 +212,6 @@ export class PppoeOperacionPrismaMapper {
                 id: primitives.reautenticadoPorId,
               },
             },
-
       reintentoDe:
         primitives.reintentoDeId === null
           ? undefined
@@ -291,65 +220,41 @@ export class PppoeOperacionPrismaMapper {
                 id: primitives.reintentoDeId,
               },
             },
-
       pasos: {
         create: pasos.map((paso) =>
           PppoeOperacionPasoPrismaMapper.toNestedCreatePersistence(paso),
         ),
       },
-
       numeroIntento: primitives.numeroIntento,
-
       claveIdempotencia: primitives.claveIdempotencia,
-
       tipo: PppoeOperacionPrismaEnumMapper.tipoOperacionToPrisma(
         primitives.tipo,
       ),
-
       origen: PppoeOperacionPrismaEnumMapper.origenOperacionToPrisma(
         primitives.origen,
       ),
-
       canal: PppoeOperacionPrismaEnumMapper.canalOperacionToPrisma(
         primitives.canal,
       ),
-
       estado: PppoeOperacionPrismaEnumMapper.estadoOperacionToPrisma(
         primitives.estado,
       ),
-
       requiereReautenticacion: primitives.requiereReautenticacion,
-
       reautenticacionExitosa: primitives.reautenticacionExitosa,
-
       reautenticadoEn: primitives.reautenticadoEn,
-
       usuarioPppoeSnapshot: primitives.usuarioPppoeSnapshot,
-
       codigoPerfilSnapshot: primitives.codigoPerfilSnapshot,
-
       routerHostSnapshot: primitives.routerHostSnapshot,
-
       routerPuertoSnapshot: primitives.routerPuertoSnapshot,
-
       motivo: primitives.motivo,
-
       resultado: this.resultadoToPersistence(primitives.resultado),
-
       errorCodigo: primitives.errorCodigo,
-
       errorMensaje: primitives.errorMensaje,
-
       iniciadoEn: primitives.iniciadoEn,
-
       finalizadoEn: primitives.finalizadoEn,
-
       canceladoEn: primitives.canceladoEn,
-
       duracionMs: primitives.duracionMs,
-
       creadoEn: primitives.creadoEn,
-
       actualizadoEn: primitives.actualizadoEn,
     } satisfies Prisma.PppoeOperacionCreateInput;
   }
@@ -391,40 +296,21 @@ export class PppoeOperacionPrismaMapper {
       estado: PppoeOperacionPrismaEnumMapper.estadoOperacionToPrisma(
         primitives.estado,
       ),
-
       reautenticadoPorId: primitives.reautenticadoPorId,
-
       requiereReautenticacion: primitives.requiereReautenticacion,
-
       reautenticacionExitosa: primitives.reautenticacionExitosa,
-
       reautenticadoEn: primitives.reautenticadoEn,
-
       motivo: primitives.motivo,
-
       resultado: this.resultadoToPersistence(primitives.resultado),
-
       errorCodigo: primitives.errorCodigo,
-
       errorMensaje: primitives.errorMensaje,
-
       iniciadoEn: primitives.iniciadoEn,
-
       finalizadoEn: primitives.finalizadoEn,
-
       canceladoEn: primitives.canceladoEn,
-
       duracionMs: primitives.duracionMs,
     } satisfies Prisma.PppoeOperacionUncheckedUpdateInput;
   }
 
-  /**
-   * Convierte el campo Json de Prisma al resultado
-   * aceptado por el dominio.
-   *
-   * El dominio únicamente acepta un objeto JSON.
-   * No acepta arrays, strings o números como raíz.
-   */
   private static resultadoToDomain(
     value: Prisma.JsonValue | null,
   ): PppoeOperacionResultado | null {
@@ -441,18 +327,6 @@ export class PppoeOperacionPrismaMapper {
     return value as PppoeOperacionResultado;
   }
 
-  /**
-   * Convierte el resultado del dominio a un valor
-   * compatible con Prisma.
-   *
-   * Prisma distingue entre:
-   *
-   * - NULL de base de datos: Prisma.DbNull;
-   * - null dentro de JSON: Prisma.JsonNull.
-   *
-   * En este módulo usamos NULL de base de datos cuando
-   * la operación no contiene resultado.
-   */
   private static resultadoToPersistence(value: PppoeOperacionResultado | null) {
     if (value === null) {
       return Prisma.DbNull;
@@ -461,14 +335,6 @@ export class PppoeOperacionPrismaMapper {
     return value as Prisma.InputJsonValue;
   }
 
-  /**
-   * Valida la secuencia mínima antes de construir
-   * una creación anidada.
-   *
-   * La base de datos también protege el orden mediante:
-   *
-   * @@unique([operacionId, orden])
-   */
   private static assertInitialSteps(
     pasos: CrearPppoeOperacionPasoInicialProps[],
   ): void {

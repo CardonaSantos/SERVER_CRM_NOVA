@@ -83,26 +83,17 @@ export type FinalizarPppoeOperacionUseCaseInput =
  */
 @Injectable()
 export class FinalizarPppoeOperacionUseCase {
-  /**
-   * Pasos que pueden modificar el estado remoto
-   * del router MikroTik.
-   */
   private static readonly PASOS_CON_EFECTO_REMOTO = new Set<TipoPasoPppoe>([
     TipoPasoPppoe.AGREGAR_SECRET,
-
     TipoPasoPppoe.HABILITAR_SECRET,
-
     TipoPasoPppoe.DESHABILITAR_SECRET,
-
     TipoPasoPppoe.REMOVER_SESION_ACTIVA,
-
     TipoPasoPppoe.ELIMINAR_SECRET,
   ]);
 
   constructor(
     @Inject(PPPOE_OPERACION_REPOSITORY)
     private readonly repository: PppoeOperacionRepositoryPort,
-
     @Inject(RELOJ)
     private readonly reloj: RelojPort,
   ) {}
@@ -114,7 +105,6 @@ export class FinalizarPppoeOperacionUseCase {
 
     const aggregate = await this.repository.findAggregateById({
       empresaId: input.empresaId,
-
       operacionId: input.operacionId,
     });
 
@@ -158,14 +148,10 @@ export class FinalizarPppoeOperacionUseCase {
 
     return {
       operacion: savedOperation,
-
       pasos,
     };
   }
 
-  /**
-   * Aplica la transición sobre la entidad principal.
-   */
   private applyFinalization(
     operacion: PppoeOperacionEntity,
     input: FinalizarPppoeOperacionUseCaseInput,
@@ -182,11 +168,8 @@ export class FinalizarPppoeOperacionUseCase {
       case EstadoOperacionPppoe.PARCIAL:
         operacion.marcarParcial({
           errorCodigo: input.errorCodigo,
-
           errorMensaje: input.errorMensaje,
-
           resultado: input.resultado,
-
           fecha: input.fecha ?? this.reloj.ahora(),
         });
 
@@ -195,11 +178,8 @@ export class FinalizarPppoeOperacionUseCase {
       case EstadoOperacionPppoe.FALLIDA:
         operacion.marcarFallida({
           errorCodigo: input.errorCodigo,
-
           errorMensaje: input.errorMensaje,
-
           resultado: input.resultado,
-
           fecha: input.fecha ?? this.reloj.ahora(),
         });
 
@@ -215,10 +195,6 @@ export class FinalizarPppoeOperacionUseCase {
     }
   }
 
-  /**
-   * Valida que los pasos respalden
-   * el estado final solicitado.
-   */
   private validateSteps(
     pasos: PppoeOperacionPasoEntity[],
     estadoFinal:
@@ -258,10 +234,6 @@ export class FinalizarPppoeOperacionUseCase {
     }
   }
 
-  /**
-   * Una operación exitosa solo puede contener
-   * pasos EXITOSOS u OMITIDOS.
-   */
   private validateSuccessfulSteps(pasos: PppoeOperacionPasoEntity[]): void {
     const invalidStep = pasos.find(
       (paso) => !paso.fueExitoso() && !paso.fueOmitido(),
@@ -276,10 +248,6 @@ export class FinalizarPppoeOperacionUseCase {
     );
   }
 
-  /**
-   * Una operación fallida debe contener
-   * al menos un paso FALLIDO.
-   */
   private validateFailedSteps(pasos: PppoeOperacionPasoEntity[]): void {
     const failedStep = pasos.find((paso) => paso.fueFallido());
 
@@ -292,10 +260,6 @@ export class FinalizarPppoeOperacionUseCase {
     );
   }
 
-  /**
-   * PARCIAL requiere un fallo y evidencia de que
-   * un paso modificador pudo afectar el router.
-   */
   private validatePartialSteps(pasos: PppoeOperacionPasoEntity[]): void {
     const failedStep = pasos.find((paso) => paso.fueFallido());
 
@@ -318,14 +282,9 @@ export class FinalizarPppoeOperacionUseCase {
     }
   }
 
-  /**
-   * Valida identificadores, fecha y errores.
-   */
   private validateInput(input: FinalizarPppoeOperacionUseCaseInput): void {
     this.assertPositiveInteger(input.empresaId, 'empresaId');
-
     this.assertPositiveInteger(input.operacionId, 'operacionId');
-
     this.assertOptionalDate(input.fecha);
 
     if (
@@ -333,7 +292,6 @@ export class FinalizarPppoeOperacionUseCase {
       input.estadoFinal === EstadoOperacionPppoe.FALLIDA
     ) {
       this.assertRequiredString(input.errorCodigo, 'errorCodigo');
-
       this.assertRequiredString(input.errorMensaje, 'errorMensaje');
     }
   }

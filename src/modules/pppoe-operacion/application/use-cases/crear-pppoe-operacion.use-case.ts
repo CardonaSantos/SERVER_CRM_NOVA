@@ -101,7 +101,6 @@ export class CrearPppoeOperacionUseCase {
   constructor(
     @Inject(PPPOE_OPERACION_REPOSITORY)
     private readonly repository: PppoeOperacionRepositoryPort,
-
     @Inject(RELOJ)
     private readonly reloj: RelojPort,
   ) {}
@@ -114,7 +113,6 @@ export class CrearPppoeOperacionUseCase {
   ): Promise<CrearPppoeOperacionUseCaseResult> {
     const existingOperation = await this.repository.findByIdempotencyKey({
       empresaId: input.empresaId,
-
       claveIdempotencia: input.claveIdempotencia,
     });
 
@@ -138,7 +136,6 @@ export class CrearPppoeOperacionUseCase {
 
       const existingAggregate = await this.repository.findAggregateById({
         empresaId: input.empresaId,
-
         operacionId: existingOperationId,
       });
 
@@ -156,16 +153,13 @@ export class CrearPppoeOperacionUseCase {
        */
       return {
         ...existingAggregate,
-
         creada: false,
       };
     }
 
     const runningOperation = await this.repository.findRunningOperation({
       empresaId: input.empresaId,
-
       cuentaPppoeId: input.cuentaPppoeId,
-
       estados: [
         EstadoOperacionPppoe.PENDIENTE,
         EstadoOperacionPppoe.AUTORIZADA,
@@ -175,46 +169,30 @@ export class CrearPppoeOperacionUseCase {
 
     if (runningOperation) {
       throw new OperacionPppoeEnCursoError(
-        this.buildRunningOperationMessage(runningOperation),
+        'La cuenta PPPoE ya tiene una operación en curso.',
       );
     }
 
     const operation = PppoeOperacionEntity.create(
       {
         empresaId: input.empresaId,
-
         cuentaPppoeId: input.cuentaPppoeId,
-
         mikrotikRouterId: input.mikrotikRouterId,
-
         perfilHomologacionId: input.perfilHomologacionId ?? null,
-
         instalacionId: input.instalacionId ?? null,
-
         desinstalacionId: input.desinstalacionId ?? null,
-
         claveIdempotencia: input.claveIdempotencia,
-
         tipo: input.tipo,
-
         origen: input.origen,
-
         canal: input.canal ?? CanalOperacionPppoe.SSH,
-
         iniciadoPorId: input.iniciadoPorId ?? null,
-
         requiereReautenticacion:
           input.requiereReautenticacion ??
           this.resolveDefaultReauthentication(input.tipo),
-
         motivo: input.motivo ?? null,
-
         usuarioPppoeSnapshot: input.usuarioPppoeSnapshot,
-
         codigoPerfilSnapshot: input.codigoPerfilSnapshot ?? null,
-
         routerHostSnapshot: input.routerHostSnapshot,
-
         routerPuertoSnapshot: input.routerPuertoSnapshot,
       },
       this.reloj.ahora(),
@@ -224,23 +202,15 @@ export class CrearPppoeOperacionUseCase {
 
     const createdAggregate = await this.repository.createWithSteps({
       operacion: operation,
-
       pasos: steps,
     });
 
     return {
       ...createdAggregate,
-
       creada: true,
     };
   }
 
-  /**
-   * POLÍTICA DE REAUTENTICACIÓN
-   *
-   * El valor puede ser reemplazado explícitamente
-   * mediante input.requiereReautenticacion.
-   */
   private resolveDefaultReauthentication(tipo: TipoOperacionPppoe): boolean {
     switch (tipo) {
       case TipoOperacionPppoe.CREAR_SECRET:
@@ -261,14 +231,6 @@ export class CrearPppoeOperacionUseCase {
     }
   }
 
-  /**
-   * VALIDACIÓN DE IDEMPOTENCIA
-   * Comprueba que una clave idempotente existente
-   * represente la misma solicitud.
-   *
-   * también deben
-   * coincidir los datos que identifican la intención.
-   */
   private assertCompatibleIdempotentRequest(
     existing: PppoeOperacionEntity,
     input: CrearPppoeOperacionUseCaseInput,
@@ -305,18 +267,4 @@ export class CrearPppoeOperacionUseCase {
    * Construye un mensaje seguro para una operación
    * que bloquea la creación de otro intento.
    */
-  private buildRunningOperationMessage(
-    operation: PppoeOperacionEntity,
-  ): string {
-    const operationId =
-      operation.id === null ? 'sin persistir' : String(operation.id);
-
-    return (
-      `La cuenta PPPoE ${operation.cuentaPppoeId} ` +
-      `ya tiene una operación en curso. ` +
-      `Operación: ${operationId}; ` +
-      `tipo: ${operation.tipo}; ` +
-      `estado: ${operation.estado}.`
-    );
-  }
 }

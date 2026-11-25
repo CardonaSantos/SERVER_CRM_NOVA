@@ -25,7 +25,7 @@ export type IniciarPppoeOperacionUseCaseInput = {
   operacionId: number;
 
   /**
-   * Si se omite, la entidad utiliza la fecha actual.
+   * Si se omite, se toma del reloj.
    */
   fecha?: Date;
 };
@@ -50,7 +50,6 @@ export class IniciarPppoeOperacionUseCase {
   constructor(
     @Inject(PPPOE_OPERACION_REPOSITORY)
     private readonly repository: PppoeOperacionRepositoryPort,
-
     @Inject(RELOJ)
     private readonly reloj: RelojPort,
   ) {}
@@ -62,7 +61,6 @@ export class IniciarPppoeOperacionUseCase {
 
     const aggregate = await this.repository.findAggregateById({
       empresaId: input.empresaId,
-
       operacionId: input.operacionId,
     });
 
@@ -81,7 +79,7 @@ export class IniciarPppoeOperacionUseCase {
      */
     if (operacion.estaEjecutando()) {
       throw new OperacionPppoeEnCursoError(
-        `La operación PPPoE ${input.operacionId} ya está EJECUTANDO y fue reclamada por otro proceso.`,
+        'La operación PPPoE ya está en ejecución.',
       );
     }
 
@@ -130,11 +128,8 @@ export class IniciarPppoeOperacionUseCase {
 
     const claimedOperation = await this.repository.claimForExecution({
       empresaId: input.empresaId,
-
       operacionId: input.operacionId,
-
       estadoEsperado,
-
       operacionIniciada: operacion,
     });
 
@@ -144,7 +139,7 @@ export class IniciarPppoeOperacionUseCase {
      */
     if (!claimedOperation) {
       throw new OperacionPppoeEnCursoError(
-        `La operación PPPoE ${input.operacionId} ya fue reclamada por otro proceso o cambió de estado.`,
+        'La operación PPPoE ya fue tomada por otro proceso o cambió de estado.',
       );
     }
 
@@ -154,29 +149,24 @@ export class IniciarPppoeOperacionUseCase {
      */
     const claimedAggregate = await this.repository.findAggregateById({
       empresaId: input.empresaId,
-
       operacionId: input.operacionId,
     });
 
     if (!claimedAggregate) {
       throw new OperacionPppoeEstadoInvalidoError(
-        `La operación PPPoE ${input.operacionId} fue reclamada, pero no pudo recargarse.`,
+        'La operación PPPoE se inició, pero no pudo recargarse.',
       );
     }
 
     if (!claimedAggregate.operacion.estaEjecutando()) {
       throw new OperacionPppoeEstadoInvalidoError(
-        `La operación PPPoE ${input.operacionId} no quedó en estado EJECUTANDO después de ser reclamada.`,
+        'La operación PPPoE no quedó en ejecución después de iniciarse.',
       );
     }
 
     return claimedAggregate;
   }
 
-  /**
-   * Valida el estado previo según la política
-   * de reautenticación.
-   */
   private validateAuthorizationState(
     operacion: PppoeOperacionAggregate['operacion'],
   ): void {
@@ -199,15 +189,10 @@ export class IniciarPppoeOperacionUseCase {
 
   private validateInput(input: IniciarPppoeOperacionUseCaseInput): void {
     this.assertPositiveInteger(input.empresaId, 'empresaId');
-
     this.assertPositiveInteger(input.operacionId, 'operacionId');
-
     this.assertOptionalDate(input.fecha);
   }
 
-  /**
-   * Valida identificadores enteros positivos.
-   */
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
       throw new OperacionPppoeDatosInvalidosError(
@@ -216,9 +201,6 @@ export class IniciarPppoeOperacionUseCase {
     }
   }
 
-  /**
-   * Valida una fecha opcional.
-   */
   private assertOptionalDate(value?: Date): void {
     if (value === undefined) {
       return;

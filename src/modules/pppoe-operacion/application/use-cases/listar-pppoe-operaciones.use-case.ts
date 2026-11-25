@@ -92,9 +92,6 @@ export class ListarPppoeOperacionesUseCase {
     return this.query.findPaginated(filters);
   }
 
-  /**
-   * Valida y normaliza los filtros recibidos.
-   */
   private normalizeFilters(
     input: ListarPppoeOperacionesUseCaseInput,
   ): PppoeOperacionFindManyFilters {
@@ -105,7 +102,6 @@ export class ListarPppoeOperacionesUseCase {
     const limit = input.limit ?? ListarPppoeOperacionesUseCase.DEFAULT_LIMIT;
 
     this.assertPositiveInteger(page, 'page');
-
     this.assertPositiveInteger(limit, 'limit');
 
     if (limit > ListarPppoeOperacionesUseCase.MAX_LIMIT) {
@@ -115,7 +111,6 @@ export class ListarPppoeOperacionesUseCase {
     }
 
     this.assertOptionalPositiveInteger(input.cuentaPppoeId, 'cuentaPppoeId');
-
     this.assertOptionalPositiveInteger(
       input.mikrotikRouterId,
       'mikrotikRouterId',
@@ -127,21 +122,18 @@ export class ListarPppoeOperacionesUseCase {
     );
 
     this.assertOptionalPositiveInteger(input.instalacionId, 'instalacionId');
-
     this.assertOptionalPositiveInteger(
       input.desinstalacionId,
       'desinstalacionId',
     );
 
     this.assertOptionalPositiveInteger(input.iniciadoPorId, 'iniciadoPorId');
-
     this.assertOptionalPositiveInteger(
       input.reautenticadoPorId,
       'reautenticadoPorId',
     );
 
     this.assertOptionalPositiveInteger(input.reintentoDeId, 'reintentoDeId');
-
     this.assertOptionalPositiveInteger(input.numeroIntento, 'numeroIntento');
 
     const fechaDesde = this.normalizeOptionalDate(
@@ -166,54 +158,30 @@ export class ListarPppoeOperacionesUseCase {
 
     return {
       empresaId: input.empresaId,
-
       page,
-
       limit,
-
       search: this.normalizeSearch(input.search),
-
       cuentaPppoeId: input.cuentaPppoeId ?? null,
-
       mikrotikRouterId: input.mikrotikRouterId ?? null,
-
       perfilHomologacionId: input.perfilHomologacionId ?? null,
-
       instalacionId: input.instalacionId ?? null,
-
       desinstalacionId: input.desinstalacionId ?? null,
-
       iniciadoPorId: input.iniciadoPorId ?? null,
-
       reautenticadoPorId: input.reautenticadoPorId ?? null,
-
       reintentoDeId: input.reintentoDeId ?? null,
-
       tipos: this.normalizeArray(input.tipos),
-
       origenes: this.normalizeArray(input.origenes),
-
       canales: this.normalizeArray(input.canales),
-
       estados: this.normalizeArray(input.estados),
-
       requiereReautenticacion: input.requiereReautenticacion ?? null,
-
       numeroIntento: input.numeroIntento ?? null,
-
       fechaDesde,
-
       fechaHasta,
-
       ordenPor: input.ordenPor ?? 'creadoEn',
-
       ordenDireccion: input.ordenDireccion ?? 'desc',
     };
   }
 
-  /**
-   * Limpia una búsqueda vacía.
-   */
   private normalizeSearch(value?: string | null): string | null {
     if (!value) {
       return null;
@@ -224,9 +192,6 @@ export class ListarPppoeOperacionesUseCase {
     return normalized || null;
   }
 
-  /**
-   * Elimina duplicados y convierte arrays vacíos en null.
-   */
   private normalizeArray<T>(values?: T[] | null): T[] | null {
     if (!values || values.length === 0) {
       return null;

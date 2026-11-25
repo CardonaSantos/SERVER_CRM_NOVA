@@ -100,7 +100,6 @@ export class ActualizarPasoPppoeOperacionUseCase {
   constructor(
     @Inject(PPPOE_OPERACION_REPOSITORY)
     private readonly repository: PppoeOperacionRepositoryPort,
-
     @Inject(RELOJ)
     private readonly reloj: RelojPort,
   ) {}
@@ -152,16 +151,12 @@ export class ActualizarPasoPppoeOperacionUseCase {
 
     return {
       operacion,
-
       pasos: pasos.map((currentStep) =>
         currentStep.id === savedStep.id ? savedStep : currentStep,
       ),
     };
   }
 
-  /**
-   * Ejecuta el método correspondiente de la entidad.
-   */
   private applyAction(
     paso: PppoeOperacionPasoEntity,
     input: ActualizarPasoPppoeOperacionUseCaseInput,
@@ -211,9 +206,6 @@ export class ActualizarPasoPppoeOperacionUseCase {
     }
   }
 
-  /**
-   * Verifica que los pasos se procesen en orden.
-   */
   private validateStepSequence(
     pasos: PppoeOperacionPasoEntity[],
     pasoObjetivo: PppoeOperacionPasoEntity,
@@ -248,9 +240,6 @@ export class ActualizarPasoPppoeOperacionUseCase {
     }
   }
 
-  /**
-   * Busca el paso sin realizar una segunda consulta.
-   */
   private findStep(
     pasos: PppoeOperacionPasoEntity[],
     selector: SelectorPasoPppoe,
@@ -262,9 +251,6 @@ export class ActualizarPasoPppoeOperacionUseCase {
     return pasos.find((paso) => paso.orden === selector.orden) ?? null;
   }
 
-  /**
-   * Detecta repeticiones de una acción ya aplicada.
-   */
   private isIdempotentRequest(
     paso: PppoeOperacionPasoEntity,
     input: ActualizarPasoPppoeOperacionUseCaseInput,
@@ -302,12 +288,8 @@ export class ActualizarPasoPppoeOperacionUseCase {
     }
   }
 
-  /**
-   * Valida los campos generales y específicos.
-   */
   private validateInput(input: ActualizarPasoPppoeOperacionUseCaseInput): void {
     this.assertPositiveInteger(input.empresaId, 'empresaId');
-
     this.assertPositiveInteger(input.operacionId, 'operacionId');
 
     this.validateSelector(input.selector);
@@ -316,14 +298,10 @@ export class ActualizarPasoPppoeOperacionUseCase {
 
     if (input.accion === 'MARCAR_FALLIDO') {
       this.assertRequiredString(input.errorCodigo, 'errorCodigo');
-
       this.assertRequiredString(input.errorMensaje, 'errorMensaje');
     }
   }
 
-  /**
-   * Exige pasoId u orden, pero no ambos.
-   */
   private validateSelector(selector: SelectorPasoPppoe): void {
     const hasStepId = selector.pasoId !== undefined;
 

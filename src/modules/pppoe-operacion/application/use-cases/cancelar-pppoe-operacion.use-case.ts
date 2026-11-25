@@ -37,7 +37,6 @@ export class CancelarPppoeOperacionUseCase {
   constructor(
     @Inject(PPPOE_OPERACION_REPOSITORY)
     private readonly repository: PppoeOperacionRepositoryPort,
-
     @Inject(RELOJ)
     private readonly reloj: RelojPort,
   ) {}
@@ -110,11 +109,8 @@ export class CancelarPppoeOperacionUseCase {
 
   private validateInput(input: CancelarPppoeOperacionUseCaseInput): void {
     this.assertPositiveInteger(input.empresaId, 'empresaId');
-
     this.assertPositiveInteger(input.operacionId, 'operacionId');
-
     this.assertMotivo(input.motivo);
-
     this.assertOptionalDate(input.fecha);
   }
 

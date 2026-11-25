@@ -45,15 +45,10 @@ export class PoliticaPlanPasosPppoe {
 
     return tiposPaso.map((tipoPaso, index) => ({
       tipo: tipoPaso,
-
       orden: index + 1,
     }));
   }
 
-  /**
-   * Resuelve el plan técnico correspondiente
-   * al tipo de operación.
-   */
   private static resolverTiposPaso(tipo: TipoOperacionPppoe): TipoPasoPppoe[] {
     switch (tipo) {
       /**
@@ -70,11 +65,8 @@ export class PoliticaPlanPasosPppoe {
       case TipoOperacionPppoe.CREAR_SECRET:
         return [
           TipoPasoPppoe.CONECTAR_ROUTER,
-
           TipoPasoPppoe.BUSCAR_SECRET,
-
           TipoPasoPppoe.AGREGAR_SECRET,
-
           TipoPasoPppoe.CONFIRMAR_SECRET,
         ];
 
@@ -88,11 +80,8 @@ export class PoliticaPlanPasosPppoe {
       case TipoOperacionPppoe.ACTIVAR_SECRET:
         return [
           TipoPasoPppoe.CONECTAR_ROUTER,
-
           TipoPasoPppoe.BUSCAR_SECRET,
-
           TipoPasoPppoe.HABILITAR_SECRET,
-
           TipoPasoPppoe.CONFIRMAR_SECRET,
         ];
 
@@ -112,13 +101,9 @@ export class PoliticaPlanPasosPppoe {
       case TipoOperacionPppoe.SUSPENDER_SERVICIO:
         return [
           TipoPasoPppoe.CONECTAR_ROUTER,
-
           TipoPasoPppoe.BUSCAR_SECRET,
-
           TipoPasoPppoe.DESHABILITAR_SECRET,
-
           TipoPasoPppoe.REMOVER_SESION_ACTIVA,
-
           TipoPasoPppoe.CONFIRMAR_SECRET,
         ];
 
@@ -153,13 +138,9 @@ export class PoliticaPlanPasosPppoe {
       case TipoOperacionPppoe.ELIMINAR_SECRET:
         return [
           TipoPasoPppoe.CONECTAR_ROUTER,
-
           TipoPasoPppoe.BUSCAR_SECRET,
-
           TipoPasoPppoe.ELIMINAR_SECRET,
-
           TipoPasoPppoe.REMOVER_SESION_ACTIVA,
-
           TipoPasoPppoe.CONFIRMAR_SECRET,
         ];
 

@@ -33,9 +33,7 @@ export class PppoeOperacionPrismaQuery implements PppoeOperacionQueryPort {
     filters: PppoeOperacionFindManyFilters,
   ): Promise<PppoeOperacionPaginatedResult> {
     this.assertPositiveInteger(filters.empresaId, 'empresaId');
-
     this.assertPositiveInteger(filters.page, 'page');
-
     this.assertPositiveInteger(filters.limit, 'limit');
 
     const where = this.buildFindManyWhere(filters);
@@ -48,16 +46,11 @@ export class PppoeOperacionPrismaQuery implements PppoeOperacionQueryPort {
       this.prisma.pppoeOperacion.count({
         where,
       }),
-
       this.prisma.pppoeOperacion.findMany({
         where,
-
         include: PPPOE_OPERACION_LIST_INCLUDE,
-
         orderBy,
-
         skip,
-
         take: filters.limit,
       }),
     ]);
@@ -66,14 +59,10 @@ export class PppoeOperacionPrismaQuery implements PppoeOperacionQueryPort {
       data: records.map((record) =>
         PppoeOperacionReadModelPrismaMapper.toListItem(record),
       ),
-
       meta: {
         total,
-
         page: filters.page,
-
         limit: filters.limit,
-
         totalPages: Math.ceil(total / filters.limit),
       },
     };
@@ -89,20 +78,14 @@ export class PppoeOperacionPrismaQuery implements PppoeOperacionQueryPort {
     const found = await this.prisma.pppoeOperacion.findFirst({
       where: {
         id: params.operacionId,
-
         empresaId: params.empresaId,
       },
-
       include: PPPOE_OPERACION_DETAIL_INCLUDE,
     });
 
     return found ? PppoeOperacionReadModelPrismaMapper.toDetail(found) : null;
   }
 
-  /**
-   * CONSTRUCCIÓN DE FILTROS
-   * Construye el where Prisma del listado paginado.
-   */
   private buildFindManyWhere(
     filters: PppoeOperacionFindManyFilters,
   ): Prisma.PppoeOperacionWhereInput {
@@ -112,30 +95,20 @@ export class PppoeOperacionPrismaQuery implements PppoeOperacionQueryPort {
       filters.fechaDesde || filters.fechaHasta
         ? {
             gte: filters.fechaDesde ?? undefined,
-
             lte: filters.fechaHasta ?? undefined,
           }
         : undefined;
 
     return {
       empresaId: filters.empresaId,
-
       cuentaPppoeId: filters.cuentaPppoeId ?? undefined,
-
       mikrotikRouterId: filters.mikrotikRouterId ?? undefined,
-
       perfilHomologacionId: filters.perfilHomologacionId ?? undefined,
-
       instalacionId: filters.instalacionId ?? undefined,
-
       desinstalacionId: filters.desinstalacionId ?? undefined,
-
       iniciadoPorId: filters.iniciadoPorId ?? undefined,
-
       reautenticadoPorId: filters.reautenticadoPorId ?? undefined,
-
       reintentoDeId: filters.reintentoDeId ?? undefined,
-
       tipo:
         filters.tipos && filters.tipos.length > 0
           ? {
@@ -144,7 +117,6 @@ export class PppoeOperacionPrismaQuery implements PppoeOperacionQueryPort {
               ),
             }
           : undefined,
-
       origen:
         filters.origenes && filters.origenes.length > 0
           ? {
@@ -153,7 +125,6 @@ export class PppoeOperacionPrismaQuery implements PppoeOperacionQueryPort {
               ),
             }
           : undefined,
-
       canal:
         filters.canales && filters.canales.length > 0
           ? {
@@ -162,7 +133,6 @@ export class PppoeOperacionPrismaQuery implements PppoeOperacionQueryPort {
               ),
             }
           : undefined,
-
       estado:
         filters.estados && filters.estados.length > 0
           ? {
@@ -171,16 +141,12 @@ export class PppoeOperacionPrismaQuery implements PppoeOperacionQueryPort {
               ),
             }
           : undefined,
-
       requiereReautenticacion: filters.requiereReautenticacion ?? undefined,
-
       numeroIntento: filters.numeroIntento ?? undefined,
-
       /**
        * El rango de fechas se aplica sobre creadoEn.
        */
       creadoEn: fechaFilter,
-
       /**
        * Cada token debe coincidir con al menos uno
        * de los campos buscables.
@@ -192,15 +158,11 @@ export class PppoeOperacionPrismaQuery implements PppoeOperacionQueryPort {
     };
   }
 
-  /**
-   * Construye el OR de campos buscables para un token.
-   */
   private buildSearchTokenWhere(
     token: string,
   ): Prisma.PppoeOperacionWhereInput {
     const contains: Prisma.StringFilter = {
       contains: token,
-
       mode: Prisma.QueryMode.insensitive,
     };
 
@@ -209,31 +171,24 @@ export class PppoeOperacionPrismaQuery implements PppoeOperacionQueryPort {
         {
           claveIdempotencia: contains,
         },
-
         {
           usuarioPppoeSnapshot: contains,
         },
-
         {
           codigoPerfilSnapshot: contains,
         },
-
         {
           routerHostSnapshot: contains,
         },
-
         {
           motivo: contains,
         },
-
         {
           errorCodigo: contains,
         },
-
         {
           errorMensaje: contains,
         },
-
         {
           cuentaPppoe: {
             is: {
@@ -241,7 +196,6 @@ export class PppoeOperacionPrismaQuery implements PppoeOperacionQueryPort {
             },
           },
         },
-
         {
           mikrotikRouter: {
             is: {
@@ -256,7 +210,6 @@ export class PppoeOperacionPrismaQuery implements PppoeOperacionQueryPort {
             },
           },
         },
-
         {
           iniciadoPor: {
             is: {
@@ -274,7 +227,6 @@ export class PppoeOperacionPrismaQuery implements PppoeOperacionQueryPort {
             },
           },
         },
-
         {
           reautenticadoPor: {
             is: {
@@ -292,7 +244,6 @@ export class PppoeOperacionPrismaQuery implements PppoeOperacionQueryPort {
             },
           },
         },
-
         {
           cuentaPppoe: {
             is: {
@@ -325,9 +276,6 @@ export class PppoeOperacionPrismaQuery implements PppoeOperacionQueryPort {
     };
   }
 
-  /**
-   * Construye el ordenamiento solicitado.
-   */
   private buildFindManyOrderBy(
     filters: PppoeOperacionFindManyFilters,
   ): Prisma.PppoeOperacionOrderByWithRelationInput[] {
@@ -380,10 +328,6 @@ export class PppoeOperacionPrismaQuery implements PppoeOperacionQueryPort {
     }
   }
 
-  /**
-   * NORMALIZACIÓN Y VALIDACIONES
-   * Divide la búsqueda en tokens limpios.
-   */
   private normalizeSearchTokens(search?: string | null): string[] {
     if (!search) {
       return [];
@@ -397,21 +341,14 @@ export class PppoeOperacionPrismaQuery implements PppoeOperacionQueryPort {
       .slice(0, 8);
   }
 
-  /**
-   * Valida empresaId y operacionId.
-   */
   private assertCompanyAndOperationIds(params: {
     empresaId: number;
     operacionId: number;
   }): void {
     this.assertPositiveInteger(params.empresaId, 'empresaId');
-
     this.assertPositiveInteger(params.operacionId, 'operacionId');
   }
 
-  /**
-   * Valida un entero positivo.
-   */
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
       throw new Error(`${field} debe ser un entero positivo.`);

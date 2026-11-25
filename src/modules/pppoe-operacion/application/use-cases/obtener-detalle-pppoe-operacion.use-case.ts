@@ -37,7 +37,6 @@ export class ObtenerDetallePppoeOperacionUseCase {
 
     const detalle = await this.query.findDetailById({
       empresaId: input.empresaId,
-
       operacionId: input.operacionId,
     });
 
@@ -50,7 +49,6 @@ export class ObtenerDetallePppoeOperacionUseCase {
 
   private validateInput(input: ObtenerDetallePppoeOperacionUseCaseInput): void {
     this.assertPositiveInteger(input.empresaId, 'empresaId');
-
     this.assertPositiveInteger(input.operacionId, 'operacionId');
   }
 

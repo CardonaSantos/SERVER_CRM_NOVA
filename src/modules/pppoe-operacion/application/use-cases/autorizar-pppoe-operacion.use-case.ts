@@ -57,10 +57,8 @@ export class AutorizarPppoeOperacionUseCase {
   constructor(
     @Inject(PPPOE_OPERACION_REPOSITORY)
     private readonly repository: PppoeOperacionRepositoryPort,
-
     @Inject(OPERADOR_REAUTENTICACION)
     private readonly operadorReautenticacion: OperadorReautenticacionPort,
-
     @Inject(RELOJ)
     private readonly reloj: RelojPort,
   ) {}
@@ -69,16 +67,12 @@ export class AutorizarPppoeOperacionUseCase {
     input: AutorizarPppoeOperacionUseCaseInput,
   ): Promise<PppoeOperacionEntity> {
     this.assertPositiveInteger(input.empresaId, 'empresaId');
-
     this.assertPositiveInteger(input.operacionId, 'operacionId');
-
     this.assertPositiveInteger(input.operadorId, 'operadorId');
-
     this.assertPassword(input.password);
 
     const operacion = await this.repository.findById({
       empresaId: input.empresaId,
-
       operacionId: input.operacionId,
     });
 
@@ -112,9 +106,7 @@ export class AutorizarPppoeOperacionUseCase {
 
     const credencialesValidas = await this.operadorReautenticacion.validar({
       empresaId: input.empresaId,
-
       operadorId: input.operadorId,
-
       /**
        * No utilizar trim.
        */
@@ -124,7 +116,6 @@ export class AutorizarPppoeOperacionUseCase {
     if (!credencialesValidas) {
       operacion.registrarReautenticacionFallida({
         reautenticadoPorId: input.operadorId,
-
         fecha: fechaReautenticacion,
       });
 
@@ -146,16 +137,12 @@ export class AutorizarPppoeOperacionUseCase {
 
     operacion.autorizar({
       reautenticadoPorId: input.operadorId,
-
       fecha: fechaReautenticacion,
     });
 
     return this.repository.saveOperation(operacion);
   }
 
-  /**
-   * Valida identificadores enteros positivos.
-   */
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
       throw new OperacionPppoeDatosInvalidosError(
@@ -164,12 +151,6 @@ export class AutorizarPppoeOperacionUseCase {
     }
   }
 
-  /**
-   * Valida únicamente que la contraseña haya sido enviada.
-   *
-   * No se aplica trim porque los espacios pueden formar
-   * parte legítima de una contraseña.
-   */
   private assertPassword(password: string): void {
     if (typeof password !== 'string' || password.length === 0) {
       throw new OperacionPppoeDatosInvalidosError(

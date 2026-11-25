@@ -32,12 +32,9 @@ export class OperadorReautenticacionPrismaAdapter
     const usuario = await this.prisma.usuario.findFirst({
       where: {
         id: params.operadorId,
-
         empresaId: params.empresaId,
-
         activo: true,
       },
-
       select: {
         contrasena: true,
       },
@@ -63,12 +60,6 @@ export class OperadorReautenticacionPrismaAdapter
     return this.passwordService.verify(params.password, usuario.contrasena);
   }
 
-  /**
-   * Validación defensiva.
-   *
-   * El caso de uso ya valida estos datos, pero el adaptador
-   * también protege su contrato ante llamadas internas.
-   */
   private hasValidParams(
     params: ValidarReautenticacionOperadorParams,
   ): boolean {

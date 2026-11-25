@@ -51,7 +51,6 @@ export class PppoeOperacionPrismaRepository
 
     const created = await this.prisma.pppoeOperacion.create({
       data,
-
       include: {
         pasos: {
           orderBy: {
@@ -63,7 +62,6 @@ export class PppoeOperacionPrismaRepository
 
     return {
       operacion: PppoeOperacionPrismaMapper.toDomain(created),
-
       pasos: created.pasos.map((paso) =>
         PppoeOperacionPasoPrismaMapper.toDomain(paso),
       ),
@@ -104,7 +102,6 @@ export class PppoeOperacionPrismaRepository
       where: {
         id: primitives.id,
       },
-
       data: PppoeOperacionPrismaMapper.toUpdatePersistence(entity),
     });
 
@@ -151,9 +148,7 @@ export class PppoeOperacionPrismaRepository
     const result = await this.prisma.pppoeOperacion.updateMany({
       where: {
         id: params.operacionId,
-
         empresaId: params.empresaId,
-
         /**
          * Compare-and-set.
          *
@@ -164,12 +159,10 @@ export class PppoeOperacionPrismaRepository
           params.estadoEsperado,
         ),
       },
-
       data: {
         estado: PppoeOperacionPrismaEnumMapper.estadoOperacionToPrisma(
           EstadoOperacionPppoe.EJECUTANDO,
         ),
-
         iniciadoEn: primitives.iniciadoEn,
       },
     });
@@ -193,7 +186,6 @@ export class PppoeOperacionPrismaRepository
     const claimed = await this.prisma.pppoeOperacion.findFirst({
       where: {
         id: params.operacionId,
-
         empresaId: params.empresaId,
       },
     });
@@ -233,14 +225,11 @@ export class PppoeOperacionPrismaRepository
     const exists = await this.prisma.pppoeOperacionPaso.findFirst({
       where: {
         id: primitives.id,
-
         operacionId: primitives.operacionId,
-
         operacion: {
           empresaId: params.empresaId,
         },
       },
-
       select: {
         id: true,
       },
@@ -256,7 +245,6 @@ export class PppoeOperacionPrismaRepository
       where: {
         id: primitives.id,
       },
-
       data: PppoeOperacionPasoPrismaMapper.toUpdatePersistence(params.paso),
     });
 
@@ -276,7 +264,6 @@ export class PppoeOperacionPrismaRepository
     const found = await this.prisma.pppoeOperacion.findFirst({
       where: {
         id: params.operacionId,
-
         empresaId: params.empresaId,
       },
     });
@@ -295,10 +282,8 @@ export class PppoeOperacionPrismaRepository
     const found = await this.prisma.pppoeOperacion.findFirst({
       where: {
         id: params.operacionId,
-
         empresaId: params.empresaId,
       },
-
       include: {
         pasos: {
           orderBy: {
@@ -314,7 +299,6 @@ export class PppoeOperacionPrismaRepository
 
     return {
       operacion: PppoeOperacionPrismaMapper.toDomain(found),
-
       pasos: found.pasos.map((paso) =>
         PppoeOperacionPasoPrismaMapper.toDomain(paso),
       ),
@@ -330,17 +314,13 @@ export class PppoeOperacionPrismaRepository
     params: BuscarPppoeOperacionPasoPorIdParams,
   ): Promise<PppoeOperacionPasoEntity | null> {
     this.assertPositiveInteger(params.empresaId, 'empresaId');
-
     this.assertPositiveInteger(params.operacionId, 'operacionId');
-
     this.assertPositiveInteger(params.pasoId, 'pasoId');
 
     const found = await this.prisma.pppoeOperacionPaso.findFirst({
       where: {
         id: params.pasoId,
-
         operacionId: params.operacionId,
-
         operacion: {
           empresaId: params.empresaId,
         },
@@ -358,17 +338,13 @@ export class PppoeOperacionPrismaRepository
     params: BuscarPppoeOperacionPasoPorOrdenParams,
   ): Promise<PppoeOperacionPasoEntity | null> {
     this.assertPositiveInteger(params.empresaId, 'empresaId');
-
     this.assertPositiveInteger(params.operacionId, 'operacionId');
-
     this.assertPositiveInteger(params.orden, 'orden');
 
     const found = await this.prisma.pppoeOperacionPaso.findFirst({
       where: {
         operacionId: params.operacionId,
-
         orden: params.orden,
-
         operacion: {
           empresaId: params.empresaId,
         },
@@ -398,7 +374,6 @@ export class PppoeOperacionPrismaRepository
       where: {
         empresaId_claveIdempotencia: {
           empresaId: params.empresaId,
-
           claveIdempotencia,
         },
       },
@@ -416,7 +391,6 @@ export class PppoeOperacionPrismaRepository
     params: BuscarPppoeOperacionEnCursoParams,
   ): Promise<PppoeOperacionEntity | null> {
     this.assertPositiveInteger(params.empresaId, 'empresaId');
-
     this.assertPositiveInteger(params.cuentaPppoeId, 'cuentaPppoeId');
 
     if (params.estados.length === 0) {
@@ -428,20 +402,16 @@ export class PppoeOperacionPrismaRepository
     const found = await this.prisma.pppoeOperacion.findFirst({
       where: {
         empresaId: params.empresaId,
-
         cuentaPppoeId: params.cuentaPppoeId,
-
         tipo:
           params.tipo === null || params.tipo === undefined
             ? undefined
             : PppoeOperacionPrismaEnumMapper.tipoOperacionToPrisma(params.tipo),
-
         estado: {
           in: params.estados.map((estado) =>
             PppoeOperacionPrismaEnumMapper.estadoOperacionToPrisma(estado),
           ),
         },
-
         id:
           params.excluirOperacionId === null ||
           params.excluirOperacionId === undefined
@@ -450,7 +420,6 @@ export class PppoeOperacionPrismaRepository
                 not: params.excluirOperacionId,
               },
       },
-
       orderBy: {
         creadoEn: 'desc',
       },
@@ -470,13 +439,11 @@ export class PppoeOperacionPrismaRepository
     params: BuscarUltimoIntentoPppoeParams,
   ): Promise<PppoeOperacionEntity | null> {
     this.assertPositiveInteger(params.empresaId, 'empresaId');
-
     this.assertPositiveInteger(params.operacionRaizId, 'operacionRaizId');
 
     const found = await this.prisma.pppoeOperacion.findFirst({
       where: {
         empresaId: params.empresaId,
-
         OR: [
           {
             id: params.operacionRaizId,
@@ -486,7 +453,6 @@ export class PppoeOperacionPrismaRepository
           },
         ],
       },
-
       orderBy: [
         {
           numeroIntento: 'desc',
@@ -508,21 +474,17 @@ export class PppoeOperacionPrismaRepository
     params: BuscarUltimaOperacionCuentaPppoeParams,
   ): Promise<PppoeOperacionEntity | null> {
     this.assertPositiveInteger(params.empresaId, 'empresaId');
-
     this.assertPositiveInteger(params.cuentaPppoeId, 'cuentaPppoeId');
 
     const found = await this.prisma.pppoeOperacion.findFirst({
       where: {
         empresaId: params.empresaId,
-
         cuentaPppoeId: params.cuentaPppoeId,
-
         tipo:
           params.tipo === null || params.tipo === undefined
             ? undefined
             : PppoeOperacionPrismaEnumMapper.tipoOperacionToPrisma(params.tipo),
       },
-
       orderBy: [
         {
           creadoEn: 'desc',
@@ -536,21 +498,14 @@ export class PppoeOperacionPrismaRepository
     return found ? PppoeOperacionPrismaMapper.toDomain(found) : null;
   }
 
-  /**
-   * Valida empresaId y operacionId.
-   */
   private assertCompanyAndOperationIds(params: {
     empresaId: number;
     operacionId: number;
   }): void {
     this.assertPositiveInteger(params.empresaId, 'empresaId');
-
     this.assertPositiveInteger(params.operacionId, 'operacionId');
   }
 
-  /**
-   * Valida un entero positivo.
-   */
   private assertPositiveInteger(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
       throw new Error(`${field} debe ser un entero positivo.`);

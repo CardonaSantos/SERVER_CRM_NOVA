@@ -84,7 +84,6 @@ export class CrearReintentoPppoeOperacionUseCase {
   constructor(
     @Inject(PPPOE_OPERACION_REPOSITORY)
     private readonly repository: PppoeOperacionRepositoryPort,
-
     @Inject(RELOJ)
     private readonly reloj: RelojPort,
   ) {}
@@ -96,7 +95,6 @@ export class CrearReintentoPppoeOperacionUseCase {
 
     const operacionSolicitada = await this.repository.findById({
       empresaId: input.empresaId,
-
       operacionId: input.operacionId,
     });
 
@@ -112,7 +110,6 @@ export class CrearReintentoPppoeOperacionUseCase {
      */
     const existingOperation = await this.repository.findByIdempotencyKey({
       empresaId: input.empresaId,
-
       claveIdempotencia: input.claveIdempotencia,
     });
 
@@ -130,9 +127,7 @@ export class CrearReintentoPppoeOperacionUseCase {
 
       return {
         ...existingAggregate,
-
         creada: false,
-
         /*
          * No es necesario para auditoría porque una
          * operación existente no vuelve a auditarse.
@@ -147,13 +142,12 @@ export class CrearReintentoPppoeOperacionUseCase {
      */
     const ultimoIntento = await this.repository.findLatestAttempt({
       empresaId: input.empresaId,
-
       operacionRaizId,
     });
 
     if (!ultimoIntento) {
       throw new OperacionPppoeEstadoInvalidoError(
-        `No se encontró la cadena de intentos de la operación ${operacionRaizId}.`,
+        'No se encontró la cadena de intentos de la operación.',
       );
     }
 
@@ -167,9 +161,7 @@ export class CrearReintentoPppoeOperacionUseCase {
 
     const runningOperation = await this.repository.findRunningOperation({
       empresaId: input.empresaId,
-
       cuentaPppoeId: ultimoIntento.cuentaPppoeId,
-
       estados: [
         EstadoOperacionPppoe.PENDIENTE,
         EstadoOperacionPppoe.AUTORIZADA,
@@ -179,7 +171,7 @@ export class CrearReintentoPppoeOperacionUseCase {
 
     if (runningOperation) {
       throw new OperacionPppoeEnCursoError(
-        `La cuenta PPPoE ya tiene una operación en curso: ${runningOperation.id}.`,
+        'La cuenta PPPoE ya tiene una operación en curso.',
       );
     }
 
@@ -189,50 +181,32 @@ export class CrearReintentoPppoeOperacionUseCase {
 
     const createdAggregate = await this.repository.createWithSteps({
       operacion: reintento,
-
       pasos,
     });
 
     return {
       ...createdAggregate,
-
       creada: true,
-
       operacionAnteriorId: ultimoIntentoId,
     };
   }
 
-  /**
-   * Crea la nueva entidad usando las reglas
-   * de la operación anterior.
-   */
   private createRetryEntity(
     ultimoIntento: PppoeOperacionEntity,
     input: CrearReintentoPppoeOperacionUseCaseInput,
   ): PppoeOperacionEntity {
     return ultimoIntento.crearReintento({
       fecha: this.reloj.ahora(),
-
       claveIdempotencia: input.claveIdempotencia,
-
       iniciadoPorId: input.iniciadoPorId,
-
       origen: input.origen,
-
       canal: input.canal,
-
       requiereReautenticacion: input.requiereReautenticacion,
-
       motivo: input.motivo,
-
       perfilHomologacionId: input.perfilHomologacionId,
-
       codigoPerfilSnapshot: input.codigoPerfilSnapshot,
-
       mikrotikRouterId: input.mikrotikRouterId,
-
       routerHostSnapshot: input.routerHostSnapshot,
-
       routerPuertoSnapshot: input.routerPuertoSnapshot,
     });
   }
@@ -247,9 +221,6 @@ export class CrearReintentoPppoeOperacionUseCase {
     return operacion.id;
   }
 
-  /**
-   * Determina la operación raíz de la cadena.
-   */
   private resolveRootOperationId(operacion: PppoeOperacionEntity): number {
     if (operacion.reintentoDeId !== null) {
       return operacion.reintentoDeId;
@@ -262,10 +233,6 @@ export class CrearReintentoPppoeOperacionUseCase {
     return operacion.id;
   }
 
-  /**
-   * Carga el agregado de una solicitud
-   * idempotente ya procesada.
-   */
   private async loadExistingAggregate(
     empresaId: number,
     operacion: PppoeOperacionEntity,
@@ -276,7 +243,6 @@ export class CrearReintentoPppoeOperacionUseCase {
 
     const aggregate = await this.repository.findAggregateById({
       empresaId,
-
       operacionId: operacion.id,
     });
 
@@ -287,10 +253,6 @@ export class CrearReintentoPppoeOperacionUseCase {
     return aggregate;
   }
 
-  /**
-   * Comprueba que la clave existente pertenezca
-   * a la misma cadena e intención.
-   */
   private assertCompatibleIdempotentRetry(
     existing: PppoeOperacionEntity,
     requested: PppoeOperacionEntity,
@@ -315,9 +277,7 @@ export class CrearReintentoPppoeOperacionUseCase {
 
   private validateInput(input: CrearReintentoPppoeOperacionUseCaseInput): void {
     this.assertPositiveInteger(input.empresaId, 'empresaId');
-
     this.assertPositiveInteger(input.operacionId, 'operacionId');
-
     this.assertRequiredString(input.claveIdempotencia, 'claveIdempotencia');
 
     if (input.iniciadoPorId !== null) {
@@ -330,9 +290,7 @@ export class CrearReintentoPppoeOperacionUseCase {
     );
 
     this.assertPositiveInteger(input.mikrotikRouterId, 'mikrotikRouterId');
-
     this.assertRequiredString(input.routerHostSnapshot, 'routerHostSnapshot');
-
     this.assertPort(input.routerPuertoSnapshot);
   }
 

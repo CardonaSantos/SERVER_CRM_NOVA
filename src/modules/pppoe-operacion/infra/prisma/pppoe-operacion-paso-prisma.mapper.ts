@@ -20,7 +20,7 @@ export class PppoeOperacionPasoPrismaMapper {
   /**
    * Hidrata una entidad de dominio desde un registro Prisma.
    *
-   * PppoeOperacionPasoEntity.restore() vuelve a validar:
+   * PppoeOperacionPasoEntity.hydrate() vuelve a validar:
    *
    * - identificadores;
    * - estado;
@@ -30,33 +30,20 @@ export class PppoeOperacionPasoPrismaMapper {
    * - textos técnicos.
    */
   static toDomain(raw: PrismaPppoeOperacionPaso): PppoeOperacionPasoEntity {
-    return PppoeOperacionPasoEntity.restore({
+    return PppoeOperacionPasoEntity.hydrate({
       id: raw.id,
-
       operacionId: raw.operacionId,
-
       tipo: PppoeOperacionPrismaEnumMapper.tipoPasoToDomain(raw.tipo),
-
       orden: raw.orden,
-
       estado: PppoeOperacionPrismaEnumMapper.estadoPasoToDomain(raw.estado),
-
       comandoSanitizado: raw.comandoSanitizado,
-
       respuestaSanitizada: raw.respuestaSanitizada,
-
       errorCodigo: raw.errorCodigo,
-
       errorMensaje: raw.errorMensaje,
-
       iniciadoEn: raw.iniciadoEn,
-
       finalizadoEn: raw.finalizadoEn,
-
       duracionMs: raw.duracionMs,
-
       creadoEn: raw.creadoEn,
-
       actualizadoEn: raw.actualizadoEn,
     });
   }
@@ -81,31 +68,19 @@ export class PppoeOperacionPasoPrismaMapper {
 
     return {
       operacionId: primitives.operacionId,
-
       tipo: PppoeOperacionPrismaEnumMapper.tipoPasoToPrisma(primitives.tipo),
-
       orden: primitives.orden,
-
       estado: PppoeOperacionPrismaEnumMapper.estadoPasoToPrisma(
         primitives.estado,
       ),
-
       comandoSanitizado: primitives.comandoSanitizado,
-
       respuestaSanitizada: primitives.respuestaSanitizada,
-
       errorCodigo: primitives.errorCodigo,
-
       errorMensaje: primitives.errorMensaje,
-
       iniciadoEn: primitives.iniciadoEn,
-
       finalizadoEn: primitives.finalizadoEn,
-
       duracionMs: primitives.duracionMs,
-
       creadoEn: primitives.creadoEn,
-
       actualizadoEn: primitives.actualizadoEn,
     } satisfies Prisma.PppoeOperacionPasoUncheckedCreateInput;
   }
@@ -124,25 +99,16 @@ export class PppoeOperacionPasoPrismaMapper {
 
     return {
       tipo: PppoeOperacionPrismaEnumMapper.tipoPasoToPrisma(input.tipo),
-
       orden: input.orden,
-
       estado: PppoeOperacionPrismaEnumMapper.estadoPasoToPrisma(
         EstadoPasoPppoe.PENDIENTE,
       ),
-
       comandoSanitizado: null,
-
       respuestaSanitizada: null,
-
       errorCodigo: null,
-
       errorMensaje: null,
-
       iniciadoEn: null,
-
       finalizadoEn: null,
-
       duracionMs: null,
     } satisfies Prisma.PppoeOperacionPasoCreateWithoutOperacionInput;
   }
@@ -176,19 +142,12 @@ export class PppoeOperacionPasoPrismaMapper {
       estado: PppoeOperacionPrismaEnumMapper.estadoPasoToPrisma(
         primitives.estado,
       ),
-
       comandoSanitizado: primitives.comandoSanitizado,
-
       respuestaSanitizada: primitives.respuestaSanitizada,
-
       errorCodigo: primitives.errorCodigo,
-
       errorMensaje: primitives.errorMensaje,
-
       iniciadoEn: primitives.iniciadoEn,
-
       finalizadoEn: primitives.finalizadoEn,
-
       duracionMs: primitives.duracionMs,
     } satisfies Prisma.PppoeOperacionPasoUncheckedUpdateInput;
   }

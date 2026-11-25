@@ -22,12 +22,9 @@ import {
  */
 const tipoOperacionToDomainMap = {
   [PrismaTipoOperacionPppoe.CREAR_SECRET]: TipoOperacionPppoe.CREAR_SECRET,
-
   [PrismaTipoOperacionPppoe.ACTIVAR_SECRET]: TipoOperacionPppoe.ACTIVAR_SECRET,
-
   [PrismaTipoOperacionPppoe.SUSPENDER_SERVICIO]:
     TipoOperacionPppoe.SUSPENDER_SERVICIO,
-
   [PrismaTipoOperacionPppoe.ELIMINAR_SECRET]:
     TipoOperacionPppoe.ELIMINAR_SECRET,
 } satisfies Record<PrismaTipoOperacionPppoe, TipoOperacionPppoe>;
@@ -38,17 +35,11 @@ const tipoOperacionToDomainMap = {
  */
 const estadoOperacionToDomainMap = {
   [PrismaEstadoOperacionPppoe.PENDIENTE]: EstadoOperacionPppoe.PENDIENTE,
-
   [PrismaEstadoOperacionPppoe.AUTORIZADA]: EstadoOperacionPppoe.AUTORIZADA,
-
   [PrismaEstadoOperacionPppoe.EJECUTANDO]: EstadoOperacionPppoe.EJECUTANDO,
-
   [PrismaEstadoOperacionPppoe.EXITOSA]: EstadoOperacionPppoe.EXITOSA,
-
   [PrismaEstadoOperacionPppoe.PARCIAL]: EstadoOperacionPppoe.PARCIAL,
-
   [PrismaEstadoOperacionPppoe.FALLIDA]: EstadoOperacionPppoe.FALLIDA,
-
   [PrismaEstadoOperacionPppoe.CANCELADA]: EstadoOperacionPppoe.CANCELADA,
 } satisfies Record<PrismaEstadoOperacionPppoe, EstadoOperacionPppoe>;
 
@@ -58,9 +49,7 @@ const estadoOperacionToDomainMap = {
  */
 const origenOperacionToDomainMap = {
   [PrismaOrigenOperacionPppoe.OPERADOR]: OrigenOperacionPppoe.OPERADOR,
-
   [PrismaOrigenOperacionPppoe.SISTEMA]: OrigenOperacionPppoe.SISTEMA,
-
   [PrismaOrigenOperacionPppoe.COBRANZA_AUTOMATICA]:
     OrigenOperacionPppoe.COBRANZA_AUTOMATICA,
 } satisfies Record<PrismaOrigenOperacionPppoe, OrigenOperacionPppoe>;
@@ -71,9 +60,7 @@ const origenOperacionToDomainMap = {
  */
 const canalOperacionToDomainMap = {
   [PrismaCanalOperacionPppoe.SSH]: CanalOperacionPppoe.SSH,
-
   [PrismaCanalOperacionPppoe.ROUTEROS_API]: CanalOperacionPppoe.ROUTEROS_API,
-
   [PrismaCanalOperacionPppoe.MANUAL]: CanalOperacionPppoe.MANUAL,
 } satisfies Record<PrismaCanalOperacionPppoe, CanalOperacionPppoe>;
 
@@ -83,20 +70,13 @@ const canalOperacionToDomainMap = {
  */
 const tipoPasoToDomainMap = {
   [PrismaTipoPasoPppoe.CONECTAR_ROUTER]: TipoPasoPppoe.CONECTAR_ROUTER,
-
   [PrismaTipoPasoPppoe.BUSCAR_SECRET]: TipoPasoPppoe.BUSCAR_SECRET,
-
   [PrismaTipoPasoPppoe.AGREGAR_SECRET]: TipoPasoPppoe.AGREGAR_SECRET,
-
   [PrismaTipoPasoPppoe.CONFIRMAR_SECRET]: TipoPasoPppoe.CONFIRMAR_SECRET,
-
   [PrismaTipoPasoPppoe.HABILITAR_SECRET]: TipoPasoPppoe.HABILITAR_SECRET,
-
   [PrismaTipoPasoPppoe.DESHABILITAR_SECRET]: TipoPasoPppoe.DESHABILITAR_SECRET,
-
   [PrismaTipoPasoPppoe.REMOVER_SESION_ACTIVA]:
     TipoPasoPppoe.REMOVER_SESION_ACTIVA,
-
   [PrismaTipoPasoPppoe.ELIMINAR_SECRET]: TipoPasoPppoe.ELIMINAR_SECRET,
 } satisfies Record<PrismaTipoPasoPppoe, TipoPasoPppoe>;
 
@@ -106,13 +86,9 @@ const tipoPasoToDomainMap = {
  */
 const estadoPasoToDomainMap = {
   [PrismaEstadoPasoPppoe.PENDIENTE]: EstadoPasoPppoe.PENDIENTE,
-
   [PrismaEstadoPasoPppoe.EJECUTANDO]: EstadoPasoPppoe.EJECUTANDO,
-
   [PrismaEstadoPasoPppoe.EXITOSO]: EstadoPasoPppoe.EXITOSO,
-
   [PrismaEstadoPasoPppoe.FALLIDO]: EstadoPasoPppoe.FALLIDO,
-
   [PrismaEstadoPasoPppoe.OMITIDO]: EstadoPasoPppoe.OMITIDO,
 } satisfies Record<PrismaEstadoPasoPppoe, EstadoPasoPppoe>;
 
@@ -126,12 +102,9 @@ const estadoPasoToDomainMap = {
  */
 const tipoOperacionToPrismaMap = {
   [TipoOperacionPppoe.CREAR_SECRET]: PrismaTipoOperacionPppoe.CREAR_SECRET,
-
   [TipoOperacionPppoe.ACTIVAR_SECRET]: PrismaTipoOperacionPppoe.ACTIVAR_SECRET,
-
   [TipoOperacionPppoe.SUSPENDER_SERVICIO]:
     PrismaTipoOperacionPppoe.SUSPENDER_SERVICIO,
-
   [TipoOperacionPppoe.ELIMINAR_SECRET]:
     PrismaTipoOperacionPppoe.ELIMINAR_SECRET,
 } satisfies Record<TipoOperacionPppoe, PrismaTipoOperacionPppoe>;
@@ -142,17 +115,11 @@ const tipoOperacionToPrismaMap = {
  */
 const estadoOperacionToPrismaMap = {
   [EstadoOperacionPppoe.PENDIENTE]: PrismaEstadoOperacionPppoe.PENDIENTE,
-
   [EstadoOperacionPppoe.AUTORIZADA]: PrismaEstadoOperacionPppoe.AUTORIZADA,
-
   [EstadoOperacionPppoe.EJECUTANDO]: PrismaEstadoOperacionPppoe.EJECUTANDO,
-
   [EstadoOperacionPppoe.EXITOSA]: PrismaEstadoOperacionPppoe.EXITOSA,
-
   [EstadoOperacionPppoe.PARCIAL]: PrismaEstadoOperacionPppoe.PARCIAL,
-
   [EstadoOperacionPppoe.FALLIDA]: PrismaEstadoOperacionPppoe.FALLIDA,
-
   [EstadoOperacionPppoe.CANCELADA]: PrismaEstadoOperacionPppoe.CANCELADA,
 } satisfies Record<EstadoOperacionPppoe, PrismaEstadoOperacionPppoe>;
 
@@ -162,9 +129,7 @@ const estadoOperacionToPrismaMap = {
  */
 const origenOperacionToPrismaMap = {
   [OrigenOperacionPppoe.OPERADOR]: PrismaOrigenOperacionPppoe.OPERADOR,
-
   [OrigenOperacionPppoe.SISTEMA]: PrismaOrigenOperacionPppoe.SISTEMA,
-
   [OrigenOperacionPppoe.COBRANZA_AUTOMATICA]:
     PrismaOrigenOperacionPppoe.COBRANZA_AUTOMATICA,
 } satisfies Record<OrigenOperacionPppoe, PrismaOrigenOperacionPppoe>;
@@ -175,9 +140,7 @@ const origenOperacionToPrismaMap = {
  */
 const canalOperacionToPrismaMap = {
   [CanalOperacionPppoe.SSH]: PrismaCanalOperacionPppoe.SSH,
-
   [CanalOperacionPppoe.ROUTEROS_API]: PrismaCanalOperacionPppoe.ROUTEROS_API,
-
   [CanalOperacionPppoe.MANUAL]: PrismaCanalOperacionPppoe.MANUAL,
 } satisfies Record<CanalOperacionPppoe, PrismaCanalOperacionPppoe>;
 
@@ -187,20 +150,13 @@ const canalOperacionToPrismaMap = {
  */
 const tipoPasoToPrismaMap = {
   [TipoPasoPppoe.CONECTAR_ROUTER]: PrismaTipoPasoPppoe.CONECTAR_ROUTER,
-
   [TipoPasoPppoe.BUSCAR_SECRET]: PrismaTipoPasoPppoe.BUSCAR_SECRET,
-
   [TipoPasoPppoe.AGREGAR_SECRET]: PrismaTipoPasoPppoe.AGREGAR_SECRET,
-
   [TipoPasoPppoe.CONFIRMAR_SECRET]: PrismaTipoPasoPppoe.CONFIRMAR_SECRET,
-
   [TipoPasoPppoe.HABILITAR_SECRET]: PrismaTipoPasoPppoe.HABILITAR_SECRET,
-
   [TipoPasoPppoe.DESHABILITAR_SECRET]: PrismaTipoPasoPppoe.DESHABILITAR_SECRET,
-
   [TipoPasoPppoe.REMOVER_SESION_ACTIVA]:
     PrismaTipoPasoPppoe.REMOVER_SESION_ACTIVA,
-
   [TipoPasoPppoe.ELIMINAR_SECRET]: PrismaTipoPasoPppoe.ELIMINAR_SECRET,
 } satisfies Record<TipoPasoPppoe, PrismaTipoPasoPppoe>;
 
@@ -210,13 +166,9 @@ const tipoPasoToPrismaMap = {
  */
 const estadoPasoToPrismaMap = {
   [EstadoPasoPppoe.PENDIENTE]: PrismaEstadoPasoPppoe.PENDIENTE,
-
   [EstadoPasoPppoe.EJECUTANDO]: PrismaEstadoPasoPppoe.EJECUTANDO,
-
   [EstadoPasoPppoe.EXITOSO]: PrismaEstadoPasoPppoe.EXITOSO,
-
   [EstadoPasoPppoe.FALLIDO]: PrismaEstadoPasoPppoe.FALLIDO,
-
   [EstadoPasoPppoe.OMITIDO]: PrismaEstadoPasoPppoe.OMITIDO,
 } satisfies Record<EstadoPasoPppoe, PrismaEstadoPasoPppoe>;
 
