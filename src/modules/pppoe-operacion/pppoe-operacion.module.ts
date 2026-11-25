@@ -16,6 +16,7 @@ import { PPPOE_OPERACION_QUERY } from './domain/ports/pppoe-operacion-query.port
 import { PPPOE_OPERACION_REPOSITORY } from './domain/ports/pppoe-operacion-repository.port';
 
 import { OperadorReautenticacionPrismaAdapter } from './infra/prisma/operador-reautenticacion-prisma.adapter';
+import { PppoeOperacionPrismaQuery } from './infra/prisma/pppoe-operacion-prisma.query';
 import { PppoeOperacionPrismaRepository } from './infra/prisma/pppoe-operacion-prisma.repository';
 import { CrearPppoeOperacionUseCase } from './application/use-cases/crear-pppoe-operacion.use-case';
 import { PppoeOperacionFacade } from './application/facade/pppoe-operacion.facade';
@@ -61,7 +62,7 @@ const useCases = [
      */
     {
       provide: PPPOE_OPERACION_QUERY,
-      useExisting: PppoeOperacionPrismaRepository,
+      useClass: PppoeOperacionPrismaQuery,
     },
 
     /**
