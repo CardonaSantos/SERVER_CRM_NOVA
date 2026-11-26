@@ -32,31 +32,24 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { TwilioModule } from './twilio/twilio.module';
 import { CustomerPayloadModule } from './customer-payload/customer-payload.module';
 import { SectorModule } from './sector/sector.module';
-import { MensajeModule } from './mensaje/mensaje.module';
 import { ContratoClienteModule } from './contrato-cliente/contrato-cliente.module';
 import { MikroTikModule } from './mikro-tik/mikro-tik.module';
 import { TwilioApiModule } from './twilio-api/twilio-api.module';
 import { MetasTicketsModule } from './metas-tickets/metas-tickets.module';
-import { MetricasTicketsModule } from './metricas-tickets/metricas-tickets.module';
 import { FacturaEliminacionModule } from './factura-eliminacion/factura-eliminacion.module';
 import { BanruralIntegrationModule } from './banrural-integration/banrural-integration.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { AlmacenamientoMediaModule } from './modules/almacenamiento-media/almacenamiento-media.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
-import { PerfilUsuarioModule } from './perfil-usuario/perfil-usuario.module';
 import { TicketSolucionesModule } from './ticket-soluciones/ticket-soluciones.module';
 import { SshMikrotikConnectionModule } from './ssh-mikrotik-connection/ssh-mikrotik-connection.module';
-import { OltModule } from './olt/olt.module';
 import { FireworksIaModule } from './fireworks-ia/fireworks-ia.module';
 import { WhatsappApiMetaModule } from './whatsapp-api-meta/whatsapp-api-meta.module';
 import { TwilioMensajesModule } from './twilio-mensajes/twilio-mensajes.module';
-import { OpenIaModule } from './open-ia/open-ia.module';
 import { GatewayModule } from './web-sockets/websocket.module';
 import { TicketResumenModule } from './ticket-resumen/ticket-resumen.module';
 import { CloudApiMetaModule } from './cloud-api-meta/cloud-api-meta.module';
-import { BroadcastModule } from './broadcast/broadcast.module';
 import { BotFunctionsModule } from './bot-functions/bot-functions.module';
-import { NotificacionesUsuarioModule } from './notificaciones-usuario/notificaciones-usuario.module';
 import { CreditoModule } from './credito/credito.module';
 import { CustomerNetworkConfigModule } from './customer-network-config/customer-network-config.module';
 import { NetworkServiceModule } from './network-service/network-service.module';
@@ -123,31 +116,24 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     TwilioModule,
     CustomerPayloadModule,
     SectorModule,
-    MensajeModule,
     ContratoClienteModule,
     MikroTikModule,
     TwilioApiModule,
     MetasTicketsModule,
-    MetricasTicketsModule,
     FacturaEliminacionModule,
     BanruralIntegrationModule,
     ReportsModule,
     AlmacenamientoMediaModule,
     NotificacionesModule,
-    PerfilUsuarioModule,
     TicketSolucionesModule,
     SshMikrotikConnectionModule,
-    OltModule,
     FireworksIaModule,
     WhatsappApiMetaModule,
     TwilioMensajesModule,
-    OpenIaModule,
     GatewayModule,
     TicketResumenModule,
     CloudApiMetaModule,
-    BroadcastModule,
     BotFunctionsModule,
-    NotificacionesUsuarioModule,
     CreditoModule,
     CustomerNetworkConfigModule,
     NetworkServiceModule,
