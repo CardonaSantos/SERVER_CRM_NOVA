@@ -17,6 +17,10 @@ import {
   TecnicoTrackingRepositoryPort,
 } from '../../domain/ports/tecnico-tracking-repository.port';
 import {
+  ULTIMA_UBICACION_QUERY,
+  UltimaUbicacionQueryPort,
+} from '../../domain/ports/ultima-ubicacion-query.port';
+import {
   REAL_TIME_LOCATION_TRANSACTION,
   RealTimeLocationTransactionPort,
 } from '../ports/real-time-location-transaction.port';
@@ -61,6 +65,8 @@ export class RegistrarUbicacionTecnicoUseCase {
     private readonly consulta: TecnicoTrackingQueryPort,
     @Inject(TECNICO_TRACKING_REALTIME)
     private readonly realtime: TecnicoTrackingRealtimePort,
+    @Inject(ULTIMA_UBICACION_QUERY)
+    private readonly ultimas: UltimaUbicacionQueryPort,
     @Inject(RELOJ) private readonly reloj: RelojPort,
   ) {}
 
@@ -124,6 +130,7 @@ export class RegistrarUbicacionTecnicoUseCase {
     }
 
     await this.emitirRealtimeSinFallar(input.tecnicoId);
+    await this.emitirUltimaUbicacionSinFallar(input.tecnicoId);
 
     return {
       ubicacionId: guardado.ubicacion.id,
@@ -151,6 +158,22 @@ export class RegistrarUbicacionTecnicoUseCase {
     } catch (error) {
       this.logger.error(
         'La ubicación fue persistida, pero no pudo emitirse la actualización realtime.',
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+  }
+
+  /** Mantiene al día el mapa que parte de `real-time/last-locations`. */
+  private async emitirUltimaUbicacionSinFallar(
+    usuarioId: number,
+  ): Promise<void> {
+    try {
+      const actual = await this.ultimas.findByUsuario(usuarioId);
+
+      if (actual) await this.realtime.emitUltimaUbicacion(actual);
+    } catch (error) {
+      this.logger.error(
+        'La ubicación fue persistida, pero no pudo emitirse la posición actual.',
         error instanceof Error ? error.stack : String(error),
       );
     }

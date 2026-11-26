@@ -8,6 +8,7 @@ import {
 } from '../../application/ports/tecnico-tracking-realtime.port';
 
 import { TecnicoTrackingRealtimeView } from '../../domain/read-models/tecnico-tracking.read-model';
+import { UltimaUbicacionReadModel } from '../../domain/read-models/ultima-ubicacion.read-model';
 
 @Injectable()
 export class TecnicoTrackingWebSocketAdapter
@@ -32,6 +33,17 @@ export class TecnicoTrackingWebSocketAdapter
        */
       this.logger.error(
         'No fue posible emitir la ubicación realtime del técnico.',
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+  }
+
+  async emitUltimaUbicacion(payload: UltimaUbicacionReadModel): Promise<void> {
+    try {
+      await this.webSocket.emitUltimaUbicacion(payload);
+    } catch (error) {
+      this.logger.error(
+        'No fue posible emitir la posición actual del usuario.',
         error instanceof Error ? error.stack : String(error),
       );
     }

@@ -10,6 +10,7 @@ import { RealTimeLocationMapDto } from 'src/real-time-location/dto/dto-shape';
 import type { TecnicoTrackingRealtimeView } from 'src/modules/real-time-location/public/real-time-location.types';
 
 import type { TecnicoTrackingStateChangedPayload } from 'src/modules/real-time-location/public/real-time-location.types';
+import type { UltimaUbicacionReadModel } from 'src/modules/real-time-location/public/real-time-location.types';
 
 /*
  * =========================================================
@@ -299,6 +300,15 @@ export class WebSocketServices {
     this.gateway.emitToEmpresa(
       WebSocketServices.TRACKING_EMPRESA_ID,
       'tracking:state-changed',
+      payload,
+    );
+  }
+
+  /** Evento del mapa del dashboard: posición actual de un usuario. */
+  async emitUltimaUbicacion(payload: UltimaUbicacionReadModel): Promise<void> {
+    this.gateway.emitToEmpresa(
+      WebSocketServices.TRACKING_EMPRESA_ID,
+      'emit:location:real-time',
       payload,
     );
   }
