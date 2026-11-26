@@ -1,9 +1,9 @@
 import { EstadoCliente } from '@prisma/client';
+import { Type } from 'class-transformer';
 import {
   IsString,
   IsOptional,
   IsNotEmpty,
-  IsPhoneNumber,
   IsDate,
   IsInt,
   IsArray,
@@ -14,113 +14,167 @@ import {
 export class CreateClienteInternetDto {
   // Datos básicos
 
+  /** Nombres del cliente */
   @IsString()
   @IsNotEmpty()
   nombre: string;
 
+  /** Apellidos */
+  @IsOptional()
+  @IsString()
+  apellidos?: string;
+
+  /** Estado operativo inicial; por defecto ACTIVO */
+  @IsOptional()
   @IsEnum(EstadoCliente)
-  @IsOptional()
-  estado: EstadoCliente;
+  estado?: EstadoCliente;
 
+  /** IP asignada (puede ir vacía) */
   @IsString()
-  @IsNotEmpty()
   ip: string;
-  @IsString()
-  gateway: string;
-  @IsString()
-  mascara: string;
 
-  @IsString()
-  @IsNotEmpty()
-  apellidos: string;
-
-  @IsPhoneNumber()
-  telefono: string;
-
-  @IsString()
-  @IsNotEmpty()
-  direccion: string;
-
-  @IsString()
-  @IsNotEmpty()
-  dpi: string;
-
-  @IsString()
+  /** Puerta de enlace */
   @IsOptional()
+  @IsString()
+  gateway?: string;
+
+  /** Máscara de red */
+  @IsOptional()
+  @IsString()
+  mascara?: string;
+
+  /** Teléfono tal como se escribe en el formulario */
+  @IsOptional()
+  @IsString()
+  telefono?: string;
+
+  /** Dirección */
+  @IsOptional()
+  @IsString()
+  direccion?: string;
+
+  /** Documento de identificación */
+  @IsOptional()
+  @IsString()
+  dpi?: string;
+
+  /** Observaciones */
+  @IsOptional()
+  @IsString()
   observaciones?: string;
 
-  @IsString()
-  @IsNotEmpty()
-  contactoReferenciaNombre: string;
-
-  @IsPhoneNumber()
-  contactoReferenciaTelefono: string;
-
+  /** Nombre del contacto de referencia */
   @IsOptional()
+  @IsString()
+  contactoReferenciaNombre?: string;
+
+  /** Teléfono del contacto de referencia */
+  @IsOptional()
+  @IsString()
+  contactoReferenciaTelefono?: string;
+
+  /** Sector */
+  @IsOptional()
+  @IsInt()
   sectorId?: number;
 
   // Datos del servicio
-  @IsString()
-  @IsNotEmpty()
-  contrasenaWifi: string;
 
-  @IsString()
-  @IsNotEmpty()
-  ssidRouter: string;
-
-  @IsDate()
+  /** Contraseña WiFi del router del cliente */
   @IsOptional()
-  fechaInstalacion: Date | null;
+  @IsString()
+  contrasenaWifi?: string;
 
-  // Cambié IsUUID() por IsInt para que coincida con el modelo Prisma
-  @IsInt()
-  asesorId: number;
+  /** Nombre de la red WiFi */
+  @IsOptional()
+  @IsString()
+  ssidRouter?: string;
 
-  //PARA SERVICIOS
+  /** Fecha de instalación (ISO 8601) */
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  fechaInstalacion?: Date | null;
+
+  /** Asesor */
+  @IsOptional()
   @IsInt()
+  asesorId?: number;
+
+  /** Servicios adicionales contratados */
   @IsArray()
+  @IsInt({ each: true })
   servicesIds: number[];
-  //PARA WIFI
+
+  /** Plan de internet */
   @IsInt()
-  @IsArray()
   servicioWifiId: number;
 
+  /** Municipio */
   @IsInt()
   municipioId: number;
 
+  /** Departamento */
   @IsInt()
   departamentoId: number;
 
+  /** Latitud y longitud */
+  @IsOptional()
   @IsArray()
-  coordenadas: string[];
+  coordenadas?: string[];
 
+  /** Empresa */
   @IsInt()
   empresaId: number;
 
+  /** Se acepta pero no se usa */
+  @IsOptional()
   @IsInt()
-  serviceId: number;
+  serviceId?: number;
+
+  /** Zona de facturación */
   @IsInt()
   zonaFacturacionId: number;
 
+  /** Se acepta pero no se usa */
+  @IsOptional()
   @IsInt()
-  userId: number;
+  userId?: number;
 
+  /** Router asignado */
+  @IsOptional()
   @IsInt()
-  mkSelected: number;
+  mkSelected?: number;
 
   /** Se acepta pero se ignora: el control del router es solo por PPPoE. */
+  @IsOptional()
   @IsBoolean()
-  activateOnMk: boolean = false;
+  activateOnMk?: boolean;
 
   //DATOS PARA EL CONTRATO
+
+  /** Se acepta pero no se usa */
+  @IsOptional()
   @IsInt()
-  clienteId: number;
+  clienteId?: number;
+
+  /** Número de contrato; si va vacío no se crea contrato */
+  @IsOptional()
   @IsString()
-  idContrato: string;
+  idContrato?: string;
+
+  /** Fecha de firma (ISO 8601) */
+  @IsOptional()
   @IsString()
-  fechaFirma: string;
+  fechaFirma?: string;
+
+  /** Archivo del contrato */
+  @IsOptional()
   @IsString()
-  archivoContrato: string;
+  archivoContrato?: string;
+
+  /** Observaciones del contrato */
+  @IsOptional()
   @IsString()
-  observacionesContrato: string;
+  observacionesContrato?: string;
 }
