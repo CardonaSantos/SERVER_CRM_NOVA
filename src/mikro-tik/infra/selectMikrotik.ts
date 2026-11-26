@@ -8,7 +8,7 @@ export const SelectMikrotik = {
   descripcion: true,
   _count: {
     select: {
-      clientesInternet: true,
+      clientesInternet: { where: { isEliminado: false } },
     },
   },
   empresa: {

@@ -18,6 +18,7 @@ export class ClientesInternetQueryRepoPrisma
   }) {
     const rows = await this.prisma.clienteInternet.findMany({
       where: {
+        isEliminado: false,
         // si tienes “activo” en tu schema, úsalo:
         // ...(params.activos !== undefined ? { activo: params.activos } : {}),
         ...(params.sectorId ? { sectorId: params.sectorId } : {}),

@@ -107,7 +107,7 @@ export class FacturacionZonaService {
         zonas.map(async (zona) => {
           const [clientesCount, facturasCount] = await Promise.all([
             this.prisma.clienteInternet.count({
-              where: { facturacionZonaId: zona.id },
+              where: { facturacionZonaId: zona.id, isEliminado: false },
             }),
             this.prisma.facturaInternet.count({
               where: { facturacionZonaId: zona.id },
@@ -142,7 +142,8 @@ export class FacturacionZonaService {
         zonas.map(async (zona) => {
           const clientesCount = await this.prisma.clienteInternet.count({
             where: {
-              facturacionZonaId: zona.id, // Filtramos los clientes por la zona
+              facturacionZonaId: zona.id,
+              isEliminado: false, // Filtramos los clientes por la zona
             },
           });
 
@@ -182,7 +183,7 @@ export class FacturacionZonaService {
           _count: {
             select: {
               facturas: true,
-              clientes: true,
+              clientes: { where: { isEliminado: false } },
             },
           },
         },

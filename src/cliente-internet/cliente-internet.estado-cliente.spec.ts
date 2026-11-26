@@ -20,6 +20,8 @@ function crearEdicion(guardado: { desinstaladoEn: Date | null }) {
         ...guardado,
       }),
       update: jest.fn().mockResolvedValue({ id: 7 }),
+      // Ninguno eliminado.
+      count: jest.fn().mockResolvedValue(0),
     },
   };
   const prisma = {

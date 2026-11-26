@@ -46,6 +46,7 @@ describe('Tabla de clientes: resumen de cobranza', () => {
     });
     expect(contar).toHaveBeenCalledWith({
       where: {
+        isEliminado: false,
         estadoCobranza: 'MOROSO',
         estadoCliente: { not: 'DESINSTALADO' },
       },

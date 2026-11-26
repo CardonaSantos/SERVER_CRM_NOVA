@@ -993,6 +993,7 @@ export class DashboardService {
       // Clientes por estado
       this.prisma.clienteInternet.count({
         where: {
+          isEliminado: false,
           estadoCliente: {
             in: ['ACTIVO', 'PENDIENTE_ACTIVO', 'PAGO_PENDIENTE', 'ATRASADO'],
           },
@@ -1000,18 +1001,20 @@ export class DashboardService {
       }),
       this.prisma.clienteInternet.count({ where: conCobranza('MOROSO') }),
       this.prisma.clienteInternet.count({
-        where: { estadoCliente: 'SUSPENDIDO' },
+        where: { isEliminado: false, estadoCliente: 'SUSPENDIDO' },
       }),
 
       // Services (placeholder: ajusta si tienes otro modelo)
-      this.prisma.clienteInternet.count({ where: { estadoCliente: 'ACTIVO' } }),
       this.prisma.clienteInternet.count({
-        where: { estadoCliente: 'SUSPENDIDO' },
+        where: { isEliminado: false, estadoCliente: 'ACTIVO' },
+      }),
+      this.prisma.clienteInternet.count({
+        where: { isEliminado: false, estadoCliente: 'SUSPENDIDO' },
       }),
 
       // Clientes añadidos este mes
       this.prisma.clienteInternet.count({
-        where: { creadoEn: { gte: inicioMes } },
+        where: { isEliminado: false, creadoEn: { gte: inicioMes } },
       }),
 
       // Último ticket creado
@@ -1028,11 +1031,11 @@ export class DashboardService {
       }),
 
       // Clientes totales registrados
-      this.prisma.clienteInternet.count(),
+      this.prisma.clienteInternet.count({ where: { isEliminado: false } }),
 
       // Clientes nuevos (nuevamente, igual que 'clientsAddedThisMonth')
       this.prisma.clienteInternet.count({
-        where: { creadoEn: { gte: inicioMes } },
+        where: { isEliminado: false, creadoEn: { gte: inicioMes } },
       }),
 
       // Facturas
@@ -1102,6 +1105,7 @@ export class DashboardService {
 
       this.prisma.clienteInternet.count({
         where: {
+          isEliminado: false,
           estadoCliente: 'DESINSTALADO',
         },
       }),
@@ -1609,6 +1613,7 @@ export class DashboardService {
 
       const desinstalacionesMes = await this.prisma.clienteInternet.findMany({
         where: {
+          isEliminado: false,
           estadoCliente: 'DESINSTALADO',
           desinstaladoEn: {
             gte: inicioMes,
@@ -1663,6 +1668,7 @@ export class DashboardService {
 
       const instalacionesMes = await this.prisma.clienteInternet.findMany({
         where: {
+          isEliminado: false,
           creadoEn: {
             gte: inicioMes,
             lte: finMes,
@@ -1993,6 +1999,7 @@ export class DashboardService {
             },
           },
           clientes: {
+            where: { isEliminado: false },
             select: {
               id: true,
             },

@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   HttpException,
   Injectable,
   InternalServerErrorException,
@@ -8,10 +9,8 @@ import {
 import { CreateClienteInternetDto } from './dto/create-cliente-internet.dto';
 import { UpdateClienteInternetDto } from './dto/update-cliente-internet.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { updateCustomerService } from './dto/update-customer-service';
 import {
   CategoriaMedia,
-  ClienteInternet,
   EstadoCliente,
   EstadoCobranzaCliente,
   EstadoMedia,
@@ -43,9 +42,6 @@ const strip = (s: string) =>
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase();
-
-const ACCENT_FROM = 'ÁÀÂÄÃáàâäãÉÈÊËéèêëÍÌÎÏíìîïÓÒÔÖÕóòôöõÚÙÛÜúùûüÇçÑñÝŸýÿ';
-const ACCENT_TO = 'AAAAAaaaaaEEEEeeeeIIIIiiiiOOOOOoooooUUUUuuuuCcNnYYyy';
 
 const esServicioMikrotikActivo = (estado?: EstadoServicioMikrotik) =>
   estado === EstadoServicioMikrotik.ACTIVO;
@@ -389,90 +385,6 @@ export class ClienteInternetService {
       console.log('Error al vincular cliente al sector:', error);
       throw new Error('Error al vincular cliente al sector');
     }
-  }
-
-  async updateClienteAddService(updateCustomerService: updateCustomerService) {
-    // console.log(
-    //   'Entrando al servicio de actualizar con servicio',
-    //   updateCustomerService,
-    // );
-
-    return await this.prisma.$transaction(async (tx) => {
-      const { customerId, serviceId } = updateCustomerService;
-
-      // Verificar si el cliente existe
-      const customer = await tx.clienteInternet.findUnique({
-        where: { id: customerId },
-      });
-
-      if (!customer) {
-        throw new NotFoundException('Cliente no encontrado');
-      }
-
-      // Verificar si el servicio existe
-      const service = await tx.servicio.findUnique({
-        where: { id: serviceId },
-      });
-
-      if (!service) {
-        throw new NotFoundException('Servicio no encontrado');
-      }
-
-      // ✅ Crear la relación en ClienteServicio (Tabla intermedia)
-      const customerService = await tx.clienteServicio.create({
-        data: {
-          clienteId: customer.id,
-          servicioId: service.id,
-          fechaInicio: new Date(),
-          estado: 'ACTIVO',
-        },
-      });
-
-      return customerService;
-    });
-  }
-
-  async findAllClientsWithRelations(): Promise<ClienteInternet[]> {
-    return await this.prisma.clienteInternet.findMany({
-      include: {
-        // Relaciones de ubicación y organización
-        municipio: true,
-        departamento: true,
-        empresa: true,
-        ruta: true,
-        ubicacion: true,
-
-        // Otras relaciones del cliente
-        IP: true,
-        ticketSoporte: true,
-        saldoCliente: true,
-        fotos: true,
-        facturacionZona: true,
-
-        // Relación para servicios que no son de wifi
-        clienteServicios: {
-          include: {
-            servicio: true,
-          },
-        },
-
-        // Relación 1:1 para el servicio de wifi
-        servicioInternet: {
-          select: {
-            id: true,
-            nombre: true,
-            velocidad: true,
-            precio: true,
-          },
-        },
-
-        // Relaciones de facturación
-        facturaInternet: true,
-        PagoFacturaInternet: true,
-        factura: true,
-        pagoFactura: true,
-      },
-    });
   }
 
   /**
@@ -990,6 +902,7 @@ export class ClienteInternetService {
   async findCustomersToTicket() {
     try {
       const customers = await this.prisma.clienteInternet.findMany({
+        where: { isEliminado: false },
         select: {
           id: true,
           nombre: true,
@@ -1413,7 +1326,9 @@ export class ClienteInternetService {
     }
 
     //Construir condiciones dinámicas
-    const andConditions: Prisma.ClienteInternetWhereInput[] = [];
+    const andConditions: Prisma.ClienteInternetWhereInput[] = [
+      { isEliminado: false },
+    ];
 
     for (const term of terms) {
       andConditions.push({
@@ -1542,6 +1457,7 @@ export class ClienteInternetService {
 
         this.prisma.clienteInternet.count({
           where: {
+            isEliminado: false,
             estadoCliente: 'ACTIVO',
           },
         }),
@@ -1800,122 +1716,6 @@ export class ClienteInternetService {
     }
   }
 
-  async removeOneCustomer(id: number) {
-    const clienteId = id;
-    console.log('entrando a eliminar: ', id);
-
-    const userDeleted = await this.prisma.$transaction(async (tx) => {
-      // Verificamos si existe el cliente
-      const cliente = await tx.clienteInternet.findUnique({
-        where: { id: clienteId },
-        select: {
-          IP: {
-            select: {
-              direccionIp: true,
-              mascara: true,
-            },
-          },
-          mikrotikRouterId: true,
-        },
-      });
-
-      if (!cliente) {
-        throw new InternalServerErrorException(
-          `No se encontró un cliente con el id: ${clienteId}`,
-        );
-      }
-
-      // 1. Eliminar recordatorios de pago relacionados
-      await tx.recordatorioPago.deleteMany({
-        where: { clienteId },
-      });
-
-      // 2. Eliminar facturas relacionadas
-      await tx.facturaInternet.deleteMany({
-        where: { clienteId },
-      });
-
-      // 3. Eliminar IP(s) asociada(s)
-      await tx.iP.deleteMany({
-        where: { clienteId },
-      });
-
-      // 4. Eliminar saldo del cliente
-      await tx.saldoCliente.deleteMany({
-        where: { clienteId },
-      });
-
-      // 5. Eliminar clienteServicios (servicios contratados)
-      await tx.clienteServicio.deleteMany({
-        where: { clienteId },
-      });
-
-      // 6. Eliminar posible contrato asociado
-      // Ajusta el nombre de la tabla/servicio si es diferente
-      await tx.contratoFisico.deleteMany({
-        where: { clienteId },
-      });
-
-      // 7. Eliminar ubicación asociada
-      await tx.ubicacion.deleteMany({
-        where: { clienteId },
-      });
-
-      // 8. Finalmente, eliminar el cliente
-      const c = await tx.clienteInternet.delete({
-        where: { id: clienteId },
-        select: {
-          mikrotikRouterId: true,
-          IP: {
-            select: {
-              id: true,
-              direccionIp: true,
-            },
-          },
-        },
-      });
-
-      return {
-        message: `Cliente con id ${clienteId} y todas sus relaciones han sido eliminados correctamente.`,
-        cliente: c,
-      };
-    });
-
-    return userDeleted;
-  }
-
-  //COMENTARIO PARA PUSHEAR
-
-  async deleteClientsWithRelations() {
-    try {
-      return await this.prisma.$transaction(async (tx) => {
-        console.log(
-          '🚨 Eliminando relaciones relacionadas a clienteInternet...',
-        );
-
-        await tx.recordatorioPago.deleteMany({});
-        await tx.facturaInternet.deleteMany({});
-        await tx.iP.deleteMany({});
-        await tx.saldoCliente.deleteMany({});
-        await tx.clienteServicio.deleteMany({});
-        await tx.contratoFisico.deleteMany({});
-        await tx.ubicacion.deleteMany({});
-
-        console.log('🧨 Eliminando clientes...');
-        const result = await tx.clienteInternet.deleteMany({});
-
-        console.log(`✅ ${result.count} clientes eliminados correctamente`);
-
-        return {
-          message: `Se eliminaron ${result.count} clientes y todas sus relaciones`,
-        };
-      });
-    } catch (error) {
-      console.error('❌ Error al eliminar masivamente:', error);
-      throw new Error('No se pudo eliminar a los clientes y sus relaciones');
-    }
-  }
-
   async getCustomerToEdit(clienteInternetId: number) {
     try {
       const customer = await this.prisma.clienteInternet.findUnique({
@@ -2039,41 +1839,6 @@ export class ClienteInternetService {
     } catch (error) {
       console.error('Error al obtener cliente:', error);
       throw new Error('No se pudo obtener la información del cliente.');
-    }
-  }
-
-  async getCustomerWithMedia(clienteId: number) {
-    try {
-      const client = await this.prisma.clienteInternet.findUnique({
-        where: {
-          id: clienteId,
-        },
-        select: {
-          medias: {
-            select: {
-              id: true,
-              cdnUrl: true,
-              titulo: true,
-              descripcion: true,
-              categoria: true,
-              album: true,
-              cliente: true,
-              estado: true,
-              etiqueta: true,
-              key: true,
-              notas: true,
-              tipo: true,
-              subidoPor: true,
-              orden: true,
-            },
-          },
-        },
-      });
-      return client;
-    } catch (error) {
-      this.logger.error('Error generado en módulo cliente: ', error);
-      if (error instanceof HttpException) throw error;
-      throw new InternalServerErrorException('Fatal Error: Error inesperado');
     }
   }
 
@@ -2205,6 +1970,13 @@ export class ClienteInternetService {
       });
 
       if (!clienteBefore) throw new NotFoundException('Cliente no encontrado');
+
+      const eliminado = await tx.clienteInternet.count({
+        where: { id, isEliminado: true },
+      });
+      if (eliminado > 0) {
+        throw new ConflictException('El cliente está eliminado.');
+      }
 
       const guardado = await tx.clienteInternet.findUnique({
         where: { id },

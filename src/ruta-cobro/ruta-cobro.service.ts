@@ -58,6 +58,7 @@ export class RutaCobroService {
       const clientesFound = await tx.clienteInternet.findMany({
         where: {
           id: { in: clientesIds },
+          isEliminado: false,
         },
         select: { id: true },
       });
@@ -210,6 +211,7 @@ export class RutaCobroService {
             },
           },
           clientes: {
+            where: { isEliminado: false },
             select: {
               id: true,
               nombre: true,
@@ -359,6 +361,7 @@ export class RutaCobroService {
             },
           },
           clientes: {
+            where: { isEliminado: false },
             select: {
               id: true,
               nombre: true,
@@ -487,6 +490,7 @@ export class RutaCobroService {
         },
         empresa: { select: { id: true, nombre: true } },
         clientes: {
+          where: { isEliminado: false },
           select: {
             id: true,
             nombre: true,
@@ -654,8 +658,9 @@ export class RutaCobroService {
               rol: true,
             },
           },
-          _count: { select: { clientes: true } },
+          _count: { select: { clientes: { where: { isEliminado: false } } } },
           clientes: {
+            where: { isEliminado: false },
             select: { id: true, nombre: true, apellidos: true },
           },
         },
@@ -706,6 +711,7 @@ export class RutaCobroService {
           },
           observaciones: true,
           clientes: {
+            where: { isEliminado: false },
             select: {
               fechaInstalacion: true,
               id: true,

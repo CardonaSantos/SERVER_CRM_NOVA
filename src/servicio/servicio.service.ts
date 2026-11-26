@@ -62,7 +62,7 @@ export class ServicioService {
           actualizadoEn: true,
           _count: {
             select: {
-              clientes: true,
+              clientes: { where: { cliente: { isEliminado: false } } },
             },
           },
         },

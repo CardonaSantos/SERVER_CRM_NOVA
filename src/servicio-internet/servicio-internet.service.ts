@@ -36,7 +36,7 @@ export class ServicioInternetService {
         include: {
           // Relación 1:1 con clienteInternet
           // clienteInternet: true, // Relacionado 1:1 con el cliente
-          clientes: true,
+          clientes: { where: { isEliminado: false } },
         },
       });
     });
@@ -76,6 +76,7 @@ export class ServicioInternetService {
       // Obtenemos conteo de clientes por servicio usando groupBy
       const counts = await this.prisma.clienteInternet.groupBy({
         by: ['servicioInternetId'],
+        where: { isEliminado: false },
         _count: { servicioInternetId: true },
       });
 

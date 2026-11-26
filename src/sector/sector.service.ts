@@ -98,6 +98,7 @@ export class SectorService {
       const sectores = await this.prisma.sector.findMany({
         include: {
           clientes: {
+            where: { isEliminado: false },
             select: {
               id: true,
               nombre: true,
@@ -147,7 +148,7 @@ export class SectorService {
           nombre: true,
           _count: {
             select: {
-              clientes: true, // Esto cuenta el número de clientes relacionados con cada sector
+              clientes: { where: { isEliminado: false } }, // Esto cuenta el número de clientes relacionados con cada sector
             },
           },
         },

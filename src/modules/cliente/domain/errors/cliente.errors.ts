@@ -30,6 +30,17 @@ export class ClienteEliminadoError extends DomainError {
   }
 }
 
+export class ClienteConAccesoVigenteError extends DomainError {
+  readonly codigo = 'CLIENTE_CON_ACCESO_VIGENTE';
+  readonly tipo: TipoErrorDominio = 'CONFLICTO';
+
+  constructor() {
+    super(
+      'El cliente todavía tiene servicio de internet activo. Desinstálalo antes de eliminarlo.',
+    );
+  }
+}
+
 export class ClienteModificadoError extends DomainError {
   readonly codigo = 'CLIENTE_MODIFICADO';
   readonly tipo: TipoErrorDominio = 'CONFLICTO';

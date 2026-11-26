@@ -1,6 +1,10 @@
 import { DashboardService } from './dashboard.service';
 
-const SIN_DESINSTALADOS = { not: 'DESINSTALADO' };
+const MOROSOS = {
+  isEliminado: false,
+  estadoCobranza: 'MOROSO',
+  estadoCliente: { not: 'DESINSTALADO' },
+};
 
 describe('DashboardService.getDashboardData: contadores de cobranza', () => {
   it('cuenta pendientes, atrasados y morosos por estadoCobranza, sin desinstalados', async () => {
@@ -37,15 +41,12 @@ describe('DashboardService.getDashboardData: contadores de cobranza', () => {
       delinquentClients: 2,
     });
     expect(contar).toHaveBeenCalledWith({
-      where: { estadoCobranza: 'MOROSO', estadoCliente: SIN_DESINSTALADOS },
+      where: MOROSOS,
     });
     // La mora en dinero se suma sobre los mismos clientes.
     const filtrosDeMora = sumar.mock.calls
       .map(([args]) => args.where.cliente)
       .filter(Boolean);
-    expect(filtrosDeMora).toEqual([
-      { estadoCobranza: 'MOROSO', estadoCliente: SIN_DESINSTALADOS },
-      { estadoCobranza: 'MOROSO', estadoCliente: SIN_DESINSTALADOS },
-    ]);
+    expect(filtrosDeMora).toEqual([MOROSOS, MOROSOS]);
   });
 });

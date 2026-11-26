@@ -1,4 +1,3 @@
-import { EndpointRetirado } from 'src/common/endpoint-retirado/endpoint-retirado.decorator';
 import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 import {
@@ -8,17 +7,14 @@ import {
   Body,
   Patch,
   Param,
-  Delete,
   ParseIntPipe,
   Query,
-  Res,
   ValidationPipe,
   Logger,
 } from '@nestjs/common';
 import { ClienteInternetService } from './cliente-internet.service';
 import { CreateClienteInternetDto } from './dto/create-cliente-internet.dto';
 import { UpdateClienteInternetDto } from './dto/update-cliente-internet.dto';
-import { updateCustomerService } from './dto/update-customer-service';
 import { GetClientesRutaQueryDto } from './pagination/cliente-internet.dto';
 import { GetCustomersQueryDto } from './dto/query-table';
 import { CustomersCampaingQuery } from './query/customers-campaing-query.dto';
@@ -40,11 +36,6 @@ export class ClienteInternetController {
   @Post('/create-new-customer')
   create(@Body() createClienteInternetDto: CreateClienteInternetDto) {
     return this.clienteInternetService.create(createClienteInternetDto);
-  }
-
-  @Get()
-  findAll() {
-    return this.clienteInternetService.findAllClientsWithRelations();
   }
 
   @Get('/customer-to-table')
@@ -100,34 +91,6 @@ export class ClienteInternetController {
     );
 
     return this.clienteInternetService.getCustomersToRuta(q);
-  }
-
-  @Get('/cliente-media-dev/:id')
-  getCustomerWithMedia(@Param('id', ParseIntPipe) id: number) {
-    return this.clienteInternetService.getCustomerWithMedia(id);
-  }
-
-  @Delete('/delete-all')
-  @EndpointRetirado()
-  deleteAllClientesInternet() {
-    return this.clienteInternetService.deleteClientsWithRelations();
-  }
-
-  /**
-   * ELIMINACION COMPLETA DEL CLIENTE
-   * @param id
-   * @returns
-   */
-  @Delete('/delete-one-customer/:id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.clienteInternetService.removeOneCustomer(id);
-  }
-
-  @Patch('/customer-update-service')
-  updateCustomerService(@Body() updateCustomerService: updateCustomerService) {
-    return this.clienteInternetService.updateClienteAddService(
-      updateCustomerService,
-    );
   }
 
   /**

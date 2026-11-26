@@ -90,6 +90,7 @@ export class ClienteDesinstalacionContextoPrismaQuery
     const record = await this.prisma.clienteInternet.findUnique({
       where: {
         id: clienteId,
+        isEliminado: false,
       },
 
       select: contextoCreacionSelect,
