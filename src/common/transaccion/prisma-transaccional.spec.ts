@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 import { PrismaTransaccional } from './prisma-transaccional.service';
@@ -36,6 +37,22 @@ describe('PrismaTransaccional', () => {
 
     expect(visto).toBe(tx);
     expect(unidad.cliente).not.toBe(tx);
+  });
+
+  it('unirseA hace que el trabajo use la transacción abierta por código legacy', async () => {
+    const { unidad, prisma, tx } = armar();
+
+    const visto = await unidad.unirseA(
+      tx as unknown as Prisma.TransactionClient,
+      async () => {
+        await Promise.resolve();
+        return unidad.cliente;
+      },
+    );
+
+    expect(visto).toBe(tx);
+    expect(unidad.cliente).toBe(prisma);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('una unidad dentro de otra se une a la abierta', async () => {
