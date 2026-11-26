@@ -1,21 +1,30 @@
-import { IsNumber, IsString, IsUUID } from 'class-validator';
+import { IsInt, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class DeleteFacturaDto {
-  @IsUUID()
+  /** Id de la factura a eliminar */
+  @IsInt()
   facturaId: number;
 
+  /** Usuario que elimina */
   @IsNumber()
   userId: number;
 
-  @IsString()
-  estadoFactura: string;
-
-  @IsString()
-  fechaEmision: string;
-
-  @IsString()
-  fechaVencimiento: string;
-
+  /** Motivo de la eliminación */
   @IsString()
   motivo: string;
+
+  /** Se acepta pero no se usa */
+  @IsOptional()
+  @IsString()
+  estadoFactura?: string;
+
+  /** Se acepta pero no se usa */
+  @IsOptional()
+  @IsString()
+  fechaEmision?: string;
+
+  /** Se acepta pero no se usa */
+  @IsOptional()
+  @IsString()
+  fechaVencimiento?: string;
 }
