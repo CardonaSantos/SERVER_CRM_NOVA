@@ -11,8 +11,6 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Actor, ActorHttp } from 'src/auth/decoradores/actor.decorator';
-import { Roles } from 'src/auth/decoradores/roles.decorator';
-import { ROLES_OFICINA, ROLES_TECNICO } from 'src/auth/roles/grupos-roles';
 import { FinalizarTecnicoTrackingUseCase } from '../../application/use-cases/finalizar-tecnico-tracking.use-case';
 import { IniciarTecnicoTrackingUseCase } from '../../application/use-cases/iniciar-tecnico-tracking.use-case';
 import { ListarHistorialTecnicoTrackingUseCase } from '../../application/use-cases/listar-historial-tecnico-tracking.use-case';
@@ -26,6 +24,10 @@ import { ListarUbicacionesTrackingQueryDto } from '../dto/listar-ubicaciones-tra
 import { RegistrarUbicacionTecnicoDto } from '../dto/registrar-ubicacion-tecnico.dto';
 import { RealTimeLocationPresenter } from '../presenters/real-time-location.presenter';
 
+/**
+ * Sin `@Roles`: basta una sesión (decisión del dueño, 26-nov-2026). Las acciones
+ * de tracking siempre recaen sobre el usuario autenticado.
+ */
 @ApiTags('real-time-location')
 @Controller('real-time-location')
 export class RealTimeLocationController {
@@ -42,7 +44,6 @@ export class RealTimeLocationController {
 
   /** El técnico enciende su tracking (inicia o reanuda su jornada). */
   @Post('tracking/start')
-  @Roles(...ROLES_TECNICO)
   async iniciar(@Actor() actor: ActorHttp) {
     return RealTimeLocationPresenter.inicio(
       await this.iniciarTracking.execute({ tecnicoId: actor.usuarioId }),
@@ -51,7 +52,6 @@ export class RealTimeLocationController {
 
   /** Estado actual del tracking del técnico autenticado. */
   @Get('tracking/me')
-  @Roles(...ROLES_TECNICO)
   async miEstado(@Actor() actor: ActorHttp) {
     return RealTimeLocationPresenter.estadoTecnico(
       await this.obtenerEstadoTracking.execute({ tecnicoId: actor.usuarioId }),
@@ -60,7 +60,6 @@ export class RealTimeLocationController {
 
   /** Punto GPS y heartbeat del técnico. */
   @Post('tracking/location')
-  @Roles(...ROLES_TECNICO)
   async registrarPunto(
     @Actor() actor: ActorHttp,
     @Body() dto: RegistrarUbicacionTecnicoDto,
@@ -81,7 +80,6 @@ export class RealTimeLocationController {
 
   /** El técnico apaga su tracking. */
   @Post('tracking/:sesionTrackingId/finish')
-  @Roles(...ROLES_TECNICO)
   @HttpCode(HttpStatus.OK)
   async finalizar(
     @Actor() actor: ActorHttp,
@@ -97,7 +95,6 @@ export class RealTimeLocationController {
 
   /** Mapa: técnicos con tracking activo. */
   @Get('tracking/realtime')
-  @Roles(...ROLES_OFICINA)
   async tecnicosEnVivo() {
     return RealTimeLocationPresenter.realtimeLista(
       await this.listarRealtime.execute(),
@@ -106,7 +103,6 @@ export class RealTimeLocationController {
 
   /** Jornadas con su resumen de tracking. */
   @Get('tracking/history')
-  @Roles(...ROLES_OFICINA)
   async historial(@Query() query: ListarHistorialTrackingQueryDto) {
     return RealTimeLocationPresenter.historial(
       await this.listarHistorial.execute({
@@ -123,7 +119,6 @@ export class RealTimeLocationController {
 
   /** Detalle de una jornada con sus sesiones. */
   @Get('tracking/attendance/:asistenciaId')
-  @Roles(...ROLES_OFICINA)
   async detalleJornada(
     @Param('asistenciaId', ParseIntPipe) asistenciaId: number,
   ) {
@@ -134,7 +129,6 @@ export class RealTimeLocationController {
 
   /** Recorrido GPS de una jornada. */
   @Get('tracking/attendance/:asistenciaId/locations')
-  @Roles(...ROLES_OFICINA)
   async recorrido(
     @Param('asistenciaId', ParseIntPipe) asistenciaId: number,
     @Query() query: ListarUbicacionesTrackingQueryDto,
