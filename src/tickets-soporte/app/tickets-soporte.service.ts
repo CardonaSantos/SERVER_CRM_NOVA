@@ -10,7 +10,6 @@ import { CreateTicketsSoporteDto } from '../dto/create-tickets-soporte.dto';
 import { UpdateTicketsSoporteDto } from '../dto/update-tickets-soporte.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CloseTicketDto } from '../dto/close-ticket.dto';
-import { GenerarMensajeSoporteService } from '../generar-mensaje-soporte/generar-mensaje-soporte.service';
 import { MetasTicketsService } from 'src/metas-tickets/metas-tickets.service';
 import { UpdateTicketStatusDto } from '../dto/updateStatus';
 import { WebSocketServices } from 'src/web-sockets/websocket.service';
@@ -331,7 +330,6 @@ export class TicketsSoporteService {
     @Inject(TICKET_SOPORTE_REPOSITORY)
     private readonly ticketsRepo: TicketSoporteRepository,
     private readonly prisma: PrismaService,
-    // private readonly twilioMessageSuport: GenerarMensajeSoporteService,
     private readonly metasTicketSoporte: MetasTicketsService,
     private readonly ws: WebSocketServices,
 

@@ -14,8 +14,7 @@ async function bootstrap() {
   /*
    * Cabeceras de seguridad nativas de Nest 12 (mismos defaults que Helmet 8,
    * que reemplaza). Debe llamarse antes de listen(). CORP en cross-origin:
-   * el front vive en otro dominio y carga medios servidos por la API
-   * (p. ej. twilio-api).
+   * el front vive en otro dominio y puede cargar recursos servidos por la API.
    */
   app.useSecurityHeaders({
     crossOriginResourcePolicy: { policy: 'cross-origin' },

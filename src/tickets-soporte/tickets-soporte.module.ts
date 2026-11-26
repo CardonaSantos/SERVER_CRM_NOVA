@@ -2,8 +2,6 @@ import { Module } from '@nestjs/common';
 import { TicketsSoporteService } from './app/tickets-soporte.service';
 import { TicketsSoporteController } from './presentation/tickets-soporte.controller';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { GenerarMensajeSoporteService } from './generar-mensaje-soporte/generar-mensaje-soporte.service';
-import { TwilioService } from 'src/twilio/twilio.service';
 import { MetasTicketsService } from 'src/metas-tickets/metas-tickets.service';
 import { GatewayModule } from 'src/web-sockets/websocket.module';
 import { TICKET_SOPORTE_REPOSITORY } from './domain/ticket-soporte-repository';
@@ -25,8 +23,6 @@ import { TicketSoporteHistorialModule } from 'src/modules/ticket-soporte-histori
   providers: [
     TicketsSoporteService,
     PrismaService,
-    GenerarMensajeSoporteService,
-    TwilioService,
     // CloudApiMetaService,
     MetasTicketsService,
     {

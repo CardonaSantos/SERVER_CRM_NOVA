@@ -29,11 +29,9 @@ import { ZonaFacturacionCronModule } from './zona-facturacion-cron/zona-facturac
 import { IdContratoModule } from './id-contrato/id-contrato.module';
 import { RutaCobroModule } from './ruta-cobro/ruta-cobro.module';
 import { DashboardModule } from './dashboard/dashboard.module';
-import { TwilioModule } from './twilio/twilio.module';
 import { SectorModule } from './sector/sector.module';
 import { ContratoClienteModule } from './contrato-cliente/contrato-cliente.module';
 import { MikroTikModule } from './mikro-tik/mikro-tik.module';
-import { TwilioApiModule } from './twilio-api/twilio-api.module';
 import { MetasTicketsModule } from './metas-tickets/metas-tickets.module';
 import { FacturaEliminacionModule } from './factura-eliminacion/factura-eliminacion.module';
 import { ReportsModule } from './modules/reports/reports.module';
@@ -43,7 +41,6 @@ import { TicketSolucionesModule } from './ticket-soluciones/ticket-soluciones.mo
 import { SshMikrotikConnectionModule } from './ssh-mikrotik-connection/ssh-mikrotik-connection.module';
 import { FireworksIaModule } from './fireworks-ia/fireworks-ia.module';
 import { WhatsappApiMetaModule } from './whatsapp-api-meta/whatsapp-api-meta.module';
-import { TwilioMensajesModule } from './twilio-mensajes/twilio-mensajes.module';
 import { GatewayModule } from './web-sockets/websocket.module';
 import { TicketResumenModule } from './ticket-resumen/ticket-resumen.module';
 import { CloudApiMetaModule } from './cloud-api-meta/cloud-api-meta.module';
@@ -111,11 +108,9 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     IdContratoModule,
     RutaCobroModule,
     DashboardModule,
-    TwilioModule,
     SectorModule,
     ContratoClienteModule,
     MikroTikModule,
-    TwilioApiModule,
     MetasTicketsModule,
     FacturaEliminacionModule,
     ReportsModule,
@@ -125,7 +120,6 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     SshMikrotikConnectionModule,
     FireworksIaModule,
     WhatsappApiMetaModule,
-    TwilioMensajesModule,
     GatewayModule,
     TicketResumenModule,
     CloudApiMetaModule,
