@@ -20,7 +20,6 @@ import { CreateClienteInternetDto } from './dto/create-cliente-internet.dto';
 import { UpdateClienteInternetDto } from './dto/update-cliente-internet.dto';
 import { updateCustomerService } from './dto/update-customer-service';
 import { GetClientesRutaQueryDto } from './pagination/cliente-internet.dto';
-import { NetworkServiceService } from 'src/network-service/network-service.service';
 import { GetCustomersQueryDto } from './dto/query-table';
 import { CustomersCampaingQuery } from './query/customers-campaing-query.dto';
 
@@ -31,8 +30,6 @@ export class ClienteInternetController {
 
   constructor(
     private readonly clienteInternetService: ClienteInternetService,
-
-    private readonly networkService: NetworkServiceService,
   ) {}
 
   /**
@@ -148,8 +145,6 @@ export class ClienteInternetController {
       id,
       updateCustomerService,
     );
-
-    // await this.networkService.syncCustomerNetwork(id);
     return result;
   }
 }

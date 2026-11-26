@@ -27,8 +27,6 @@ import { TZ } from 'src/Utils/tzgt';
 import { normalizarTexto } from 'src/Utils/normalizarTexto';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { GetCustomersQueryDto } from './dto/query-table';
-import { SshMikrotikConnectionService } from 'src/ssh-mikrotik-connection/application/ssh-mikrotik-connection.service';
-import { ActivateCustomerDto } from 'src/ssh-mikrotik-connection/dto/activate-ssh-mikrotik.dto';
 import { VerifyCustomerService } from 'src/credito/verify-customer/app/verify-customer.service';
 import { dayjs } from 'src/Utils/dayjs.config';
 import { selectCustomerCampaignWhatsapp } from './select/select-customer';
@@ -53,7 +51,6 @@ export class ClienteInternetService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly idContradoService: IdContratoService,
-    private readonly ssh: SshMikrotikConnectionService,
     private readonly verifyCreditService: VerifyCustomerService,
   ) {}
 
@@ -74,7 +71,7 @@ export class ClienteInternetService {
     mkSelected: number,
     tx?: Prisma.TransactionClient,
   ) {
-    let connection = await tx.clienteInternet.update({
+    const connection = await tx.clienteInternet.update({
       where: {
         id: clienteId,
       },
@@ -293,33 +290,6 @@ export class ClienteInternetService {
         idContrato: dto.idContrato,
         observaciones: dto.observacionesContrato,
       });
-    }
-
-    // Activación MikroTik opcional
-    if (dto.activateOnMk) {
-      await this.tryActivateOnMk(clienteId, dto);
-    }
-  }
-
-  private async tryActivateOnMk(
-    clienteId: number,
-    dto: CreateClienteInternetDto,
-  ) {
-    try {
-      const activateDto: ActivateCustomerDto = {
-        clienteId,
-        userId: dto.userId,
-        password: '',
-        isPasswordRequired: false,
-      };
-
-      await this.ssh.activateCustomer(activateDto);
-
-      this.logger.log(`Cliente ${clienteId} activado en MK correctamente`);
-    } catch (error) {
-      this.logger.error(
-        `No se pudo activar MK para cliente ${clienteId}. Continuando sin bloquear.`,
-      );
     }
   }
 
@@ -1823,21 +1793,6 @@ export class ClienteInternetService {
     const clienteId = id;
     console.log('entrando a eliminar: ', id);
 
-    const cliente = await this.prisma.clienteInternet.findUnique({
-      where: { id: clienteId },
-      select: {
-        mikrotikRouterId: true,
-        IP: {
-          select: {
-            direccionIp: true,
-          },
-        },
-      },
-    });
-
-    let direccionIP = cliente?.IP?.direccionIp;
-    let mikrotikId = cliente?.mikrotikRouterId;
-
     const userDeleted = await this.prisma.$transaction(async (tx) => {
       // Verificamos si existe el cliente
       const cliente = await tx.clienteInternet.findUnique({
@@ -1896,7 +1851,7 @@ export class ClienteInternetService {
       });
 
       // 8. Finalmente, eliminar el cliente
-      let c = await tx.clienteInternet.delete({
+      const c = await tx.clienteInternet.delete({
         where: { id: clienteId },
         select: {
           mikrotikRouterId: true,
@@ -1914,16 +1869,6 @@ export class ClienteInternetService {
         cliente: c,
       };
     });
-
-    if (mikrotikId && direccionIP) {
-      try {
-        await this.ssh.clearIpFromAllLists(mikrotikId, direccionIP);
-      } catch (error) {
-        this.logger.error(
-          `No se pudo limpiar IP ${direccionIP} del MK ${mikrotikId} | ERROR: ${error}`,
-        );
-      }
-    }
 
     return userDeleted;
   }

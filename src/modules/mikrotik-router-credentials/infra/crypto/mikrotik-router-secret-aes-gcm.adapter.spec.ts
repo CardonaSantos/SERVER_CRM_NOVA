@@ -1,7 +1,5 @@
 import { ConfigService } from '@nestjs/config';
-import { randomBytes } from 'node:crypto';
-
-import { MikrotikCryptoService } from 'src/ssh-mikrotik-connection/helpers/mikrotik-crypto.service';
+import { createCipheriv, randomBytes } from 'node:crypto';
 
 import { MikrotikRouterSecretAesGcmAdapter } from './mikrotik-router-secret-aes-gcm.adapter';
 
@@ -16,6 +14,22 @@ function crearAdaptador(entorno: Record<string, string | undefined>) {
 
 function leerSobre(cifrado: string): Record<string, unknown> {
   return JSON.parse(Buffer.from(cifrado, 'base64').toString('utf8'));
+}
+
+/**
+ * Formato heredado que sigue guardado en la base de datos:
+ * base64(iv 12 | tag 16 | cifrado), con los primeros 32 caracteres como clave.
+ */
+function cifrarLegacy(texto: string): string {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv(
+    'aes-256-gcm',
+    Buffer.from(CLAVE_LEGACY.slice(0, 32)),
+    iv,
+  );
+  const cifrado = Buffer.concat([cipher.update(texto, 'utf8'), cipher.final()]);
+
+  return Buffer.concat([iv, cipher.getAuthTag(), cifrado]).toString('base64');
 }
 
 describe('MikrotikRouterSecretAesGcmAdapter', () => {
@@ -92,12 +106,8 @@ describe('MikrotikRouterSecretAesGcmAdapter', () => {
     expect((error as Error).message).not.toContain('mi-secreto-real');
   });
 
-  it('descifra credenciales legacy de MikrotikCryptoService', async () => {
-    const legacy = new MikrotikCryptoService({
-      get: () => CLAVE_LEGACY,
-    } as unknown as ConfigService);
-
-    const cifradoLegacy = legacy.encrypt('admin-legacy');
+  it('descifra credenciales guardadas con el formato legacy', async () => {
+    const cifradoLegacy = cifrarLegacy('admin-legacy');
 
     const adaptador = crearAdaptador({
       ...entornoBase,
@@ -108,12 +118,8 @@ describe('MikrotikRouterSecretAesGcmAdapter', () => {
   });
 
   it('una credencial legacy sin MIKROTIK_SECRET_KEY falla con un error claro', async () => {
-    const legacy = new MikrotikCryptoService({
-      get: () => CLAVE_LEGACY,
-    } as unknown as ConfigService);
-
     await expect(
-      crearAdaptador(entornoBase).decrypt(legacy.encrypt('x')),
+      crearAdaptador(entornoBase).decrypt(cifrarLegacy('x')),
     ).rejects.toThrow(/MIKROTIK_SECRET_KEY no está configurada/);
   });
 

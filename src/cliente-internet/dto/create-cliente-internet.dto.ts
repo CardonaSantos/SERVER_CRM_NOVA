@@ -108,6 +108,7 @@ export class CreateClienteInternetDto {
   @IsInt()
   mkSelected: number;
 
+  /** Se acepta pero se ignora: el control del router es solo por PPPoE. */
   @IsBoolean()
   activateOnMk: boolean = false;
 

@@ -38,7 +38,6 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { AlmacenamientoMediaModule } from './modules/almacenamiento-media/almacenamiento-media.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { TicketSolucionesModule } from './ticket-soluciones/ticket-soluciones.module';
-import { SshMikrotikConnectionModule } from './ssh-mikrotik-connection/ssh-mikrotik-connection.module';
 import { WhatsappApiMetaModule } from './whatsapp-api-meta/whatsapp-api-meta.module';
 import { GatewayModule } from './web-sockets/websocket.module';
 import { TicketResumenModule } from './ticket-resumen/ticket-resumen.module';
@@ -46,7 +45,6 @@ import { CloudApiMetaModule } from './cloud-api-meta/cloud-api-meta.module';
 import { BotFunctionsModule } from './bot-functions/bot-functions.module';
 import { CreditoModule } from './credito/credito.module';
 import { CustomerNetworkConfigModule } from './customer-network-config/customer-network-config.module';
-import { NetworkServiceModule } from './network-service/network-service.module';
 import { CuotasPagoModule } from './credito/cuotas-pago/cuotas-pago.module';
 import { GenerateReportsModule } from './generate-reports/generate-reports.module';
 import { PerfilModule } from './perfil/perfil.module';
@@ -116,7 +114,6 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     AlmacenamientoMediaModule,
     NotificacionesModule,
     TicketSolucionesModule,
-    SshMikrotikConnectionModule,
     WhatsappApiMetaModule,
     GatewayModule,
     TicketResumenModule,
@@ -124,7 +121,6 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     BotFunctionsModule,
     CreditoModule,
     CustomerNetworkConfigModule,
-    NetworkServiceModule,
     CuotasPagoModule,
     GenerateReportsModule,
     PerfilModule,

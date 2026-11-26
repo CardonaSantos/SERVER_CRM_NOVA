@@ -3,7 +3,6 @@ import { IpRepository, IPSymbol } from '../domain/ip.repository';
 import { IP } from '../entities/customer-network-config.entity';
 import { ClienteInternetService } from 'src/cliente-internet/cliente-internet.service';
 import { UpdateCustomerNetworkConfigDto } from '../dto/update-customer-network-config.dto';
-import { NetworkServiceService } from 'src/network-service/network-service.service';
 
 @Injectable()
 export class CustomerNetworkConfigService {
@@ -11,7 +10,6 @@ export class CustomerNetworkConfigService {
     @Inject(IPSymbol)
     private readonly ipRepo: IpRepository,
     private readonly clienteRepo: ClienteInternetService,
-    private readonly networkService: NetworkServiceService,
   ) {}
 
   async execute(dto: UpdateCustomerNetworkConfigDto) {
@@ -42,8 +40,6 @@ export class CustomerNetworkConfigService {
 
       ipActualizada = await this.ipRepo.create(ipDomain);
     }
-    // DES COMENTAR LUEGO
-    // await this.networkService.syncCustomerNetwork(dto.clienteId);
     return ipActualizada;
   }
 }
