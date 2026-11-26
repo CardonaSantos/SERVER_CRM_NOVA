@@ -28,7 +28,7 @@ La etapa de auth y NestJS 12 está terminada en código (aún no desplegada). Ah
 6. ✅ **C4**: `cliente-instalacion` y `cliente-desinstalacion` conformes (consumen el núcleo PPPoE por fachadas; `ppoe-instalacion-acceso` quedó fusionado en `cliente-instalacion`).
 7. ✅ **C5**: `ticket-soporte-historial`, `ticket-soporte-conformidad` (sin el flujo de enlace público, descartado) y `real-time-location` conformes. `excel-reports` y `reports` quedan fuera: se resuelven en el módulo `reporte` de la fase legacy.
 8. **En curso**: fase legacy, en el orden de `docs/guia-fase-legacy-crm-nova.md` §3.2: ✅ limpieza de
-   lo que no se usa y ✅ **H1** (saneamiento de estados, §6.1); sigue **H2** (roles) y los módulos. **Los
+   lo que no se usa y ✅ **H1** (saneamiento de estados, §6.1); H2 (roles) queda en espera del dueño; siguen los módulos. **Los
    crons van al final**; reportes queda aplazado.
 
 **No empieces un paso hasta que el dueño diga que se empieza.**
@@ -50,8 +50,10 @@ facturas fuera del paso de saneamiento (H1), promesas de pago.
 - **Una empresa por base de datos.** `empresaId` no es filtro de seguridad (§4.8 del estándar).
 - Zona horaria de negocio: `America/Guatemala`. La hora sale del puerto `RELOJ`; los
   `new Date()` viejos se reemplazan cuando se toca cada módulo.
-- Hay un front React en producción, un front Angular en camino y una app Android. El servidor
-  marca el contrato; todo cambio visible para los clientes se anota para avisar antes del deploy.
+- Hay un front React en producción, un front Angular en camino y una app Android. La UI nueva
+  (Angular) se construye alrededor del servidor: el servidor marca el contrato y no se ata al React
+  actual. Todo cambio visible para los clientes se anota.
+- El saldo de un cliente se calcula desde sus facturas; no es un registro que se suba o baje.
 
 ## Git
 

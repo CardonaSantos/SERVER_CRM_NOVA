@@ -121,6 +121,13 @@ Decisiones del dueño del **26-nov-2026**. Los nombres nuevos siguen §15 del es
 
 ### 3.1 Decisiones
 
+- **El servidor manda en el contrato.** La UI nueva es Angular y se construye alrededor del
+  servidor: al refactorizar se mejora el contrato sin atarse al React actual (cada cambio se sigue
+  anotando en `cambios-contrato-ui.md` para quien construya Angular).
+- **Saldo del cliente:** no es un registro que se suba o baje; sale de calcular sus facturas
+  pendientes y pagadas. La tabla `SaldoCliente` debe dejar de usarse (se queda en la base).
+- **Permisos:** por ahora las rutas quedan abiertas a cualquier usuario con sesión; el dueño definirá
+  quién puede crear o eliminar. Oficina también puede eliminar.
 - **No se migran, se borran** (paso 0): `customer-payload`, `broadcast`, `olt`, `perfil-usuario`,
   `metricas-tickets`, `open-ia`, `fireworks-ia` (no hay asistente IA), `twilio`, `twilio-api`,
   `twilio-mensajes` (Twilio ya no se usa), `mensaje`, `notificaciones-usuario`,
@@ -146,8 +153,8 @@ Decisiones del dueño del **26-nov-2026**. Los nombres nuevos siguen §15 del es
 |---|---|---|---|---|
 | 0 | Limpieza | Las carpetas de §3.1 | ✅ Hecho | `refactorizacion limpieza #1–#7` y `dependencias #1` |
 | 1 | **H1** saneamiento (sin crons) | `facturacion`, `cliente-internet`, `dashboard` | ✅ Hecho | `facturacion #1–#2`, `cliente-internet #1–#3`, `dashboard #1` (§6.1) |
-| 2 | **H2** roles | API legacy que quede | **Siguiente** | `@Roles` en sitio, 403 anotados. Falta el mapa de roles (§7) |
-| 3 | Ubicación de técnicos → `real-time-location` | `real-time-location` legacy | Pendiente | `GET /real-time/last-locations` conserva la ruta (alimenta el dashboard de admin) |
+| 2 | **H2** roles | API legacy que quede | En espera | El dueño definirá los permisos (§3.1). No agregar restricciones sin su mapa |
+| 3 | Ubicación de técnicos → `real-time-location` | `real-time-location` legacy | **Siguiente** | `GET /real-time/last-locations` conserva la ruta (alimenta el dashboard de admin) |
 | 4 | `cliente` (H3) | `cliente-internet`, `customer-network-config` | Pendiente | Revisar `src/cliente-internet/domain/`. Fachada `CLIENTE` |
 | 5 | `zona-facturacion` (H5) | `facturacion-zona` | Pendiente | `modoCorte`, días 1–31, `@Roles` |
 | 6 | `facturacion` | `facturacion`, `factura-eliminacion` | Pendiente | Incluye los pagos |
@@ -355,8 +362,7 @@ H1 es saneamiento en sitio: commits `refactorizacion facturacion #N`, `refactori
 | Toda la API legacy | Sin `@Roles` (G1): cualquier usuario autenticado, técnico incluido, borra pagos, edita facturas y zonas | H2 |
 | Sesiones, refresh e intentos de auth | Nadie los limpia (G6) | `tareas-programadas` |
 | `src/real-time-location` legacy | Montado vía `LocationModule`; su `GET last-locations` alimenta el dashboard y su `POST update-location` es el único que emite `emit:location:real-time` | Paso 3 |
-| `facturacion` `updateFactura` | Editar una factura **pagada** (aunque sea solo el detalle) pone su `saldoPendiente` igual al monto y sube la deuda del cliente en ese monto. Es cálculo de facturas: no se tocó en H1 | Preguntar (§7) |
-| `facturacion` `deleteOnePayment` | No devuelve el monto a `saldoCliente.saldoPendiente` (registrar un pago sí lo recalcula) | Preguntar (§7) |
+| `SaldoCliente` | `facturacion` aún la escribe y `cliente-internet` (detalle y listados) y `ruta-cobro` aún la **leen**. Los crons no la actualizan, así que esos saldos quedan atrasados. `facturacion #3` la recalcula desde las facturas al editar o eliminar pagos | `facturacion`, `cliente` y `ruta-cobro`: calcular al leer y dejar de escribirla |
 | `facturacion` `delete-one-factura` | El usuario que elimina llega en el body (`userId`) en vez de salir de la sesión | Módulo `facturacion` |
 | `generate-reports` `QueryCobranzaReport` | Fechas con `@IsDate` sin conversión: probable 400 con el pipe estricto (sin probar) | Antes del deploy |
 | Legacy en general | `throw new BadRequestException(...)` en services, `console.log` con datos, `new Date()` en UTC para fechas de negocio, métodos con `tx?: Prisma.TransactionClient` opcional (escrituras que a veces son atómicas y a veces no), `findMany` sin `count` en la misma transacción | Cada módulo al refactorizarse |
@@ -372,12 +378,12 @@ a la UI (fugas de campos), y `catch` que tragan errores y devuelven `200`.
 
 | # | Pregunta | Paso | Recomendación |
 |---|---|---|---|
-| 1 | Mapa de roles por módulo. `RolUsuario` = SUPER_ADMIN, ADMIN, COORDINADOR_OPERACIONES, OFICINA, TIENDA, TECNICO, COBRADOR; los grupos actuales no cubren TIENDA ni COBRADOR | H2 | Pagos/facturas/borrados y zonas → `ROLES_OFICINA` (o un grupo admin más estrecho); ruta de cobro → oficina + nuevo `ROLES_COBRADOR`; preguntar qué hace TIENDA |
+| 1 | Mapa de roles por módulo (SUPER_ADMIN, ADMIN, COORDINADOR_OPERACIONES, OFICINA, TIENDA, TECNICO, COBRADOR) | H2, en espera | Lo define el dueño |
 | 2 | ¿El dominio inicial de `src/cliente-internet/domain/` se aprovecha tal cual? | `cliente` | Llevarlo a `src/modules/cliente/domain/` y ajustarlo al estándar |
 | 3 | ¿La app Android envía su ubicación a `real-time/update-location` o a `real-time-location/tracking/location`? | Paso 3 | Retirar la vieja solo si ya usa la nueva |
 | 4 | Nombres finales de cada módulo (§3.2) | Cada paso | Los de §3.2 |
 | 5 | ¿La etapa auth ya se desplegó? Si no, cada paso se acumula sobre un deploy grande | Siempre que aplique | |
-| 6 | ¿Se corrigen ya los dos saldos de §6.2 (editar factura pagada y eliminar pago)? | Antes del deploy | Sí: recalcular `saldoCliente` desde las facturas pendientes, como al registrar un pago |
+| 6 | ¿Se quita `SaldoCliente` ahora o al refactorizar `cliente` y `ruta-cobro`? | `cliente` | Al refactorizar, calculando el saldo al leer |
 
 ---
 
