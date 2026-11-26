@@ -7,7 +7,6 @@ import { UserModule } from './user/user.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { EmpresaModule } from './empresa/empresa.module';
 import { LocationModule } from './location/location.module';
-import { ClienteInternetModule } from './cliente-internet/cliente-internet.module';
 import { ClienteModule } from './modules/cliente/cliente.module';
 import { ServicioModule } from './servicio/servicio.module';
 import { TipoServicioModule } from './tipo-servicio/tipo-servicio.module';
@@ -76,7 +75,6 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     PrismaModule,
     EmpresaModule,
     LocationModule,
-    ClienteInternetModule,
     ClienteModule,
     ServicioModule,
     TipoServicioModule,
