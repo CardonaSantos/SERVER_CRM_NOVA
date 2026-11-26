@@ -7,7 +7,7 @@
 > | Dato | Valor |
 > |---|---|
 > | Fecha | 26-nov-2026 |
-> | Rama de trabajo | `refactorizaciones-hexagonales` en `ee2b197` (+ el commit que agrega esta guía) |
+> | Rama de trabajo | `refactorizaciones-hexagonales` (usa la punta; el estado de cada paso está en §3.2) |
 > | Punto de control | `checkpoints-refactorizaciones` en `ee2b197` |
 > | Producción (`main`) | `108c6ef`: **nada de este trabajo está desplegado** |
 > | Prioridad de documentos | 1) `estandar-hexagonal-crm-nova.md` (forma de todo módulo) · 2) esta guía (qué sigue y cómo) · 3) `guia-post-auth-refactor-hexagonal-crm-nova.md` (historia de auth, §8.4 orden original) |
@@ -25,7 +25,7 @@
 4. **No empieces a cambiar código hasta que el dueño diga que se empieza ese paso.** Primero
    presenta: inventario del módulo (rutas, crons, consumidores), propuesta de nombres y rutas,
    bugs detectados, y las preguntas abiertas del paso (§7). Espera su respuesta.
-5. Línea base antes de tocar nada: `npm run build` (verde) y `npm run lint:check` (≤ 321 errores).
+5. Línea base antes de tocar nada: `npm run build` (verde) y `npm run lint:check` (no más errores que la línea base de §2.3).
    No corras `npm ci` salvo que falten dependencias; nunca `npm install`.
 
 ---
@@ -149,6 +149,8 @@ Decisiones del dueño del **26-nov-2026**. Los nombres nuevos siguen §15 del es
 
 ### 3.2 Orden de trabajo
 
+En nombres, fusiones y alcance esta tabla manda sobre la propuesta de §15.1 del estándar.
+
 | # | Paso / destino | Legacy | Estado | Notas |
 |---|---|---|---|---|
 | 0 | Limpieza | Las carpetas de §3.1 | ✅ Hecho | `refactorizacion limpieza #1–#7` y `dependencias #1` |
@@ -266,7 +268,7 @@ Lo prohibido por el estándar (`tokens/`, `application/dto`, `common/` en el mó
 
 ```bash
 npm run build
-npm run lint:check                                # ≤ 321 y 0 errores nuevos en archivos tocados
+npm run lint:check                                # sin superar §2.3 y 0 errores nuevos en archivos tocados
 npm test -- src/modules/<modulo>                  # specs del módulo en verde
 bash scripts/conformidad-hexagonal.sh <modulo>    # vacío (falsos positivos se justifican en el commit)
 ```
@@ -380,7 +382,7 @@ a la UI (fugas de campos), y `catch` que tragan errores y devuelven `200`.
 |---|---|---|---|
 | 1 | Mapa de roles por módulo (SUPER_ADMIN, ADMIN, COORDINADOR_OPERACIONES, OFICINA, TIENDA, TECNICO, COBRADOR) | H2, en espera | Lo define el dueño |
 | 2 | ¿El dominio inicial de `src/cliente-internet/domain/` se aprovecha tal cual? | `cliente` | Llevarlo a `src/modules/cliente/domain/` y ajustarlo al estándar |
-| 3 | ¿La app Android envía su ubicación a `real-time/update-location` o a `real-time-location/tracking/location`? | Paso 3 | Retirar la vieja solo si ya usa la nueva |
+| 3 | ¿La app Android envía su ubicación a `real-time/update-location` o a `real-time-location/tracking/location`? El dueño cree que a la nueva (26-nov-2026) | Paso 3 | Antes de retirar la vieja, buscar quién más la usa y confirmarlo |
 | 4 | Nombres finales de cada módulo (§3.2) | Cada paso | Los de §3.2 |
 | 5 | ¿La etapa auth ya se desplegó? Si no, cada paso se acumula sobre un deploy grande | Siempre que aplique | |
 | 6 | ¿Se quita `SaldoCliente` ahora o al refactorizar `cliente` y `ruta-cobro`? | `cliente` | Al refactorizar, calculando el saldo al leer |
@@ -389,6 +391,12 @@ a la UI (fugas de campos), y `catch` que tragan errores y devuelven `200`.
 
 ## 8. Lecciones aprendidas (evitan horas)
 
+- **El build no detecta dependencias de Nest rotas.** Tras mover o borrar módulos, resuelve `AppModule`
+  con `Test.createTestingModule({ imports: [AppModule] }).compile()` desde un script temporal en una
+  carpeta **sin `.env`**, con `DATABASE_URL` apuntando a `127.0.0.1` y secretos ficticios (`JWT_SECRET`,
+  `MIKROTIK_SECRET_KEY`). Sin `init()`: no arrancan crons ni conexiones.
+- **Hay DTO legacy que el pipe estricto rechaza.** Al tocar un módulo, pasa por `ValidacionGlobalPipe`
+  el cuerpo que envía su cliente y deja un spec (ver `cliente-internet/dto`).
 - **Fakes que devuelven copias**: un repositorio falso debe devolver `Entidad.hydrate(e.toPrimitives())`
   en cada lectura; si devuelve la misma instancia, los tests de concurrencia pasan en falso o fallan raro.
 - Use cases se instancian con `new` y `RelojFijo`; sin `TestingModule`.
