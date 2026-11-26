@@ -94,9 +94,9 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 ### 2.3 Línea base medida
 
 - `npm run build`: verde.
-- `npm run lint:check`: **321** errores (no subir; los archivos que toques quedan sin errores nuevos).
-- Jest: suites de `src/common`, `src/auth/decoradores` y de todos los `src/modules/*` en verde; 11
-  suites legacy son boilerplate roto del CLI (se borran cuando se borra su módulo).
+- `npm run lint:check`: **215** errores tras la limpieza (no subir; los archivos que toques quedan sin errores nuevos).
+- Jest: 598/602; las suites de `src/common`, `src/auth/decoradores` y de todos los `src/modules/*`
+  en verde. Fallan 4 suites boilerplate de `cloud-api-meta` y `location`.
 - Correr un spec: `npm test -- src/modules/<modulo>` (1–2 min).
 
 ### 2.4 Deudas abiertas que dejaron las tandas anteriores
@@ -144,8 +144,8 @@ Decisiones del dueño del **26-nov-2026**. Los nombres nuevos siguen §15 del es
 
 | # | Paso / destino | Legacy | Estado | Notas |
 |---|---|---|---|---|
-| 0 | Limpieza | Las carpetas de §3.1 | **En curso** | Incluye métodos muertos de `facturacion` |
-| 1 | **H1** saneamiento (sin crons) | `facturacion`, `cliente-internet`, `dashboard` | Pendiente | §6.1. Bug reportado por usuarios: se corrige con pruebas |
+| 0 | Limpieza | Las carpetas de §3.1 | ✅ **Hecho** | `refactorizacion limpieza #1–#7`. Quedan instaladas sin uso las dependencias `twilio`, `openai`, `node-ssh`, `csvtojson` y `routeros-client`: quitarlas se pregunta |
+| 1 | **H1** saneamiento (sin crons) | `facturacion`, `cliente-internet`, `dashboard` | **Siguiente** | §6.1. Bug reportado por usuarios: se corrige con pruebas |
 | 2 | **H2** roles | API legacy que quede | Pendiente | `@Roles` en sitio, 403 anotados. Falta el mapa de roles (§7) |
 | 3 | Ubicación de técnicos → `real-time-location` | `real-time-location` legacy | Pendiente | `GET /real-time/last-locations` conserva la ruta (alimenta el dashboard de admin) |
 | 4 | `cliente` (H3) | `cliente-internet`, `customer-network-config` | Pendiente | Revisar `src/cliente-internet/domain/`. Fachada `CLIENTE` |
