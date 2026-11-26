@@ -21,7 +21,6 @@ import { DeleteFacturaDto } from './dto/delete-one-factura.dto';
 import { ConflictException } from '@nestjs/common';
 import { log } from 'console';
 import { UpdateFacturaDto } from './dto/update-factura.dto';
-import { periodoFrom } from './Utils';
 import { FacturaEliminacionService } from 'src/factura-eliminacion/factura-eliminacion.service';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { WebSocketServices } from 'src/web-sockets/websocket.service';
@@ -31,18 +30,6 @@ import {
   TZ_FACTURACION,
 } from 'src/zona-facturacion-cron/helpers/Functions';
 import { FacturacionUtilitiesService } from 'src/zona-facturacion-cron/utilities/factura-manager.service';
-
-interface DatosFacturaGenerate {
-  fechaPagoEsperada: string;
-
-  montoPago: number;
-  saldoPendiente: number;
-  datalleFactura: string;
-  estadoFacturaInternet: string;
-  cliente: number;
-  facturacionZona: number;
-  nombreClienteFactura: string;
-}
 
 @Injectable()
 export class FacturacionService {
@@ -1312,97 +1299,6 @@ export class FacturacionService {
       throw err;
     }
   }
-  //DESCONOCIDO??
-  async generarFacturasInternet(clienteId: number) {
-    const cliente = await this.prisma.clienteInternet.findUnique({
-      where: {
-        id: clienteId,
-      },
-
-      select: {
-        facturacionZona: {
-          select: {
-            id: true,
-            diaPago: true,
-          },
-        },
-        id: true,
-        nombre: true,
-        apellidos: true,
-        servicioInternet: {
-          select: {
-            id: true,
-            nombre: true,
-            velocidad: true,
-            precio: true,
-          },
-        },
-        empresa: {
-          select: {
-            id: true,
-            nombre: true,
-          },
-        },
-      },
-    });
-
-    const dataFactura: DatosFacturaGenerate = {
-      datalleFactura: `Pago por suscripción mensual al servicio de internet, plan ${cliente.servicioInternet.nombre} (${cliente.servicioInternet.velocidad}), precio: ${cliente.servicioInternet.precio} Fecha: ${cliente.facturacionZona.diaPago}`,
-      fechaPagoEsperada: dayjs()
-        .date(cliente.facturacionZona.diaPago) // Establece el día de la fecha
-        .month(dayjs().month()) // Establece el mes actual
-        .year(dayjs().year()) // Establece el año actual
-        .isBefore(dayjs(), 'day') // Si la fecha es antes de hoy, pasa al siguiente mes
-        ? dayjs().add(1, 'month').date(cliente.facturacionZona.diaPago).format() // Si es antes, agregamos un mes
-        : dayjs().date(cliente.facturacionZona.diaPago).format(), // Si no es antes, usa el mes actual
-      montoPago: cliente.servicioInternet.precio,
-      saldoPendiente: cliente.servicioInternet.precio,
-      estadoFacturaInternet: 'PENDIENTE',
-      cliente: cliente.id,
-      facturacionZona: cliente.facturacionZona.id,
-      nombreClienteFactura: `${cliente.nombre} ${cliente.apellidos}`,
-    };
-    console.log('La data para generar la factura es: ', dataFactura);
-    const mesNombre = dayjs().format('MMMM YYYY'); // Obtiene el mes y el año de la fecha actual
-
-    const detalleFactura = `Pago por suscripción mensual al servicio de internet, plan ${cliente.servicioInternet.nombre} (${cliente.servicioInternet.velocidad}), precio: ${cliente.servicioInternet.precio} Fecha: ${cliente.facturacionZona.diaPago} de ${mesNombre}`;
-    const periodo = periodoFrom(dataFactura.fechaPagoEsperada); // o la fecha que uses
-    console.log('El periodo generando es: ', periodo);
-    const newFacturaInternet = await this.prisma.facturaInternet.create({
-      data: {
-        periodo: periodo,
-        fechaPagoEsperada: dayjs(dataFactura.fechaPagoEsperada).toDate(),
-        montoPago: dataFactura.montoPago,
-        saldoPendiente: dataFactura.saldoPendiente,
-        estadoFacturaInternet: 'PENDIENTE',
-        cliente: {
-          connect: { id: dataFactura.cliente },
-        },
-        facturacionZona: {
-          connect: { id: dataFactura.facturacionZona },
-        },
-        nombreClienteFactura: dataFactura.nombreClienteFactura,
-        detalleFactura: detalleFactura,
-        empresa: {
-          connect: {
-            id: 1,
-          },
-        },
-      },
-    });
-    const x = await this.prisma.facturaInternet.findUnique({
-      where: {
-        id: newFacturaInternet.id,
-      },
-      include: {
-        pagos: true,
-        RecordatorioPago: true,
-      },
-    });
-
-    console.log('La factura creada es: ', x);
-  }
-
   async updateFactura(id: number, dto: UpdateFacturaDto) {
     try {
       console.log('actualizando la factura', dto);
@@ -1509,15 +1405,6 @@ export class FacturacionService {
       });
 
       return facturaUpdated;
-    } catch (error) {
-      console.log(error);
-    }
-  }
-
-  async remove() {
-    try {
-      const facturasToDelete = await this.prisma.facturaInternet.deleteMany({});
-      return facturasToDelete;
     } catch (error) {
       console.log(error);
     }
@@ -1783,125 +1670,6 @@ export class FacturacionService {
       pendientes: result.pendientes,
       saldoPendiente: result.saldoPendiente,
     };
-  }
-
-  async removeManyFacturasMarch() {
-    console.log('Entrando al service de facturas marzo');
-
-    // 1. Define date boundaries for March.
-    // Note: In JavaScript Date, months are 0-indexed (0 = January, so 2 = March).
-    const currentYear = new Date().getFullYear();
-    const startDate = new Date(currentYear, 2, 1); // March 1st
-    // For the end date, get the last moment of March.
-    const endDate = new Date(currentYear, 3, 0, 23, 59, 59, 999); // March 31st
-
-    // 2. Retrieve all facturas in March with their associated pagos.
-    const facturasToDelete = await this.prisma.facturaInternet.findMany({
-      where: {
-        creadoEn: { gte: startDate, lte: endDate },
-      },
-      include: { pagos: true },
-    });
-
-    if (!facturasToDelete.length) {
-      throw new NotFoundException('No facturas found for March');
-    }
-
-    // 3. Group facturas by clienteId and compute totals.
-    const clienteAdjustments = new Map<
-      number,
-      { totalDeletedPagos: number; totalDeletedMontoPago: number }
-    >();
-
-    for (const factura of facturasToDelete) {
-      const clienteId = factura.clienteId;
-      let montoTotalPagosForFactura = 0;
-      for (const pago of factura.pagos) {
-        montoTotalPagosForFactura += pago.montoPagado;
-      }
-      if (!clienteAdjustments.has(clienteId)) {
-        clienteAdjustments.set(clienteId, {
-          totalDeletedPagos: 0,
-          totalDeletedMontoPago: 0,
-        });
-      }
-      const adjustment = clienteAdjustments.get(clienteId);
-      adjustment.totalDeletedPagos += montoTotalPagosForFactura;
-      adjustment.totalDeletedMontoPago += factura.montoPago;
-    }
-
-    // 4. Delete all matching facturas (those issued in March) using deleteMany.
-    const deleteResult = await this.prisma.facturaInternet.deleteMany({
-      where: {
-        creadoEn: { gte: startDate, lte: endDate },
-      },
-    });
-
-    // 5. For each affected cliente, update their balance.
-    // Iterate over each cliente that had at least one factura deleted.
-    for (const [clienteId, adjustment] of clienteAdjustments.entries()) {
-      // Recalculate the new total pending balance based on the remaining pending facturas.
-      const facturasRestantes = await this.prisma.facturaInternet.findMany({
-        where: {
-          clienteId: clienteId,
-          estadoFacturaInternet: { in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'] },
-        },
-      });
-
-      let nuevoSaldoPendiente = 0;
-      for (const factura of facturasRestantes) {
-        nuevoSaldoPendiente += factura.montoPago;
-      }
-
-      // Get the current balance record of the client.
-      const saldoCliente = await this.prisma.saldoCliente.findUnique({
-        where: { clienteId },
-      });
-
-      if (saldoCliente) {
-        // Adjust the pending balance (making sure it doesn't become negative).
-        const saldoPendienteAjustado = Math.max(nuevoSaldoPendiente, 0);
-        // Compute new 'saldoFavor' in case the payments deleted exceeded the invoice amount.
-        const nuevoSaldoFavor = Math.max(
-          saldoCliente.saldoFavor +
-            (adjustment.totalDeletedPagos - adjustment.totalDeletedMontoPago),
-          0,
-        );
-        // Update total payments (subtracting the deleted payments).
-        const updatedTotalPagos =
-          saldoCliente.totalPagos - adjustment.totalDeletedPagos;
-
-        await this.prisma.saldoCliente.update({
-          where: { clienteId },
-          data: {
-            saldoPendiente: saldoPendienteAjustado,
-            saldoFavor: nuevoSaldoFavor,
-            totalPagos: updatedTotalPagos,
-          },
-        });
-      }
-
-      // 6. Recalculate the estadoCliente based on any remaining pending facturas.
-      const facturasPendientes = await this.prisma.facturaInternet.findMany({
-        where: {
-          clienteId,
-          estadoFacturaInternet: { in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'] },
-        },
-      });
-      const estadoCliente = facturasPendientes.length > 0 ? 'MOROSO' : 'ACTIVO';
-
-      await this.prisma.clienteInternet.update({
-        where: { id: clienteId },
-        data: { estadoCliente },
-      });
-    }
-
-    console.log(
-      `
-      Deleted ${deleteResult.count} facturas from March and updated cliente balances.,
-      `,
-    );
-    return `Deleted ${deleteResult.count} facturas from March and updated cliente balances`;
   }
 
   async deleteOnePayment(id: number) {
