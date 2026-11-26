@@ -32,7 +32,7 @@ describe('ReintentarPrealtaPppoeInstalacionUseCase', () => {
           accesoInternetId,
           accion: AccionInstalacionAcceso.CREADO,
         },
-        new Date(),
+        new Date('2026-11-25T15:00:00Z'),
       ),
     );
 

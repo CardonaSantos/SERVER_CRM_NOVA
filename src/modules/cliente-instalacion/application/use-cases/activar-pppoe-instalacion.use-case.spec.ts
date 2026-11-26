@@ -1,4 +1,3 @@
-import { UnauthorizedException } from '@nestjs/common';
 import { RelojFijo } from 'src/common/reloj/reloj-fijo';
 import { PppoeAccesoInternetFacadePort } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.facade.port';
 import {
@@ -131,7 +130,9 @@ describe('ActivarPppoeInstalacionUseCase', () => {
     armar();
     reautenticacion.rechazar = true;
 
-    await expect(useCase.execute(INPUT)).rejects.toThrow(UnauthorizedException);
+    await expect(useCase.execute(INPUT)).rejects.toThrow(
+      'No se pudo confirmar la identidad',
+    );
 
     expect(motor.peticiones).toHaveLength(0);
     expect(instalaciones.guardados).toBe(0);
