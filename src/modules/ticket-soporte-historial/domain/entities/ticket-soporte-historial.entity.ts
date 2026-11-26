@@ -1,93 +1,65 @@
-import { TicketSoporteHistorialTipo } from '../enums/ticket-soporte-historial-tipo.enum';
-
-export type TicketSoporteHistorialProps = {
-  id: number | null;
-  ticketId: number;
-  usuarioId: number | null;
-  tipo: TicketSoporteHistorialTipo;
-  descripcion: string | null;
-  usuarioNombre: string | null;
-  creadoEn: Date;
-};
-
-export type CrearTicketSoporteHistorialProps = Omit<
+import { TicketSoporteHistorialDatosInvalidosError } from '../errors/ticket-soporte-historial.errors';
+import {
+  CrearTicketSoporteHistorialProps,
   TicketSoporteHistorialProps,
-  'id' | 'creadoEn'
-> & {
-  creadoEn?: Date;
-};
+} from '../props/ticket-soporte-historial.props';
 
 /**
- * Entidad append-only del historial de soporte.
- *
- * No expone métodos de update/delete porque una auditoría ya registrada
- * no debería mutarse desde el dominio.
+ * Entrada append-only del historial de un ticket: no tiene transiciones
+ * porque una auditoría ya registrada no se modifica.
  */
 export class TicketSoporteHistorialEntity {
   private constructor(private readonly props: TicketSoporteHistorialProps) {}
 
   static create(
-    props: CrearTicketSoporteHistorialProps,
+    input: CrearTicketSoporteHistorialProps,
+    ahora: Date,
   ): TicketSoporteHistorialEntity {
-    if (!Number.isInteger(props.ticketId) || props.ticketId <= 0) {
-      throw new Error('ticketId debe ser un entero positivo');
+    if (!esEnteroPositivo(input.ticketId)) {
+      throw new TicketSoporteHistorialDatosInvalidosError(
+        'El ticket del historial no es válido.',
+      );
     }
 
-    if (
-      props.usuarioId !== null &&
-      props.usuarioId !== undefined &&
-      (!Number.isInteger(props.usuarioId) || props.usuarioId <= 0)
-    ) {
-      throw new Error('usuarioId debe ser null o un entero positivo');
+    const usuarioId = input.usuarioId ?? null;
+
+    if (usuarioId !== null && !esEnteroPositivo(usuarioId)) {
+      throw new TicketSoporteHistorialDatosInvalidosError(
+        'El usuario del historial no es válido.',
+      );
     }
-
-    const descripcion = TicketSoporteHistorialEntity.normalizarTexto(
-      props.descripcion,
-    );
-
-    const usuarioNombre = TicketSoporteHistorialEntity.normalizarTexto(
-      props.usuarioNombre,
-    );
 
     return new TicketSoporteHistorialEntity({
       id: null,
-      ticketId: props.ticketId,
-      usuarioId: props.usuarioId ?? null,
-      tipo: props.tipo,
-      descripcion,
-      usuarioNombre,
-      creadoEn: props.creadoEn ?? new Date(),
+      ticketId: input.ticketId,
+      usuarioId,
+      tipo: input.tipo,
+      descripcion: normalizarTexto(input.descripcion),
+      usuarioNombre: normalizarTexto(input.usuarioNombre),
+      creadoEn: new Date(ahora),
     });
   }
 
-  static rehydrate(
+  static hydrate(
     props: TicketSoporteHistorialProps,
   ): TicketSoporteHistorialEntity {
     return new TicketSoporteHistorialEntity({
       ...props,
-      descripcion: TicketSoporteHistorialEntity.normalizarTexto(
-        props.descripcion,
-      ),
-      usuarioNombre: TicketSoporteHistorialEntity.normalizarTexto(
-        props.usuarioNombre,
-      ),
+      descripcion: normalizarTexto(props.descripcion),
+      usuarioNombre: normalizarTexto(props.usuarioNombre),
+      creadoEn: new Date(props.creadoEn),
     });
   }
 
-  private static normalizarTexto(value: string | null | undefined) {
-    const normalized = value?.trim();
-    return normalized ? normalized : null;
-  }
-
-  get id() {
+  get id(): number | null {
     return this.props.id;
   }
 
-  get ticketId() {
+  get ticketId(): number {
     return this.props.ticketId;
   }
 
-  get usuarioId() {
+  get usuarioId(): number | null {
     return this.props.usuarioId;
   }
 
@@ -95,15 +67,29 @@ export class TicketSoporteHistorialEntity {
     return this.props.tipo;
   }
 
-  get descripcion() {
+  get descripcion(): string | null {
     return this.props.descripcion;
   }
 
-  get usuarioNombre() {
+  get usuarioNombre(): string | null {
     return this.props.usuarioNombre;
   }
 
-  get creadoEn() {
-    return this.props.creadoEn;
+  get creadoEn(): Date {
+    return new Date(this.props.creadoEn);
   }
+
+  toPrimitives(): TicketSoporteHistorialProps {
+    return { ...this.props, creadoEn: new Date(this.props.creadoEn) };
+  }
+}
+
+function esEnteroPositivo(valor: number): boolean {
+  return Number.isInteger(valor) && valor > 0;
+}
+
+function normalizarTexto(valor: string | null | undefined): string | null {
+  const recortado = valor?.trim();
+
+  return recortado ? recortado : null;
 }

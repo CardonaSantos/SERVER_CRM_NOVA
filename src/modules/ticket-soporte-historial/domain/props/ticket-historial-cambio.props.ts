@@ -17,27 +17,21 @@ export type TicketHistorialValor =
   | readonly TicketHistorialValorEscalar[];
 
 /**
- * Representación tipada y transitoria de un cambio.
- *
- * IMPORTANTE:
- * El schema actual no persiste JSON. Estos cambios se usan solamente
- * para construir una descripción legible antes de guardar la auditoría.
+ * Cambio tipado y transitorio: solo sirve para armar la descripción legible
+ * del evento. El esquema no guarda JSON.
  */
 export type TicketHistorialCambio = {
   campo: TicketHistorialCampo;
   anterior: TicketHistorialValor;
   nuevo: TicketHistorialValor;
 
-  /** Etiqueta opcional para reemplazar el nombre técnico del campo. */
+  /** Etiqueta opcional que reemplaza el nombre técnico del campo. */
   etiqueta?: string;
 };
 
 export type TicketHistorialActor = {
   usuarioId?: number | null;
 
-  /**
-   * Snapshot del nombre al momento de la acción.
-   * Se conserva aunque la relación al Usuario desaparezca después.
-   */
+  /** Nombre del usuario al momento de la acción; se conserva aunque el usuario se borre. */
   usuarioNombre?: string | null;
 };

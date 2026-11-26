@@ -1,31 +1,43 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
-  TICKET_SOPORTE_HISTORIAL_REPOSITORY,
-  TicketSoporteHistorialRepositoryPort,
-} from '../../domain/ports/ticket-soporte-historial-repository.port';
-import { TicketSoporteHistorialPaginatedResult } from '../../domain/read-models/ticket-soporte-historial-list.read-model';
-import { ListarTicketSoporteHistorialQueryDto } from '../dto/listar-ticket-soporte-historial-query.dto';
+  normalizarPaginacion,
+  ResultadoPaginado,
+} from 'src/common/hexagonal/paginacion';
+import {
+  TICKET_SOPORTE_HISTORIAL_QUERY,
+  TicketSoporteHistorialQueryPort,
+} from '../../domain/ports/ticket-soporte-historial-query.port';
+import {
+  TicketSoporteHistorialFiltros,
+  TicketSoporteHistorialResumen,
+} from '../../domain/read-models/ticket-soporte-historial.read-model';
+
+export const LIMITE_HISTORIAL_POR_DEFECTO = 20;
+
+export type ListarTicketSoporteHistorialInput =
+  TicketSoporteHistorialFiltros & {
+    page?: number;
+    limit?: number;
+  };
 
 @Injectable()
 export class ListarTicketSoporteHistorialUseCase {
   constructor(
-    @Inject(TICKET_SOPORTE_HISTORIAL_REPOSITORY)
-    private readonly repository: TicketSoporteHistorialRepositoryPort,
+    @Inject(TICKET_SOPORTE_HISTORIAL_QUERY)
+    private readonly consulta: TicketSoporteHistorialQueryPort,
   ) {}
 
   execute(
-    query: ListarTicketSoporteHistorialQueryDto,
-  ): Promise<TicketSoporteHistorialPaginatedResult> {
-    return this.repository.findPaginated({
-      page: query.page,
-      limit: query.limit,
-      ticketId: query.ticketId,
-      usuarioId: query.usuarioId,
-      tipo: query.tipo,
-      search: query.search?.trim() || null,
-      fechaDesde: query.fechaDesde ? new Date(query.fechaDesde) : null,
-      fechaHasta: query.fechaHasta ? new Date(query.fechaHasta) : null,
-      ordenDireccion: query.ordenDireccion,
-    });
+    input: ListarTicketSoporteHistorialInput,
+  ): Promise<ResultadoPaginado<TicketSoporteHistorialResumen>> {
+    const { page, limit, ...filtros } = input;
+
+    return this.consulta.findMany(
+      filtros,
+      normalizarPaginacion(
+        { page, limit },
+        { limitePorDefecto: LIMITE_HISTORIAL_POR_DEFECTO },
+      ),
+    );
   }
 }

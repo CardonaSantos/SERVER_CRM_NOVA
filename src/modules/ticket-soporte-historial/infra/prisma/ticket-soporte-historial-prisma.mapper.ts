@@ -5,8 +5,9 @@ import {
 } from '@prisma/client';
 import { TicketSoporteHistorialEntity } from '../../domain/entities/ticket-soporte-historial.entity';
 import { TicketSoporteHistorialTipo } from '../../domain/enums/ticket-soporte-historial-tipo.enum';
+import { TicketSoporteHistorialResumen } from '../../domain/read-models/ticket-soporte-historial.read-model';
 
-const DOMAIN_TO_PRISMA: Record<
+const DOMINIO_A_PRISMA: Record<
   TicketSoporteHistorialTipo,
   PrismaTipoCambioTicket
 > = {
@@ -24,7 +25,7 @@ const DOMAIN_TO_PRISMA: Record<
   [TicketSoporteHistorialTipo.DESFIJADO]: PrismaTipoCambioTicket.DESFIJADO,
 };
 
-const PRISMA_TO_DOMAIN: Record<
+const PRISMA_A_DOMINIO: Record<
   PrismaTipoCambioTicket,
   TicketSoporteHistorialTipo
 > = {
@@ -44,35 +45,49 @@ const PRISMA_TO_DOMAIN: Record<
 
 export class TicketSoporteHistorialPrismaMapper {
   static toDomain(
-    row: PrismaTicketSoporteHistorial,
+    registro: PrismaTicketSoporteHistorial,
   ): TicketSoporteHistorialEntity {
-    return TicketSoporteHistorialEntity.rehydrate({
-      id: row.id,
-      ticketId: row.ticketId,
-      usuarioId: row.usuarioId,
-      tipo: PRISMA_TO_DOMAIN[row.tipo],
-      descripcion: row.descripcion,
-      usuarioNombre: row.usuarioNombre,
-      creadoEn: row.creadoEn,
+    return TicketSoporteHistorialEntity.hydrate({
+      id: registro.id,
+      ticketId: registro.ticketId,
+      usuarioId: registro.usuarioId,
+      tipo: PRISMA_A_DOMINIO[registro.tipo],
+      descripcion: registro.descripcion,
+      usuarioNombre: registro.usuarioNombre,
+      creadoEn: registro.creadoEn,
     });
   }
 
-  static toCreateInput(
-    entity: TicketSoporteHistorialEntity,
+  static toResumen(
+    registro: PrismaTicketSoporteHistorial,
+  ): TicketSoporteHistorialResumen {
+    return {
+      id: registro.id,
+      ticketId: registro.ticketId,
+      usuarioId: registro.usuarioId,
+      tipo: PRISMA_A_DOMINIO[registro.tipo],
+      descripcion: registro.descripcion,
+      usuarioNombre: registro.usuarioNombre,
+      creadoEn: registro.creadoEn,
+    };
+  }
+
+  static toCreatePersistence(
+    entidad: TicketSoporteHistorialEntity,
   ): Prisma.TicketSoporteHistorialUncheckedCreateInput {
     return {
-      ticketId: entity.ticketId,
-      usuarioId: entity.usuarioId,
-      tipo: DOMAIN_TO_PRISMA[entity.tipo],
-      descripcion: entity.descripcion,
-      usuarioNombre: entity.usuarioNombre,
-      creadoEn: entity.creadoEn,
+      ticketId: entidad.ticketId,
+      usuarioId: entidad.usuarioId,
+      tipo: DOMINIO_A_PRISMA[entidad.tipo],
+      descripcion: entidad.descripcion,
+      usuarioNombre: entidad.usuarioNombre,
+      creadoEn: entidad.creadoEn,
     };
   }
 
   static toPrismaTipo(
     tipo: TicketSoporteHistorialTipo,
   ): PrismaTipoCambioTicket {
-    return DOMAIN_TO_PRISMA[tipo];
+    return DOMINIO_A_PRISMA[tipo];
   }
 }

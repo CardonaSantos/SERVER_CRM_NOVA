@@ -36,9 +36,11 @@ import { TZ } from 'src/Utils/tzgt';
 import { TicketFirmaTipo } from 'src/modules/ticket-soporte-conformidad/domain/enums/ticket-firma-tipo.enum';
 import { FirebasePushService } from 'src/push-notifications/infra/firebase-push.service';
 import {
-  TicketHistorialCambio,
-  TicketSoporteHistorialPrismaTxBridge,
-} from 'src/modules/ticket-soporte-historial';
+  TICKET_SOPORTE_HISTORIAL,
+  TicketSoporteHistorialFacadePort,
+} from 'src/modules/ticket-soporte-historial/public/ticket-soporte-historial.facade.port';
+import { TicketHistorialCambio } from 'src/modules/ticket-soporte-historial/public/ticket-soporte-historial.types';
+import { PrismaTransaccional } from 'src/common/transaccion/prisma-transaccional.service';
 // import { dayjs } from '';
 
 @Injectable()
@@ -340,7 +342,9 @@ export class TicketsSoporteService {
 
     private readonly firebasePush: FirebasePushService,
 
-    private readonly ticketHistorialTx: TicketSoporteHistorialPrismaTxBridge,
+    @Inject(TICKET_SOPORTE_HISTORIAL)
+    private readonly ticketHistorial: TicketSoporteHistorialFacadePort,
+    private readonly transaccional: PrismaTransaccional,
   ) {}
 
   // ===================== CREATE =====================
@@ -2135,19 +2139,21 @@ export class TicketsSoporteService {
       // ===================================================
 
       if (cambios.length > 0) {
-        await this.ticketHistorialTx.registrarActualizacion(tx, {
-          ticketId: id,
+        await this.transaccional.unirseA(tx, () =>
+          this.ticketHistorial.registrarActualizacion({
+            ticketId: id,
 
-          actor: actor
-            ? {
-                usuarioId: actor.id,
+            actor: actor
+              ? {
+                  usuarioId: actor.id,
 
-                usuarioNombre: actor.nombre,
-              }
-            : null,
+                  usuarioNombre: actor.nombre,
+                }
+              : null,
 
-          cambios,
-        });
+            cambios,
+          }),
+        );
       }
 
       // ===================================================
@@ -2745,19 +2751,21 @@ export class TicketsSoporteService {
         // ===============================================
 
         if (cambios.length > 0) {
-          await this.ticketHistorialTx.registrarActualizacion(tx, {
-            ticketId: id,
+          await this.transaccional.unirseA(tx, () =>
+            this.ticketHistorial.registrarActualizacion({
+              ticketId: id,
 
-            actor: actor
-              ? {
-                  usuarioId: actor.id,
+              actor: actor
+                ? {
+                    usuarioId: actor.id,
 
-                  usuarioNombre: actor.nombre,
-                }
-              : null,
+                    usuarioNombre: actor.nombre,
+                  }
+                : null,
 
-            cambios,
-          });
+              cambios,
+            }),
+          );
         }
 
         // ===============================================

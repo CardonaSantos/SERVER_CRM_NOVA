@@ -1,26 +1,13 @@
 import { TicketSoporteHistorialEntity } from '../entities/ticket-soporte-historial.entity';
-import {
-  TicketSoporteHistorialFindManyFilters,
-  TicketSoporteHistorialPaginatedResult,
-} from '../read-models/ticket-soporte-historial-list.read-model';
 
 export const TICKET_SOPORTE_HISTORIAL_REPOSITORY = Symbol(
   'TICKET_SOPORTE_HISTORIAL_REPOSITORY',
 );
 
-/**
- * Puerto de persistencia append-only.
- *
- * Deliberadamente NO contiene update/delete.
- */
+/** Persistencia append-only: deliberadamente sin actualizar ni borrar. */
 export interface TicketSoporteHistorialRepositoryPort {
+  /** Guarda la entrada; dentro de una unidad de trabajo se une a su transacción. */
   create(
     entity: TicketSoporteHistorialEntity,
   ): Promise<TicketSoporteHistorialEntity>;
-
-  findById(id: number): Promise<TicketSoporteHistorialEntity | null>;
-
-  findPaginated(
-    filters: TicketSoporteHistorialFindManyFilters,
-  ): Promise<TicketSoporteHistorialPaginatedResult>;
 }
