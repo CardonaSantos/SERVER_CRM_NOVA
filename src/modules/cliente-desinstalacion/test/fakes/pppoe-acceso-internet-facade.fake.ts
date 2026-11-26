@@ -53,6 +53,17 @@ export class PppoeAccesoInternetFacadeFake
     );
   }
 
+  buscarPppoeVigenteDelCliente(
+    clienteId: number,
+  ): Promise<AccesoInternetReadModel | null> {
+    const vigentes = [...this.accesos.values()].filter(
+      (a) =>
+        a.clienteId === clienteId && a.estado !== EstadoAccesoInternet.BAJA,
+    );
+
+    return Promise.resolve(vigentes[vigentes.length - 1] ?? null);
+  }
+
   buscarDelCliente(params: {
     accesoInternetId: number;
     clienteId: number;

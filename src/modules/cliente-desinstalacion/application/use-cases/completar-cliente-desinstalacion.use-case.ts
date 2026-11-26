@@ -9,6 +9,7 @@ import {
   ClienteDesinstalacionResumen,
   resumirDesinstalacion,
 } from '../../domain/read-models/cliente-desinstalacion-resumen.read-model';
+import { CerrarDesinstalacionService } from '../services/cerrar-desinstalacion.service';
 
 export type CompletarClienteDesinstalacionInput = {
   id: number;
@@ -20,7 +21,10 @@ export type CompletarClienteDesinstalacionInput = {
   conforme?: boolean | null;
 };
 
-/** Cierra el trabajo físico; no repite la baja PPPoE (esa ya ocurrió al aprobar). */
+/**
+ * Cierra el trabajo físico y deja al cliente DESINSTALADO; no repite la baja
+ * PPPoE (esa ya ocurrió al aprobar).
+ */
 @Injectable()
 export class CompletarClienteDesinstalacionUseCase {
   constructor(
@@ -29,6 +33,8 @@ export class CompletarClienteDesinstalacionUseCase {
 
     @Inject(RELOJ)
     private readonly reloj: RelojPort,
+
+    private readonly cierre: CerrarDesinstalacionService,
   ) {}
 
   async execute(
@@ -52,7 +58,7 @@ export class CompletarClienteDesinstalacionUseCase {
     });
 
     return resumirDesinstalacion(
-      await this.desinstalaciones.save(desinstalacion),
+      await this.cierre.guardarCompletada(desinstalacion),
     );
   }
 }

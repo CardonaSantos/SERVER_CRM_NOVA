@@ -114,7 +114,7 @@ describe('EjecutarPppoeOperacionUseCase', () => {
       },
     } as unknown as Puertos[10];
     const cliente = {
-      sincronizar: (p: { estado: string }) => {
+      sincronizarEstadoOperativo: (p: { estado: string }) => {
         estadosCliente.push(p.estado);
         return Promise.resolve();
       },

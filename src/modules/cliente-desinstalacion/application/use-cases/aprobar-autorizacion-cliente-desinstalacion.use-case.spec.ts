@@ -23,6 +23,9 @@ import { PppoeAccesoInternetFacadeFake } from '../../test/fakes/pppoe-acceso-int
 import { PppoeClienteCuentaFacadeFake } from '../../test/fakes/pppoe-cliente-cuenta-facade.fake';
 import { PppoeProvisionamientoFake } from '../../test/fakes/pppoe-provisionamiento.fake';
 import { ReautenticacionOperadorFake } from '../../test/fakes/reautenticacion-operador.fake';
+import { ClienteFacadePort } from 'src/modules/cliente/public/cliente.facade.port';
+import { ClienteFacadeFake } from '../../test/fakes/cliente-facade.fake';
+import { CerrarDesinstalacionService } from '../services/cerrar-desinstalacion.service';
 import { ValidarAccesoDesinstalacionService } from '../services/validar-acceso-desinstalacion.service';
 import { AprobarAutorizacionDesinstalacionUseCase } from './aprobar-autorizacion-cliente-desinstalacion.use-case';
 
@@ -39,6 +42,7 @@ describe('AprobarAutorizacionDesinstalacionUseCase', () => {
   let unidad: UnidadDeTrabajoEnMemoria;
   let useCase: AprobarAutorizacionDesinstalacionUseCase;
   let accesoId: number;
+  let clientes: ClienteFacadeFake;
 
   /** Desinstalación PROGRAMADA (id 100) con su acceso, su cuenta y una autorización pendiente (id 1). */
   function armar() {
@@ -61,6 +65,7 @@ describe('AprobarAutorizacionDesinstalacionUseCase', () => {
     motor = new PppoeProvisionamientoFake();
     reautenticacion = new ReautenticacionOperadorFake();
     unidad = new UnidadDeTrabajoEnMemoria();
+    clientes = new ClienteFacadeFake();
 
     useCase = new AprobarAutorizacionDesinstalacionUseCase(
       autorizaciones,
@@ -73,6 +78,12 @@ describe('AprobarAutorizacionDesinstalacionUseCase', () => {
       motor as unknown as PppoeProvisionamientoPort,
       unidad,
       new RelojFijo(AHORA),
+      new CerrarDesinstalacionService(
+        desinstalaciones,
+        accesos as unknown as PppoeAccesoInternetFacadePort,
+        clientes as unknown as ClienteFacadePort,
+        unidad,
+      ),
     );
   });
 
@@ -118,10 +129,32 @@ describe('AprobarAutorizacionDesinstalacionUseCase', () => {
 
     await useCase.execute(INPUT);
 
-    expect(unidad.aperturas).toHaveLength(1);
+    // Una transacción para aprobar y otra, después del router, para el cierre.
+    expect(unidad.aperturas).toHaveLength(2);
     expect(abiertaAlGuardar).toBe(true);
     expect(estadoAlEliminar).toBe(EstadoDesinstalacionCliente.EN_PROCESO);
     expect(aprobadaAlEliminar).toBe(EstadoAutorizacionDesinstalacion.APROBADA);
+  });
+
+  it('al completarse deja al cliente desinstalado', async () => {
+    armar();
+    // La baja PPPoE deja el acceso en BAJA.
+    motor.alResponder = () => accesos.accesos.delete(accesoId);
+
+    await useCase.execute(INPUT);
+
+    expect(clientes.desinstalados).toEqual([
+      expect.objectContaining({ clienteId: 7, fecha: AHORA }),
+    ]);
+  });
+
+  it('si el router falla, el cliente no cambia', async () => {
+    armar();
+    motor.falla = new Error('router caído');
+
+    await expect(useCase.execute(INPUT)).rejects.toThrow('router caído');
+
+    expect(clientes.desinstalados).toHaveLength(0);
   });
 
   it('si la baja no deja la cuenta ELIMINADA no completa y queda EN_PROCESO', async () => {

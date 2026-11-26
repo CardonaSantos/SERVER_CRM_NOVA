@@ -2,10 +2,12 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from 'src/auth/auth.module';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { AlmacenamientoMediaModule } from '../almacenamiento-media/almacenamiento-media.module';
+import { ClienteModule } from '../cliente/cliente.module';
 import { PppoeAccesoInternetModule } from '../pppoe-acceso-internet/pppoe-acceso-internet.module';
 import { PppoeAutomatizacionModule } from '../pppoe-automatizacion/pppoe-automatizacion.module';
 import { PppoeClienteCuentaModule } from '../pppoe-cliente-cuenta/pppoe-cliente-cuenta.module';
 import { REAUTENTICACION_OPERADOR } from './application/ports/reautenticacion-operador.port';
+import { CerrarDesinstalacionService } from './application/services/cerrar-desinstalacion.service';
 import { ValidarAccesoDesinstalacionService } from './application/services/validar-acceso-desinstalacion.service';
 import { ValidarAutorizacionDesinstalacionService } from './application/services/validar-autorizacion-desinstalacion.service';
 import { ActualizarClienteDesinstalacionUseCase } from './application/use-cases/actualizar-cliente-desinstalacion.use-case';
@@ -49,6 +51,7 @@ import { ClienteDesinstalacionController } from './presentation/http/cliente-des
     AuthModule,
     PrismaModule,
     AlmacenamientoMediaModule,
+    ClienteModule,
     PppoeAccesoInternetModule,
     PppoeAutomatizacionModule,
     PppoeClienteCuentaModule,
@@ -76,6 +79,7 @@ import { ClienteDesinstalacionController } from './presentation/http/cliente-des
     ListarTecnicosDesinstalacionUseCase,
     EliminarTecnicoDesinstalacionUseCase,
     // Services
+    CerrarDesinstalacionService,
     ValidarAccesoDesinstalacionService,
     ValidarAutorizacionDesinstalacionService,
     // Adaptadores

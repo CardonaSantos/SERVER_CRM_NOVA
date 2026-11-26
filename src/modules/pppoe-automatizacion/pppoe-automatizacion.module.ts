@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ClienteModule } from '../cliente/cliente.module';
 
 import { PppoeCredentialsModule } from '../pppoe-credentials/pppoe-credentials.module';
 
@@ -49,8 +50,6 @@ import { VerificarAdopcionPppoeUseCase } from './application/use-cases/verificar
 
 import { AdoptarCuentaPppoeExistenteUseCase } from './application/use-cases/adoptar-cuenta-pppoe-existente.use-case';
 import { PppoeCuentaAdopcionController } from './presentation/http/pppoe-cuenta-adopcion.controller';
-import { CLIENTE_INTERNET_ESTADO_OPERATIVO } from './application/ports/cliente-internet-estado-operativo.port';
-import { ClienteInternetEstadoOperativoPrismaAdapter } from './infra/prisma/cliente-internet-estado-operativo-prisma.adapter';
 
 @Module({
   controllers: [
@@ -60,6 +59,7 @@ import { ClienteInternetEstadoOperativoPrismaAdapter } from './infra/prisma/clie
     PppoeCuentaProvisionamientoController,
   ],
   imports: [
+    ClienteModule,
     PrismaModule,
     AuthModule,
     PppoePerfilHomologacionModule,
@@ -123,10 +123,6 @@ import { ClienteInternetEstadoOperativoPrismaAdapter } from './infra/prisma/clie
     {
       provide: PPPOE_OPERACION_AUDITORIA,
       useExisting: PppoeOperacionAuditoriaService,
-    },
-    {
-      provide: CLIENTE_INTERNET_ESTADO_OPERATIVO,
-      useClass: ClienteInternetEstadoOperativoPrismaAdapter,
     },
   ],
   exports: [PPPOE_PREALTA, PPPOE_PROVISIONAMIENTO],

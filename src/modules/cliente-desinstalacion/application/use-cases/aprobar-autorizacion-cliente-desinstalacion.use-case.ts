@@ -38,6 +38,7 @@ import {
   REAUTENTICACION_OPERADOR,
   ReautenticacionOperadorPort,
 } from '../ports/reautenticacion-operador.port';
+import { CerrarDesinstalacionService } from '../services/cerrar-desinstalacion.service';
 import { ValidarAccesoDesinstalacionService } from '../services/validar-acceso-desinstalacion.service';
 
 export type AprobarAutorizacionDesinstalacionInput = {
@@ -57,7 +58,7 @@ export type AprobarAutorizacionDesinstalacionResult = {
  * Aprueba la baja: reautentica, deja la autorización APROBADA y la
  * desinstalación EN_PROCESO (juntas, en una transacción), elimina el secret
  * PPPoE en el router y, si la cuenta quedó ELIMINADA, completa la
- * desinstalación. Si el router falla, queda EN_PROCESO y la operación PPPoE se
+ * desinstalación y deja al cliente DESINSTALADO. Si el router falla, queda EN_PROCESO y la operación PPPoE se
  * recupera desde su propio flujo; nunca se completa de más.
  */
 @Injectable()
@@ -85,6 +86,8 @@ export class AprobarAutorizacionDesinstalacionUseCase {
 
     @Inject(RELOJ)
     private readonly reloj: RelojPort,
+
+    private readonly cierre: CerrarDesinstalacionService,
   ) {}
 
   async execute(
@@ -199,7 +202,7 @@ export class AprobarAutorizacionDesinstalacionUseCase {
       conforme: null,
     });
 
-    const completada = await this.desinstalaciones.save(desinstalacion);
+    const completada = await this.cierre.guardarCompletada(desinstalacion);
 
     return {
       autorizacion: resumirAutorizacion(autorizacion),

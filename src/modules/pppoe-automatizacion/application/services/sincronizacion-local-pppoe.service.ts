@@ -1,6 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
 
 import {
+  CLIENTE,
+  ClienteFacadePort,
+} from 'src/modules/cliente/public/cliente.facade.port';
+import { EstadoOperativoCliente } from 'src/modules/cliente/public/cliente.types';
+import {
   PPPOE_ACCESO_INTERNET,
   PppoeAccesoInternetFacadePort,
 } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.facade.port';
@@ -21,11 +26,6 @@ import {
 import { ContextoEliminacionPppoe } from '../../domain/enums/contexto-eliminacion-pppoe.enum';
 import { ProvisionamientoPppoeEstadoInvalidoError } from '../../domain/errors/pppoe-automatizacion.errors';
 import { resolverContextoEliminacion } from '../../domain/policies/contexto-eliminacion-pppoe.policy';
-import {
-  CLIENTE_INTERNET_ESTADO_OPERATIVO,
-  ClienteInternetEstadoOperativoPort,
-  EstadoOperativoClienteInternet,
-} from '../ports/cliente-internet-estado-operativo.port';
 
 const { CREAR_SECRET, ACTIVAR_SECRET, SUSPENDER_SERVICIO, ELIMINAR_SECRET } =
   TipoOperacionPppoe;
@@ -42,8 +42,8 @@ export class SincronizacionLocalPppoeService {
     private readonly cuentas: PppoeClienteCuentaFacadePort,
     @Inject(PPPOE_ACCESO_INTERNET)
     private readonly accesos: PppoeAccesoInternetFacadePort,
-    @Inject(CLIENTE_INTERNET_ESTADO_OPERATIVO)
-    private readonly clienteEstadoOperativo: ClienteInternetEstadoOperativoPort,
+    @Inject(CLIENTE)
+    private readonly clientes: ClienteFacadePort,
   ) {}
 
   /** Deja la cuenta en el estado "en curso" de la operación (o la valida). */
@@ -212,13 +212,13 @@ export class SincronizacionLocalPppoeService {
   ): Promise<void> {
     const estado =
       operacion.tipo === ACTIVAR_SECRET
-        ? EstadoOperativoClienteInternet.ACTIVO
+        ? EstadoOperativoCliente.ACTIVO
         : operacion.tipo === SUSPENDER_SERVICIO
-          ? EstadoOperativoClienteInternet.SUSPENDIDO
+          ? EstadoOperativoCliente.SUSPENDIDO
           : null;
     if (!estado) return;
 
-    await this.clienteEstadoOperativo.sincronizar({
+    await this.clientes.sincronizarEstadoOperativo({
       empresaId: acceso.empresaId,
       clienteId: acceso.clienteId,
       estado,

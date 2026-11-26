@@ -1,4 +1,5 @@
 import { RelojFijo } from 'src/common/reloj/reloj-fijo';
+import { CerrarDesinstalacionService } from '../services/cerrar-desinstalacion.service';
 import { EstadoDesinstalacionCliente } from '../../domain/enums/estado-desinstalacion-cliente.enum';
 import {
   ClienteDesinstalacionEstadoInvalidoError,
@@ -15,6 +16,10 @@ const AHORA = new Date('2026-11-26T15:00:00.000Z');
 describe('transiciones de la desinstalación', () => {
   let repo: ClienteDesinstalacionRepositoryFake;
   const reloj = new RelojFijo(AHORA);
+  /** El cierre (cliente DESINSTALADO) tiene su propia prueba. */
+  const cierre = {
+    guardarCompletada: (d) => repo.save(d),
+  } as CerrarDesinstalacionService;
 
   beforeEach(() => {
     repo = new ClienteDesinstalacionRepositoryFake();
@@ -27,6 +32,7 @@ describe('transiciones de la desinstalación', () => {
       const r = await new CompletarClienteDesinstalacionUseCase(
         repo,
         reloj,
+        cierre,
       ).execute({
         id: 100,
         ejecutadoPorId: 3,
@@ -45,7 +51,11 @@ describe('transiciones de la desinstalación', () => {
 
     it('solo desde EN_PROCESO; inexistente da 404 de dominio', async () => {
       repo.sembrar(EstadoDesinstalacionCliente.PROGRAMADA);
-      const useCase = new CompletarClienteDesinstalacionUseCase(repo, reloj);
+      const useCase = new CompletarClienteDesinstalacionUseCase(
+        repo,
+        reloj,
+        cierre,
+      );
 
       await expect(
         useCase.execute({ id: 100, ejecutadoPorId: 3 }),
