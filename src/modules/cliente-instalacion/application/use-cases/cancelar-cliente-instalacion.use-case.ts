@@ -1,28 +1,49 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { CLIENTE_INSTALACION_REPOSITORY, ClienteInstalacionRepositoryPort } from '../../domain/ports/cliente-instalacion-repository.port';
-import { CancelarClienteInstalacionDto } from '../../presentation/dto/cancelar-cliente-instalacion.dto';
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
+import { ClienteInstalacionNoEncontradaError } from '../../domain/errors/cliente-instalacion.errors';
+import {
+  CLIENTE_INSTALACION_REPOSITORY,
+  ClienteInstalacionRepositoryPort,
+} from '../../domain/ports/cliente-instalacion-repository.port';
+import {
+  ClienteInstalacionResumen,
+  resumirInstalacion,
+} from '../../domain/read-models/cliente-instalacion-resumen.read-model';
 
-export type CancelarClienteInstalacionCommand =
-  CancelarClienteInstalacionDto & {
-    id: number;
-  };
+export type CancelarClienteInstalacionInput = {
+  id: number;
+  motivo: string;
+  observaciones?: string | null;
+  fechaCancelacion?: string | Date;
+};
 
 @Injectable()
 export class CancelarClienteInstalacionUseCase {
   constructor(
     @Inject(CLIENTE_INSTALACION_REPOSITORY)
-    private readonly clienteInstalacionRepo: ClienteInstalacionRepositoryPort,
+    private readonly instalaciones: ClienteInstalacionRepositoryPort,
+
+    @Inject(RELOJ)
+    private readonly reloj: RelojPort,
   ) {}
 
-  async execute(command: CancelarClienteInstalacionCommand) {
-    const instalacion = await this.clienteInstalacionRepo.findById({
-      id: command.id,
-    });
+  async execute(
+    input: CancelarClienteInstalacionInput,
+  ): Promise<ClienteInstalacionResumen> {
+    const instalacion = await this.instalaciones.findById(input.id);
+
+    if (!instalacion) {
+      throw new ClienteInstalacionNoEncontradaError();
+    }
 
     instalacion.cancelar({
-      ...command,
+      motivo: input.motivo,
+      observaciones: input.observaciones,
+      fechaCancelacion: input.fechaCancelacion
+        ? new Date(input.fechaCancelacion)
+        : this.reloj.ahora(),
     });
 
-    return this.clienteInstalacionRepo.save(instalacion);
+    return resumirInstalacion(await this.instalaciones.save(instalacion));
   }
 }

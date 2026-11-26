@@ -1,38 +1,51 @@
 import { Injectable } from '@nestjs/common';
-
-import { PrismaService } from 'src/prisma/prisma.service';
-
+import { Prisma } from '@prisma/client';
+import { PrismaTransaccional } from 'src/common/transaccion/prisma-transaccional.service';
+import { ClienteInstalacionAccesoEntity } from '../../domain/entities/cliente-instalacion-acceso.entity';
+import { ClienteInstalacionAccesoDuplicadoError } from '../../domain/errors/cliente-instalacion.errors';
 import {
   BuscarInstalacionAccesoParams,
   ClienteInstalacionAccesoRepositoryPort,
 } from '../../domain/ports/cliente-instalacion-acceso-repository.port';
-
 import { ClienteInstalacionAccesoPrismaMapper } from './cliente-instalacion-acceso-prisma.mapper';
-import { ClienteInstalacionAccesoEntity } from '../../domain/entities/cliente-instalacion-acceso.entity';
 
 @Injectable()
 export class ClienteInstalacionAccesoPrismaRepository
   implements ClienteInstalacionAccesoRepositoryPort
 {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly transaccional: PrismaTransaccional) {}
+
+  /** La transacción abierta por una unidad de trabajo, o el cliente normal. */
+  private get db() {
+    return this.transaccional.cliente;
+  }
 
   async create(
     entity: ClienteInstalacionAccesoEntity,
   ): Promise<ClienteInstalacionAccesoEntity> {
-    const record = await this.prisma.clienteInstalacionAcceso.create({
-      data: ClienteInstalacionAccesoPrismaMapper.toCreatePersistence(entity),
-    });
+    try {
+      const record = await this.db.clienteInstalacionAcceso.create({
+        data: ClienteInstalacionAccesoPrismaMapper.toCreatePersistence(entity),
+      });
 
-    return ClienteInstalacionAccesoPrismaMapper.toDomain(record);
+      return ClienteInstalacionAccesoPrismaMapper.toDomain(record);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ClienteInstalacionAccesoDuplicadoError();
+      }
+
+      throw error;
+    }
   }
 
   async findByInstalacionId(
     instalacionId: number,
   ): Promise<ClienteInstalacionAccesoEntity | null> {
-    const record = await this.prisma.clienteInstalacionAcceso.findUnique({
-      where: {
-        instalacionId,
-      },
+    const record = await this.db.clienteInstalacionAcceso.findUnique({
+      where: { instalacionId },
     });
 
     return record
@@ -44,16 +57,10 @@ export class ClienteInstalacionAccesoPrismaRepository
     instalacionId,
     accesoInternetId,
   }: BuscarInstalacionAccesoParams): Promise<ClienteInstalacionAccesoEntity | null> {
-    const record = await this.prisma.clienteInstalacionAcceso.findUnique({
-      where: {
-        instalacionId,
-      },
-    });
+    const entity = await this.findByInstalacionId(instalacionId);
 
-    if (!record || record.accesoInternetId !== accesoInternetId) {
-      return null;
-    }
-
-    return ClienteInstalacionAccesoPrismaMapper.toDomain(record);
+    return entity && entity.accesoInternetId === accesoInternetId
+      ? entity
+      : null;
   }
 }

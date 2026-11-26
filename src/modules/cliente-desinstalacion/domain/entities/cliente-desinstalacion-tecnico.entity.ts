@@ -1,4 +1,4 @@
-import { RolTecnicoOperacionCliente } from 'src/modules/cliente-instalacion/domain/enums/rol-tecnico-operacion-cliente.enum';
+import { RolTecnicoOperacionCliente } from 'src/modules/cliente-instalacion/public/cliente-instalacion.types';
 
 export type ClienteDesinstalacionTecnicoProps = {
   id?: number;

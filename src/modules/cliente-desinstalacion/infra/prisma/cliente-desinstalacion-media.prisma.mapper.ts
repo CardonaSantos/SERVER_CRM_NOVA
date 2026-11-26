@@ -4,7 +4,7 @@ import {
 } from '@prisma/client';
 
 import { ClienteDesinstalacionMediaEntity } from '../../domain/entities/cliente-desinstalacion-media.entity';
-import { TipoEvidenciaClienteOperacion } from 'src/modules/cliente-instalacion/domain/enums/tipo-evidencia-cliente-operacion.enum';
+import { TipoEvidenciaClienteOperacion } from 'src/modules/cliente-instalacion/public/cliente-instalacion.types';
 
 export class ClienteDesinstalacionMediaPrismaMapper {
   static toDomain(

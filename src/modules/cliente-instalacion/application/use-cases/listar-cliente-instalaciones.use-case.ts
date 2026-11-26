@@ -1,50 +1,63 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { CLIENTE_INSTALACION_REPOSITORY, ClienteInstalacionPaginatedResult, ClienteInstalacionRepositoryPort } from '../../domain/ports/cliente-instalacion-repository.port';
-import { FiltrarClienteInstalacionesDto } from '../../presentation/dto/listar-cliente-instalaciones-query.dto';
+import {
+  normalizarPaginacion,
+  ResultadoPaginado,
+} from 'src/common/hexagonal/paginacion';
+import { EstadoInstalacionCliente } from '../../domain/enums/estado-instalacion-cliente.enum';
+import { TipoInstalacionCliente } from '../../domain/enums/tipo-instalacion-cliente.enum';
+import {
+  CLIENTE_INSTALACION_QUERY,
+  ClienteInstalacionQueryPort,
+} from '../../domain/ports/cliente-instalacion-query.port';
+import { ClienteInstalacionListItem } from '../../domain/read-models/cliente-instalacion-listado.read-model';
+
+export type ListarClienteInstalacionesInput = {
+  page?: number;
+  limit?: number;
+  search?: string;
+  clienteId?: number;
+  servicioInternetId?: number;
+  ticketId?: number;
+  asesorId?: number;
+  creadoPorId?: number;
+  completadoPorId?: number;
+  estado?: EstadoInstalacionCliente;
+  tipo?: TipoInstalacionCliente;
+  fechaProgramadaDesde?: string;
+  fechaProgramadaHasta?: string;
+  fechaFinalizacionDesde?: string;
+  fechaFinalizacionHasta?: string;
+};
 
 @Injectable()
 export class ListarClienteInstalacionesUseCase {
   constructor(
-    @Inject(CLIENTE_INSTALACION_REPOSITORY)
-    private readonly instalacionRepository: ClienteInstalacionRepositoryPort,
+    @Inject(CLIENTE_INSTALACION_QUERY)
+    private readonly consultas: ClienteInstalacionQueryPort,
   ) {}
 
-  async execute(
-    filters: FiltrarClienteInstalacionesDto,
-  ): Promise<ClienteInstalacionPaginatedResult> {
-    return this.instalacionRepository.findMany({
-      empresaId: filters.empresaId,
+  execute(
+    input: ListarClienteInstalacionesInput,
+  ): Promise<ResultadoPaginado<ClienteInstalacionListItem>> {
+    const fecha = (valor?: string) => (valor ? new Date(valor) : null);
 
-      page: filters.page ?? 1,
-      limit: filters.limit ?? 10,
-
-      search: filters.search ?? null,
-
-      clienteId: filters.clienteId ?? null,
-      servicioInternetId: filters.servicioInternetId ?? null,
-      ticketId: filters.ticketId ?? null,
-      asesorId: filters.asesorId ?? null,
-      creadoPorId: filters.creadoPorId ?? null,
-      completadoPorId: filters.completadoPorId ?? null,
-
-      estado: filters.estado ?? null,
-      tipo: filters.tipo ?? null,
-
-      fechaProgramadaDesde: filters.fechaProgramadaDesde
-        ? new Date(filters.fechaProgramadaDesde)
-        : null,
-
-      fechaProgramadaHasta: filters.fechaProgramadaHasta
-        ? new Date(filters.fechaProgramadaHasta)
-        : null,
-
-      fechaFinalizacionDesde: filters.fechaFinalizacionDesde
-        ? new Date(filters.fechaFinalizacionDesde)
-        : null,
-
-      fechaFinalizacionHasta: filters.fechaFinalizacionHasta
-        ? new Date(filters.fechaFinalizacionHasta)
-        : null,
-    });
+    return this.consultas.findMany(
+      {
+        search: input.search ?? null,
+        clienteId: input.clienteId ?? null,
+        servicioInternetId: input.servicioInternetId ?? null,
+        ticketId: input.ticketId ?? null,
+        asesorId: input.asesorId ?? null,
+        creadoPorId: input.creadoPorId ?? null,
+        completadoPorId: input.completadoPorId ?? null,
+        estado: input.estado ?? null,
+        tipo: input.tipo ?? null,
+        fechaProgramadaDesde: fecha(input.fechaProgramadaDesde),
+        fechaProgramadaHasta: fecha(input.fechaProgramadaHasta),
+        fechaFinalizacionDesde: fecha(input.fechaFinalizacionDesde),
+        fechaFinalizacionHasta: fecha(input.fechaFinalizacionHasta),
+      },
+      normalizarPaginacion(input),
+    );
   }
 }

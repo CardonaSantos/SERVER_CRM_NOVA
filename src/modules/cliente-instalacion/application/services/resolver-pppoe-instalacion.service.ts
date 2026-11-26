@@ -1,57 +1,45 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
-
-import { ClienteInstalacionEntity } from '../../domain/entities/cliente-instalacion.entity';
-
-import { CLIENTE_INSTALACION_ACCESO_REPOSITORY } from '../../domain/ports/cliente-instalacion-acceso-repository.port';
-
-import { ClienteInstalacionAccesoRepositoryPort } from 'src/modules/cliente-instalacion/domain/ports/cliente-instalacion-acceso-repository.port';
-
-import { AccionInstalacionAcceso } from 'src/modules/cliente-instalacion/domain/enums/accion-instalacion-acceso.enum';
-
+import { Inject, Injectable } from '@nestjs/common';
 import {
   PPPOE_ACCESO_INTERNET,
   PppoeAccesoInternetFacadePort,
 } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.facade.port';
-
-import {
-  MetodoAutenticacionInternet,
-  TecnologiaAccesoInternet,
-} from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
-
 import {
   PPPOE_CLIENTE_CUENTA,
   PppoeClienteCuentaFacadePort,
 } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
-
 import { ClientePppoeCuentaReadModel } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
+import { ClienteInstalacionEntity } from '../../domain/entities/cliente-instalacion.entity';
+import { AccionInstalacionAcceso } from '../../domain/enums/accion-instalacion-acceso.enum';
+import { ClienteInstalacionPppoeConflictoError } from '../../domain/errors/cliente-instalacion.errors';
+import { esGponPppoe } from '../../domain/policies/acceso-instalacion.policy';
+import {
+  CLIENTE_INSTALACION_ACCESO_REPOSITORY,
+  ClienteInstalacionAccesoRepositoryPort,
+} from '../../domain/ports/cliente-instalacion-acceso-repository.port';
 
 export type ResolverPppoeInstalacionResult =
-  | {
-      aplica: false;
-
-      accesoInternetId: null;
-
-      cuenta: null;
-    }
+  | { aplica: false; accesoInternetId: null; cuenta: null }
   | {
       aplica: true;
-
       accesoInternetId: number;
-
       cuenta: ClientePppoeCuentaReadModel;
     };
 
+const NO_APLICA: ResolverPppoeInstalacionResult = {
+  aplica: false,
+  accesoInternetId: null,
+  cuenta: null,
+};
+
 /**
- * Resuelve el acceso PPPoE nuevo asociado
- * a una instalación.
- *
- * No ejecuta SSH ni modifica entidades.
+ * Resuelve el acceso PPPoE nuevo de una instalación y su cuenta.
+ * No ejecuta SSH ni modifica nada.
  */
 @Injectable()
 export class ResolverPppoeInstalacionService {
   constructor(
     @Inject(CLIENTE_INSTALACION_ACCESO_REPOSITORY)
-    private readonly instalacionAccesoRepository: ClienteInstalacionAccesoRepositoryPort,
+    private readonly vinculos: ClienteInstalacionAccesoRepositoryPort,
 
     @Inject(PPPOE_ACCESO_INTERNET)
     private readonly accesosInternet: PppoeAccesoInternetFacadePort,
@@ -64,39 +52,22 @@ export class ResolverPppoeInstalacionService {
     instalacion: ClienteInstalacionEntity,
   ): Promise<ResolverPppoeInstalacionResult> {
     if (!instalacion.id) {
-      throw new ConflictException(
-        'La instalación debe estar persistida para resolver su cuenta PPPoE.',
+      throw new ClienteInstalacionPppoeConflictoError(
+        'La instalación debe estar guardada para resolver su cuenta PPPoE.',
       );
     }
 
-    const vinculo = await this.instalacionAccesoRepository.findByInstalacionId(
-      instalacion.id,
-    );
+    const vinculo = await this.vinculos.findByInstalacionId(instalacion.id);
 
-    /*
-     * Una instalación puede no tener todavía un acceso vinculado.
-     */
+    // Una instalación puede no tener todavía un acceso vinculado.
     if (!vinculo) {
-      return {
-        aplica: false,
-        accesoInternetId: null,
-        cuenta: null,
-      };
+      return NO_APLICA;
     }
 
-    /*
-     * El provisionamiento inicial solamente corresponde
-     * al acceso creado por esta instalación.
-     *
-     * Un acceso MODIFICADO puede tener un servicio activo
-     * y no debe recrearse automáticamente.
-     */
+    // El alta inicial solo corresponde al acceso que creó esta instalación:
+    // uno MODIFICADO puede tener servicio activo y no se recrea.
     if (vinculo.accion !== AccionInstalacionAcceso.CREADO) {
-      return {
-        aplica: false,
-        accesoInternetId: null,
-        cuenta: null,
-      };
+      return NO_APLICA;
     }
 
     const acceso = await this.accesosInternet.buscarDelCliente({
@@ -104,57 +75,30 @@ export class ResolverPppoeInstalacionService {
       clienteId: instalacion.clienteId,
     });
 
-    if (!acceso) {
-      throw new ConflictException(
-        `El acceso ${vinculo.accesoInternetId} vinculado a la instalación no existe o no pertenece al cliente.`,
+    if (!acceso?.id) {
+      throw new ClienteInstalacionPppoeConflictoError(
+        'El acceso vinculado a la instalación no existe o no pertenece al cliente.',
       );
     }
 
-    const esGponPppoe =
-      acceso.tecnologia === TecnologiaAccesoInternet.FIBRA_GPON &&
-      acceso.metodoAutenticacion === MetodoAutenticacionInternet.PPPOE;
-
-    if (!esGponPppoe) {
-      return {
-        aplica: false,
-        accesoInternetId: null,
-        cuenta: null,
-      };
+    if (!esGponPppoe(acceso.tecnologia, acceso.metodoAutenticacion)) {
+      return NO_APLICA;
     }
 
-    if (!acceso.id) {
-      throw new ConflictException(
-        'El acceso PPPoE vinculado no contiene un identificador persistido.',
-      );
-    }
-
-    const accesoInternetId = acceso.id;
-
-    const cuenta =
-      await this.cuentasPppoe.buscarPorAccesoInternet(accesoInternetId);
+    const cuenta = await this.cuentasPppoe.buscarPorAccesoInternet(acceso.id);
 
     if (!cuenta) {
-      throw new ConflictException(
+      throw new ClienteInstalacionPppoeConflictoError(
         'El acceso GPON/PPPoE no tiene una prealta disponible. Debe ejecutarse el reintento de prealta antes de iniciar la instalación.',
       );
     }
 
     if (cuenta.id === null) {
-      throw new ConflictException(
-        'La cuenta PPPoE no contiene un identificador persistido.',
+      throw new ClienteInstalacionPppoeConflictoError(
+        'La cuenta PPPoE no tiene un identificador válido.',
       );
     }
 
-    if (cuenta.empresaId !== instalacion.empresaId) {
-      throw new ConflictException(
-        'La cuenta PPPoE y la instalación pertenecen a empresas diferentes.',
-      );
-    }
-
-    return {
-      aplica: true,
-      accesoInternetId,
-      cuenta,
-    };
+    return { aplica: true, accesoInternetId: acceso.id, cuenta };
   }
 }

@@ -8,7 +8,7 @@ import { dayjs } from 'src/Utils/dayjs.config';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { TZ } from 'src/Utils/tzgt';
-import { EstadoInstalacionCliente } from 'src/modules/cliente-instalacion/domain/enums/estado-instalacion-cliente.enum';
+import { EstadoInstalacionCliente } from 'src/modules/cliente-instalacion/public/cliente-instalacion.types';
 import {
   EstadoTicketSoporte,
   PrioridadTicketSoporte,

@@ -1,51 +1,49 @@
 import { Inject, Injectable } from '@nestjs/common';
-
+import {
+  normalizarPaginacion,
+  ResultadoPaginado,
+} from 'src/common/hexagonal/paginacion';
 import { EstadoInstalacionCliente } from '../../domain/enums/estado-instalacion-cliente.enum';
-
-import { ClienteInstalacionAssignedPaginatedResult, ClienteInstalacionRepositoryPort, CLIENTE_INSTALACION_REPOSITORY } from '../../domain/ports/cliente-instalacion-repository.port';
-
+import {
+  CLIENTE_INSTALACION_QUERY,
+  ClienteInstalacionQueryPort,
+} from '../../domain/ports/cliente-instalacion-query.port';
+import { ClienteInstalacionAssignedListItem } from '../../domain/read-models/cliente-instalacion-listado.read-model';
 
 export type ListarMisInstalacionesAsignadasInput = {
-  /**
-   * Identificador del técnico autenticado.
-   * Debe provenir exclusivamente del JWT.
-   */
+  /** El técnico autenticado; nunca viene de la petición. */
   tecnicoId: number;
-
   page?: number;
   limit?: number;
-
-  search?: string | null;
-
-  estado?: EstadoInstalacionCliente | null;
-
-  fechaProgramadaDesde?: Date | null;
-  fechaProgramadaHasta?: Date | null;
+  search?: string;
+  estado?: EstadoInstalacionCliente;
+  fechaProgramadaDesde?: string;
+  fechaProgramadaHasta?: string;
 };
 
 @Injectable()
 export class ListarMisInstalacionesAsignadasUseCase {
   constructor(
-    @Inject(CLIENTE_INSTALACION_REPOSITORY)
-    private readonly instalacionRepository: ClienteInstalacionRepositoryPort,
+    @Inject(CLIENTE_INSTALACION_QUERY)
+    private readonly consultas: ClienteInstalacionQueryPort,
   ) {}
 
   execute(
     input: ListarMisInstalacionesAsignadasInput,
-  ): Promise<ClienteInstalacionAssignedPaginatedResult> {
-    return this.instalacionRepository.findAssignedToTechnician({
-      tecnicoId: input.tecnicoId,
-
-      page: input.page ?? 1,
-      limit: input.limit ?? 10,
-
-      search: input.search?.trim() || null,
-
-      estado: input.estado ?? null,
-
-      fechaProgramadaDesde: input.fechaProgramadaDesde ?? null,
-
-      fechaProgramadaHasta: input.fechaProgramadaHasta ?? null,
-    });
+  ): Promise<ResultadoPaginado<ClienteInstalacionAssignedListItem>> {
+    return this.consultas.findAsignadasAlTecnico(
+      {
+        tecnicoId: input.tecnicoId,
+        search: input.search?.trim() || null,
+        estado: input.estado ?? null,
+        fechaProgramadaDesde: input.fechaProgramadaDesde
+          ? new Date(input.fechaProgramadaDesde)
+          : null,
+        fechaProgramadaHasta: input.fechaProgramadaHasta
+          ? new Date(input.fechaProgramadaHasta)
+          : null,
+      },
+      normalizarPaginacion(input),
+    );
   }
 }

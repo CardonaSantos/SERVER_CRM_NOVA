@@ -15,7 +15,7 @@ import {
   AlmacenamientoMediaFacadePort,
 } from 'src/modules/almacenamiento-media/public/almacenamiento-media.facade.port';
 
-import { TipoEvidenciaClienteOperacion } from 'src/modules/cliente-instalacion/domain/enums/tipo-evidencia-cliente-operacion.enum';
+import { TipoEvidenciaClienteOperacion } from 'src/modules/cliente-instalacion/public/cliente-instalacion.types';
 
 import { ClienteDesinstalacionMediaEntity } from '../../domain/entities/cliente-desinstalacion-media.entity';
 

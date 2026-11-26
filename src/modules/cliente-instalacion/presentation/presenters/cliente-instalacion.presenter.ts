@@ -1,25 +1,32 @@
-import { ClienteInstalacionEntity } from '../../domain/entities/cliente-instalacion.entity';
 import {
-  ClienteInstalacionAssignedListItem,
-  ClienteInstalacionAssignedPaginatedResult,
+  presentarPaginado,
+  RespuestaPaginada,
+  ResultadoPaginado,
+} from 'src/common/hexagonal/paginacion';
+import { ConsultarCredencialesPppoeInstalacionResult } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
+import { ActivarPppoeInstalacionResult } from '../../application/use-cases/activar-pppoe-instalacion.use-case';
+import { CrearClienteInstalacionResult } from '../../application/use-cases/crear-cliente-instalacion.use-case';
+import { PrealtaPppoeExitosaResult } from '../../application/services/provisionar-acceso-instalacion.service';
+import { SubirEvidenciaInstalacionResult } from '../../application/use-cases/subir-evidencia-instalacion.use-case';
+import {
   ClienteInstalacionDetalle,
   ClienteInstalacionEvidenciaDetalle,
-  ClienteInstalacionListItem,
-  ClienteInstalacionPaginatedResult,
-  ClienteInstalacionTechnicalResult,
   ClienteInstalacionTecnicoDetalle,
+} from '../../domain/read-models/cliente-instalacion-detalle.read-model';
+import {
+  ClienteInstalacionAssignedListItem,
+  ClienteInstalacionListItem,
   ClienteInstalacionUsuarioResumen,
-} from '../../domain/ports/cliente-instalacion-repository.port';
-import { CrearClienteInstalacionResult } from '../../results/crear-cliente-instalacion.result';
+} from '../../domain/read-models/cliente-instalacion-listado.read-model';
+import { ClienteInstalacionResumen } from '../../domain/read-models/cliente-instalacion-resumen.read-model';
+import { ClienteInstalacionTechnicalResult } from '../../domain/read-models/instalacion-tecnica.read-model';
 
 export class ClienteInstalacionPresenter {
   /**
    * Convierte la entidad principal de instalación
    * a una respuesta HTTP serializable.
    */
-  static toHttp(entity: ClienteInstalacionEntity) {
-    const props = entity.toPrimitives();
-
+  static toHttp(props: ClienteInstalacionResumen) {
     return {
       id: props.id,
 
@@ -55,12 +62,12 @@ export class ClienteInstalacionPresenter {
       },
 
       costos: {
-        costoInstalacion: props.costoInstalacion.toNumber(),
-        costoMateriales: props.costoMateriales.toNumber(),
-        costoManoObra: props.costoManoObra.toNumber(),
-        costoOtros: props.costoOtros.toNumber(),
+        costoInstalacion: props.costoInstalacion,
+        costoMateriales: props.costoMateriales,
+        costoManoObra: props.costoManoObra,
+        costoOtros: props.costoOtros,
 
-        montoCobradoCliente: props.montoCobradoCliente.toNumber(),
+        montoCobradoCliente: props.montoCobradoCliente,
 
         notas: props.notasCostos,
       },
@@ -162,7 +169,7 @@ export class ClienteInstalacionPresenter {
   /**
    * Convierte un item ligero del listado paginado.
    */
-  private static listItemToHttp(item: ClienteInstalacionListItem) {
+  static listItemToHttp(item: ClienteInstalacionListItem) {
     return {
       ...this.toHttp(item.instalacion),
 
@@ -214,21 +221,12 @@ export class ClienteInstalacionPresenter {
     };
   }
 
-  /**
-   * Convierte el resultado paginado.
-   */
-  static paginatedToHttp(result: ClienteInstalacionPaginatedResult) {
-    return {
-      data: result.items.map((item) => this.listItemToHttp(item)),
-
-      meta: {
-        total: result.total,
-        page: result.page,
-        limit: result.limit,
-
-        totalPages: result.totalPages ?? Math.ceil(result.total / result.limit),
-      },
-    };
+  static listado(
+    resultado: ResultadoPaginado<ClienteInstalacionListItem>,
+  ): RespuestaPaginada<
+    ReturnType<typeof ClienteInstalacionPresenter.listItemToHttp>
+  > {
+    return presentarPaginado(resultado, (item) => this.listItemToHttp(item));
   }
 
   /**
@@ -342,27 +340,13 @@ export class ClienteInstalacionPresenter {
     };
   }
 
-  // ASIGNADOs
-  /**
-   * Convierte el listado paginado de instalaciones
-   * asignadas al técnico autenticado.
-   */
-  static asignadasPaginatedToHttp(
-    result: ClienteInstalacionAssignedPaginatedResult,
+  /** Bandeja del técnico: instalaciones donde participa. */
+  static asignadas(
+    resultado: ResultadoPaginado<ClienteInstalacionAssignedListItem>,
   ) {
-    return {
-      data: result.items.map((item) => this.assignedListItemToHttp(item)),
-
-      meta: {
-        total: result.total,
-
-        page: result.page,
-
-        limit: result.limit,
-
-        totalPages: result.totalPages ?? Math.ceil(result.total / result.limit),
-      },
-    };
+    return presentarPaginado(resultado, (item) =>
+      this.assignedListItemToHttp(item),
+    );
   }
 
   /**
@@ -372,11 +356,11 @@ export class ClienteInstalacionPresenter {
   private static assignedListItemToHttp(
     item: ClienteInstalacionAssignedListItem,
   ) {
-    const props = item.instalacion.toPrimitives();
+    const props = item.instalacion;
 
-    const costoInstalacion = props.costoInstalacion.toNumber();
+    const costoInstalacion = props.costoInstalacion;
 
-    const montoCobradoCliente = props.montoCobradoCliente.toNumber();
+    const montoCobradoCliente = props.montoCobradoCliente;
 
     const pendienteCobrar = Math.max(costoInstalacion - montoCobradoCliente, 0);
 
@@ -476,7 +460,7 @@ export class ClienteInstalacionPresenter {
   }
 
   static tecnicaToHttp(result: ClienteInstalacionTechnicalResult) {
-    const props = result.instalacion.toPrimitives();
+    const props = result.instalacion;
 
     return {
       id: props.id,
@@ -743,6 +727,84 @@ export class ClienteInstalacionPresenter {
         revelarCredenciales: result.acciones.revelarCredenciales,
 
         reintentarPrealta: result.acciones.reintentarPrealta,
+      },
+    };
+  }
+
+  static evidenciaSubida(evidencia: SubirEvidenciaInstalacionResult) {
+    return {
+      id: evidencia.id,
+      instalacionId: evidencia.instalacionId,
+      mediaId: evidencia.mediaId,
+      tipo: evidencia.tipo,
+      descripcion: evidencia.descripcion,
+      orden: evidencia.orden,
+      creadoEn: evidencia.creadoEn?.toISOString() ?? null,
+    };
+  }
+
+  /** Resultado de reintentar la prealta PPPoE de un acceso. */
+  static prealta(resultado: PrealtaPppoeExitosaResult) {
+    return {
+      aplica: resultado.aplica,
+      estado: resultado.estado,
+      cuentaPppoeId: resultado.cuentaPppoeId,
+      perfilHomologacionId: resultado.perfilHomologacionId,
+      usuario: resultado.usuario,
+      estadoCuenta: resultado.estadoCuenta,
+      generadoEn: resultado.generadoEn.toISOString(),
+      mensaje: resultado.mensaje,
+      reintentable: resultado.reintentable,
+    };
+  }
+
+  /** Credenciales descifradas: es la respuesta deliberada del endpoint "revelar". */
+  static credenciales(resultado: ConsultarCredencialesPppoeInstalacionResult) {
+    return {
+      instalacionId: resultado.instalacionId,
+      credenciales: resultado.credenciales.map((credencial) => ({
+        cuentaPppoeId: credencial.cuentaPppoeId,
+        accesoInternetId: credencial.accesoInternetId,
+        perfilHomologacionId: credencial.perfilHomologacionId,
+        mikrotikRouterId: credencial.mikrotikRouterId,
+        servicioInternetId: credencial.servicioInternetId,
+        codigoPerfil: credencial.codigoPerfil,
+        usuario: credencial.usuario,
+        contrasena: credencial.contrasena,
+        estadoCuenta: credencial.estadoCuenta,
+        generadoEn: credencial.generadoEn.toISOString(),
+      })),
+    };
+  }
+
+  static activacionPppoe(resultado: ActivarPppoeInstalacionResult) {
+    const operacion = (
+      o: NonNullable<ActivarPppoeInstalacionResult['creacion']>,
+    ) => ({
+      operacionId: o.operacionId,
+      tipo: o.tipo,
+      estadoOperacion: o.estadoOperacion,
+      estadoCuenta: o.estadoCuenta,
+      numeroIntento: o.numeroIntento,
+      reintentable: o.reintentable,
+      errorCodigo: o.errorCodigo,
+      errorMensaje: o.errorMensaje,
+    });
+
+    return {
+      instalacion: ClienteInstalacionPresenter.toHttp(resultado.instalacion),
+      pppoe: {
+        accesoInternetId: resultado.accesoInternetId,
+        cuentaPppoeId: resultado.cuentaPppoeId,
+        activadoEn: resultado.activadoEn.toISOString(),
+        creacion: resultado.creacion
+          ? { omitida: false, ...operacion(resultado.creacion) }
+          : {
+              omitida: true,
+              motivo:
+                'El secret ya había sido creado y confirmado anteriormente.',
+            },
+        activacion: operacion(resultado.activacion),
       },
     };
   }

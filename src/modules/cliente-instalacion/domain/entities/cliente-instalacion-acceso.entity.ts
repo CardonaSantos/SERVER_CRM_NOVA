@@ -3,12 +3,14 @@ import {
   ClienteInstalacionAccesoProps,
   CrearClienteInstalacionAccesoProps,
 } from '../props/cliente-instalacion-acceso.props';
+import { ClienteInstalacionDatosInvalidosError } from '../errors/cliente-instalacion.errors';
 
 export class ClienteInstalacionAccesoEntity {
   private constructor(private readonly props: ClienteInstalacionAccesoProps) {}
 
   static create(
     input: CrearClienteInstalacionAccesoProps,
+    ahora: Date,
   ): ClienteInstalacionAccesoEntity {
     this.assertPositiveId(input.instalacionId, 'instalacionId');
 
@@ -24,7 +26,7 @@ export class ClienteInstalacionAccesoEntity {
 
       accion: input.accion,
 
-      creadoEn: new Date(),
+      creadoEn: new Date(ahora),
     });
   }
 
@@ -81,7 +83,9 @@ export class ClienteInstalacionAccesoEntity {
 
   private static assertPositiveId(value: number | null, field: string): void {
     if (value === null || !Number.isInteger(value) || value <= 0) {
-      throw new Error(`${field} debe ser un identificador entero positivo`);
+      throw new ClienteInstalacionDatosInvalidosError(
+        `${field} debe ser un identificador entero positivo`,
+      );
     }
   }
 
@@ -89,7 +93,7 @@ export class ClienteInstalacionAccesoEntity {
     const acciones = Object.values(AccionInstalacionAcceso);
 
     if (!acciones.includes(value)) {
-      throw new Error(
+      throw new ClienteInstalacionDatosInvalidosError(
         'La acción de la instalación sobre el acceso no es válida',
       );
     }
@@ -99,7 +103,9 @@ export class ClienteInstalacionAccesoEntity {
     const date = new Date(value);
 
     if (Number.isNaN(date.getTime())) {
-      throw new Error(`${field} debe ser una fecha válida`);
+      throw new ClienteInstalacionDatosInvalidosError(
+        `${field} debe ser una fecha válida`,
+      );
     }
   }
 }

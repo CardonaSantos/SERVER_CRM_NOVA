@@ -2,6 +2,7 @@ import { Transform } from 'class-transformer';
 
 import { Equals, IsEnum, IsInt, IsOptional, Min } from 'class-validator';
 
+import { ModoAccesoInstalacion } from '../../domain/enums/modo-acceso-instalacion.enum';
 import {
   MetodoAutenticacionInternet,
   TecnologiaAccesoInternet,
@@ -14,11 +15,6 @@ const toNumber = ({ value }: { value: unknown }): number | undefined => {
 
   return Number(value);
 };
-
-export enum ModoAccesoInstalacion {
-  NUEVO = 'NUEVO',
-  EXISTENTE = 'EXISTENTE',
-}
 
 /**
  * Clase base usada por class-transformer para resolver
@@ -72,13 +68,3 @@ export class VincularAccesoExistenteInstalacionDto extends AccesoInstalacionBase
   @Min(1)
   accesoInternetId: number;
 }
-
-/**
- * Tipo utilizado internamente por el caso de uso.
- *
- * Después de la transformación y validación, TypeScript
- * podrá discriminarlo mediante `acceso.modo`.
- */
-export type AccesoInstalacionInput =
-  | CrearAccesoNuevoInstalacionDto
-  | VincularAccesoExistenteInstalacionDto;

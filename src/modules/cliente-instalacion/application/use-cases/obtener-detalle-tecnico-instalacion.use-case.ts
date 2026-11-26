@@ -1,107 +1,43 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-
-import { ClienteInstalacionRepositoryPort, ClienteInstalacionTechnicalResult, InstalacionTecnicaAccion, CLIENTE_INSTALACION_REPOSITORY } from '../../domain/ports/cliente-instalacion-repository.port';
-
+import { Inject, Injectable } from '@nestjs/common';
+import { calcularAccionesTecnicas } from '../../domain/policies/acciones-tecnicas-instalacion.policy';
+import { ClienteInstalacionNoEncontradaError } from '../../domain/errors/cliente-instalacion.errors';
+import {
+  CLIENTE_INSTALACION_QUERY,
+  ClienteInstalacionQueryPort,
+} from '../../domain/ports/cliente-instalacion-query.port';
+import { ClienteInstalacionTechnicalResult } from '../../domain/read-models/instalacion-tecnica.read-model';
 
 export type ObtenerDetalleTecnicoInstalacionInput = {
   instalacionId: number;
-
-  /**
-   * Se obtiene exclusivamente del JWT.
-   */
+  /** El técnico autenticado: solo ve las instalaciones donde figura asignado. */
   actorId: number;
 };
 
 @Injectable()
 export class ObtenerDetalleTecnicoInstalacionUseCase {
   constructor(
-    @Inject(CLIENTE_INSTALACION_REPOSITORY)
-    private readonly instalacionRepository: ClienteInstalacionRepositoryPort,
+    @Inject(CLIENTE_INSTALACION_QUERY)
+    private readonly consultas: ClienteInstalacionQueryPort,
   ) {}
 
   async execute(
     input: ObtenerDetalleTecnicoInstalacionInput,
   ): Promise<ClienteInstalacionTechnicalResult> {
-    const detalle = await this.instalacionRepository.findTechnicalDetailById(
+    const detalle = await this.consultas.findTechnicalDetailById(
       input.instalacionId,
       input.actorId,
     );
 
     if (!detalle) {
-      throw new NotFoundException(
-        `No se encontró la instalación ${input.instalacionId}.`,
-      );
+      throw new ClienteInstalacionNoEncontradaError();
     }
-
-    const props = detalle.instalacion.toPrimitives();
-
-    const puedeIniciar = ['PROGRAMADA', 'REPROGRAMADA'].includes(props.estado);
-
-    const puedeCompletar = props.estado === 'EN_PROCESO';
-
-    const puedeCancelar = ['PROGRAMADA', 'REPROGRAMADA', 'EN_PROCESO'].includes(
-      props.estado,
-    );
-
-    const tieneCuentaPppoe = detalle.accesos.some(
-      (acceso) => acceso.cuentaPppoe !== null,
-    );
-
-    const requiereReintentoPrealta = detalle.accesos.some(
-      (acceso) =>
-        acceso.metodoAutenticacion === 'PPPOE' && acceso.cuentaPppoe === null,
-    );
 
     return {
       ...detalle,
-
-      acciones: {
-        reprogramar: this.accion(
-          puedeIniciar,
-          'La instalación ya no puede reprogramarse en su estado actual.',
-        ),
-
-        iniciar: this.accion(
-          puedeIniciar,
-          'Solo se puede iniciar una instalación programada o reprogramada.',
-        ),
-
-        completar: this.accion(
-          puedeCompletar,
-          'La instalación debe estar en proceso antes de completarse.',
-        ),
-
-        cancelar: this.accion(
-          puedeCancelar,
-          'La instalación ya no admite cancelación.',
-        ),
-
-        subirEvidencia: this.accion(
-          props.estado !== 'CANCELADA',
-          'No se pueden agregar evidencias a una instalación cancelada.',
-        ),
-
-        revelarCredenciales: this.accion(
-          tieneCuentaPppoe,
-          'La instalación no tiene una cuenta PPPoE preparada.',
-        ),
-
-        reintentarPrealta: this.accion(
-          requiereReintentoPrealta,
-          'No existen accesos PPPoE pendientes de prealta.',
-        ),
-      },
-    };
-  }
-
-  private accion(
-    habilitada: boolean,
-    motivoDeshabilitada: string,
-  ): InstalacionTecnicaAccion {
-    return {
-      habilitada,
-
-      motivo: habilitada ? null : motivoDeshabilitada,
+      acciones: calcularAccionesTecnicas(
+        detalle.instalacion.estado,
+        detalle.accesos,
+      ),
     };
   }
 }

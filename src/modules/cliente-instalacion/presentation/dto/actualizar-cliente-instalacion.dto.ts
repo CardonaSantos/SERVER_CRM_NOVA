@@ -16,11 +16,6 @@ import { Type } from 'class-transformer';
 import { TipoInstalacionCliente } from '../../domain/enums/tipo-instalacion-cliente.enum';
 import { RolTecnicoOperacionCliente } from '../../domain/enums/rol-tecnico-operacion-cliente.enum';
 
-const toNumber = ({ value }: { value: unknown }) => {
-  if (value === undefined || value === null || value === '') return undefined;
-  return Number(value);
-};
-
 export class ActualizarCostosInstalacionDto {
   @IsOptional()
   @IsNumber()

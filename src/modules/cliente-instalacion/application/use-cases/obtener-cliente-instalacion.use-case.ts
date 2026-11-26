@@ -1,26 +1,27 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { ClienteInstalacionDetalle, ClienteInstalacionRepositoryPort, CLIENTE_INSTALACION_REPOSITORY } from '../../domain/ports/cliente-instalacion-repository.port';
+import { Inject, Injectable } from '@nestjs/common';
+import { ClienteInstalacionNoEncontradaError } from '../../domain/errors/cliente-instalacion.errors';
+import {
+  CLIENTE_INSTALACION_QUERY,
+  ClienteInstalacionQueryPort,
+} from '../../domain/ports/cliente-instalacion-query.port';
+import { ClienteInstalacionDetalle } from '../../domain/read-models/cliente-instalacion-detalle.read-model';
 
-export type ObtenerClienteInstalacionCommand = {
-  id: number;
-};
+export type ObtenerClienteInstalacionInput = { id: number };
 
 @Injectable()
 export class ObtenerClienteInstalacionUseCase {
   constructor(
-    @Inject(CLIENTE_INSTALACION_REPOSITORY)
-    private readonly instalacionRepository: ClienteInstalacionRepositoryPort,
+    @Inject(CLIENTE_INSTALACION_QUERY)
+    private readonly consultas: ClienteInstalacionQueryPort,
   ) {}
 
   async execute(
-    command: ObtenerClienteInstalacionCommand,
+    input: ObtenerClienteInstalacionInput,
   ): Promise<ClienteInstalacionDetalle> {
-    const detalle = await this.instalacionRepository.findDetailById({
-      id: command.id,
-    });
+    const detalle = await this.consultas.findDetailById(input.id);
 
     if (!detalle) {
-      throw new NotFoundException('Instalación no encontrada.');
+      throw new ClienteInstalacionNoEncontradaError();
     }
 
     return detalle;

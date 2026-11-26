@@ -1,750 +1,204 @@
-import { DomainError } from 'src/common/hexagonal/domain-error';
-import { HttpException, Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import {
+  UNIDAD_DE_TRABAJO,
+  UnidadDeTrabajoPort,
+} from 'src/common/transaccion/unidad-de-trabajo.port';
 import { ClienteInstalacionEntity } from '../../domain/entities/cliente-instalacion.entity';
-import { ClienteInstalacionRepositoryPort, CrearTecnicoInstalacionInput, CLIENTE_INSTALACION_REPOSITORY } from '../../domain/ports/cliente-instalacion-repository.port';
-import { CrearClienteInstalacionDto } from '../../presentation/dto/crear-cliente-instalacion.dto';
+import { EstadoInstalacionCliente } from '../../domain/enums/estado-instalacion-cliente.enum';
+import { ModoAccesoInstalacion } from '../../domain/enums/modo-acceso-instalacion.enum';
 import { RolTecnicoOperacionCliente } from '../../domain/enums/rol-tecnico-operacion-cliente.enum';
+import { TipoInstalacionCliente } from '../../domain/enums/tipo-instalacion-cliente.enum';
+import { validarAccesoNuevo } from '../../domain/policies/acceso-instalacion.policy';
+import { normalizarTecnicosInstalacion } from '../../domain/policies/tecnicos-instalacion.policy';
 import {
-  PPPOE_ACCESO_INTERNET,
-  PppoeAccesoInternetFacadePort,
-} from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.facade.port';
-import { CLIENTE_INSTALACION_ACCESO_REPOSITORY } from '../../domain/ports/cliente-instalacion-acceso-repository.port';
-import { ClienteInstalacionAccesoRepositoryPort } from 'src/modules/cliente-instalacion/domain/ports/cliente-instalacion-acceso-repository.port';
+  CLIENTE_INSTALACION_QUERY,
+  ClienteInstalacionQueryPort,
+} from '../../domain/ports/cliente-instalacion-query.port';
 import {
-  AccesoInternetReadModel,
-  MetodoAutenticacionInternet,
-  TecnologiaAccesoInternet,
-} from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
-import { ClienteInstalacionAccesoEntity } from 'src/modules/cliente-instalacion/domain/entities/cliente-instalacion-acceso.entity';
-import { AccionInstalacionAcceso } from 'src/modules/cliente-instalacion/domain/enums/accion-instalacion-acceso.enum';
-
+  CLIENTE_INSTALACION_REPOSITORY,
+  ClienteInstalacionRepositoryPort,
+} from '../../domain/ports/cliente-instalacion-repository.port';
+import { CoordenadasInstalacion } from '../../domain/value-objects/coordenadas-instalacion.vo';
+import { ClienteInstalacionDetalle } from '../../domain/read-models/cliente-instalacion-detalle.read-model';
+import { ClienteInstalacionNoEncontradaError } from '../../domain/errors/cliente-instalacion.errors';
 import {
-  AccesoInstalacionInput,
-  ModoAccesoInstalacion,
-} from '../../presentation/dto/acceso-instalacion.dto';
-import {
-  PPPOE_PREALTA,
-  PppoePrealtaPort,
-} from 'src/modules/pppoe-automatizacion/public/pppoe-prealta.port';
-
-import {
+  AccesoInstalacionEntrada,
   ClienteInstalacionAccesoResult,
-  CrearClienteInstalacionResult,
-  EstadoResultadoPrealtaPppoe,
+  PREALTA_NO_APLICA,
   PrealtaPppoeInstalacionResult,
-} from '../../results/crear-cliente-instalacion.result';
+  ProvisionarAccesoInstalacionService,
+} from '../services/provisionar-acceso-instalacion.service';
+import { esGponPppoe } from '../../domain/policies/acceso-instalacion.policy';
 
-export type CrearClienteInstalacionCommand = CrearClienteInstalacionDto & {
+export type CrearClienteInstalacionInput = {
   creadoPorId: number;
-  acceso: AccesoInstalacionInput;
-};
-
-type ProcesarAccesoInstalacionParams = {
-  instalacionId: number;
-  command: CrearClienteInstalacionCommand;
-};
-
-type ProcesarProvisionamientoNuevoParams = {
-  instalacionId: number;
-
+  /** La tabla exige empresa al insertar; sale del usuario autenticado. */
   empresaId: number;
   clienteId: number;
-  servicioInternetId: number | null;
+  servicioInternetId?: number;
+  ticketId?: number;
+  asesorId?: number;
 
-  accesoInternetId: number;
+  acceso: AccesoInstalacionEntrada;
 
-  tecnologia: TecnologiaAccesoInternet;
-  metodoAutenticacion: MetodoAutenticacionInternet;
+  tipo?: TipoInstalacionCliente;
+  estado?: EstadoInstalacionCliente;
+  descripcion?: string;
+  motivo?: string;
+  observaciones?: string;
 
-  mikrotikRouterId: number | null;
-  generadoPorId: number;
+  fechaProgramada?: string;
+  fechaInicio?: string;
+
+  direccionInstalacion?: string;
+  referenciaUbicacion?: string;
+  /** `"latitud, longitud"`. */
+  coordenadas?: string;
+
+  costos?: {
+    costoInstalacion?: number;
+    costoMateriales?: number;
+    costoManoObra?: number;
+    costoOtros?: number;
+    montoCobradoCliente?: number;
+    notas?: string;
+  };
+
+  tecnicos?: {
+    tecnicoId: number;
+    rol?: RolTecnicoOperacionCliente;
+    esResponsable?: boolean;
+    observaciones?: string | null;
+  }[];
 };
 
-type ProvisionamientoGponPppoeParams = {
-  instalacionId: number;
-
-  empresaId: number;
-  clienteId: number;
-  servicioInternetId: number;
-
-  accesoInternetId: number;
-  mikrotikRouterId: number;
-
-  generadoPorId: number;
-};
-
-type ProvisionamientoPendienteParams = {
-  instalacionId: number;
-  accesoInternetId: number;
-
-  tecnologia: TecnologiaAccesoInternet;
-  metodoAutenticacion: MetodoAutenticacionInternet;
-};
-
-type CrearAccesoNuevoParams = {
-  empresaId: number;
-  clienteId: number;
-  servicioInternetId: number | null;
-
-  tecnologia: TecnologiaAccesoInternet;
-  metodoAutenticacion: MetodoAutenticacionInternet;
-};
-
-type VincularAccesoExistenteParams = {
-  instalacionId: number;
-  clienteId: number;
-  accesoInternetId: number;
-};
-
-type VincularInstalacionAccesoParams = {
-  instalacionId: number;
-  accesoInternetId: number;
-  accion: AccionInstalacionAcceso;
-};
-
-type ProcesarAccesoInstalacionResult = {
+export type CrearClienteInstalacionResult = {
+  detalle: ClienteInstalacionDetalle;
   acceso: ClienteInstalacionAccesoResult;
-
   prealtaPppoe: PrealtaPppoeInstalacionResult;
 };
 
+/**
+ * Crea la instalación con sus técnicos y deja ligado su acceso de internet,
+ * todo en una sola transacción. La prealta PPPoE va después y por separado:
+ * si falla, la instalación ya existe y la prealta se reintenta.
+ */
 @Injectable()
 export class CrearClienteInstalacionUseCase {
-  private readonly logger = new Logger(CrearClienteInstalacionUseCase.name);
   constructor(
     @Inject(CLIENTE_INSTALACION_REPOSITORY)
-    private readonly instalacionRepository: ClienteInstalacionRepositoryPort,
+    private readonly instalaciones: ClienteInstalacionRepositoryPort,
 
-    // INYECCIONES
-    @Inject(PPPOE_ACCESO_INTERNET)
-    private readonly accesosInternet: PppoeAccesoInternetFacadePort,
+    @Inject(CLIENTE_INSTALACION_QUERY)
+    private readonly consultas: ClienteInstalacionQueryPort,
 
-    @Inject(CLIENTE_INSTALACION_ACCESO_REPOSITORY)
-    private readonly instalacionAccesoRepository: ClienteInstalacionAccesoRepositoryPort,
+    @Inject(UNIDAD_DE_TRABAJO)
+    private readonly unidad: UnidadDeTrabajoPort,
 
-    @Inject(PPPOE_PREALTA)
-    private readonly pppoePrealta: PppoePrealtaPort,
+    private readonly accesos: ProvisionarAccesoInstalacionService,
   ) {}
 
   async execute(
-    command: CrearClienteInstalacionCommand,
+    input: CrearClienteInstalacionInput,
   ): Promise<CrearClienteInstalacionResult> {
-    const tecnicos = this.normalizarTecnicos(command.tecnicos ?? []);
+    // Todo se valida antes de escribir.
+    const tecnicos = normalizarTecnicosInstalacion(input.tecnicos ?? []);
+    const coordenadas = CoordenadasInstalacion.desdeTexto(input.coordenadas);
+    const servicioInternetId = input.servicioInternetId ?? null;
 
-    const coordenadas = this.parseCoordenadas(command.coordenadas);
+    if (input.acceso.modo === ModoAccesoInstalacion.NUEVO) {
+      validarAccesoNuevo({
+        tecnologia: input.acceso.tecnologia,
+        metodoAutenticacion: input.acceso.metodoAutenticacion,
+        servicioInternetId,
+        mikrotikRouterId: input.acceso.mikrotikRouterId ?? null,
+      });
+    }
 
-    const instalacion = ClienteInstalacionEntity.create({
-      empresaId: command.empresaId,
-      clienteId: command.clienteId,
-
-      servicioInternetId: command.servicioInternetId ?? null,
-
-      ticketId: command.ticketId ?? null,
-      asesorId: command.asesorId ?? null,
-      creadoPorId: command.creadoPorId,
-
-      tipo: command.tipo,
-      estado: command.estado,
-
-      descripcion: command.descripcion ?? null,
-      motivo: command.motivo ?? null,
-      observaciones: command.observaciones ?? null,
-
-      fechaProgramada: command.fechaProgramada
-        ? new Date(command.fechaProgramada)
+    const entidad = ClienteInstalacionEntity.create({
+      empresaId: input.empresaId,
+      clienteId: input.clienteId,
+      servicioInternetId,
+      ticketId: input.ticketId ?? null,
+      asesorId: input.asesorId ?? null,
+      creadoPorId: input.creadoPorId,
+      tipo: input.tipo,
+      estado: input.estado,
+      descripcion: input.descripcion ?? null,
+      motivo: input.motivo ?? null,
+      observaciones: input.observaciones ?? null,
+      fechaProgramada: input.fechaProgramada
+        ? new Date(input.fechaProgramada)
         : null,
-
-      fechaInicio: command.fechaInicio ? new Date(command.fechaInicio) : null,
-
-      direccionInstalacion: command.direccionInstalacion ?? null,
-
-      referenciaUbicacion: command.referenciaUbicacion ?? null,
-
+      fechaInicio: input.fechaInicio ? new Date(input.fechaInicio) : null,
+      direccionInstalacion: input.direccionInstalacion ?? null,
+      referenciaUbicacion: input.referenciaUbicacion ?? null,
       latitud: coordenadas?.latitud ?? null,
       longitud: coordenadas?.longitud ?? null,
-
-      costos: command.costos
-        ? {
-            costoInstalacion: command.costos.costoInstalacion,
-
-            costoMateriales: command.costos.costoMateriales,
-
-            costoManoObra: command.costos.costoManoObra,
-
-            costoOtros: command.costos.costoOtros,
-
-            montoCobradoCliente: command.costos.montoCobradoCliente,
-
-            notas: command.costos.notas ?? null,
-          }
-        : undefined,
+      costos: input.costos && {
+        ...input.costos,
+        notas: input.costos.notas ?? null,
+      },
     });
 
-    const created = await this.instalacionRepository.create(
-      instalacion,
-      tecnicos,
-    );
+    const { instalacionId, acceso } = await this.unidad.ejecutar(async () => {
+      const creada = await this.instalaciones.create(entidad, tecnicos);
+      const id = creada.id as number;
 
-    if (!created.id) {
-      throw new Error('La instalación creada no tiene un id persistido.');
-    }
-
-    const procesamientoAcceso = await this.procesarAccesoInstalacion({
-      instalacionId: created.id,
-      command,
+      return {
+        instalacionId: id,
+        acceso: await this.accesos.vincularAcceso({
+          instalacionId: id,
+          empresaId: input.empresaId,
+          clienteId: input.clienteId,
+          servicioInternetId,
+          acceso: input.acceso,
+        }),
+      };
     });
 
-    const detalle = await this.instalacionRepository.findDetailById({
-      id: created.id,
+    const prealtaPppoe = await this.prepararPrealta({
+      input,
+      acceso,
+      instalacionId,
+      servicioInternetId,
     });
+
+    const detalle = await this.consultas.findDetailById(instalacionId);
 
     if (!detalle) {
-      throw new Error(
-        'No fue posible obtener el detalle de la instalación creada.',
-      );
+      throw new ClienteInstalacionNoEncontradaError();
     }
 
-    return {
-      detalle,
-
-      acceso: procesamientoAcceso.acceso,
-
-      prealtaPppoe: procesamientoAcceso.prealtaPppoe,
-    };
+    return { detalle, acceso, prealtaPppoe };
   }
 
-  private async procesarAccesoInstalacion({
-    instalacionId,
-    command,
-  }: ProcesarAccesoInstalacionParams): Promise<ProcesarAccesoInstalacionResult> {
-    const input = command.acceso;
+  private async prepararPrealta(datos: {
+    input: CrearClienteInstalacionInput;
+    acceso: ClienteInstalacionAccesoResult;
+    instalacionId: number;
+    servicioInternetId: number | null;
+  }): Promise<PrealtaPppoeInstalacionResult> {
+    const { input, acceso, servicioInternetId } = datos;
 
-    if (input.modo === ModoAccesoInstalacion.EXISTENTE) {
-      const acceso = await this.vincularAccesoExistente({
-        instalacionId,
-        clienteId: command.clienteId,
-        accesoInternetId: input.accesoInternetId,
-      });
-
-      return {
-        acceso,
-
-        /**
-         * En este primer flujo no intentamos crear una prealta
-         * automática para accesos existentes.
-         */
-        prealtaPppoe: this.crearResultadoPrealtaNoAplica(),
-      };
+    // Un acceso existente no genera prealta automática.
+    if (
+      acceso.modo !== ModoAccesoInstalacion.NUEVO ||
+      !esGponPppoe(acceso.tecnologia, acceso.metodoAutenticacion) ||
+      servicioInternetId === null ||
+      acceso.mikrotikRouterId === null
+    ) {
+      return PREALTA_NO_APLICA;
     }
 
-    const accesoCreado = await this.crearAccesoNuevo({
-      empresaId: command.empresaId,
-      clienteId: command.clienteId,
-
-      servicioInternetId: command.servicioInternetId ?? null,
-
-      tecnologia: input.tecnologia,
-      metodoAutenticacion: input.metodoAutenticacion,
-    });
-
-    if (!accesoCreado.id) {
-      throw new Error('El acceso creado no tiene un identificador persistido.');
-    }
-
-    await this.vincularInstalacionAcceso({
-      instalacionId,
-      accesoInternetId: accesoCreado.id,
-      accion: AccionInstalacionAcceso.CREADO,
-    });
-
-    const prealtaPppoe = await this.procesarProvisionamientoNuevo({
-      instalacionId,
-
-      empresaId: command.empresaId,
-      clienteId: command.clienteId,
-
-      servicioInternetId: command.servicioInternetId ?? null,
-
-      accesoInternetId: accesoCreado.id,
-
-      tecnologia: accesoCreado.tecnologia,
-      metodoAutenticacion: accesoCreado.metodoAutenticacion,
-
-      mikrotikRouterId: input.mikrotikRouterId ?? null,
-
-      generadoPorId: command.creadoPorId,
-    });
-
-    return {
-      acceso: {
-        accesoInternetId: accesoCreado.id,
-
-        modo: ModoAccesoInstalacion.NUEVO,
-
-        tecnologia: accesoCreado.tecnologia,
-
-        metodoAutenticacion: accesoCreado.metodoAutenticacion,
-
-        mikrotikRouterId: input.mikrotikRouterId ?? null,
-      },
-
-      prealtaPppoe,
-    };
-  }
-
-  /**
-   * Crea acceso para vincular
-   * @param param0
-   * @returns
-   */
-  private async crearAccesoNuevo({
-    empresaId,
-    clienteId,
-    servicioInternetId,
-    tecnologia,
-    metodoAutenticacion,
-  }: CrearAccesoNuevoParams): Promise<AccesoInternetReadModel> {
-    return this.accesosInternet.crear({
-      empresaId,
-      clienteId,
+    return this.accesos.prepararPrealta({
+      instalacionId: datos.instalacionId,
+      empresaId: input.empresaId,
+      clienteId: input.clienteId,
       servicioInternetId,
-      tecnologia,
-      metodoAutenticacion,
+      accesoInternetId: acceso.accesoInternetId,
+      mikrotikRouterId: acceso.mikrotikRouterId,
+      operadorId: input.creadoPorId,
     });
-  }
-
-  private async vincularAccesoExistente({
-    instalacionId,
-    clienteId,
-    accesoInternetId,
-  }: VincularAccesoExistenteParams): Promise<ClienteInstalacionAccesoResult> {
-    const accesoExistente = await this.accesosInternet.buscarDelCliente({
-      accesoInternetId,
-      clienteId,
-    });
-
-    if (!accesoExistente?.id) {
-      throw new Error(
-        'El acceso indicado no existe o no pertenece al cliente.',
-      );
-    }
-
-    await this.vincularInstalacionAcceso({
-      instalacionId,
-      accesoInternetId: accesoExistente.id,
-      accion: AccionInstalacionAcceso.MODIFICADO,
-    });
-
-    await this.handleAccesoExistente({
-      instalacionId,
-      accesoInternetId: accesoExistente.id,
-
-      tecnologia: accesoExistente.tecnologia,
-
-      metodoAutenticacion: accesoExistente.metodoAutenticacion,
-    });
-
-    return {
-      accesoInternetId: accesoExistente.id,
-
-      modo: ModoAccesoInstalacion.EXISTENTE,
-
-      tecnologia: accesoExistente.tecnologia,
-
-      metodoAutenticacion: accesoExistente.metodoAutenticacion,
-
-      /**
-       * El acceso existente no almacena actualmente
-       * el MikroTik asociado.
-       */
-      mikrotikRouterId: null,
-    };
-  }
-
-  /**
-   * Vincula una instalacion con su respectivo acceso
-   * @param param
-   */
-  private async vincularInstalacionAcceso({
-    instalacionId,
-    accesoInternetId,
-    accion,
-  }: VincularInstalacionAccesoParams): Promise<void> {
-    const relacionExistente =
-      await this.instalacionAccesoRepository.findByInstalacionAndAcceso({
-        instalacionId,
-        accesoInternetId,
-      });
-
-    if (relacionExistente) {
-      throw new Error(
-        'El acceso ya se encuentra vinculado a esta instalación.',
-      );
-    }
-
-    const entity = ClienteInstalacionAccesoEntity.create({
-      instalacionId,
-      accesoInternetId,
-      accion,
-    });
-
-    const relacionCreada =
-      await this.instalacionAccesoRepository.create(entity);
-
-    this.logger.log(
-      `Acceso ${accesoInternetId} vinculado a la instalación ${instalacionId}. Relación: ${relacionCreada.id}.`,
-    );
-  }
-
-  /**
-   * Decide si provisionar un acceso IPV4/6 - DHCP - INHALAMBRICO O PPOE
-   * @param param0
-   * @returns
-   */
-  private async procesarProvisionamientoNuevo({
-    instalacionId,
-    empresaId,
-    clienteId,
-    servicioInternetId,
-    accesoInternetId,
-    tecnologia,
-    metodoAutenticacion,
-    mikrotikRouterId,
-    generadoPorId,
-  }: ProcesarProvisionamientoNuevoParams): Promise<PrealtaPppoeInstalacionResult> {
-    const esGponPppoe =
-      tecnologia === TecnologiaAccesoInternet.FIBRA_GPON &&
-      metodoAutenticacion === MetodoAutenticacionInternet.PPPOE;
-
-    if (esGponPppoe) {
-      if (!servicioInternetId) {
-        throw new Error(
-          'Un acceso GPON con PPPoE requiere un servicio de internet.',
-        );
-      }
-
-      if (!mikrotikRouterId) {
-        throw new Error('Un acceso GPON con PPPoE requiere un MikroTik.');
-      }
-
-      return this.handleGponPppoe({
-        instalacionId,
-
-        empresaId,
-        clienteId,
-        servicioInternetId,
-
-        accesoInternetId,
-        mikrotikRouterId,
-
-        generadoPorId,
-      });
-    }
-
-    if (tecnologia === TecnologiaAccesoInternet.INALAMBRICO) {
-      await this.handleAccesoInalambrico({
-        instalacionId,
-        accesoInternetId,
-        tecnologia,
-        metodoAutenticacion,
-      });
-
-      return this.crearResultadoPrealtaNoAplica();
-    }
-
-    if (metodoAutenticacion === MetodoAutenticacionInternet.IP_ESTATICA) {
-      await this.handleAccesoIpEstatica({
-        instalacionId,
-        accesoInternetId,
-        tecnologia,
-        metodoAutenticacion,
-      });
-
-      return this.crearResultadoPrealtaNoAplica();
-    }
-
-    if (metodoAutenticacion === MetodoAutenticacionInternet.DHCP) {
-      await this.handleAccesoDhcp({
-        instalacionId,
-        accesoInternetId,
-        tecnologia,
-        metodoAutenticacion,
-      });
-
-      return this.crearResultadoPrealtaNoAplica();
-    }
-
-    await this.handleAccesoGenerico({
-      instalacionId,
-      accesoInternetId,
-      tecnologia,
-      metodoAutenticacion,
-    });
-
-    return this.crearResultadoPrealtaNoAplica();
-  }
-
-  private crearResultadoPrealtaNoAplica(): PrealtaPppoeInstalacionResult {
-    return {
-      aplica: false,
-
-      estado: EstadoResultadoPrealtaPppoe.NO_APLICA,
-
-      cuentaPppoeId: null,
-      perfilHomologacionId: null,
-      usuario: null,
-      estadoCuenta: null,
-      generadoEn: null,
-
-      mensaje: null,
-
-      reintentable: false,
-    };
-  }
-  private async handleGponPppoe({
-    instalacionId,
-    empresaId,
-    clienteId,
-    servicioInternetId,
-    accesoInternetId,
-    mikrotikRouterId,
-    generadoPorId,
-  }: ProvisionamientoGponPppoeParams): Promise<PrealtaPppoeInstalacionResult> {
-    this.logger.log(
-      `Preparando prealta GPON/PPPoE para el acceso ${accesoInternetId}.`,
-    );
-
-    try {
-      const resultado = await this.pppoePrealta.preparar({
-        instalacionId,
-
-        empresaId,
-        clienteId,
-        servicioInternetId,
-
-        accesoInternetId,
-        mikrotikRouterId,
-
-        /**
-         * En la creación de la instalación, el operador que
-         * origina la prealta es el usuario que registra la orden.
-         */
-        operadorId: generadoPorId,
-
-        operadorNombre: null,
-        ipOrigen: null,
-        userAgent: null,
-      });
-
-      this.logger.log(
-        resultado.creada
-          ? `Prealta PPPoE creada para el acceso ${accesoInternetId}. Cuenta: ${resultado.cuentaPppoeId}.`
-          : `El acceso ${accesoInternetId} ya tenía una prealta PPPoE. Cuenta: ${resultado.cuentaPppoeId}.`,
-      );
-
-      return {
-        aplica: true,
-
-        estado: resultado.creada
-          ? EstadoResultadoPrealtaPppoe.CREADA
-          : EstadoResultadoPrealtaPppoe.YA_EXISTIA,
-
-        cuentaPppoeId: resultado.cuentaPppoeId,
-
-        perfilHomologacionId: resultado.perfilHomologacionId,
-
-        usuario: resultado.usuario,
-
-        estadoCuenta: resultado.estado,
-
-        generadoEn: resultado.generadoEn,
-
-        mensaje: null,
-
-        reintentable: false,
-      };
-    } catch (error: unknown) {
-      const mensaje = this.obtenerMensajeSeguroPrealta(error);
-
-      this.logger.error(
-        `Falló la prealta GPON/PPPoE del acceso ${accesoInternetId}: ${mensaje}`,
-        error instanceof Error ? error.stack : undefined,
-      );
-
-      return {
-        aplica: true,
-
-        estado: EstadoResultadoPrealtaPppoe.FALLIDA,
-
-        cuentaPppoeId: null,
-        perfilHomologacionId: null,
-        usuario: null,
-        estadoCuenta: null,
-        generadoEn: null,
-
-        mensaje,
-
-        reintentable: true,
-      };
-    }
-  }
-
-  private obtenerMensajeSeguroPrealta(error: unknown): string {
-    // El mensaje de un DomainError está escrito para el usuario (estándar §4.5).
-    if (error instanceof DomainError) {
-      return error.message;
-    }
-
-    if (error instanceof HttpException) {
-      const response = error.getResponse();
-
-      if (typeof response === 'string') {
-        return response;
-      }
-
-      if (
-        typeof response === 'object' &&
-        response !== null &&
-        'message' in response
-      ) {
-        const message = (response as { message?: unknown }).message;
-
-        if (typeof message === 'string' && message.trim()) {
-          return message.trim();
-        }
-
-        if (Array.isArray(message)) {
-          const messages = message.filter(
-            (item): item is string =>
-              typeof item === 'string' && item.trim().length > 0,
-          );
-
-          if (messages.length > 0) {
-            return messages.join(' ');
-          }
-        }
-      }
-    }
-
-    return 'No fue posible completar la prealta PPPoE. La instalación y el acceso fueron creados correctamente.';
-  }
-
-  private async handleAccesoInalambrico(
-    params: ProvisionamientoPendienteParams,
-  ): Promise<void> {
-    this.logger.debug(
-      `Provisionamiento inalámbrico pendiente para el acceso ${params.accesoInternetId}.`,
-    );
-  }
-
-  private async handleAccesoIpEstatica(
-    params: ProvisionamientoPendienteParams,
-  ): Promise<void> {
-    this.logger.debug(
-      `Configuración de IP estática pendiente para el acceso ${params.accesoInternetId}.`,
-    );
-  }
-
-  private async handleAccesoDhcp(
-    params: ProvisionamientoPendienteParams,
-  ): Promise<void> {
-    this.logger.debug(
-      `Configuración DHCP pendiente para el acceso ${params.accesoInternetId}.`,
-    );
-  }
-
-  private async handleAccesoGenerico(
-    params: ProvisionamientoPendienteParams,
-  ): Promise<void> {
-    this.logger.debug(
-      `Provisionamiento genérico pendiente para el acceso ${params.accesoInternetId}.`,
-    );
-  }
-
-  private async handleAccesoExistente(
-    params: ProvisionamientoPendienteParams,
-  ): Promise<void> {
-    this.logger.debug(
-      `Validación de acceso existente pendiente para el acceso ${params.accesoInternetId}.`,
-    );
-  }
-
-  private normalizarTecnicos(
-    tecnicos: CrearClienteInstalacionDto['tecnicos'] = [],
-  ): CrearTecnicoInstalacionInput[] {
-    const ids = tecnicos.map((tecnico) => tecnico.tecnicoId);
-
-    if (new Set(ids).size !== ids.length) {
-      throw new Error('No se puede asignar el mismo técnico más de una vez.');
-    }
-
-    const normalizados: CrearTecnicoInstalacionInput[] = tecnicos.map(
-      (tecnico) => {
-        const esResponsable =
-          tecnico.esResponsable === true ||
-          tecnico.rol === RolTecnicoOperacionCliente.RESPONSABLE;
-
-        return {
-          tecnicoId: tecnico.tecnicoId,
-
-          rol: esResponsable
-            ? RolTecnicoOperacionCliente.RESPONSABLE
-            : (tecnico.rol ?? RolTecnicoOperacionCliente.APOYO),
-
-          esResponsable,
-
-          observaciones: tecnico.observaciones?.trim() || null,
-        };
-      },
-    );
-
-    const cantidadResponsables = normalizados.filter(
-      (tecnico) => tecnico.esResponsable,
-    ).length;
-
-    if (cantidadResponsables > 1) {
-      throw new Error(
-        'Una instalación solo puede tener un técnico responsable.',
-      );
-    }
-
-    return normalizados;
-  }
-
-  private parseCoordenadas(value?: string): {
-    latitud: number;
-    longitud: number;
-  } | null {
-    if (!value?.trim()) {
-      return null;
-    }
-
-    const parts = value.split(',').map((part) => part.trim());
-
-    if (parts.length !== 2) {
-      throw new Error(
-        'Las coordenadas deben tener el formato "latitud, longitud".',
-      );
-    }
-
-    const latitud = Number(parts[0]);
-    const longitud = Number(parts[1]);
-
-    if (!Number.isFinite(latitud) || !Number.isFinite(longitud)) {
-      throw new Error('Las coordenadas proporcionadas no son válidas.');
-    }
-
-    if (latitud < -90 || latitud > 90) {
-      throw new Error('La latitud debe estar entre -90 y 90.');
-    }
-
-    if (longitud < -180 || longitud > 180) {
-      throw new Error('La longitud debe estar entre -180 y 180.');
-    }
-
-    return {
-      latitud,
-      longitud,
-    };
   }
 }

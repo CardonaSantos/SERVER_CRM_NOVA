@@ -1,170 +1,76 @@
+import { Inject, Injectable } from '@nestjs/common';
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
 import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+  ClienteInstalacionDatosInvalidosError,
+  ClienteInstalacionNoEncontradaError,
+} from '../../domain/errors/cliente-instalacion.errors';
+import {
+  CLIENTE_INSTALACION_REPOSITORY,
+  ClienteInstalacionRepositoryPort,
+} from '../../domain/ports/cliente-instalacion-repository.port';
+import {
+  ClienteInstalacionResumen,
+  resumirInstalacion,
+} from '../../domain/read-models/cliente-instalacion-resumen.read-model';
 
-import { IniciarInstalacionClienteDto } from '../../presentation/dto/iniciar-cliente-instalacion.dto';
-
-import { EstadoInstalacionCliente } from '../../domain/enums/estado-instalacion-cliente.enum';
-
-import { ClienteInstalacionRepositoryPort, CLIENTE_INSTALACION_REPOSITORY } from '../../domain/ports/cliente-instalacion-repository.port';
-
-
-export type IniciarInstalacionClienteCommand = IniciarInstalacionClienteDto & {
+export type IniciarClienteInstalacionInput = {
   id: number;
-
-  /**
-   * Identidad obtenida exclusivamente del JWT.
-   */
+  /** El técnico autenticado; solo puede iniciar lo que tiene asignado. */
   tecnicoId: number;
-
-  /**
-   * Empresa obtenida exclusivamente del JWT.
-   */
-  empresaId: number;
-
-  /**
-   * Rol obtenido exclusivamente del JWT.
-   */
-  actorRol: string;
+  /** Si el inicio ocurrió antes; por omisión, ahora. */
+  fechaInicio?: string;
 };
 
 /**
- * Inicia únicamente el trabajo físico de campo.
- *
- * Responsabilidades:
- *
- * 1. valida que el actor sea técnico;
- * 2. valida que tenga asignada la instalación;
- * 3. valida que pertenezca a la misma empresa;
- * 4. cambia PROGRAMADA o REPROGRAMADA a EN_PROCESO;
- * 5. establece fechaInicio;
- * 6. persiste la instalación.
- *
- * No ejecuta prealta, creación de secrets,
- * activación PPPoE, SSH ni reautenticación.
+ * Inicia únicamente el trabajo físico de campo: PROGRAMADA o REPROGRAMADA
+ * pasa a EN_PROCESO. No prepara PPPoE, no abre SSH ni pide reautenticación.
  */
 @Injectable()
 export class IniciarClienteInstalacionUseCase {
   constructor(
     @Inject(CLIENTE_INSTALACION_REPOSITORY)
-    private readonly clienteInstalacion: ClienteInstalacionRepositoryPort,
+    private readonly instalaciones: ClienteInstalacionRepositoryPort,
+
+    @Inject(RELOJ)
+    private readonly reloj: RelojPort,
   ) {}
 
-  async execute(command: IniciarInstalacionClienteCommand) {
-    this.validateCommand(command);
-
-    this.assertTechnicianRole(command.actorRol);
-
-    const instalacion =
-      await this.clienteInstalacion.findByIdAssignedToTechnician({
-        instalacionId: command.id,
-
-        tecnicoId: command.tecnicoId,
-
-        empresaId: command.empresaId,
-      });
-
-    /*
-     *  404 en lugar de revelar si existe
-     * una instalación perteneciente a otro técnico
-     * o a otra empresa.
-     */
-    if (!instalacion) {
-      throw new NotFoundException(
-        'No se encontró una instalación asignada al técnico autenticado.',
-      );
-    }
-
-    const estadoActual = instalacion.toPrimitives().estado;
-
-    /*
-     * Idempotencia:
-     *
-     * una repetición HTTP no vuelve a establecer
-     * fechaInicio ni produce otra transición.
-     */
-    if (estadoActual === EstadoInstalacionCliente.EN_PROCESO) {
-      return instalacion;
-    }
-
-    this.assertCanStart(estadoActual);
-
-    const fechaInicio = this.parseFechaInicio(command.fechaInicio);
-
-    instalacion.iniciar({
-      fechaInicio,
+  async execute(
+    input: IniciarClienteInstalacionInput,
+  ): Promise<ClienteInstalacionResumen> {
+    const instalacion = await this.instalaciones.findByIdAssignedToTechnician({
+      instalacionId: input.id,
+      tecnicoId: input.tecnicoId,
     });
 
-    return this.clienteInstalacion.save(instalacion);
-  }
-
-  private assertCanStart(estado: EstadoInstalacionCliente): void {
-    const estadosPermitidos: EstadoInstalacionCliente[] = [
-      EstadoInstalacionCliente.PROGRAMADA,
-      EstadoInstalacionCliente.REPROGRAMADA,
-    ];
-
-    if (estadosPermitidos.includes(estado)) {
-      return;
+    // 404 y no 403: no se revela si existe una instalación de otro técnico.
+    if (!instalacion) {
+      throw new ClienteInstalacionNoEncontradaError();
     }
 
-    throw new ConflictException(
-      `No puede iniciarse la instalación desde el estado ${estado}.`,
-    );
-  }
-
-  private assertTechnicianRole(actorRol: string): void {
-    const normalizedRole = actorRol.trim().toUpperCase();
-
-    if (normalizedRole === 'TECNICO') {
-      return;
+    // Repetir la petición no cambia la fecha de inicio ni vuelve a transitar.
+    if (instalacion.isEnProceso) {
+      return resumirInstalacion(instalacion);
     }
 
-    throw new ForbiddenException(
-      'Solo un técnico puede iniciar el trabajo de instalación.',
-    );
+    instalacion.iniciar({ fechaInicio: this.resolverFecha(input.fechaInicio) });
+
+    return resumirInstalacion(await this.instalaciones.save(instalacion));
   }
 
-  private parseFechaInicio(
-    value: string | Date | null | undefined,
-  ): Date | undefined {
-    if (value === undefined || value === null) {
-      return undefined;
+  private resolverFecha(valor?: string): Date {
+    if (valor === undefined) {
+      return this.reloj.ahora();
     }
 
-    const fecha = new Date(value);
+    const fecha = new Date(valor);
 
     if (Number.isNaN(fecha.getTime())) {
-      throw new BadRequestException(
+      throw new ClienteInstalacionDatosInvalidosError(
         'fechaInicio debe contener una fecha válida.',
       );
     }
 
     return fecha;
-  }
-
-  private validateCommand(command: IniciarInstalacionClienteCommand): void {
-    this.assertPositiveInteger(command.id, 'id');
-
-    this.assertPositiveInteger(command.tecnicoId, 'tecnicoId');
-
-    this.assertPositiveInteger(command.empresaId, 'empresaId');
-
-    if (typeof command.actorRol !== 'string' || !command.actorRol.trim()) {
-      throw new ForbiddenException(
-        'No fue posible determinar el rol del usuario autenticado.',
-      );
-    }
-  }
-
-  private assertPositiveInteger(value: number, field: string): void {
-    if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
-    }
   }
 }

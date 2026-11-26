@@ -3,6 +3,7 @@ import {
   ClienteInstalacionMediaProps,
   CrearClienteInstalacionMediaProps,
 } from '../props/cliente-instalacion-media.props';
+import { ClienteInstalacionDatosInvalidosError } from '../errors/cliente-instalacion.errors';
 
 export class ClienteInstalacionMediaEntity {
   private constructor(private readonly props: ClienteInstalacionMediaProps) {}
@@ -77,7 +78,9 @@ export class ClienteInstalacionMediaEntity {
 
   cambiarOrden(orden: number): void {
     if (!Number.isInteger(orden) || orden < 0) {
-      throw new Error('orden debe ser un entero mayor o igual a 0.');
+      throw new ClienteInstalacionDatosInvalidosError(
+        'orden debe ser un entero mayor o igual a 0.',
+      );
     }
 
     this.props.orden = orden;
@@ -101,17 +104,23 @@ export class ClienteInstalacionMediaEntity {
     }
 
     if (!Number.isInteger(this.props.orden) || this.props.orden < 0) {
-      throw new Error('orden debe ser un entero mayor o igual a 0.');
+      throw new ClienteInstalacionDatosInvalidosError(
+        'orden debe ser un entero mayor o igual a 0.',
+      );
     }
 
     if (!this.props.tipo) {
-      throw new Error('tipo de evidencia es obligatorio.');
+      throw new ClienteInstalacionDatosInvalidosError(
+        'tipo de evidencia es obligatorio.',
+      );
     }
   }
 
   private ensurePositiveId(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new Error(`${field} debe ser un entero positivo.`);
+      throw new ClienteInstalacionDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 }

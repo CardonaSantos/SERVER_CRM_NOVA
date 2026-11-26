@@ -1,172 +1,114 @@
-import {
-  BadRequestException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-
+import { Inject, Injectable } from '@nestjs/common';
 import { Money } from 'src/common/hexagonal/money.vo';
-
-import { ClienteInstalacionEntity } from '../../domain/entities/cliente-instalacion.entity';
-import { ClienteInstalacionRepositoryPort, CLIENTE_INSTALACION_REPOSITORY } from '../../domain/ports/cliente-instalacion-repository.port';
-import { ActualizarClienteInstalacionDto } from '../../presentation/dto/actualizar-cliente-instalacion.dto';
 import { RolTecnicoOperacionCliente } from '../../domain/enums/rol-tecnico-operacion-cliente.enum';
+import { TipoInstalacionCliente } from '../../domain/enums/tipo-instalacion-cliente.enum';
+import { ClienteInstalacionNoEncontradaError } from '../../domain/errors/cliente-instalacion.errors';
+import { validarTecnicosActualizacion } from '../../domain/policies/tecnicos-instalacion.policy';
+import {
+  CLIENTE_INSTALACION_REPOSITORY,
+  ClienteInstalacionRepositoryPort,
+} from '../../domain/ports/cliente-instalacion-repository.port';
+import {
+  ClienteInstalacionResumen,
+  resumirInstalacion,
+} from '../../domain/read-models/cliente-instalacion-resumen.read-model';
 
-export type ActualizarClienteInstalacionCommand =
-  ActualizarClienteInstalacionDto & {
-    id: number;
+export type ActualizarClienteInstalacionInput = {
+  id: number;
+  tipo?: TipoInstalacionCliente;
+  asesorId?: number | null;
+  ticketId?: number | null;
+  descripcion?: string | null;
+  motivo?: string | null;
+  observaciones?: string | null;
+  fechaProgramada?: string | null;
+  direccionInstalacion?: string | null;
+  referenciaUbicacion?: string | null;
+  latitud?: number | null;
+  longitud?: number | null;
+  costos?: {
+    costoInstalacion?: number;
+    costoMateriales?: number;
+    costoManoObra?: number;
+    costoOtros?: number;
+    montoCobradoCliente?: number;
+    notasCostos?: string | null;
   };
+  /** Ausente: no toca las asignaciones. Presente: reemplaza el conjunto completo. */
+  tecnicos?: {
+    tecnicoId: number;
+    rol: RolTecnicoOperacionCliente;
+    esResponsable: boolean;
+    tiempoMinutos?: number | null;
+    observaciones?: string | null;
+  }[];
+};
 
 @Injectable()
 export class ActualizarClienteInstalacionUseCase {
   constructor(
     @Inject(CLIENTE_INSTALACION_REPOSITORY)
-    private readonly instalacionRepository: ClienteInstalacionRepositoryPort,
+    private readonly instalaciones: ClienteInstalacionRepositoryPort,
   ) {}
 
   async execute(
-    command: ActualizarClienteInstalacionCommand,
-  ): Promise<ClienteInstalacionEntity> {
-    const instalacion = await this.instalacionRepository.findById({
-      id: command.id,
-    });
+    input: ActualizarClienteInstalacionInput,
+  ): Promise<ClienteInstalacionResumen> {
+    const instalacion = await this.instalaciones.findById(input.id);
 
     if (!instalacion) {
-      throw new NotFoundException(
-        `No se encontró la instalación ${command.id}.`,
-      );
+      throw new ClienteInstalacionNoEncontradaError();
     }
 
-    this.validateTecnicos(command.tecnicos);
+    if (input.tecnicos !== undefined) {
+      validarTecnicosActualizacion(input.tecnicos);
+    }
 
     instalacion.actualizarDatosGenerales({
-      tipo: command.tipo,
-
-      asesorId: command.asesorId,
-
-      ticketId: command.ticketId,
-
-      descripcion: command.descripcion,
-
-      motivo: command.motivo,
-
-      observaciones: command.observaciones,
-
+      tipo: input.tipo,
+      asesorId: input.asesorId,
+      ticketId: input.ticketId,
+      descripcion: input.descripcion,
+      motivo: input.motivo,
+      observaciones: input.observaciones,
       fechaProgramada:
-        command.fechaProgramada !== undefined
-          ? command.fechaProgramada
-            ? new Date(command.fechaProgramada)
-            : null
-          : undefined,
-
-      direccionInstalacion: command.direccionInstalacion,
-
-      referenciaUbicacion: command.referenciaUbicacion,
-
-      latitud: command.latitud,
-
-      longitud: command.longitud,
+        input.fechaProgramada === undefined
+          ? undefined
+          : input.fechaProgramada
+            ? new Date(input.fechaProgramada)
+            : null,
+      direccionInstalacion: input.direccionInstalacion,
+      referenciaUbicacion: input.referenciaUbicacion,
+      latitud: input.latitud,
+      longitud: input.longitud,
     });
 
-    if (command.costos !== undefined) {
+    if (input.costos !== undefined) {
+      const costos = input.costos;
+      const dinero = (valor?: number) =>
+        valor === undefined ? undefined : Money.fromNumber(valor);
+
       instalacion.actualizarCostos({
-        costoInstalacion:
-          command.costos.costoInstalacion !== undefined
-            ? Money.fromNumber(command.costos.costoInstalacion)
-            : undefined,
-
-        costoMateriales:
-          command.costos.costoMateriales !== undefined
-            ? Money.fromNumber(command.costos.costoMateriales)
-            : undefined,
-
-        costoManoObra:
-          command.costos.costoManoObra !== undefined
-            ? Money.fromNumber(command.costos.costoManoObra)
-            : undefined,
-
-        costoOtros:
-          command.costos.costoOtros !== undefined
-            ? Money.fromNumber(command.costos.costoOtros)
-            : undefined,
-
-        montoCobradoCliente:
-          command.costos.montoCobradoCliente !== undefined
-            ? Money.fromNumber(command.costos.montoCobradoCliente)
-            : undefined,
-
-        notasCostos: command.costos.notasCostos,
+        costoInstalacion: dinero(costos.costoInstalacion),
+        costoMateriales: dinero(costos.costoMateriales),
+        costoManoObra: dinero(costos.costoManoObra),
+        costoOtros: dinero(costos.costoOtros),
+        montoCobradoCliente: dinero(costos.montoCobradoCliente),
+        notasCostos: costos.notasCostos,
       });
     }
 
-    /*
-     * En el siguiente paso pasaremos también
-     * command.tecnicos al repositorio.
-     */
-    return this.instalacionRepository.save(
+    const guardada = await this.instalaciones.save(
       instalacion,
-
-      command.tecnicos === undefined
-        ? undefined
-        : command.tecnicos.map((tecnico) => ({
-            tecnicoId: tecnico.tecnicoId,
-
-            rol: tecnico.rol,
-
-            esResponsable: tecnico.esResponsable,
-
-            tiempoMinutos: tecnico.tiempoMinutos ?? null,
-
-            observaciones: tecnico.observaciones ?? null,
-          })),
+      input.tecnicos?.map((tecnico) => ({
+        tecnicoId: tecnico.tecnicoId,
+        rol: tecnico.rol,
+        esResponsable: tecnico.esResponsable,
+        tiempoMinutos: tecnico.tiempoMinutos ?? null,
+        observaciones: tecnico.observaciones ?? null,
+      })),
     );
-  }
 
-  private validateTecnicos(
-    tecnicos: ActualizarClienteInstalacionDto['tecnicos'] | undefined,
-  ): void {
-    if (tecnicos === undefined) {
-      return;
-    }
-
-    const ids = tecnicos.map((tecnico) => tecnico.tecnicoId);
-
-    if (new Set(ids).size !== ids.length) {
-      throw new BadRequestException(
-        'No se puede asignar el mismo técnico más de una vez.',
-      );
-    }
-
-    if (tecnicos.length === 0) {
-      return;
-    }
-
-    const responsables = tecnicos.filter((tecnico) => tecnico.esResponsable);
-
-    if (responsables.length !== 1) {
-      throw new BadRequestException(
-        'La instalación debe tener exactamente un técnico responsable.',
-      );
-    }
-
-    for (const tecnico of tecnicos) {
-      if (
-        tecnico.esResponsable &&
-        tecnico.rol !== RolTecnicoOperacionCliente.RESPONSABLE
-      ) {
-        throw new BadRequestException(
-          `El técnico ${tecnico.tecnicoId} marcado como responsable debe tener rol RESPONSABLE.`,
-        );
-      }
-
-      if (
-        !tecnico.esResponsable &&
-        tecnico.rol === RolTecnicoOperacionCliente.RESPONSABLE
-      ) {
-        throw new BadRequestException(
-          `El técnico ${tecnico.tecnicoId} con rol RESPONSABLE debe estar marcado como responsable.`,
-        );
-      }
-    }
+    return resumirInstalacion(guardada);
   }
 }

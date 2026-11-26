@@ -1,4 +1,4 @@
-import { TipoEvidenciaClienteOperacion } from 'src/modules/cliente-instalacion/domain/enums/tipo-evidencia-cliente-operacion.enum';
+import { TipoEvidenciaClienteOperacion } from 'src/modules/cliente-instalacion/public/cliente-instalacion.types';
 
 export type ClienteDesinstalacionMediaProps = {
   id: number | null;

@@ -3,7 +3,7 @@
 // import { Money } from 'src/common/hexagonal/money.vo';
 
 // import { ClienteInstalacionEntity } from 'src/modules/cliente-instalacion/domain/entities/cliente-instalacion.entity';
-// import { EstadoInstalacionCliente } from 'src/modules/cliente-instalacion/domain/enums/estado-instalacion-cliente.enum';
+// import { EstadoInstalacionCliente } from 'src/modules/cliente-instalacion/public/cliente-instalacion.types';
 // import { TipoInstalacionCliente } from 'src/modules/cliente-instalacion/domain/enums/tipo-instalacion-cliente.enum';
 
 // import { ClientePppoeCuentaEntity } from 'src/modules/pppoe-cliente-cuenta/domain/entities/cliente-pppoe-cuenta.entity';

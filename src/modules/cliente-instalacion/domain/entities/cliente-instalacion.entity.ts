@@ -8,10 +8,13 @@ import {
   CompletarClienteInstalacionParams,
   CrearClienteInstalacionProps,
   IniciarClienteInstalacionParams,
-  MarcarFallidaClienteInstalacionParams,
   ReprogramarClienteInstalacionParams,
 } from '../props/cliente-instalacion.props';
 import { EstadoInstalacionCliente } from '../enums/estado-instalacion-cliente.enum';
+import {
+  ClienteInstalacionDatosInvalidosError,
+  ClienteInstalacionEstadoInvalidoError,
+} from '../errors/cliente-instalacion.errors';
 
 export class ClienteInstalacionEntity {
   private constructor(private readonly props: ClienteInstalacionProps) {}
@@ -20,6 +23,7 @@ export class ClienteInstalacionEntity {
     return value !== undefined ? Money.fromNumber(value) : Money.zero();
   }
 
+  /** Nace nueva: fija el estado inicial y valida. */
   static create(props: CrearClienteInstalacionProps): ClienteInstalacionEntity {
     const entity = new ClienteInstalacionEntity({
       ...props,
@@ -30,14 +34,12 @@ export class ClienteInstalacionEntity {
       creadoPorId: props.creadoPorId ?? null,
 
       tipo: props.tipo ?? TipoInstalacionCliente.NUEVA,
-
       estado: props.estado ?? EstadoInstalacionCliente.PROGRAMADA,
 
       completadoPorId: null,
 
       fechaProgramada: props.fechaProgramada ?? null,
       fechaInicio: props.fechaInicio ?? null,
-
       fechaFinalizacion: null,
       fechaCancelacion: null,
       fechaActivacionServicio: null,
@@ -47,24 +49,16 @@ export class ClienteInstalacionEntity {
       resultado: null,
 
       direccionInstalacion: props.direccionInstalacion ?? null,
-
       referenciaUbicacion: props.referenciaUbicacion ?? null,
-
       latitud: props.latitud ?? null,
       longitud: props.longitud ?? null,
-
       descripcion: props.descripcion ?? null,
 
       costoInstalacion: this.toMoney(props.costos?.costoInstalacion),
-
       costoMateriales: this.toMoney(props.costos?.costoMateriales),
-
       costoManoObra: this.toMoney(props.costos?.costoManoObra),
-
       costoOtros: this.toMoney(props.costos?.costoOtros),
-
       montoCobradoCliente: this.toMoney(props.costos?.montoCobradoCliente),
-
       notasCostos: props.costos?.notas ?? null,
 
       creadoEn: undefined,
@@ -76,8 +70,9 @@ export class ClienteInstalacionEntity {
     return entity;
   }
 
+  /** Reconstruye desde persistencia. */
   static hydrate(props: ClienteInstalacionProps): ClienteInstalacionEntity {
-    const entity = new ClienteInstalacionEntity(props);
+    const entity = new ClienteInstalacionEntity({ ...props });
 
     entity.ensureValidBaseProps();
 
@@ -144,57 +139,6 @@ export class ClienteInstalacionEntity {
     );
   }
 
-  private ensurePersisted(action: string): void {
-    if (!this.isPersisted) {
-      throw new Error(
-        `No se puede ${action} una instalación que aún no ha sido guardada.`,
-      );
-    }
-  }
-
-  private ensureEditable(): void {
-    if (this.isFinalizada) {
-      throw new Error(
-        'No se puede editar una instalación completada, cancelada o fallida.',
-      );
-    }
-  }
-
-  private normalizeOptionalText(value?: string | null): string | null {
-    if (value === undefined || value === null) {
-      return null;
-    }
-
-    const normalized = value.trim();
-
-    return normalized.length > 0 ? normalized : null;
-  }
-
-  private normalizeRequiredText(value: string, field: string): string {
-    const normalized = value?.trim();
-
-    if (!normalized) {
-      throw new Error(`${field} es obligatorio.`);
-    }
-
-    return normalized;
-  }
-
-  private recalcularSaldoPendiente(): void {
-    const total = this.props.costoInstalacion
-      .add(this.props.costoMateriales)
-      .add(this.props.costoManoObra)
-      .add(this.props.costoOtros);
-
-    if (this.props.montoCobradoCliente.isGreaterThan(total)) {
-      throw new Error(
-        'El monto cobrado al cliente no puede ser mayor al costo total de la instalación.',
-      );
-    }
-  }
-
-  //   METHODS
-
   reprogramar(params: ReprogramarClienteInstalacionParams): void {
     this.ensurePersisted('reprogramar');
 
@@ -202,7 +146,7 @@ export class ClienteInstalacionEntity {
       this.props.estado !== EstadoInstalacionCliente.PROGRAMADA &&
       this.props.estado !== EstadoInstalacionCliente.REPROGRAMADA
     ) {
-      throw new Error(
+      throw new ClienteInstalacionEstadoInvalidoError(
         'Solo una instalación programada o reprogramada puede reprogramarse.',
       );
     }
@@ -214,20 +158,20 @@ export class ClienteInstalacionEntity {
     this.ensureValidBaseProps();
   }
 
-  iniciar(params: IniciarClienteInstalacionParams = {}): void {
+  iniciar(params: IniciarClienteInstalacionParams): void {
     this.ensurePersisted('iniciar');
 
     if (
       this.props.estado !== EstadoInstalacionCliente.PROGRAMADA &&
       this.props.estado !== EstadoInstalacionCliente.REPROGRAMADA
     ) {
-      throw new Error(
+      throw new ClienteInstalacionEstadoInvalidoError(
         'Solo una instalación programada o reprogramada puede iniciarse.',
       );
     }
 
     this.props.estado = EstadoInstalacionCliente.EN_PROCESO;
-    this.props.fechaInicio = params.fechaInicio ?? new Date();
+    this.props.fechaInicio = params.fechaInicio;
 
     this.ensureValidBaseProps();
   }
@@ -236,25 +180,23 @@ export class ClienteInstalacionEntity {
     this.ensurePersisted('completar');
 
     if (this.props.estado !== EstadoInstalacionCliente.EN_PROCESO) {
-      throw new Error('Solo una instalación en proceso puede completarse.');
+      throw new ClienteInstalacionEstadoInvalidoError(
+        'Solo una instalación en proceso puede completarse.',
+      );
     }
 
     this.ensurePositiveId(params.completadoPorId, 'completadoPorId');
 
-    const fechaFinalizacion = params.fechaFinalizacion ?? new Date();
-
-    if (Number.isNaN(fechaFinalizacion.getTime())) {
-      throw new Error('fechaFinalizacion debe contener una fecha válida.');
+    if (Number.isNaN(params.fechaFinalizacion.getTime())) {
+      throw new ClienteInstalacionDatosInvalidosError(
+        'fechaFinalizacion debe contener una fecha válida.',
+      );
     }
 
     this.props.estado = EstadoInstalacionCliente.COMPLETADA;
-
     this.props.completadoPorId = params.completadoPorId;
-
-    this.props.fechaFinalizacion = new Date(fechaFinalizacion);
-
+    this.props.fechaFinalizacion = new Date(params.fechaFinalizacion);
     this.props.resultado = this.normalizeOptionalText(params.resultado);
-
     this.props.observaciones =
       this.normalizeOptionalText(params.observaciones) ??
       this.props.observaciones;
@@ -263,17 +205,11 @@ export class ClienteInstalacionEntity {
   }
 
   /**
-   * Confirma que el servicio fue activado después
-   * de una operación remota exitosa.
-   *
-   * La activación puede realizarse mientras la
-   * instalación está EN_PROCESO o después de
-   * haber quedado COMPLETADA.
-   *
-   * Este método no ejecuta SSH ni cambia el
-   * estado general de la instalación.
+   * Confirma que el servicio quedó activado tras una operación remota exitosa.
+   * Vale EN_PROCESO o COMPLETADA; la primera confirmación se conserva, así que
+   * repetirla es idempotente. No cambia el estado general de la instalación.
    */
-  marcarServicioActivado(fecha: Date = new Date()): void {
+  marcarServicioActivado(fecha: Date): void {
     this.ensurePersisted('marcar el servicio como activado');
 
     const estadosPermitidos: EstadoInstalacionCliente[] = [
@@ -282,16 +218,11 @@ export class ClienteInstalacionEntity {
     ];
 
     if (!estadosPermitidos.includes(this.props.estado)) {
-      throw new Error(
+      throw new ClienteInstalacionEstadoInvalidoError(
         'Solo una instalación en proceso o completada puede confirmar la activación del servicio.',
       );
     }
 
-    /*
-     * La primera activación confirmada se conserva.
-     * Una repetición de la misma solicitud es
-     * idempotente.
-     */
     if (this.props.fechaActivacionServicio) {
       return;
     }
@@ -299,18 +230,17 @@ export class ClienteInstalacionEntity {
     const fechaActivacion = new Date(fecha);
 
     if (Number.isNaN(fechaActivacion.getTime())) {
-      throw new Error('La fecha de activación del servicio no es válida.');
+      throw new ClienteInstalacionDatosInvalidosError(
+        'La fecha de activación del servicio no es válida.',
+      );
     }
 
-    /*
-     * La activación no debería registrarse antes
-     * del inicio físico de la instalación.
-     */
+    // No puede quedar antes del inicio físico de la instalación.
     if (
       this.props.fechaInicio &&
       fechaActivacion.getTime() < this.props.fechaInicio.getTime()
     ) {
-      throw new Error(
+      throw new ClienteInstalacionEstadoInvalidoError(
         'La activación del servicio no puede ser anterior al inicio de la instalación.',
       );
     }
@@ -324,11 +254,15 @@ export class ClienteInstalacionEntity {
     this.ensurePersisted('cancelar');
 
     if (this.props.estado === EstadoInstalacionCliente.COMPLETADA) {
-      throw new Error('No se puede cancelar una instalación completada.');
+      throw new ClienteInstalacionEstadoInvalidoError(
+        'No se puede cancelar una instalación completada.',
+      );
     }
 
     if (this.props.estado === EstadoInstalacionCliente.CANCELADA) {
-      throw new Error('La instalación ya está cancelada.');
+      throw new ClienteInstalacionEstadoInvalidoError(
+        'La instalación ya está cancelada.',
+      );
     }
 
     const motivo = this.normalizeRequiredText(params.motivo, 'motivo');
@@ -338,29 +272,7 @@ export class ClienteInstalacionEntity {
     this.props.observaciones =
       this.normalizeOptionalText(params.observaciones) ??
       this.props.observaciones;
-    this.props.fechaCancelacion = params.fechaCancelacion ?? new Date();
-
-    this.ensureValidBaseProps();
-  }
-
-  marcarFallida(params: MarcarFallidaClienteInstalacionParams): void {
-    this.ensurePersisted('marcar como fallida');
-
-    if (this.props.estado !== EstadoInstalacionCliente.EN_PROCESO) {
-      throw new Error(
-        'Solo una instalación en proceso puede marcarse como fallida.',
-      );
-    }
-
-    const motivo = this.normalizeRequiredText(params.motivo, 'motivo');
-
-    this.props.estado = EstadoInstalacionCliente.FALLIDA;
-    this.props.motivo = motivo;
-    this.props.resultado = this.normalizeOptionalText(params.resultado);
-    this.props.observaciones =
-      this.normalizeOptionalText(params.observaciones) ??
-      this.props.observaciones;
-    this.props.fechaFinalizacion = params.fechaFinalizacion ?? new Date();
+    this.props.fechaCancelacion = params.fechaCancelacion;
 
     this.ensureValidBaseProps();
   }
@@ -372,8 +284,6 @@ export class ClienteInstalacionEntity {
     this.ensureEditable();
 
     if (params.tipo !== undefined) {
-      this.ensurePlanningEditable('cambiar el tipo de instalación');
-
       this.props.tipo = params.tipo;
     }
 
@@ -400,13 +310,13 @@ export class ClienteInstalacionEntity {
     }
 
     if (params.fechaProgramada !== undefined) {
-      this.ensurePlanningEditable('cambiar la fecha programada');
-
       if (
         params.fechaProgramada !== null &&
         Number.isNaN(params.fechaProgramada.getTime())
       ) {
-        throw new Error('fechaProgramada debe contener una fecha válida.');
+        throw new ClienteInstalacionDatosInvalidosError(
+          'fechaProgramada debe contener una fecha válida.',
+        );
       }
 
       this.props.fechaProgramada =
@@ -440,7 +350,6 @@ export class ClienteInstalacionEntity {
 
   actualizarCostos(params: ActualizarCostosInstalacionParams): void {
     this.ensurePersisted('actualizar costos');
-
     this.ensureEditable();
 
     if (params.costoInstalacion !== undefined) {
@@ -467,20 +376,63 @@ export class ClienteInstalacionEntity {
       this.props.notasCostos = this.normalizeOptionalText(params.notasCostos);
     }
 
-    this.recalcularSaldoPendiente();
-    this.ensureValidBaseProps();
-  }
-
-  limpiarConfiguracionWifi(): void {
-    this.ensurePersisted('limpiar configuración WiFi');
-
+    this.ensureCobradoNoExcedeTotal();
     this.ensureValidBaseProps();
   }
 
   toPrimitives(): ClienteInstalacionProps {
-    return {
-      ...this.props,
-    };
+    return { ...this.props };
+  }
+
+  private ensurePersisted(action: string): void {
+    if (!this.isPersisted) {
+      throw new ClienteInstalacionEstadoInvalidoError(
+        `No se puede ${action} una instalación que aún no ha sido guardada.`,
+      );
+    }
+  }
+
+  private ensureEditable(): void {
+    if (this.isFinalizada) {
+      throw new ClienteInstalacionEstadoInvalidoError(
+        'No se puede editar una instalación completada, cancelada o fallida.',
+      );
+    }
+  }
+
+  private normalizeOptionalText(value?: string | null): string | null {
+    if (value === undefined || value === null) {
+      return null;
+    }
+
+    const normalized = value.trim();
+
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  private normalizeRequiredText(value: string, field: string): string {
+    const normalized = value?.trim();
+
+    if (!normalized) {
+      throw new ClienteInstalacionDatosInvalidosError(
+        `${field} es obligatorio.`,
+      );
+    }
+
+    return normalized;
+  }
+
+  private ensureCobradoNoExcedeTotal(): void {
+    const total = this.props.costoInstalacion
+      .add(this.props.costoMateriales)
+      .add(this.props.costoManoObra)
+      .add(this.props.costoOtros);
+
+    if (this.props.montoCobradoCliente.isGreaterThan(total)) {
+      throw new ClienteInstalacionDatosInvalidosError(
+        'El monto cobrado al cliente no puede ser mayor al costo total de la instalación.',
+      );
+    }
   }
 
   private ensureValidBaseProps(): void {
@@ -518,22 +470,11 @@ export class ClienteInstalacionEntity {
     this.ensureNonNegativeMoney();
   }
 
-  private ensurePlanningEditable(action: string): void {
-    const estadosPermitidos: EstadoInstalacionCliente[] = [
-      EstadoInstalacionCliente.PROGRAMADA,
-      EstadoInstalacionCliente.REPROGRAMADA,
-    ];
-
-    // if (!estadosPermitidos.includes(this.props.estado)) {
-    //   throw new Error(
-    //     `No se puede ${action} cuando la instalación se encuentra en estado ${this.props.estado}.`,
-    //   );
-    // }
-  }
-
   private ensurePositiveId(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new Error(`${field} debe ser un entero positivo.`);
+      throw new ClienteInstalacionDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 
@@ -544,13 +485,13 @@ export class ClienteInstalacionEntity {
       this.props.longitud !== null && this.props.longitud !== undefined;
 
     if (hasLat && !hasLng) {
-      throw new Error(
+      throw new ClienteInstalacionDatosInvalidosError(
         'Si se proporciona latitud, también debe proporcionarse longitud.',
       );
     }
 
     if (!hasLat && hasLng) {
-      throw new Error(
+      throw new ClienteInstalacionDatosInvalidosError(
         'Si se proporciona longitud, también debe proporcionarse latitud.',
       );
     }
@@ -567,7 +508,9 @@ export class ClienteInstalacionEntity {
 
     for (const [field, value] of moneyFields) {
       if (value.isNegative()) {
-        throw new Error(`${field} no puede ser negativo.`);
+        throw new ClienteInstalacionDatosInvalidosError(
+          `${field} no puede ser negativo.`,
+        );
       }
     }
   }

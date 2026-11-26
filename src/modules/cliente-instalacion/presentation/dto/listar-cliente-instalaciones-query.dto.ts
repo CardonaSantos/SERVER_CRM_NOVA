@@ -16,10 +16,12 @@ const toNumber = ({ value }: { value: unknown }) => {
 };
 
 export class FiltrarClienteInstalacionesDto {
+  /** Se ignora: la empresa sale del usuario autenticado. Se conserva para no romper a quien aún la envía. */
+  @IsOptional()
   @IsInt()
   @Min(1)
   @Transform(toNumber)
-  empresaId: number;
+  empresaId?: number;
 
   @IsOptional()
   @IsInt()

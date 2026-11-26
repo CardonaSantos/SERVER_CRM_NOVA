@@ -1,29 +1,41 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { ReprogramarClienteInstalacionDto } from '../../presentation/dto/reprogramar-cliente-instalacion.dto';
-import { CLIENTE_INSTALACION_REPOSITORY, ClienteInstalacionRepositoryPort } from '../../domain/ports/cliente-instalacion-repository.port';
+import { ClienteInstalacionNoEncontradaError } from '../../domain/errors/cliente-instalacion.errors';
+import {
+  CLIENTE_INSTALACION_REPOSITORY,
+  ClienteInstalacionRepositoryPort,
+} from '../../domain/ports/cliente-instalacion-repository.port';
+import {
+  ClienteInstalacionResumen,
+  resumirInstalacion,
+} from '../../domain/read-models/cliente-instalacion-resumen.read-model';
 
-export type ReprogramarClienteInstalacionCommand =
-  ReprogramarClienteInstalacionDto & {
-    id: number;
-  };
+export type ReprogramarClienteInstalacionInput = {
+  id: number;
+  fechaProgramada: string | Date;
+  motivo?: string | null;
+};
 
 @Injectable()
-export class ReprogramarInstalacionClienteUseCase {
+export class ReprogramarClienteInstalacionUseCase {
   constructor(
     @Inject(CLIENTE_INSTALACION_REPOSITORY)
-    private readonly instalacionRepository: ClienteInstalacionRepositoryPort,
+    private readonly instalaciones: ClienteInstalacionRepositoryPort,
   ) {}
 
-  async execute(command: ReprogramarClienteInstalacionCommand) {
-    const instalacion = await this.instalacionRepository.findById({
-      id: command.id,
-    });
+  async execute(
+    input: ReprogramarClienteInstalacionInput,
+  ): Promise<ClienteInstalacionResumen> {
+    const instalacion = await this.instalaciones.findById(input.id);
+
+    if (!instalacion) {
+      throw new ClienteInstalacionNoEncontradaError();
+    }
 
     instalacion.reprogramar({
-      fechaProgramada: command.fechaProgramada,
-      motivo: command.motivo,
+      fechaProgramada: new Date(input.fechaProgramada),
+      motivo: input.motivo,
     });
 
-    return this.instalacionRepository.save(instalacion);
+    return resumirInstalacion(await this.instalaciones.save(instalacion));
   }
 }

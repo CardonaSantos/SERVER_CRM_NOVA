@@ -1,6 +1,6 @@
 import { ClienteDesinstalacionTecnico, Prisma } from '@prisma/client';
 import { ClienteDesinstalacionTecnicoEntity } from '../../domain/entities/cliente-desinstalacion-tecnico.entity';
-import { RolTecnicoOperacionCliente } from 'src/modules/cliente-instalacion/domain/enums/rol-tecnico-operacion-cliente.enum';
+import { RolTecnicoOperacionCliente } from 'src/modules/cliente-instalacion/public/cliente-instalacion.types';
 // import { ionCliente } from '../../domain/enums/rol-tecnico-operacion-cliente.enum';
 
 export class ClienteDesinstalacionTecnicoPrismaMapper {

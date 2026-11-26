@@ -20,11 +20,10 @@ import { AsignarTecnicoInstalacionDto } from './asignar-tecnico-instalacion.dto'
 import { CrearClienteInstalacionCostosDto } from './crear-instalacion-costos.dto';
 import {
   AccesoInstalacionBaseDto,
-  AccesoInstalacionInput,
   CrearAccesoNuevoInstalacionDto,
-  ModoAccesoInstalacion,
   VincularAccesoExistenteInstalacionDto,
 } from './acceso-instalacion.dto';
+import { ModoAccesoInstalacion } from '../../domain/enums/modo-acceso-instalacion.enum';
 
 const toNumber = ({ value }: { value: unknown }) => {
   if (value === undefined || value === null || value === '') {
@@ -45,14 +44,12 @@ const toOptionalTrimmedString = ({ value }: { value: unknown }) => {
 };
 
 export class CrearClienteInstalacionDto {
-  /*
-   * Relaciones principales
-   */
-
+  /** Se ignora: la empresa sale del usuario autenticado. Se conserva para no romper a quien aún la envía. */
+  @IsOptional()
   @Transform(toNumber)
   @IsInt()
   @Min(1)
-  empresaId: number;
+  empresaId?: number;
 
   @Transform(toNumber)
   @IsInt()
@@ -105,7 +102,9 @@ export class CrearClienteInstalacionDto {
 
     keepDiscriminatorProperty: true,
   })
-  acceso: AccesoInstalacionInput;
+  acceso:
+    | CrearAccesoNuevoInstalacionDto
+    | VincularAccesoExistenteInstalacionDto;
 
   /*
    * Clasificación y estado inicial
