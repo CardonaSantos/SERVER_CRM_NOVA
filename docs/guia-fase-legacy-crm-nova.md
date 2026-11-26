@@ -94,8 +94,8 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 ### 2.3 Línea base medida
 
 - `npm run build`: verde.
-- `npm run lint:check`: **214** errores tras H1 (no subir; los archivos que toques quedan sin errores nuevos).
-- Jest: 636/640; las suites de `src/common`, `src/auth/decoradores` y de todos los `src/modules/*`
+- `npm run lint:check`: **207** errores tras el paso 3 (no subir; los archivos que toques quedan sin errores nuevos).
+- Jest: 647/651; las suites de `src/common`, `src/auth/decoradores` y de todos los `src/modules/*`
   en verde. Fallan 4 suites boilerplate de `cloud-api-meta` y `location`.
 - Correr un spec: `npm test -- src/modules/<modulo>` (1–2 min).
 
@@ -111,7 +111,8 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 | `ClienteDesinstalacionEntity` ~950 líneas; varios use cases de C3 > 300 líneas | Opcional, cuando se toquen |
 | Enum viejo comentado en `pppoe-cliente-cuenta/domain/enums/estado-cuenta-pppoe.enum.ts` | Cualquier commit de limpieza |
 | Tabla `TicketConformidadEnlace` sin uso (flujo de enlace público retirado); env `TICKET_CONFORMIDAD_LINK_TTL_MINUTES` ya no se lee | Flujo nuevo de firma en el teléfono del técnico (lo define el dueño). **No** se borra la tabla (migraciones solo aditivas) |
-| Roles de `real-time-location` (técnico: start/me/location/finish; oficina: mapa, historial, jornada, recorrido) aplicados por convención | El dueño puede ajustarlos |
+| Socket `emit:location:real-time` (compatibilidad): `real-time-location` lo emite para el mapa del dashboard React | Se retira cuando la UI nueva use `tracking:location-updated` |
+| La app Android (`checkpoint-android-studio`) no guarda el `refresh_token` ni renueva la sesión: con esta rama el access token dura 20 min | **Antes del deploy**: el dueño ajusta la app (§4.1 de la guía post-auth) |
 
 ---
 
@@ -156,8 +157,8 @@ En nombres, fusiones y alcance esta tabla manda sobre la propuesta de §15.1 del
 | 0 | Limpieza | Las carpetas de §3.1 | ✅ Hecho | `refactorizacion limpieza #1–#7` y `dependencias #1` |
 | 1 | **H1** saneamiento (sin crons) | `facturacion`, `cliente-internet`, `dashboard` | ✅ Hecho | `facturacion #1–#2`, `cliente-internet #1–#3`, `dashboard #1` (§6.1) |
 | 2 | **H2** roles | API legacy que quede | En espera | El dueño definirá los permisos (§3.1). No agregar restricciones sin su mapa |
-| 3 | Ubicación de técnicos → `real-time-location` | `real-time-location` legacy | **Siguiente** | `GET /real-time/last-locations` conserva la ruta (alimenta el dashboard de admin) |
-| 4 | `cliente` (H3) | `cliente-internet`, `customer-network-config` | Pendiente | Revisar `src/cliente-internet/domain/`. Fachada `CLIENTE` |
+| 3 | Ubicación de técnicos → `real-time-location` | `real-time-location` legacy | ✅ Hecho | `real-time-location #3–#5`: rutas abiertas a cualquier sesión, `last-locations` en el módulo (misma ruta), retiro de `update-location` y de la carpeta legacy |
+| 4 | `cliente` (H3) | `cliente-internet`, `customer-network-config` | **Siguiente** | Revisar `src/cliente-internet/domain/`. Fachada `CLIENTE` |
 | 5 | `zona-facturacion` (H5) | `facturacion-zona` | Pendiente | `modoCorte`, días 1–31, `@Roles` |
 | 6 | `facturacion` | `facturacion`, `factura-eliminacion` | Pendiente | Incluye los pagos |
 | 7 | `mensajeria-cliente` (H6) | `whatsapp-template`, `cloud-api-meta`, `whatsapp-api-meta`, `whatsapp-campaigns` | Pendiente | Meta como adaptador. **Nunca** enviar mensajes en pruebas |
@@ -289,8 +290,8 @@ Para corregir formato **solo** en archivos tocados: `npx eslint --fix <archivos>
 
 - Rama `refactorizaciones-hexagonales`. Commit `refactorizacion <modulo-nuevo> #N — <qué>`, un
   propósito por commit (p. ej. `#1` módulo al estándar, `#2` specs, `#3` retiro del legacy). Los
-  cambios a `src/common` van como `refactorizacion comun #N` (el último es `#9`); los de docs como
-  `refactorizacion docs #N` (el último es `#12`, esta guía).
+  cambios a `src/common` van como `refactorizacion comun #N`; los de docs como
+  `refactorizacion docs #N` (el siguiente número sale de `git log`).
 - El mensaje de commit incluye lo verificado (build, lint antes → después, pruebas N/N, conformidad)
   y termina con la línea `Co-Authored-By:` que indique el sistema.
 - En el **mismo commit**: `docs/cambios-contrato-ui.md` (cada cambio visible: ruta, campo, forma,
@@ -363,7 +364,7 @@ H1 es saneamiento en sitio: commits `refactorizacion facturacion #N`, `refactori
 | `modules/cliente-desinstalacion` | Completar una desinstalación **no** marca al cliente `DESINSTALADO` ni `desinstaladoEn` (ningún archivo de `src/modules` lo escribe) | `cliente`, con su fachada |
 | Toda la API legacy | Sin `@Roles` (G1): cualquier usuario autenticado, técnico incluido, borra pagos, edita facturas y zonas | H2 |
 | Sesiones, refresh e intentos de auth | Nadie los limpia (G6) | `tareas-programadas` |
-| `src/real-time-location` legacy | Montado vía `LocationModule`; su `GET last-locations` alimenta el dashboard y su `POST update-location` es el único que emite `emit:location:real-time` | Paso 3 |
+| `src/real-time-location` legacy | **Corregido** (paso 3): su `POST update-location` permitía escribir la ubicación de otro usuario y registraba datos personales en los logs | Hecho |
 | `SaldoCliente` | `facturacion` aún la escribe y `cliente-internet` (detalle y listados) y `ruta-cobro` aún la **leen**. Los crons no la actualizan, así que esos saldos quedan atrasados. `facturacion #3` la recalcula desde las facturas al editar o eliminar pagos | `facturacion`, `cliente` y `ruta-cobro`: calcular al leer y dejar de escribirla |
 | `facturacion` `delete-one-factura` | El usuario que elimina llega en el body (`userId`) en vez de salir de la sesión | Módulo `facturacion` |
 | `generate-reports` `QueryCobranzaReport` | Fechas con `@IsDate` sin conversión: probable 400 con el pipe estricto (sin probar) | Antes del deploy |
@@ -382,7 +383,7 @@ a la UI (fugas de campos), y `catch` que tragan errores y devuelven `200`.
 |---|---|---|---|
 | 1 | Mapa de roles por módulo (SUPER_ADMIN, ADMIN, COORDINADOR_OPERACIONES, OFICINA, TIENDA, TECNICO, COBRADOR) | H2, en espera | Lo define el dueño |
 | 2 | ¿El dominio inicial de `src/cliente-internet/domain/` se aprovecha tal cual? | `cliente` | Llevarlo a `src/modules/cliente/domain/` y ajustarlo al estándar |
-| 3 | ¿La app Android envía su ubicación a `real-time/update-location` o a `real-time-location/tracking/location`? El dueño cree que a la nueva (26-nov-2026) | Paso 3 | Antes de retirar la vieja, buscar quién más la usa y confirmarlo |
+| 3 | **Resuelta**: la app Android usa solo `real-time-location/*` (verificado en su repo) | Paso 3 | — |
 | 4 | Nombres finales de cada módulo (§3.2) | Cada paso | Los de §3.2 |
 | 5 | ¿La etapa auth ya se desplegó? Si no, cada paso se acumula sobre un deploy grande | Siempre que aplique | |
 | 6 | ¿Se quita `SaldoCliente` ahora o al refactorizar `cliente` y `ruta-cobro`? | `cliente` | Al refactorizar, calculando el saldo al leer |
@@ -391,6 +392,12 @@ a la UI (fugas de campos), y `catch` que tragan errores y devuelven `200`.
 
 ## 8. Lecciones aprendidas (evitan horas)
 
+- **Permisos:** no agregues `@Roles` a una ruta por convención (decisión de §3.1). Antes, mira qué
+  roles usan esa pantalla en la app Android; en el paso 3 la restricción puesta en C5 la habría dejado
+  con 403.
+- **App Android:** https://github.com/CardonaSantos/ANDROID-BASE, rama `checkpoint-android-studio`
+  (la que compiló el dueño). Sirve para verificar rutas, roles, cuerpos y eventos de socket antes de
+  retirar o cambiar algo. Clónala fuera del proyecto y trátala solo como lectura.
 - **El build no detecta dependencias de Nest rotas.** Tras mover o borrar módulos, resuelve `AppModule`
   con `Test.createTestingModule({ imports: [AppModule] }).compile()` desde un script temporal en una
   carpeta **sin `.env`**, con `DATABASE_URL` apuntando a `127.0.0.1` y secretos ficticios (`JWT_SECRET`,
