@@ -1,7 +1,7 @@
 import { ConflictException, Inject, Injectable } from '@nestjs/common';
 
 import { dayjs } from 'src/Utils/dayjs.config';
-import { Money } from 'src/shared/domain/value-objects/money.vo';
+import { Money } from 'src/common/hexagonal/money.vo';
 
 import {
   CLIENTE_DESINSTALACION_CONTEXTO_REPOSITORY,

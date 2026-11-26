@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { Money } from 'src/shared/domain/value-objects/money.vo';
+import { Money } from 'src/common/hexagonal/money.vo';
 
 import { ClienteInstalacionEntity } from '../../domain/entities/cliente-instalacion.entity';
 import { ClienteInstalacionRepositoryPort, CLIENTE_INSTALACION_REPOSITORY } from '../../domain/ports/cliente-instalacion-repository.port';

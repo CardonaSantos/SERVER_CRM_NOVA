@@ -1,4 +1,4 @@
-import { Money } from 'src/shared/domain/value-objects/money.vo';
+import { Money } from 'src/common/hexagonal/money.vo';
 
 import { EstadoDesinstalacionCliente } from '../enums/estado-desinstalacion-cliente.enum';
 

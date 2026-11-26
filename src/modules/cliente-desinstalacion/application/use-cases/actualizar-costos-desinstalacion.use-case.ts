@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { Money } from 'src/shared/domain/value-objects/money.vo';
+import { Money } from 'src/common/hexagonal/money.vo';
 import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entitie';
 import { ClienteDesInstalacionRepositoryPort } from '../../domain/ports/cliente-desinstalacion.repository.port';
 import { CLIENTE_DESINSTALACION_REPOSITORY } from '../../infra/tokens/cliente-desinstalacion.token';

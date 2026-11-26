@@ -1,5 +1,5 @@
 import { Prisma, ClienteInstalacion } from '@prisma/client';
-import { Money } from 'src/shared/domain/value-objects/money.vo';
+import { Money } from 'src/common/hexagonal/money.vo';
 import { ClienteInstalacionEntity } from '../../domain/entities/cliente-instalacion.entity';
 import { EstadoInstalacionCliente } from '../../domain/enums/estado-instalacion-cliente.enum';
 import { TipoInstalacionCliente } from '../../domain/enums/tipo-instalacion-cliente.enum';

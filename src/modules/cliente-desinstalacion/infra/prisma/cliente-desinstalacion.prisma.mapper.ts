@@ -1,6 +1,6 @@
 import { ClienteDesinstalacion, Prisma } from '@prisma/client';
 
-import { Money } from 'src/shared/domain/value-objects/money.vo';
+import { Money } from 'src/common/hexagonal/money.vo';
 
 import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entitie';
 

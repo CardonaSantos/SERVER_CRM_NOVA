@@ -1,6 +1,6 @@
 // import { strict as assert } from 'node:assert';
 
-// import { Money } from 'src/shared/domain/value-objects/money.vo';
+// import { Money } from 'src/common/hexagonal/money.vo';
 
 // import { ClienteInstalacionEntity } from 'src/modules/cliente-instalacion/domain/entities/cliente-instalacion.entity';
 // import { EstadoInstalacionCliente } from 'src/modules/cliente-instalacion/domain/enums/estado-instalacion-cliente.enum';
