@@ -22,10 +22,9 @@ La etapa de auth y NestJS 12 está terminada en código (aún no desplegada). Ah
    `almacenamiento-media` (antes `digital-ocean-media`) conformes.
 4. ✅ **C2**: núcleo PPPoE (`pppoe-auditoria`, `pppoe-operacion`, `pppoe-acceso-internet`,
    `pppoe-perfil-homologacion`, `pppoe-cliente-cuenta`) conforme, cada uno con su fachada.
-   `pppoe-operacion` exporta todavía sus casos de uso y su repositorio para el motor de
-   `pppoe-automatizacion` (temporal, se quita en C3).
-5. **C3**: `pppoe-automatizacion` (el motor pasa a `PPPOE_OPERACION`). Luego C4–C5 y el plan
-   H1–H12.
+5. ✅ **C3**: `pppoe-automatizacion` conforme: el motor usa solo fachadas (`PPPOE_OPERACION`…),
+   la adopción es atómica con la unidad de trabajo (`src/common/transaccion`).
+6. **C4**: `cliente-instalacion`, `cliente-desinstalacion`. Luego C5 y el plan H1–H12.
 
 **No empieces un paso hasta que el dueño diga que se empieza.**
 
@@ -69,7 +68,7 @@ npm run start:dev
 npx prisma migrate status
 ```
 
-Node 24 (`.nvmrc`). Línea base: lint ≤ 344 errores (tras C2; sin errores nuevos en archivos
+Node 24 (`.nvmrc`). Línea base: lint ≤ 342 errores (tras C3; sin errores nuevos en archivos
 tocados); Jest: las suites de `src/common`, `src/auth/decoradores` y de los módulos `pppoe-*`
 de C2 en verde; 11 suites legacy siguen siendo boilerplate roto.
 
