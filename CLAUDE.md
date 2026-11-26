@@ -27,8 +27,9 @@ La etapa de auth y NestJS 12 está terminada en código (aún no desplegada). Ah
    la adopción es atómica con la unidad de trabajo (`src/common/transaccion`).
 6. ✅ **C4**: `cliente-instalacion` y `cliente-desinstalacion` conformes (consumen el núcleo PPPoE por fachadas; `ppoe-instalacion-acceso` quedó fusionado en `cliente-instalacion`).
 7. ✅ **C5**: `ticket-soporte-historial`, `ticket-soporte-conformidad` (sin el flujo de enlace público, descartado) y `real-time-location` conformes. `excel-reports` y `reports` quedan fuera: se resuelven en el módulo `reporte` de la fase legacy.
-8. **Siguiente**: fase legacy (H1–H12 y resto de `src/`), según `docs/guia-fase-legacy-crm-nova.md`
-   §3. El próximo paso es **H1** (saneamiento de estados de cliente y día de zona, §6.1).
+8. **En curso**: fase legacy, en el orden de `docs/guia-fase-legacy-crm-nova.md` §3.2: limpieza de
+   lo que no se usa, luego **H1** (saneamiento de estados, §6.1), H2 (roles) y los módulos. **Los
+   crons van al final**; reportes queda aplazado.
 
 **No empieces un paso hasta que el dueño diga que se empieza.**
 

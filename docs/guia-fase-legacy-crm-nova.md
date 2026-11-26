@@ -20,7 +20,7 @@
    (el dueño trabaja desde dos máquinas).
 2. Lee `CLAUDE.md`, `docs/estandar-hexagonal-crm-nova.md` y **esta guía**. No hace falta leer la
    guía post-auth completa salvo que necesites detalles de auth.
-3. Mira §3 (tabla de pasos) para saber cuál es el **siguiente paso pendiente**. La columna Estado se
+3. Mira §3.2 (orden de trabajo) para saber cuál es el **siguiente paso pendiente**. La columna Estado se
    actualiza al cerrar cada paso.
 4. **No empieces a cambiar código hasta que el dueño diga que se empieza ese paso.** Primero
    presenta: inventario del módulo (rutas, crons, consumidores), propuesta de nombres y rutas,
@@ -115,49 +115,62 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 
 ---
 
-## 3. Inventario legacy y destino
+## 3. Plan acordado y destino de cada carpeta legacy
 
-Líneas de TypeScript sin specs, medidas en `ee2b197`. "Ctrl" = archivos con `@Controller`.
-Los nombres nuevos siguen §15 del estándar y **se confirman con el dueño al empezar cada paso**.
+Decisiones del dueño del **26-nov-2026**. Los nombres nuevos siguen §15 del estándar.
 
-### 3.1 Camino crítico (en este orden)
+### 3.1 Decisiones
 
-| Paso | Legacy | Destino | Líneas | Estado | Qué incluye |
-|---|---|---|---|---|---|
-| **H1** | `facturacion`, `cliente-internet`, `zona-facturacion-cron`, `dashboard` (solo lecturas de estado) | (sin módulo nuevo: saneamiento en sitio) | — | **Siguiente** | §6.1. No es hexagonal: corrige estados y el día de zona. Va primero porque cambia quién es facturable |
-| **H2** | Controladores legacy de `facturacion`, `facturacion-zona`, `banrural-integration`, `ruta-cobro`, `ssh-mikrotik-connection`, `factura-eliminacion` | (en sitio) | — | Pendiente | `@Roles` en la API existente, un commit por módulo, 403 nuevos anotados en `cambios-contrato-ui.md`. Necesita el mapa de roles del dueño (§7) |
-| **H3** | `cliente-internet` (3 672) | `cliente` | 3 672 | Pendiente | Ya hay dominio inicial sin conectar en `src/cliente-internet/domain/` (entidad, props, enum, puerto): **revisarlo y llevarlo** a `src/modules/cliente/domain/`, no reescribir desde cero. Fachada `CLIENTE` para que `cliente-desinstalacion` marque `DESINSTALADO` y para reemplazar `CLIENTE_INTERNET_ESTADO_OPERATIVO` |
-| **H4** | (nuevo) | `tareas-programadas` | — | Pendiente | Candado Postgres (`pg_try_advisory_lock`) + registro de ejecuciones para crons; `FechaOperativa`/calendario. Primer consumidor: limpieza de sesiones/refresh/intentos vencidos (G6) |
-| **H5** | `facturacion-zona` (445) | `zona-facturacion` | 445 | Pendiente | `modoCorte`, validaciones de días (1–31 con clamp), `@Roles(ROLES_OFICINA)` en escrituras |
-| **H6** | `whatsapp-template`, `cloud-api-meta`, `whatsapp-api-meta`, `whatsapp-campaigns`, `twilio`, `twilio-api`, `twilio-mensajes`, `mensaje`, `broadcast` | `mensajeria-cliente` | ~2 500 | Pendiente | Outbox + despachador; Meta y Twilio como adaptadores `infra/meta`, `infra/twilio`. **Nunca** enviar mensajes en pruebas |
-| **H7–H10** | (nuevo) | `cobranza` | — | Pendiente | Evaluación y lotes simulados → ejecución del corte (`@OperacionSensible`) → reconciliación → salida por fases. Diseño funcional en la guía de cobranza del dueño (no está en el repo: pídela si hace falta) |
-| **H11** | `zona-facturacion-cron` (1 240, 4 crons `0 10 * * *` GT) | `ciclo-facturacion` | 1 240 | Pendiente | Un cron delgado por etapa sobre casos de uso; usa `tareas-programadas` |
-| **H12** | `banrural-integration` (475) + pagos de `facturacion` y `ruta-cobro` | `pago` | ~1 500 | Pendiente | Banrural es un adaptador. **Confirmar G4** (quién llama a Banrural) antes de tocar auth de esas rutas |
-| — | `facturacion` (2 569), `factura-eliminacion` (255) | `facturacion` | 2 824 | Pendiente | Después de H12 o junto a él, según decida el dueño |
+- **No se migran, se borran** (paso 0): `customer-payload`, `broadcast`, `olt`, `perfil-usuario`,
+  `metricas-tickets`, `open-ia`, `fireworks-ia` (no hay asistente IA), `twilio`, `twilio-api`,
+  `twilio-mensajes` (Twilio ya no se usa), `mensaje`, `notificaciones-usuario`,
+  `banrural-integration` (nunca se implementó), `network-service` y `ssh-mikrotik-connection`.
+- **MikroTik:** nada fuera de los módulos `pppoe-*` se usa. De `customer-network-config` queda solo el
+  guardado de la IP (base de datos) hasta pasarlo a `cliente`. `mikro-tik` se queda porque PPPoE lo
+  consume.
+- **Las tablas y sus datos se quedan** (migraciones solo aditivas).
+- **Fusiones:** pagos dentro de `facturacion` (no hay módulo `pago`), `factura-eliminacion` en
+  `facturacion`, `id-contrato` en `contrato-cliente`, `sector` en `ubicacion`. Otras solo cuando el
+  dominio lo pida.
+- **Estados del cliente:** `estadoCliente` depende de su PPPoE y del ajuste manual; facturas y pagos
+  no lo cambian. `estadoCobranza` sale solo de las facturas.
+- **Los crons van al final** y tendrán un tratamiento especial que definirá el dueño. Hasta entonces
+  no se toca su comportamiento (tampoco el de `credito`).
+- **Reportes** no se migra hasta nuevo aviso.
+- **Tickets:** a futuro habrá comentarios con imágenes, borrado de comentarios, etc.; el comentario
+  se modela como pieza propia de `ticket-soporte`.
 
-### 3.2 Resto (fuera del camino crítico, orden sugerido por riesgo/tamaño)
+### 3.2 Orden de trabajo
 
-| Legacy | Destino | Líneas | Notas |
-|---|---|---|---|
-| `credito` (4 856, 8 ctrl, cron `0 1 * * *`) | `credito` | 4 856 | Ya parcialmente hexagonal (`credito-cron` con puerto). 17 `new Date()`, 9 `any` |
-| `tickets-soporte` (4 336), `ticket-resumen`, `ticket-seguimiento`, `ticket-soluciones`, `tags-ticket`, `bot-functions` | `ticket-soporte` | ~6 000 | Al terminar se borra `unirseA`. `bot-functions` es público con `@RequiereSecretoInterno()`: conservar esa protección |
-| `metas-tickets`, `metricas-tickets` | `ticket-soporte-metrica` | 762 | |
-| `dashboard` (3 238) | `dashboard` | 3 238 | Solo lectura: sin `entities/`, solo puertos de consulta y read models |
-| `generate-reports` + `modules/excel-reports` + `modules/reports` | `reporte` | ~17 000 | `reports` está casi vacío; `excel-reports` ya tiene forma hexagonal parcial |
-| `mikro-tik`, `customer-network-config`, `network-service`, `olt` | `mikrotik-router` | 2 372 | Junto a `mikrotik-ssh`. Quita la deuda de `pppoe-automatizacion` |
-| `ssh-mikrotik-connection` | — (retirar) | 879 | Corte legacy por IP (G3: recibe contraseña sin step-up). Se retira cuando todo esté en PPPoE; preguntar antes |
-| `ruta-cobro` | `ruta-cobro` | 1 103 | Sus pagos van a `pago` (H12) |
-| `web-sockets` | `src/common/tiempo-real` | 885 | Transversal. Incluye `POST /internal/server/broadcast` (público + secreto) |
-| `contrato-cliente`, `id-contrato` | `contrato-cliente` | 835 | |
-| `notificaciones`, `notificaciones-usuario`, `push-notifications`, `push-dispositivos` | `notificacion` | 2 073 | Push = efecto real: nunca enviar en pruebas |
-| `user`, `perfil-usuario`, `perfil` | `usuario` | 2 295 | Sin tocar `auth`. `user` ya tiene 5 `@Roles`: conservar la regla "solo SUPER_ADMIN edita a otros" |
-| `location` (617) + `real-time-location` legacy (493) | `ubicacion` / borrar | 1 110 | `src/real-time-location` (ruta `real-time`) sigue montado **a través de `LocationModule`**; es un duplicado viejo del módulo hexagonal (`real-time-location`). Inventariar consumidores y proponer al dueño borrarlo |
-| `servicio`, `servicio-internet`, `tipo-servicio` | `servicio` | 649 | CRUD pequeño, buen calentamiento |
-| `sector`, `empresa` | `sector`, `empresa` | 526 | CRUD pequeño |
-| `customer-payload` | — (borrar) | 549 | Sus importaciones ya responden 410 |
-| `open-ia`, `fireworks-ia` | `asistente-ia` | 220 | Baja prioridad |
-| `Utils`, `shared`, `CustomDecoratorAuthToken` | absorber en `common/` o en el módulo que los use | 271 | `src/Utils/pagination.ts` y `src/shared/.../Pagination.ts` se retiran cuando no tengan usuarios |
-| `migrate.module.ts`, `migrate.service.ts` (raíz de `src`) | revisar y preguntar | — | Estado final de `src/`: `main.ts`, `app.module.ts`, `auth/`, `common/`, `prisma/`, `swagger/`, `modules/` |
+| # | Paso / destino | Legacy | Estado | Notas |
+|---|---|---|---|---|
+| 0 | Limpieza | Las carpetas de §3.1 | **En curso** | Incluye métodos muertos de `facturacion` |
+| 1 | **H1** saneamiento (sin crons) | `facturacion`, `cliente-internet`, `dashboard` | Pendiente | §6.1. Bug reportado por usuarios: se corrige con pruebas |
+| 2 | **H2** roles | API legacy que quede | Pendiente | `@Roles` en sitio, 403 anotados. Falta el mapa de roles (§7) |
+| 3 | Ubicación de técnicos → `real-time-location` | `real-time-location` legacy | Pendiente | `GET /real-time/last-locations` conserva la ruta (alimenta el dashboard de admin) |
+| 4 | `cliente` (H3) | `cliente-internet`, `customer-network-config` | Pendiente | Revisar `src/cliente-internet/domain/`. Fachada `CLIENTE` |
+| 5 | `zona-facturacion` (H5) | `facturacion-zona` | Pendiente | `modoCorte`, días 1–31, `@Roles` |
+| 6 | `facturacion` | `facturacion`, `factura-eliminacion` | Pendiente | Incluye los pagos |
+| 7 | `mensajeria-cliente` (H6) | `whatsapp-template`, `cloud-api-meta`, `whatsapp-api-meta`, `whatsapp-campaigns` | Pendiente | Meta como adaptador. **Nunca** enviar mensajes en pruebas |
+| 8 | `ruta-cobro` | `ruta-cobro` | Pendiente | Registra pagos por la fachada de `facturacion` |
+| 9 | `credito` | `credito` | Pendiente | Ya parcialmente hexagonal. Su cron no cambia de comportamiento |
+| 10 | `mikrotik-router` | `mikro-tik` | Pendiente | Quita la deuda de `pppoe-automatizacion` |
+| 11 | `ticket-soporte` | `tickets-soporte`, `ticket-resumen`, `ticket-seguimiento`, `ticket-soluciones`, `tags-ticket`, `bot-functions` | Pendiente | Al terminar se borra `unirseA`. Conservar `@RequiereSecretoInterno()` |
+| 12 | `notificacion` | `notificaciones`, `push-notifications`, `push-dispositivos` | Pendiente | Migrar y mejorar. Push = efecto real |
+| 13 | `common/tiempo-real` | `web-sockets` | Pendiente | Incluye `POST /internal/server/broadcast` |
+| 14 | `usuario` | `user`, `perfil` | Pendiente | Sin tocar `auth`; solo SUPER_ADMIN edita a otros |
+| 15 | `contrato-cliente` | `contrato-cliente`, `id-contrato` | Pendiente | |
+| 16 | `servicio` | `servicio`, `servicio-internet`, `tipo-servicio` | Pendiente | |
+| 17 | `ubicacion` | `location`, `sector` | Pendiente | |
+| 18 | `empresa` | `empresa` | Pendiente | |
+| 19 | `ticket-soporte-metrica` | `metas-tickets` | Pendiente | |
+| 20 | `dashboard` | `dashboard` | Pendiente | Solo lectura: puertos de consulta y read models |
+| Final | `tareas-programadas` (H4), `cobranza` (H7–H10), `ciclo-facturacion` (H11) | `zona-facturacion-cron` y nuevos | Pendiente | Incluye los días 29–31 y la limpieza de sesiones vencidas (G6). El diseño de cobranza está en la guía del dueño |
+| Aplazado | `reporte` | `generate-reports`, `modules/excel-reports`, `modules/reports` | Aplazado | |
+
+Transversal: `Utils`, `shared` y `CustomDecoratorAuthToken` se absorben en `common/` o en el módulo
+que los use; `migrate.module.ts` y `migrate.service.ts` se revisan y se preguntan. Estado final de
+`src/`: `main.ts`, `app.module.ts`, `auth/`, `common/`, `prisma/`, `swagger/`, `modules/`.
 
 Deuda medida en los más grandes (para dimensionar):
 
@@ -169,7 +182,6 @@ Deuda medida en los más grandes (para dimensionar):
 | `cliente-internet` | 2 | 6 | 12 | 0 | 7 |
 | `mikro-tik` | 6 | 18 | 0 | 0 | 0 |
 | `zona-facturacion-cron` | 0 | 11 | 0 | 0 | 0 |
-| `banrural-integration` | 0 | 11 | 0 | 0 | 0 |
 | `ruta-cobro` | 0 | 10 | 6 | 0 | 2 |
 | `dashboard` | 2 | 9 | 5 | 0 | 0 |
 
@@ -303,49 +315,45 @@ Para corregir formato **solo** en archivos tocados: `npx eslint --fix <archivos>
 
 ## 6. Bugs y comportamientos raros conocidos (a corregir en su paso)
 
-### 6.1 H1 — Saneamiento de estados y día de zona
+### 6.1 H1 — Saneamiento de estados
 
 Contexto que hay que entender primero (verificado en `prisma/schema.prisma`):
 
-- `ClienteInternet.estadoCliente` (`EstadoCliente`) es el **ciclo de vida**: `ACTIVO`, `SUSPENDIDO`,
-  `DESINSTALADO`, `PENDIENTE_ACTIVO`, `EN_INSTALACION`. Los valores `PAGO_PENDIENTE`, `ATRASADO` y
-  `MOROSO` del mismo enum están marcados `// NO USAR` (no se pueden quitar: migraciones aditivas).
+- `ClienteInternet.estadoCliente` (`EstadoCliente`) es el **estado operativo**: `ACTIVO`, `SUSPENDIDO`,
+  `DESINSTALADO`, `PENDIENTE_ACTIVO`, `EN_INSTALACION`. Lo definen PPPoE y el ajuste manual. Los
+  valores `PAGO_PENDIENTE`, `ATRASADO` y `MOROSO` del mismo enum están marcados `// NO USAR`.
 - `ClienteInternet.estadoCobranza` (`EstadoCobranzaCliente`: `AL_DIA`, `PAGO_PENDIENTE`, `ATRASADO`,
-  `MOROSO`) es la **cobranza**, y ya se recalcula con
-  `FacturacionService.recalcularEstadoCobranzaCliente` (`src/facturacion/facturacion.service.ts` ~2108)
-  y `getEstadoCobranza` (`src/zona-facturacion-cron/helpers/Functions.ts:63`).
-- Los scripts `scripts/estado-cobranza-migration.ts` y `estado-cobranza-indepotente.ts` ya migraron los
-  datos viejos de `estadoCliente` a `estadoCobranza`.
-- El filtro de facturables de los crons (`zona-facturacion-cron/helpers/Functions.ts` ~20) exige
-  `estadoCliente: ACTIVO`: si algo escribe `ATRASADO`/`MOROSO` en `estadoCliente`, ese cliente **deja
-  de facturarse**. Por eso H1 va primero.
+  `MOROSO`) es la **cobranza**; se recalcula con
+  `FacturacionService.recalcularClienteDespuesDeCambioFactura` y `getEstadoCobranza`.
+- El filtro de facturables de los crons exige `estadoCliente: ACTIVO`: si una factura o un pago escribe
+  otro valor, ese cliente **deja de facturarse**. Ocurre en producción y los usuarios lo reportaron.
+  Los clientes ya afectados se revisan **después** de refactorizar.
 
-| # | Dónde | Bug | Corrección propuesta |
+| # | Dónde | Bug | Corrección (aprobada) |
 |---|---|---|---|
-| 1 | `facturacion.service.ts` `updateFactura` (~1409, escribe ~1487–1510) | Al editar una factura recalcula y escribe `estadoCliente` = PENDIENTE_ACTIVO/ATRASADO/MOROSO (valores NO USAR) | Dejar de escribir `estadoCliente`; recalcular `estadoCobranza` con `recalcularEstadoCobranzaCliente` dentro de la misma transacción |
-| 2 | `facturacion.service.ts` `generatePagoFromBanrural` (~1915, escribe ~1986) | Usa `calculateEstadoCliente` (`facturacion/functions/functions.ts:3`) y escribe `estadoCliente` | Igual que #1; `calculateEstadoCliente` queda sin uso y se borra |
-| 3 | `facturacion.service.ts` `deleteOnePayment` (~1999, escribe ~2082–2098) | Igual que #1 | Igual que #1 |
-| 4 | `cliente-internet.service.ts` `updateClienteInternet` (~2222; ~2276) | `estadoCliente: dto.estado \|\| 'ACTIVO'` y `estadoCobranza: dto.estadoCobranza \|\| 'AL_DIA'`: editar el teléfono de un cliente suspendido o moroso lo deja ACTIVO y AL_DIA | Si el DTO no trae el campo, no se escribe (`undefined`) |
-| 5 | `cliente-internet.service.ts` `findCustomersToTable` (~1402; conteos ~1557–1576) | Los contadores de la tabla de clientes cuentan `PENDIENTE_ACTIVO`/`ATRASADO`/`MOROSO` leyendo `estadoCliente` | Contar la cobranza por `estadoCobranza` (cambio visible: anotar) |
-| 6 | `dashboard.service.ts` ~1000, ~1074, ~1083, ~1096, ~1102 | Cuenta morosos/atrasados leyendo `estadoCliente`: tras #1–#5 esas cifras quedan congeladas | Leer `estadoCobranza` (cambio visible: anotar en `cambios-contrato-ui.md`) |
-| 7 | `zona-facturacion-cron/helpers/Functions.ts:27` `shouldSkipZoneToday` | Compara el día configurado con el día de hoy: una zona con día 29–31 **no corre** en meses más cortos | Clamp: `Math.min(dia, díasDelMes)` como ya hace `calcularPeriodo` (mismo archivo). Spec de la función con fechas fijas |
-| 8 | Otros lectores de `estadoCliente` con valores de cobranza | `generate-reports`, `ruta-cobro`, `network-service`, `ssh-mikrotik-connection/helpers/decideSwitch.ts`, `customer-payload`, `cliente-internet/helper/mikrotik-estado.helper.ts`, `select/` | Inventariarlos (`grep -rn "estadoCliente" src --include=*.ts \| grep -v src/modules`) y, si filtran por ATRASADO/MOROSO, proponer pasar a `estadoCobranza` |
+| 1 | `facturacion.service.ts` `updateFactura` | Escribe `estadoCliente`, no recalcula cobranza, no usa transacción y su `catch` devuelve éxito vacío | Una transacción; recalcular `estadoCobranza`; no tocar `estadoCliente`; los errores salen |
+| 2 | `facturacion.service.ts` `deleteOnePayment` | Escribe `estadoCliente` y no recalcula cobranza | Igual que #1 |
+| 3 | `cliente-internet.service.ts` alta | Crea la primera factura sin recalcular `estadoCobranza` | Recalcular |
+| 4 | `cliente-internet.service.ts` `updateClienteInternet` | Si no llegan, pone `ACTIVO` y `AL_DIA`; reemplaza `desinstaladoEn` en cada edición | No escribir lo que no llega; `estadoCobranza` se ignora (sale de las facturas); conservar la fecha |
+| 5 | `CreateClienteInternetDto`, `UpdateClienteInternetDto` | **Bloquea el deploy:** validadores imposibles, alta y edición responden 400 con el pipe estricto | Ajustar al payload real del React, con spec |
+| 6 | `findCustomersToTable` | Contadores de cobranza leen `estadoCliente` | Leer `estadoCobranza` (anotar) |
+| 7 | `dashboard.service.ts` `getDashboardData` | Morosos y atrasados leen `estadoCliente` | Leer `estadoCobranza`, sin desinstalados (anotar) |
 
-H1 es saneamiento en sitio: commits `refactorizacion facturacion #1…`, `refactorizacion cliente-internet #1…`,
-`refactorizacion zona-facturacion-cron #1`, `refactorizacion dashboard #1`, uno por propósito. Revisar
-que los DTOs tocados sigan pasando el pipe estricto. **Confirmar con el dueño** la corrección de cada
-fila antes de empezar (la #4 y la #6 cambian lo que ve la UI).
+La corrección de los días 29–31 (`shouldSkipZoneToday`) **no** va en H1: se hace con los crons.
+
+H1 es saneamiento en sitio: commits `refactorizacion facturacion #N`, `refactorizacion cliente-internet #N`,
+`refactorizacion dashboard #N`, uno por propósito, con pruebas de que facturas y pagos no cambian
+`estadoCliente`.
 
 ### 6.2 Otros
 
 | Dónde | Problema | Paso |
 |---|---|---|
-| `modules/cliente-desinstalacion` | Completar una desinstalación **no** marca al cliente `DESINSTALADO` ni `desinstaladoEn` (ningún archivo de `src/modules` lo escribe) | H3, con la fachada de `cliente` |
+| `modules/cliente-desinstalacion` | Completar una desinstalación **no** marca al cliente `DESINSTALADO` ni `desinstaladoEn` (ningún archivo de `src/modules` lo escribe) | `cliente`, con su fachada |
 | Toda la API legacy | Sin `@Roles` (G1): cualquier usuario autenticado, técnico incluido, borra pagos, edita facturas y zonas | H2 |
-| `ssh-mikrotik-connection` `suspend-customer`/`activate-customer` | Reciben contraseña en el body sin `@OperacionSensible` ni límite de intentos (G3) | Retiro o H2 |
-| `banrural-integration` | Exige JWT desde auth #6; si lo llama el banco directo, los pagos dejan de entrar al desplegar (G4) | Confirmar antes de H12 / deploy |
-| Sesiones, refresh e intentos de auth | Nadie los limpia (G6) | H4 |
-| `src/real-time-location` legacy | Sigue montado vía `LocationModule` (`src/location/location.module.ts:5`), duplicando el hexagonal | Paso `ubicacion` |
+| Sesiones, refresh e intentos de auth | Nadie los limpia (G6) | `tareas-programadas` |
+| `src/real-time-location` legacy | Montado vía `LocationModule`; su `GET last-locations` alimenta el dashboard y su `POST update-location` es el único que emite `emit:location:real-time` | Paso 3 |
+| `generate-reports` `QueryCobranzaReport` | Fechas con `@IsDate` sin conversión: probable 400 con el pipe estricto (sin probar) | Antes del deploy |
 | Legacy en general | `throw new BadRequestException(...)` en services, `console.log` con datos, `new Date()` en UTC para fechas de negocio, métodos con `tx?: Prisma.TransactionClient` opcional (escrituras que a veces son atómicas y a veces no), `findMany` sin `count` en la misma transacción | Cada módulo al refactorizarse |
 | Cálculo de fechas | `dayjs().tz(...)` disperso y constantes `TZ` locales | Usar `RELOJ` |
 
@@ -359,14 +367,11 @@ a la UI (fugas de campos), y `catch` que tragan errores y devuelven `200`.
 
 | # | Pregunta | Paso | Recomendación |
 |---|---|---|---|
-| 1 | Confirmar las correcciones de §6.1 (sobre todo #4 y #6) | H1 | Sí: `estadoCliente` solo ciclo de vida, cobranza en `estadoCobranza` (el schema ya lo marca así) |
-| 2 | Mapa de roles por módulo. `RolUsuario` = SUPER_ADMIN, ADMIN, COORDINADOR_OPERACIONES, OFICINA, TIENDA, TECNICO, COBRADOR; los grupos actuales no cubren TIENDA ni COBRADOR | H2 | Pagos/facturas/borrados y zonas → `ROLES_OFICINA` (o un grupo admin más estrecho); ruta de cobro → oficina + nuevo `ROLES_COBRADOR`; preguntar qué hace TIENDA |
-| 3 | ¿El dominio inicial de `src/cliente-internet/domain/` se aprovecha tal cual? | H3 | Llevarlo a `src/modules/cliente/domain/` y ajustarlo al estándar |
-| 4 | ¿Quién llama a `banrural-integration`? (G4) | H12 / deploy | |
-| 5 | ¿Se retira `ssh-mikrotik-connection` o se le pone `@OperacionSensible`? (G3) | H2 | Retirar cuando todo esté en PPPoE |
-| 6 | ¿Se borra `src/real-time-location` legacy (ruta `real-time`)? | `ubicacion` | Sí, si ningún front la usa |
-| 7 | Nombres finales de cada módulo (§3) | Cada paso | Los de §15.1 del estándar |
-| 8 | ¿La etapa auth ya se desplegó? Si no, cada paso se acumula sobre un deploy grande | Siempre que aplique | |
+| 1 | Mapa de roles por módulo. `RolUsuario` = SUPER_ADMIN, ADMIN, COORDINADOR_OPERACIONES, OFICINA, TIENDA, TECNICO, COBRADOR; los grupos actuales no cubren TIENDA ni COBRADOR | H2 | Pagos/facturas/borrados y zonas → `ROLES_OFICINA` (o un grupo admin más estrecho); ruta de cobro → oficina + nuevo `ROLES_COBRADOR`; preguntar qué hace TIENDA |
+| 2 | ¿El dominio inicial de `src/cliente-internet/domain/` se aprovecha tal cual? | `cliente` | Llevarlo a `src/modules/cliente/domain/` y ajustarlo al estándar |
+| 3 | ¿La app Android envía su ubicación a `real-time/update-location` o a `real-time-location/tracking/location`? | Paso 3 | Retirar la vieja solo si ya usa la nueva |
+| 4 | Nombres finales de cada módulo (§3.2) | Cada paso | Los de §3.2 |
+| 5 | ¿La etapa auth ya se desplegó? Si no, cada paso se acumula sobre un deploy grande | Siempre que aplique | |
 
 ---
 
@@ -401,7 +406,7 @@ Copia esto como primer mensaje de un chat nuevo de Claude Code en este proyecto:
 Continuamos el refactor hexagonal de CRM NOVA. Haz `git fetch origin && git pull --ff-only` en
 refactorizaciones-hexagonales y lee CLAUDE.md, docs/estandar-hexagonal-crm-nova.md y
 docs/guia-fase-legacy-crm-nova.md completos. Mide la línea base (build y lint:check). Luego toma el
-siguiente paso pendiente de la tabla §3.1 de la guía y preséntame su inventario (§4.1), los bugs que
+siguiente paso pendiente de la tabla §3.2 de la guía y preséntame su inventario (§4.1), los bugs que
 encontraste, la propuesta de nombres/rutas/roles y las preguntas abiertas de §7. No cambies código
 hasta que yo confirme.
 ```
