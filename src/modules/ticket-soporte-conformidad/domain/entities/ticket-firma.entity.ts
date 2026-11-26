@@ -1,131 +1,86 @@
 import { TicketFirmaOrigen } from '../enums/ticket-firma-origen.enum';
 import { TicketFirmaTipo } from '../enums/ticket-firma-tipo.enum';
+import { TicketConformidadDatosInvalidosError } from '../errors/ticket-soporte-conformidad.errors';
 import {
-  CrearTicketFirmaClienteEntityProps,
-  CrearTicketFirmaTecnicoEntityProps,
-  TicketFirmaEntityProps,
-} from './entities-props.props';
+  CrearTicketFirmaClienteProps,
+  CrearTicketFirmaTecnicoProps,
+  TicketFirmaProps,
+} from '../props/ticket-firma.props';
 
+/** Firma de la conformidad (cliente o técnico). Es evidencia histórica: no se modifica. */
 export class TicketFirmaEntity {
-  private constructor(private readonly props: TicketFirmaEntityProps) {}
-
-  /* =========================================================
-   * FACTORIES
-   * ======================================================= */
+  private constructor(private readonly props: TicketFirmaProps) {}
 
   static createCliente(
-    input: CrearTicketFirmaClienteEntityProps,
+    input: CrearTicketFirmaClienteProps,
+    ahora: Date,
   ): TicketFirmaEntity {
-    this.assertPositiveId(input.conformidadId, 'conformidadId');
-    this.assertPositiveId(input.mediaId, 'mediaId');
-
-    const nombreFirmante = this.normalizeRequiredString(
-      input.nombreFirmante,
-      'nombreFirmante',
-    );
-
-    const telefonoFirmante = this.normalizeRequiredString(
-      input.telefonoFirmante,
-      'telefonoFirmante',
-    );
-
-    const ipOrigen = this.normalizeOptionalString(input.ipOrigen);
-    const userAgent = this.normalizeOptionalString(input.userAgent);
+    assertIdPositivo(input.conformidadId, 'conformidadId');
+    assertIdPositivo(input.mediaId, 'mediaId');
+    assertFechaValida(ahora, 'firmadoEn');
 
     return new TicketFirmaEntity({
       id: null,
-
       conformidadId: input.conformidadId,
       mediaId: input.mediaId,
-
       tipo: TicketFirmaTipo.CLIENTE,
-
       usuarioFirmanteId: null,
-
-      nombreFirmante,
-      telefonoFirmante,
-
+      nombreFirmante: textoObligatorio(input.nombreFirmante, 'nombreFirmante'),
+      telefonoFirmante: textoObligatorio(
+        input.telefonoFirmante,
+        'telefonoFirmante',
+      ),
       origen: input.origen,
-
-      ipOrigen,
-      userAgent,
-
-      firmadoEn: new Date(),
+      ipOrigen: textoOpcional(input.ipOrigen),
+      userAgent: textoOpcional(input.userAgent),
+      firmadoEn: new Date(ahora),
     });
   }
 
   static createTecnico(
-    input: CrearTicketFirmaTecnicoEntityProps,
+    input: CrearTicketFirmaTecnicoProps,
+    ahora: Date,
   ): TicketFirmaEntity {
-    this.assertPositiveId(input.conformidadId, 'conformidadId');
-    this.assertPositiveId(input.mediaId, 'mediaId');
-
-    this.assertPositiveId(input.usuarioFirmanteId, 'usuarioFirmanteId');
-
-    const nombreFirmante = this.normalizeRequiredString(
-      input.nombreFirmante,
-      'nombreFirmante',
-    );
-
-    const ipOrigen = this.normalizeOptionalString(input.ipOrigen);
-    const userAgent = this.normalizeOptionalString(input.userAgent);
+    assertIdPositivo(input.conformidadId, 'conformidadId');
+    assertIdPositivo(input.mediaId, 'mediaId');
+    assertIdPositivo(input.usuarioFirmanteId, 'usuarioFirmanteId');
+    assertFechaValida(ahora, 'firmadoEn');
 
     return new TicketFirmaEntity({
       id: null,
-
       conformidadId: input.conformidadId,
       mediaId: input.mediaId,
-
       tipo: TicketFirmaTipo.TECNICO,
-
       usuarioFirmanteId: input.usuarioFirmanteId,
-
-      nombreFirmante,
+      nombreFirmante: textoObligatorio(input.nombreFirmante, 'nombreFirmante'),
       telefonoFirmante: null,
-
       origen: TicketFirmaOrigen.CRM,
-
-      ipOrigen,
-      userAgent,
-
-      firmadoEn: new Date(),
+      ipOrigen: textoOpcional(input.ipOrigen),
+      userAgent: textoOpcional(input.userAgent),
+      firmadoEn: new Date(ahora),
     });
   }
 
-  /**
-   * Utilizado exclusivamente por infraestructura para reconstruir
-   * registros existentes.
-   */
-  static rehydrate(props: TicketFirmaEntityProps): TicketFirmaEntity {
-    this.assertPositiveId(props.id, 'id');
+  /** Reconstruye desde persistencia: valida consistencia, no reglas de creación. */
+  static hydrate(props: TicketFirmaProps): TicketFirmaEntity {
+    assertIdPositivo(props.id, 'id');
+    assertIdPositivo(props.conformidadId, 'conformidadId');
+    assertIdPositivo(props.mediaId, 'mediaId');
+    assertFechaValida(props.firmadoEn, 'firmadoEn');
 
-    this.assertPositiveId(props.conformidadId, 'conformidadId');
-    this.assertPositiveId(props.mediaId, 'mediaId');
-
-    this.assertValidDate(props.firmadoEn, 'firmadoEn');
-
-    const normalized: TicketFirmaEntityProps = {
+    const normalizada: TicketFirmaProps = {
       ...props,
-
-      nombreFirmante: this.normalizeRequiredString(
-        props.nombreFirmante,
-        'nombreFirmante',
-      ),
-
-      telefonoFirmante: this.normalizeOptionalString(props.telefonoFirmante),
-
-      ipOrigen: this.normalizeOptionalString(props.ipOrigen),
-      userAgent: this.normalizeOptionalString(props.userAgent),
+      nombreFirmante: textoObligatorio(props.nombreFirmante, 'nombreFirmante'),
+      telefonoFirmante: textoOpcional(props.telefonoFirmante),
+      ipOrigen: textoOpcional(props.ipOrigen),
+      userAgent: textoOpcional(props.userAgent),
+      firmadoEn: new Date(props.firmadoEn),
     };
 
-    this.assertFirmaRules(normalized);
+    TicketFirmaEntity.assertConsistencia(normalizada);
 
-    return new TicketFirmaEntity(normalized);
+    return new TicketFirmaEntity(normalizada);
   }
-
-  /* =========================================================
-   * CONSULTAS
-   * ======================================================= */
 
   esFirmaCliente(): boolean {
     return this.props.tipo === TicketFirmaTipo.CLIENTE;
@@ -134,20 +89,6 @@ export class TicketFirmaEntity {
   esFirmaTecnico(): boolean {
     return this.props.tipo === TicketFirmaTipo.TECNICO;
   }
-
-  /* =========================================================
-   * MAPPER
-   * ======================================================= */
-
-  toPrimitives(): TicketFirmaEntityProps {
-    return {
-      ...this.props,
-    };
-  }
-
-  /* =========================================================
-   * GETTERS
-   * ======================================================= */
 
   get id(): number | null {
     return this.props.id;
@@ -190,68 +131,70 @@ export class TicketFirmaEntity {
   }
 
   get firmadoEn(): Date {
-    return this.props.firmadoEn;
+    return new Date(this.props.firmadoEn);
   }
 
-  /* =========================================================
-   * REGLAS
-   * ======================================================= */
+  toPrimitives(): TicketFirmaProps {
+    return { ...this.props, firmadoEn: new Date(this.props.firmadoEn) };
+  }
 
-  private static assertFirmaRules(props: TicketFirmaEntityProps): void {
+  private static assertConsistencia(props: TicketFirmaProps): void {
     if (props.tipo === TicketFirmaTipo.CLIENTE) {
       if (!props.telefonoFirmante) {
-        throw new Error('La firma del cliente requiere telefonoFirmante.');
+        throw new TicketConformidadDatosInvalidosError(
+          'La firma del cliente requiere teléfono del firmante.',
+        );
       }
 
       if (props.usuarioFirmanteId !== null) {
-        throw new Error(
-          'La firma del cliente no puede tener usuarioFirmanteId.',
+        throw new TicketConformidadDatosInvalidosError(
+          'La firma del cliente no puede tener usuario firmante.',
         );
       }
 
       return;
     }
 
-    if (props.tipo === TicketFirmaTipo.TECNICO) {
-      this.assertPositiveId(props.usuarioFirmanteId, 'usuarioFirmanteId');
+    assertIdPositivo(props.usuarioFirmanteId, 'usuarioFirmanteId');
 
-      if (props.origen !== TicketFirmaOrigen.CRM) {
-        throw new Error(
-          'La firma del técnico únicamente puede originarse desde el CRM.',
-        );
-      }
+    if (props.origen !== TicketFirmaOrigen.CRM) {
+      throw new TicketConformidadDatosInvalidosError(
+        'La firma del técnico únicamente puede originarse desde el CRM.',
+      );
     }
   }
+}
 
-  private static assertPositiveId(value: number | null, field: string): void {
-    if (!Number.isInteger(value) || value === null || value <= 0) {
-      throw new Error(`${field} debe ser un entero positivo.`);
-    }
+function assertIdPositivo(valor: number | null, campo: string): void {
+  if (valor === null || !Number.isInteger(valor) || valor <= 0) {
+    throw new TicketConformidadDatosInvalidosError(
+      `El dato ${campo} no es válido.`,
+    );
+  }
+}
+
+function assertFechaValida(valor: Date, campo: string): void {
+  if (!(valor instanceof Date) || Number.isNaN(valor.getTime())) {
+    throw new TicketConformidadDatosInvalidosError(
+      `La fecha ${campo} no es válida.`,
+    );
+  }
+}
+
+function textoObligatorio(valor: string, campo: string): string {
+  const recortado = valor?.trim();
+
+  if (!recortado) {
+    throw new TicketConformidadDatosInvalidosError(
+      `El dato ${campo} es obligatorio.`,
+    );
   }
 
-  private static normalizeRequiredString(value: string, field: string): string {
-    const normalized = value?.trim();
+  return recortado;
+}
 
-    if (!normalized) {
-      throw new Error(`${field} es obligatorio.`);
-    }
+function textoOpcional(valor?: string | null): string | null {
+  const recortado = valor?.trim();
 
-    return normalized;
-  }
-
-  private static normalizeOptionalString(value?: string | null): string | null {
-    if (value === null || value === undefined) {
-      return null;
-    }
-
-    const normalized = value.trim();
-
-    return normalized.length > 0 ? normalized : null;
-  }
-
-  private static assertValidDate(value: Date, field: string): void {
-    if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
-      throw new Error(`${field} debe ser una fecha válida.`);
-    }
-  }
+  return recortado ? recortado : null;
 }

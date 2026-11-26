@@ -33,7 +33,7 @@ import { TicketResumenService } from 'src/ticket-resumen/app/ticket-resumen.serv
 import { CreateTicketResumenDto } from 'src/ticket-resumen/dto/create-ticket-resuman.dto';
 import { QuerySearchTickets } from '../dto/querySearch';
 import { TZ } from 'src/Utils/tzgt';
-import { TicketFirmaTipo } from 'src/modules/ticket-soporte-conformidad/domain/enums/ticket-firma-tipo.enum';
+import { TicketFirmaTipo } from 'src/modules/ticket-soporte-conformidad/public/ticket-soporte-conformidad.types';
 import { FirebasePushService } from 'src/push-notifications/infra/firebase-push.service';
 import {
   TICKET_SOPORTE_HISTORIAL,

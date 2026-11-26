@@ -1,117 +1,88 @@
 import { TicketConformidadResultado } from '../enums/ticket-conformidad-resultado.enum';
 import {
-  CrearTicketConformidadEntityProps,
-  TicketConformidadEntityProps,
-} from './entities-props.props';
+  TicketConformidadDatosInvalidosError,
+  TicketConformidadEstadoInvalidoError,
+} from '../errors/ticket-soporte-conformidad.errors';
+import {
+  CrearTicketConformidadProps,
+  TicketConformidadProps,
+} from '../props/ticket-conformidad.props';
 
+/**
+ * Un ciclo de conformidad de un ticket: nace PENDIENTE y se responde una sola
+ * vez (CONFORME o REQUIERE_RETRABAJO).
+ */
 export class TicketConformidadEntity {
-  private constructor(private readonly props: TicketConformidadEntityProps) {}
-
-  /* =========================================================
-   * FACTORIES
-   * ======================================================= */
+  private constructor(private readonly props: TicketConformidadProps) {}
 
   static create(
-    input: CrearTicketConformidadEntityProps,
+    input: CrearTicketConformidadProps,
+    ahora: Date,
   ): TicketConformidadEntity {
-    this.assertPositiveId(input.ticketId, 'ticketId');
-
-    this.assertOptionalPositiveId(input.clienteId, 'clienteId');
-
-    this.assertOptionalPositiveId(input.tecnicoAsignadoId, 'tecnicoAsignadoId');
-
-    this.assertOptionalPositiveId(input.creadoPorId, 'creadoPorId');
-
-    const now = new Date();
+    assertIdPositivo(input.ticketId, 'ticketId');
+    assertIdOpcional(input.clienteId, 'clienteId');
+    assertIdOpcional(input.tecnicoAsignadoId, 'tecnicoAsignadoId');
+    assertIdOpcional(input.creadoPorId, 'creadoPorId');
+    assertFechaValida(ahora, 'fecha');
 
     return new TicketConformidadEntity({
       id: null,
-
       ticketId: input.ticketId,
-
       clienteId: input.clienteId ?? null,
       tecnicoAsignadoId: input.tecnicoAsignadoId ?? null,
       creadoPorId: input.creadoPorId ?? null,
-
       resultado: TicketConformidadResultado.PENDIENTE,
-
-      creadoEn: now,
-      actualizadoEn: now,
+      creadoEn: new Date(ahora),
+      actualizadoEn: new Date(ahora),
       respondidoEn: null,
     });
   }
 
-  /**
-   * Reconstruye una entidad proveniente de persistencia.
-   *
-   * Este método es el punto de entrada que utilizará el PrismaMapper.
-   * No genera fechas ni estados nuevos.
-   */
-  static rehydrate(
-    props: TicketConformidadEntityProps,
-  ): TicketConformidadEntity {
-    this.assertPositiveId(props.id, 'id');
-
-    this.assertPositiveId(props.ticketId, 'ticketId');
-
-    this.assertOptionalPositiveId(props.clienteId, 'clienteId');
-
-    this.assertOptionalPositiveId(props.tecnicoAsignadoId, 'tecnicoAsignadoId');
-
-    this.assertOptionalPositiveId(props.creadoPorId, 'creadoPorId');
-
-    this.assertValidDate(props.creadoEn, 'creadoEn');
-    this.assertValidDate(props.actualizadoEn, 'actualizadoEn');
+  /** Reconstruye desde persistencia: valida consistencia, no genera fechas ni estados. */
+  static hydrate(props: TicketConformidadProps): TicketConformidadEntity {
+    assertIdPositivo(props.id, 'id');
+    assertIdPositivo(props.ticketId, 'ticketId');
+    assertIdOpcional(props.clienteId, 'clienteId');
+    assertIdOpcional(props.tecnicoAsignadoId, 'tecnicoAsignadoId');
+    assertIdOpcional(props.creadoPorId, 'creadoPorId');
+    assertFechaValida(props.creadoEn, 'creadoEn');
+    assertFechaValida(props.actualizadoEn, 'actualizadoEn');
 
     if (props.respondidoEn) {
-      this.assertValidDate(props.respondidoEn, 'respondidoEn');
+      assertFechaValida(props.respondidoEn, 'respondidoEn');
     }
 
-    this.assertPersistenceState(props);
+    const pendiente = props.resultado === TicketConformidadResultado.PENDIENTE;
+
+    if (pendiente && props.respondidoEn !== null) {
+      throw new TicketConformidadDatosInvalidosError(
+        'Una conformidad pendiente no puede tener fecha de respuesta.',
+      );
+    }
+
+    if (!pendiente && props.respondidoEn === null) {
+      throw new TicketConformidadDatosInvalidosError(
+        'Una conformidad respondida debe tener fecha de respuesta.',
+      );
+    }
 
     return new TicketConformidadEntity({
       ...props,
+      creadoEn: new Date(props.creadoEn),
+      actualizadoEn: new Date(props.actualizadoEn),
+      respondidoEn: props.respondidoEn ? new Date(props.respondidoEn) : null,
     });
   }
 
-  /* =========================================================
-   * COMPORTAMIENTO
-   * ======================================================= */
-
-  /**
-   * Marca la solicitud como conforme.
-   *
-   * IMPORTANTE:
-   * este método debe llamarse únicamente después de que la firma
-   * del cliente haya sido persistida correctamente.
-   */
-  marcarConforme(fecha: Date = new Date()): void {
-    this.assertPendiente();
-
-    TicketConformidadEntity.assertValidDate(fecha, 'fecha');
-
-    this.props.resultado = TicketConformidadResultado.CONFORME;
-    this.props.respondidoEn = fecha;
-    this.props.actualizadoEn = fecha;
+  /** El cliente quedó conforme; se llama después de guardar su firma. */
+  marcarConforme(fecha: Date): void {
+    this.responder(TicketConformidadResultado.CONFORME, fecha);
   }
 
-  /**
-   * El cliente indicó que el trabajo no es conforme.
-   */
-  requerirRetrabajo(fecha: Date = new Date()): void {
-    this.assertPendiente();
-
-    TicketConformidadEntity.assertValidDate(fecha, 'fecha');
-
-    this.props.resultado = TicketConformidadResultado.REQUIERE_RETRABAJO;
-
-    this.props.respondidoEn = fecha;
-    this.props.actualizadoEn = fecha;
+  /** El cliente indicó que el trabajo no es conforme. */
+  requerirRetrabajo(fecha: Date): void {
+    this.responder(TicketConformidadResultado.REQUIERE_RETRABAJO, fecha);
   }
-
-  /* =========================================================
-   * CONSULTAS DE DOMINIO
-   * ======================================================= */
 
   estaPendiente(): boolean {
     return this.props.resultado === TicketConformidadResultado.PENDIENTE;
@@ -126,24 +97,6 @@ export class TicketConformidadEntity {
       this.props.resultado === TicketConformidadResultado.REQUIERE_RETRABAJO
     );
   }
-
-  fueRespondida(): boolean {
-    return this.props.respondidoEn !== null;
-  }
-
-  /* =========================================================
-   * MAPPER / SERIALIZACIÓN DE DOMINIO
-   * ======================================================= */
-
-  toPrimitives(): TicketConformidadEntityProps {
-    return {
-      ...this.props,
-    };
-  }
-
-  /* =========================================================
-   * GETTERS
-   * ======================================================= */
 
   get id(): number | null {
     return this.props.id;
@@ -170,67 +123,62 @@ export class TicketConformidadEntity {
   }
 
   get creadoEn(): Date {
-    return this.props.creadoEn;
+    return new Date(this.props.creadoEn);
   }
 
   get actualizadoEn(): Date {
-    return this.props.actualizadoEn;
+    return new Date(this.props.actualizadoEn);
   }
 
   get respondidoEn(): Date | null {
-    return this.props.respondidoEn;
+    return this.props.respondidoEn ? new Date(this.props.respondidoEn) : null;
   }
 
-  /* =========================================================
-   * REGLAS
-   * ======================================================= */
+  toPrimitives(): TicketConformidadProps {
+    return {
+      ...this.props,
+      creadoEn: new Date(this.props.creadoEn),
+      actualizadoEn: new Date(this.props.actualizadoEn),
+      respondidoEn: this.respondidoEn,
+    };
+  }
 
-  private assertPendiente(): void {
+  private responder(resultado: TicketConformidadResultado, fecha: Date): void {
     if (!this.estaPendiente()) {
-      throw new Error(
-        `La conformidad no puede modificarse porque su estado actual es ${this.props.resultado}.`,
+      throw new TicketConformidadEstadoInvalidoError(
+        'La conformidad ya fue respondida y no puede modificarse.',
       );
     }
+
+    assertFechaValida(fecha, 'fecha');
+
+    this.props.resultado = resultado;
+    this.props.respondidoEn = new Date(fecha);
+    this.props.actualizadoEn = new Date(fecha);
   }
+}
 
-  private static assertPersistenceState(
-    props: TicketConformidadEntityProps,
-  ): void {
-    if (
-      props.resultado === TicketConformidadResultado.PENDIENTE &&
-      props.respondidoEn !== null
-    ) {
-      throw new Error('Una conformidad PENDIENTE no puede tener respondidoEn.');
-    }
-
-    if (
-      props.resultado !== TicketConformidadResultado.PENDIENTE &&
-      props.respondidoEn === null
-    ) {
-      throw new Error('Una conformidad respondida debe tener respondidoEn.');
-    }
+function assertIdPositivo(valor: number | null, campo: string): void {
+  if (valor === null || !Number.isInteger(valor) || valor <= 0) {
+    throw new TicketConformidadDatosInvalidosError(
+      `El dato ${campo} no es válido.`,
+    );
   }
+}
 
-  private static assertPositiveId(value: number | null, field: string): void {
-    if (!Number.isInteger(value) || value === null || value <= 0) {
-      throw new Error(`${field} debe ser un entero positivo.`);
-    }
-  }
+function assertIdOpcional(
+  valor: number | null | undefined,
+  campo: string,
+): void {
+  if (valor === null || valor === undefined) return;
 
-  private static assertOptionalPositiveId(
-    value: number | null | undefined,
-    field: string,
-  ): void {
-    if (value === null || value === undefined) {
-      return;
-    }
+  assertIdPositivo(valor, campo);
+}
 
-    this.assertPositiveId(value, field);
-  }
-
-  private static assertValidDate(value: Date, field: string): void {
-    if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
-      throw new Error(`${field} debe ser una fecha válida.`);
-    }
+function assertFechaValida(valor: Date, campo: string): void {
+  if (!(valor instanceof Date) || Number.isNaN(valor.getTime())) {
+    throw new TicketConformidadDatosInvalidosError(
+      `La fecha ${campo} no es válida.`,
+    );
   }
 }
