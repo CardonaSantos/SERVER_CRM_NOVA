@@ -5,8 +5,6 @@ import { BroadCastNewMessage } from './websocket.controller';
 
 import { throwFatalError } from 'src/Utils/CommonFatalError';
 
-import { RealTimeLocationMapDto } from 'src/real-time-location/dto/dto-shape';
-
 import type { TecnicoTrackingRealtimeView } from 'src/modules/real-time-location/public/real-time-location.types';
 
 import type { TecnicoTrackingStateChangedPayload } from 'src/modules/real-time-location/public/real-time-location.types';
@@ -253,28 +251,6 @@ export class WebSocketServices {
       this.gateway.handleEmitNewNuviaMessage(1, body);
     } catch (error) {
       throwFatalError(error, this.logger, 'emitNewMessageNuvia');
-    }
-  }
-
-  /*
-   * =========================================================
-   * LEGACY REAL TIME LOCATION
-   * =========================================================
-   */
-
-  /**
-   * Enviar por socket la ubicación en tiempo real
-   * del usuario.
-   */
-  async emitRealTimeLocation(dto: {
-    empresaId: number;
-
-    payload: RealTimeLocationMapDto;
-  }) {
-    try {
-      this.gateway.handleEmitRealTimeLocation(dto);
-    } catch (error) {
-      throwFatalError(error, this.logger, 'emitRealTimeLocation');
     }
   }
 
