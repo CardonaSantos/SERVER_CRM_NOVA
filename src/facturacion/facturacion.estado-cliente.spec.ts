@@ -8,7 +8,10 @@ import { FacturacionService } from './facturacion.service';
  * operativo (`estadoCliente`) lo deciden PPPoE y el ajuste manual: cuando una
  * factura lo escribía, el cliente dejaba de facturarse.
  */
-function crearEscenario(opciones: { facturasPendientes: number }) {
+function crearEscenario(opciones: {
+  facturasPendientes: number;
+  pagado?: number;
+}) {
   const factura = {
     id: 10,
     clienteId: 7,
@@ -23,8 +26,14 @@ function crearEscenario(opciones: { facturasPendientes: number }) {
       findUnique: jest.fn().mockResolvedValue(factura),
       update: jest.fn().mockResolvedValue({ ...factura, montoPago: 150 }),
       count: jest.fn().mockResolvedValue(opciones.facturasPendientes),
+      findMany: jest
+        .fn()
+        .mockResolvedValue([{ saldoPendiente: 80 }, { saldoPendiente: 45 }]),
     },
     pagoFacturaInternet: {
+      aggregate: jest
+        .fn()
+        .mockResolvedValue({ _sum: { montoPagado: opciones.pagado ?? null } }),
       findUnique: jest.fn().mockResolvedValue({
         id: 3,
         montoPagado: 200,
@@ -35,12 +44,7 @@ function crearEscenario(opciones: { facturasPendientes: number }) {
       findFirst: jest.fn().mockResolvedValue(null),
       delete: jest.fn(),
     },
-    saldoCliente: {
-      findUnique: jest
-        .fn()
-        .mockResolvedValue({ clienteId: 7, saldoPendiente: 200 }),
-      update: jest.fn(),
-    },
+    saldoCliente: { updateMany: jest.fn() },
     clienteInternet: { update: jest.fn() },
   };
 
@@ -97,34 +101,48 @@ describe('FacturacionService: estado del cliente', () => {
     },
   );
 
-  it('editar una factura guarda todo en una sola transacción y ajusta el saldo como antes', async () => {
-    const { service, tx, prisma } = crearEscenario({ facturasPendientes: 1 });
+  it.each([
+    ['sin pagos', 'PENDIENTE', undefined, 150],
+    ['con un abono', 'PARCIAL', 100, 50],
+    ['pagada por completo', 'PAGADA', 150, 0],
+    ['marcada pagada a mano', 'PAGADA', undefined, 0],
+    ['anulada', 'ANULADA', undefined, 0],
+    ['con pagos mayores al monto', 'PENDIENTE', 500, 0],
+  ] as const)(
+    'editar una factura %s deja su saldo según lo pagado',
+    async (_caso, estado, pagado, saldoPendiente) => {
+      const { service, tx, prisma } = crearEscenario({
+        facturasPendientes: 1,
+        pagado,
+      });
 
-    await service.updateFactura(10, {
-      montoPago: 150,
-      estadoFacturaInternet: StateFacturaInternet.PENDIENTE,
-    });
+      await service.updateFactura(10, {
+        montoPago: 150,
+        estadoFacturaInternet: StateFacturaInternet[estado],
+      });
 
-    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
-    expect(tx.saldoCliente.update).toHaveBeenCalledWith({
-      where: { clienteId: 7 },
-      data: { saldoPendiente: 150 },
-    });
-  });
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+      expect(tx.facturaInternet.update.mock.calls[0][0].data).toMatchObject({
+        saldoPendiente,
+      });
+    },
+  );
 
-  it('anular una factura descuenta su saldo del saldo del cliente', async () => {
-    const { service, tx } = crearEscenario({ facturasPendientes: 0 });
+  it.each(['editar', 'eliminar'])(
+    '%s recalcula el saldo del cliente desde sus facturas, sin sumar ni restar',
+    async (accion) => {
+      const { service, tx } = crearEscenario({ facturasPendientes: 2 });
 
-    await service.updateFactura(10, {
-      montoPago: 200,
-      estadoFacturaInternet: StateFacturaInternet.ANULADA,
-    });
+      await (accion === 'editar'
+        ? service.updateFactura(10, { montoPago: 150 })
+        : service.deleteOnePayment(3));
 
-    expect(tx.saldoCliente.update).toHaveBeenCalledWith({
-      where: { clienteId: 7 },
-      data: { saldoPendiente: 0 },
-    });
-  });
+      expect(tx.saldoCliente.updateMany).toHaveBeenCalledWith({
+        where: { clienteId: 7 },
+        data: { saldoPendiente: 125 },
+      });
+    },
+  );
 
   it('una factura inexistente responde 404 y no escribe nada', async () => {
     const { service, tx } = crearEscenario({ facturasPendientes: 0 });
@@ -140,7 +158,7 @@ describe('FacturacionService: estado del cliente', () => {
 
   it('si falla un guardado, el error sale en vez de responder éxito', async () => {
     const { service, tx } = crearEscenario({ facturasPendientes: 0 });
-    tx.saldoCliente.update.mockRejectedValue(new Error('fallo de base'));
+    tx.saldoCliente.updateMany.mockRejectedValue(new Error('fallo de base'));
 
     await expect(service.updateFactura(10, { montoPago: 150 })).rejects.toThrow(
       'fallo de base',

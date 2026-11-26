@@ -1309,15 +1309,23 @@ export class FacturacionService {
       if (!facturaToUpdate)
         throw new NotFoundException('Factura no encontrada');
 
-      const saldoOriginalFactura = facturaToUpdate.saldoPendiente;
-
-      const nuevoSaldoFactura = dto.montoPago;
+      // El saldo de la factura sale de su monto y de lo ya pagado.
+      const pagos = await tx.pagoFacturaInternet.aggregate({
+        where: { facturaInternetId: id },
+        _sum: { montoPagado: true },
+      });
+      const monto = dto.montoPago ?? facturaToUpdate.montoPago;
+      const estado =
+        dto.estadoFacturaInternet ?? facturaToUpdate.estadoFacturaInternet;
+      const sinDeuda = estado === 'PAGADA' || estado === 'ANULADA';
 
       const facturaUpdated = await tx.facturaInternet.update({
         where: { id },
         data: {
           montoPago: dto.montoPago,
-          saldoPendiente: nuevoSaldoFactura,
+          saldoPendiente: sinDeuda
+            ? 0
+            : Math.max(monto - (pagos._sum.montoPagado ?? 0), 0),
           detalleFactura: dto.detalleFactura,
           fechaPagada: dto.fechaPagada ? new Date(dto.fechaPagada) : null,
           fechaPagoEsperada: dto.fechaPagoEsperada
@@ -1328,26 +1336,10 @@ export class FacturacionService {
         },
       });
 
-      const clienteSaldo = await tx.saldoCliente.findUnique({
-        where: { clienteId: facturaToUpdate.clienteId },
-      });
-      //Actualizar solo una vez
-      if (clienteSaldo) {
-        const ajuste =
-          dto.estadoFacturaInternet === 'ANULADA'
-            ? saldoOriginalFactura
-            : saldoOriginalFactura -
-              (nuevoSaldoFactura ?? saldoOriginalFactura);
-
-        await tx.saldoCliente.update({
-          where: { clienteId: clienteSaldo.clienteId },
-          data: {
-            saldoPendiente: Math.max(clienteSaldo.saldoPendiente - ajuste, 0),
-          },
-        });
-      }
-
-      await this.recalcularEstadoCobranzaCliente(facturaToUpdate.clienteId, tx);
+      await this.recalcularClienteDespuesDeCambioFactura(
+        facturaToUpdate.clienteId,
+        tx,
+      );
 
       return facturaUpdated;
     });
@@ -1680,8 +1672,8 @@ export class FacturacionService {
           });
         }
 
-        // 3. Recalcular la cobranza. El estado operativo no cambia.
-        await this.recalcularEstadoCobranzaCliente(clienteId, tx);
+        // 3. Recalcular saldo y cobranza. El estado operativo no cambia.
+        await this.recalcularClienteDespuesDeCambioFactura(clienteId, tx);
 
         return { ok: true };
       });
