@@ -1,0 +1,118 @@
+import { Inject, Injectable } from '@nestjs/common';
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
+import {
+  UNIDAD_DE_TRABAJO,
+  UnidadDeTrabajoPort,
+} from 'src/common/transaccion/unidad-de-trabajo.port';
+import { ClienteEntity } from '../../domain/entities/cliente.entity';
+import {
+  EstadoClientePersistido,
+  EstadoOperativoCliente,
+} from '../../domain/enums/estado-operativo-cliente.enum';
+import { TipoCambioCliente } from '../../domain/enums/tipo-cambio-cliente.enum';
+import {
+  ClienteEliminadoError,
+  ClienteNoEncontradoError,
+} from '../../domain/errors/cliente.errors';
+import { leerCoordenadas } from '../../domain/policies/coordenadas.policy';
+import {
+  CLIENTE_REPOSITORY,
+  ClienteRepositoryPort,
+} from '../../domain/ports/cliente-repository.port';
+import {
+  ActualizarAsignacionesCliente,
+  ActualizarPerfilCliente,
+} from '../../domain/props/cliente.props';
+import {
+  CONTRATO_FISICO,
+  ContratoFisicoPort,
+  GuardarContratoFisico,
+} from '../ports/contrato-fisico.port';
+
+export type ActualizarClienteInput = {
+  clienteId: number;
+  usuarioId: number;
+  empresaId: number;
+  perfil: ActualizarPerfilCliente;
+  asignaciones: ActualizarAsignacionesCliente;
+  estado?: EstadoClientePersistido;
+  coordenadas?: string[];
+  /** `undefined` conserva los servicios; una lista vacía los quita. */
+  servicioIds?: number[];
+  contrato?: Omit<GuardarContratoFisico, 'clienteId'> | null;
+};
+
+/**
+ * Edición de un cliente: lo que no llega no se modifica. La cobranza no se
+ * edita (sale de las facturas). Un cambio de estado queda en el historial.
+ */
+@Injectable()
+export class ActualizarClienteUseCase {
+  constructor(
+    @Inject(CLIENTE_REPOSITORY)
+    private readonly clientes: ClienteRepositoryPort,
+    @Inject(CONTRATO_FISICO)
+    private readonly contratos: ContratoFisicoPort,
+    @Inject(UNIDAD_DE_TRABAJO)
+    private readonly unidad: UnidadDeTrabajoPort,
+    @Inject(RELOJ) private readonly reloj: RelojPort,
+  ) {}
+
+  execute(input: ActualizarClienteInput): Promise<ClienteEntity> {
+    return this.unidad.ejecutar(async () => {
+      const cliente = await this.clientes.findById(input.clienteId);
+      if (!cliente) throw new ClienteNoEncontradoError();
+      if (cliente.isEliminado) throw new ClienteEliminadoError();
+
+      const estadoAnterior = cliente.estadoCliente;
+
+      cliente.actualizarPerfil(input.perfil);
+      cliente.actualizarAsignaciones(input.asignaciones);
+      if (input.estado !== undefined) {
+        cliente.ajustarEstadoOperativo(input.estado, this.reloj.ahora());
+      }
+
+      const guardado = await this.clientes.update(cliente);
+
+      const coordenadas = leerCoordenadas(input.coordenadas);
+      if (coordenadas) {
+        await this.clientes.guardarUbicacion(
+          input.clienteId,
+          guardado.empresaId ?? input.empresaId,
+          coordenadas,
+        );
+      }
+      if (input.servicioIds !== undefined) {
+        await this.clientes.reemplazarServicios(
+          input.clienteId,
+          input.servicioIds,
+          guardado.toPrimitives().fechaInstalacion,
+        );
+      }
+      if (input.contrato?.idContrato) {
+        await this.contratos.guardar({
+          ...input.contrato,
+          clienteId: input.clienteId,
+        });
+      }
+
+      if (guardado.estadoCliente !== estadoAnterior) {
+        await this.clientes.registrarCambio({
+          empresaId: guardado.empresaId ?? input.empresaId,
+          clienteId: input.clienteId,
+          tipoCambio:
+            guardado.estadoCliente === EstadoOperativoCliente.DESINSTALADO
+              ? TipoCambioCliente.DESINSTALACION
+              : TipoCambioCliente.CAMBIO_ESTADO,
+          estadoAnterior,
+          estadoNuevo: guardado.estadoCliente,
+          motivo: null,
+          descripcion: 'Cambio manual desde la edición del cliente.',
+          cambiadoPorId: input.usuarioId,
+        });
+      }
+
+      return guardado;
+    });
+  }
+}

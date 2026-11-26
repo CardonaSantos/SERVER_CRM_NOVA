@@ -2,11 +2,13 @@ import {
   ClienteInternet,
   EstadoCliente,
   EstadoCobranzaCliente as EstadoCobranzaPrisma,
+  EstadoServicioMikrotik as EstadoServicioMikrotikPrisma,
   Prisma,
 } from '@prisma/client';
 import { ClienteEntity } from '../../domain/entities/cliente.entity';
 import { EstadoCobranzaCliente } from '../../domain/enums/estado-cobranza-cliente.enum';
 import { EstadoClientePersistido } from '../../domain/enums/estado-operativo-cliente.enum';
+import { EstadoServicioMikrotik } from '../../domain/enums/estado-servicio-mikrotik.enum';
 import { ClienteProps } from '../../domain/props/cliente.props';
 
 export class ClientePrismaMapper {
@@ -38,6 +40,8 @@ export class ClientePrismaMapper {
       departamentoId: record.departamentoId,
       facturacionZonaId: record.facturacionZonaId,
       mikrotikRouterId: record.mikrotikRouterId,
+      estadoServicioMikrotik:
+        record.estadoServicioMikrotik as string as EstadoServicioMikrotik,
       searchNombre: record.searchNombre,
       creadoEn: record.creadoEn,
       actualizadoEn: record.actualizadoEn,
@@ -48,11 +52,28 @@ export class ClientePrismaMapper {
     });
   }
 
+  static toCreatePersistence(
+    entity: ClienteEntity,
+  ): Prisma.ClienteInternetUncheckedCreateInput {
+    const p = entity.toPrimitives();
+
+    return {
+      ...p,
+      id: undefined,
+      actualizadoEn: undefined,
+      estadoCliente: p.estadoCliente as string as EstadoCliente,
+      estadoCobranza: p.estadoCobranza as string as EstadoCobranzaPrisma,
+      estadoServicioMikrotik:
+        p.estadoServicioMikrotik as string as EstadoServicioMikrotikPrisma,
+    };
+  }
+
   /** Solo los campos presentes en `cambios`; `actualizadoEn` lo pone Prisma. */
   static toUpdatePersistence(
     cambios: Partial<ClienteProps>,
   ): Prisma.ClienteInternetUncheckedUpdateManyInput {
-    const { estadoCliente, estadoCobranza, ...resto } = cambios;
+    const { estadoCliente, estadoCobranza, estadoServicioMikrotik, ...resto } =
+      cambios;
     delete resto.id;
     delete resto.creadoEn;
     delete resto.actualizadoEn;
@@ -62,6 +83,9 @@ export class ClientePrismaMapper {
       estadoCliente: estadoCliente as string as EstadoCliente | undefined,
       estadoCobranza: estadoCobranza as string as
         | EstadoCobranzaPrisma
+        | undefined,
+      estadoServicioMikrotik: estadoServicioMikrotik as string as
+        | EstadoServicioMikrotikPrisma
         | undefined,
     };
   }

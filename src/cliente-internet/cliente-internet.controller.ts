@@ -3,18 +3,12 @@ import { JwtAuthGuard } from 'src/auth/JwtGuard/jwt-auth.guard';
 import {
   Controller,
   Get,
-  Post,
-  Body,
-  Patch,
   Param,
-  ParseIntPipe,
   Query,
   ValidationPipe,
   Logger,
 } from '@nestjs/common';
 import { ClienteInternetService } from './cliente-internet.service';
-import { CreateClienteInternetDto } from './dto/create-cliente-internet.dto';
-import { UpdateClienteInternetDto } from './dto/update-cliente-internet.dto';
 import { GetClientesRutaQueryDto } from './pagination/cliente-internet.dto';
 import { GetCustomersQueryDto } from './dto/query-table';
 import { CustomersCampaingQuery } from './query/customers-campaing-query.dto';
@@ -27,16 +21,6 @@ export class ClienteInternetController {
   constructor(
     private readonly clienteInternetService: ClienteInternetService,
   ) {}
-
-  /**
-   * CREAR CLIENTE
-   * @param createClienteInternetDto
-   * @returns
-   */
-  @Post('/create-new-customer')
-  create(@Body() createClienteInternetDto: CreateClienteInternetDto) {
-    return this.clienteInternetService.create(createClienteInternetDto);
-  }
 
   @Get('/customer-to-table')
   findCustomersToTable(
@@ -91,23 +75,5 @@ export class ClienteInternetController {
     );
 
     return this.clienteInternetService.getCustomersToRuta(q);
-  }
-
-  /**
-   * ACTUALIZAR CLIENTE (SIN ALTERAR MK)
-   * @param updateCustomerService DTO de nuevoc cambios
-   * @param id
-   * @returns
-   */
-  @Patch('/update-customer/:id')
-  async updateClienteInternet(
-    @Body() updateCustomerService: UpdateClienteInternetDto,
-    @Param('id', ParseIntPipe) id: number,
-  ) {
-    const result = await this.clienteInternetService.updateClienteInternet(
-      id,
-      updateCustomerService,
-    );
-    return result;
   }
 }

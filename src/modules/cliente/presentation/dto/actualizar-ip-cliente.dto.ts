@@ -6,34 +6,27 @@ import {
   MaxLength,
 } from 'class-validator';
 
-/** PATCH /customer-network-config/update-ip-mk (validadores: etapa 8). */
-export class UpdateCustomerIpAndNetworkDto {
+export class ActualizarIpClienteDto {
+  /** Cliente al que pertenece la IP */
   @IsInt()
   @IsPositive()
   clienteId: number;
 
+  /** Dirección IP */
   @IsString()
   @IsNotEmpty()
   @MaxLength(64)
   direccionIp: string;
 
+  /** Puerta de enlace */
   @IsString()
   @IsNotEmpty()
   @MaxLength(64)
   gateway: string;
 
+  /** Máscara de red */
   @IsString()
   @IsNotEmpty()
   @MaxLength(64)
   mascara: string;
-
-  // seguridad / auditoría
-  @IsInt()
-  @IsPositive()
-  userId: number;
-
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(512)
-  password: string;
 }

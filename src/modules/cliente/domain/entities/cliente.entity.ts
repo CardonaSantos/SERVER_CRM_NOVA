@@ -4,10 +4,12 @@ import {
   EstadoOperativoCliente,
   EstadoOperativoLegacy,
 } from '../enums/estado-operativo-cliente.enum';
+import { EstadoServicioMikrotik } from '../enums/estado-servicio-mikrotik.enum';
 import {
   ClienteDatosInvalidosError,
   ClienteEliminadoError,
 } from '../errors/cliente.errors';
+import { resolverEstadoServicioMikrotik } from '../policies/estado-servicio-mikrotik.policy';
 import { construirNombreBusqueda } from '../policies/nombre-busqueda.policy';
 import {
   ActualizarAsignacionesCliente,
@@ -94,6 +96,7 @@ export class ClienteEntity {
       departamentoId: null,
       facturacionZonaId: null,
       mikrotikRouterId: null,
+      estadoServicioMikrotik: EstadoServicioMikrotik.SIN_MIKROTIK,
       searchNombre: null,
       creadoEn: new Date(ahora),
       actualizadoEn: new Date(ahora),
@@ -205,6 +208,7 @@ export class ClienteEntity {
 
   actualizarAsignaciones(input: ActualizarAsignacionesCliente): void {
     this.assertEditable();
+    const routerAnterior = this.props.mikrotikRouterId;
 
     for (const campo of CAMPOS_DE_ASIGNACION) {
       const valor = input[campo];
@@ -216,6 +220,22 @@ export class ClienteEntity {
       }
       this.set(campo, valor);
     }
+
+    if (input.mikrotikRouterId !== undefined) {
+      this.set(
+        'estadoServicioMikrotik',
+        resolverEstadoServicioMikrotik({
+          routerAnterior,
+          routerNuevo: input.mikrotikRouterId,
+          estadoActual: this.props.estadoServicioMikrotik,
+        }),
+      );
+    }
+  }
+
+  /** La cobranza con la que nace un cliente, según su primera factura. */
+  registrarCobranzaInicial(estado: EstadoCobranzaCliente): void {
+    this.set('estadoCobranza', estado);
   }
 
   /** Ajuste hecho por una persona desde la edición del cliente. */

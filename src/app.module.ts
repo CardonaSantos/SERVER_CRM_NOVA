@@ -45,7 +45,6 @@ import { TicketResumenModule } from './ticket-resumen/ticket-resumen.module';
 import { CloudApiMetaModule } from './cloud-api-meta/cloud-api-meta.module';
 import { BotFunctionsModule } from './bot-functions/bot-functions.module';
 import { CreditoModule } from './credito/credito.module';
-import { CustomerNetworkConfigModule } from './customer-network-config/customer-network-config.module';
 import { CuotasPagoModule } from './credito/cuotas-pago/cuotas-pago.module';
 import { GenerateReportsModule } from './generate-reports/generate-reports.module';
 import { PerfilModule } from './perfil/perfil.module';
@@ -122,7 +121,6 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     CloudApiMetaModule,
     BotFunctionsModule,
     CreditoModule,
-    CustomerNetworkConfigModule,
     CuotasPagoModule,
     GenerateReportsModule,
     PerfilModule,

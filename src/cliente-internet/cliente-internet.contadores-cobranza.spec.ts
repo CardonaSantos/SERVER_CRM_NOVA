@@ -27,11 +27,7 @@ describe('Tabla de clientes: resumen de cobranza', () => {
       ),
     };
 
-    const service = new ClienteInternetService(
-      prisma as never,
-      {} as never,
-      {} as never,
-    );
+    const service = new ClienteInternetService(prisma as never, {} as never);
 
     const resultado = await service.findCustomersToTable({
       page: 1,

@@ -1,19 +1,23 @@
-import { EstadoCliente } from '@prisma/client';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
-  IsString,
-  IsOptional,
-  IsNotEmpty,
-  IsDate,
-  IsInt,
   IsArray,
-  IsEnum,
-  IsBoolean,
+  IsDate,
+  IsDateString,
+  IsIn,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
 } from 'class-validator';
+import { EstadoOperativoCliente } from '../../domain/enums/estado-operativo-cliente.enum';
 
-export class CreateClienteInternetDto {
-  // Datos básicos
+const ESTADOS_DE_ALTA = [
+  EstadoOperativoCliente.ACTIVO,
+  EstadoOperativoCliente.PENDIENTE_ACTIVO,
+  EstadoOperativoCliente.EN_INSTALACION,
+] as const;
 
+export class CrearClienteDto {
   /** Nombres del cliente */
   @IsString()
   @IsNotEmpty()
@@ -26,8 +30,8 @@ export class CreateClienteInternetDto {
 
   /** Estado operativo inicial; por defecto ACTIVO */
   @IsOptional()
-  @IsEnum(EstadoCliente)
-  estado?: EstadoCliente;
+  @IsIn(ESTADOS_DE_ALTA)
+  estado?: (typeof ESTADOS_DE_ALTA)[number];
 
   /** IP asignada (puede ir vacía) */
   @IsString()
@@ -73,13 +77,6 @@ export class CreateClienteInternetDto {
   @IsString()
   contactoReferenciaTelefono?: string;
 
-  /** Sector */
-  @IsOptional()
-  @IsInt()
-  sectorId?: number;
-
-  // Datos del servicio
-
   /** Contraseña WiFi del router del cliente */
   @IsOptional()
   @IsString()
@@ -96,15 +93,13 @@ export class CreateClienteInternetDto {
   @IsDate()
   fechaInstalacion?: Date | null;
 
-  /** Asesor */
-  @IsOptional()
+  /** Empresa */
   @IsInt()
-  asesorId?: number;
+  empresaId: number;
 
-  /** Servicios adicionales contratados */
-  @IsArray()
-  @IsInt({ each: true })
-  servicesIds: number[];
+  /** Zona de facturación */
+  @IsInt()
+  zonaFacturacionId: number;
 
   /** Plan de internet */
   @IsInt()
@@ -118,45 +113,31 @@ export class CreateClienteInternetDto {
   @IsInt()
   departamentoId: number;
 
-  /** Latitud y longitud */
-  @IsOptional()
-  @IsArray()
-  coordenadas?: string[];
-
-  /** Empresa */
-  @IsInt()
-  empresaId: number;
-
-  /** Se acepta pero no se usa */
+  /** Sector */
   @IsOptional()
   @IsInt()
-  serviceId?: number;
+  sectorId?: number;
 
-  /** Zona de facturación */
-  @IsInt()
-  zonaFacturacionId: number;
-
-  /** Se acepta pero no se usa */
+  /** Asesor */
   @IsOptional()
   @IsInt()
-  userId?: number;
+  asesorId?: number;
 
   /** Router asignado */
   @IsOptional()
   @IsInt()
   mkSelected?: number;
 
-  /** Se acepta pero se ignora: el control del router es solo por PPPoE. */
-  @IsOptional()
-  @IsBoolean()
-  activateOnMk?: boolean;
+  /** Servicios adicionales contratados */
+  @IsArray()
+  @IsInt({ each: true })
+  servicesIds: number[];
 
-  //DATOS PARA EL CONTRATO
-
-  /** Se acepta pero no se usa */
+  /** Latitud y longitud, como texto */
   @IsOptional()
-  @IsInt()
-  clienteId?: number;
+  @IsArray()
+  @IsString({ each: true })
+  coordenadas?: string[];
 
   /** Número de contrato; si va vacío no se crea contrato */
   @IsOptional()
@@ -164,8 +145,9 @@ export class CreateClienteInternetDto {
   idContrato?: string;
 
   /** Fecha de firma (ISO 8601) */
+  @Transform(({ value }) => value || undefined)
   @IsOptional()
-  @IsString()
+  @IsDateString()
   fechaFirma?: string;
 
   /** Archivo del contrato */

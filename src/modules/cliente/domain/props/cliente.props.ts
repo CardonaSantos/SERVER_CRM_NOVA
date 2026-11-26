@@ -3,6 +3,7 @@ import {
   EstadoClientePersistido,
   EstadoOperativoCliente,
 } from '../enums/estado-operativo-cliente.enum';
+import { EstadoServicioMikrotik } from '../enums/estado-servicio-mikrotik.enum';
 import { TipoCambioCliente } from '../enums/tipo-cambio-cliente.enum';
 
 export type ClienteProps = {
@@ -32,6 +33,7 @@ export type ClienteProps = {
   departamentoId: number | null;
   facturacionZonaId: number | null;
   mikrotikRouterId: number | null;
+  estadoServicioMikrotik: EstadoServicioMikrotik;
   searchNombre: string | null;
   creadoEn: Date;
   actualizadoEn: Date;
