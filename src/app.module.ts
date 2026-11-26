@@ -36,7 +36,6 @@ import { MikroTikModule } from './mikro-tik/mikro-tik.module';
 import { TwilioApiModule } from './twilio-api/twilio-api.module';
 import { MetasTicketsModule } from './metas-tickets/metas-tickets.module';
 import { FacturaEliminacionModule } from './factura-eliminacion/factura-eliminacion.module';
-import { BanruralIntegrationModule } from './banrural-integration/banrural-integration.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { AlmacenamientoMediaModule } from './modules/almacenamiento-media/almacenamiento-media.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
@@ -119,7 +118,6 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     TwilioApiModule,
     MetasTicketsModule,
     FacturaEliminacionModule,
-    BanruralIntegrationModule,
     ReportsModule,
     AlmacenamientoMediaModule,
     NotificacionesModule,
