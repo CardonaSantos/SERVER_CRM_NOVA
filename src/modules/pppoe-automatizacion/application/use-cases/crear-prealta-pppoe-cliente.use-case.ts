@@ -48,10 +48,8 @@ export class CrearPrealtaPppoeClienteUseCase {
   constructor(
     @Inject(PPPOE_ACCESO_INTERNET)
     private readonly accesosInternet: PppoeAccesoInternetFacadePort,
-
     @Inject(PPPOE_CLIENTE_CUENTA)
     private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
-
     @Inject(PPPOE_PREALTA)
     private readonly pppoePrealta: PppoePrealtaPort,
   ) {}
@@ -65,20 +63,15 @@ export class CrearPrealtaPppoeClienteUseCase {
 
     return this.pppoePrealta.preparar({
       empresaId: input.empresaId,
-
       clienteId: input.clienteId,
       accesoInternetId: acceso.id,
       servicioInternetId: input.servicioInternetId,
       mikrotikRouterId: input.mikrotikRouterId,
-
       instalacionId: null,
-
       operadorId: input.operadorId,
       operadorNombre: input.operadorNombre ?? null,
-
       ipOrigen: input.ipOrigen ?? null,
       userAgent: input.userAgent ?? null,
-
       fechaReferencia: input.fechaReferencia,
     });
   }
@@ -144,10 +137,8 @@ export class CrearPrealtaPppoeClienteUseCase {
   ): Promise<AccesoInternetReadModel> {
     return this.accesosInternet.crear({
       empresaId: input.empresaId,
-
       clienteId: input.clienteId,
       servicioInternetId: input.servicioInternetId,
-
       tecnologia: TecnologiaAccesoInternet.FIBRA_GPON,
       metodoAutenticacion: MetodoAutenticacionInternet.PPPOE,
     });

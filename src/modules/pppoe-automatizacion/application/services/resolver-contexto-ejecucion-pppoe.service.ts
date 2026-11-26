@@ -34,13 +34,10 @@ export class ResolverContextoEjecucionPppoeService {
   constructor(
     @Inject(PPPOE_CLIENTE_CUENTA)
     private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
-
     @Inject(PPPOE_PERFIL_HOMOLOGACION)
     private readonly perfilesHomologacion: PppoePerfilHomologacionFacadePort,
-
     @Inject(PPPOE_SECRET_CIPHER)
     private readonly secretCipher: PppoeSecretCipherPort,
-
     @Inject(MIKROTIK_ROUTER_CONNECTION_CONTEXT)
     private readonly routerContext: MikrotikRouterConnectionContextPort,
   ) {}
@@ -102,13 +99,9 @@ export class ResolverContextoEjecucionPppoeService {
 
     return {
       operacion,
-
       cuenta,
-
       perfil,
-
       router,
-
       passwordPppoe,
     };
   }

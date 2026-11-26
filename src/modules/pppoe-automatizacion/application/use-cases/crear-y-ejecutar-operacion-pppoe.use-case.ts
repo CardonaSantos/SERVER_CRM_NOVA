@@ -47,7 +47,6 @@ import { PerfilHomologacionNoEncontradoError } from 'src/modules/pppoe-perfil-ho
  */
 export enum ModoCreacionSecretPppoe {
   INSTALACION = 'INSTALACION',
-
   ALTA_MANUAL = 'ALTA_MANUAL',
 }
 
@@ -90,16 +89,12 @@ export class CrearYEjecutarOperacionPppoeUseCase {
     @Inject(PPPOE_OPERACION)
     private readonly operaciones: PppoeOperacionFacadePort,
     private readonly ejecutarOperacion: EjecutarPppoeOperacionUseCase,
-
     @Inject(PPPOE_OPERACION_AUDITORIA)
     private readonly operacionAuditoria: PppoeOperacionAuditoriaPort,
-
     @Inject(PPPOE_CLIENTE_CUENTA)
     private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
-
     @Inject(PPPOE_PERFIL_HOMOLOGACION)
     private readonly perfilesHomologacion: PppoePerfilHomologacionFacadePort,
-
     @Inject(MIKROTIK_ROUTER_REPOSITORY)
     private readonly routerRepository: MikrotikRouterRepositoryPort,
   ) {}
@@ -108,12 +103,6 @@ export class CrearYEjecutarOperacionPppoeUseCase {
     input: CrearYEjecutarOperacionPppoeInput,
   ): Promise<EjecutarOperacionPppoeResult> {
     this.validateInput(input);
-
-    /*
-     * ========================================================
-     * 1. CUENTA PPPoE
-     * ========================================================
-     */
 
     const cuenta = await this.cuentasPppoe.buscarPorId(input.cuentaPppoeId);
 
@@ -126,12 +115,6 @@ export class CrearYEjecutarOperacionPppoeUseCase {
         'No puede crearse un secret para una cuenta PPPoE eliminada.',
       );
     }
-
-    /*
-     * ========================================================
-     * 2. HOMOLOGACIÓN ASIGNADA A LA CUENTA
-     * ========================================================
-     */
 
     const perfil = await this.perfilesHomologacion.buscarPorId(
       cuenta.perfilHomologacionId,
@@ -149,12 +132,6 @@ export class CrearYEjecutarOperacionPppoeUseCase {
       );
     }
 
-    /*
-     * ========================================================
-     * 3. ROUTER MIKROTIK
-     * ========================================================
-     */
-
     const router = await this.routerRepository.findById(
       perfilProps.mikrotikRouterId,
     );
@@ -169,37 +146,21 @@ export class CrearYEjecutarOperacionPppoeUseCase {
       );
     }
 
-    /*
-     * ========================================================
-     * 4. CREAR OPERACIÓN IDEMPOTENTE
-     * ========================================================
-     */
-
     const instalacionId = this.resolveInstalacionId(input);
 
     const motivo = this.resolveMotivo(input);
 
     const aggregate = await this.operaciones.crear({
       empresaId: input.empresaId,
-
       cuentaPppoeId: input.cuentaPppoeId,
-
       mikrotikRouterId: router.id,
-
       perfilHomologacionId: perfilProps.id,
-
       instalacionId: instalacionId,
-
       desinstalacionId: null,
-
       claveIdempotencia: input.claveIdempotencia,
-
       tipo: TipoOperacionPppoe.CREAR_SECRET,
-
       origen: input.actor.origen,
-
       iniciadoPorId: input.actor.iniciadoPorId,
-
       /*
        * El inicio de instalación ya representa
        * una acción autorizada del flujo.
@@ -207,15 +168,10 @@ export class CrearYEjecutarOperacionPppoeUseCase {
        * No se solicita una segunda contraseña.
        */
       requiereReautenticacion: false,
-
       motivo: motivo,
-
       usuarioPppoeSnapshot: cuenta.usuario,
-
       codigoPerfilSnapshot: perfilProps.codigoPerfil,
-
       routerHostSnapshot: router.host,
-
       routerPuertoSnapshot: router.sshPort,
     });
 
@@ -230,24 +186,14 @@ export class CrearYEjecutarOperacionPppoeUseCase {
     if (aggregate.creada) {
       await this.operacionAuditoria.registrarCreada({
         operacion,
-
         actor: {
           operadorId: input.actor.iniciadoPorId,
-
           operadorNombre: input.actor.operadorNombre ?? null,
-
           ipOrigen: input.actor.ipOrigen ?? null,
-
           userAgent: input.actor.userAgent ?? null,
         },
       });
     }
-
-    /*
-     * ========================================================
-     * 5. IDEMPOTENCIA DE EJECUCIÓN
-     * ========================================================
-     */
 
     if (operacion.esTerminal) {
       return this.buildExistingResult({
@@ -282,15 +228,8 @@ export class CrearYEjecutarOperacionPppoeUseCase {
       );
     }
 
-    /*
-     * ========================================================
-     * 6. RECLAMAR Y EJECUTAR
-     * ========================================================
-     */
-
     return this.ejecutarOperacion.execute({
       empresaId: input.empresaId,
-
       operacionId,
     });
   }
@@ -308,23 +247,14 @@ export class CrearYEjecutarOperacionPppoeUseCase {
 
     return {
       operacionId: this.requireOperationId(params.operacion),
-
       cuentaPppoeId: params.operacion.cuentaPppoeId,
-
       tipo: params.operacion.tipo,
-
       estadoOperacion: params.operacion.estado,
-
       estadoCuenta: params.estadoCuenta,
-
       numeroIntento: params.operacion.numeroIntento,
-
       reintentable: params.operacion.puedeReintentarse,
-
       resultado: primitives.resultado,
-
       errorCodigo: primitives.errorCodigo,
-
       errorMensaje: primitives.errorMensaje,
     };
   }
@@ -341,9 +271,7 @@ export class CrearYEjecutarOperacionPppoeUseCase {
 
   private validateInput(input: CrearYEjecutarOperacionPppoeInput): void {
     this.assertPositiveInteger(input.empresaId, 'empresaId');
-
     this.assertPositiveInteger(input.cuentaPppoeId, 'cuentaPppoeId');
-
     this.assertRequiredString(input.claveIdempotencia, 'claveIdempotencia');
 
     if (!input.actor) {

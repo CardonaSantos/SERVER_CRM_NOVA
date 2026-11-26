@@ -106,25 +106,18 @@ export class AdoptarCuentaPppoeExistenteUseCase {
     @Inject(RELOJ) private readonly reloj: RelojPort,
     @Inject(PPPOE_ACCESO_INTERNET)
     private readonly accesosInternet: PppoeAccesoInternetFacadePort,
-
     @Inject(PPPOE_CLIENTE_CUENTA)
     private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
-
     @Inject(PPPOE_PERFIL_HOMOLOGACION)
     private readonly perfilesHomologacion: PppoePerfilHomologacionFacadePort,
-
     @Inject(MIKROTIK_ROUTER_CONNECTION_CONTEXT)
     private readonly routerContext: MikrotikRouterConnectionContextPort,
-
     @Inject(MIKROTIK_SSH_PORT)
     private readonly mikrotikSsh: MikrotikSshPort,
-
     @Inject(PPPOE_SECRET_CIPHER)
     private readonly secretCipher: PppoeSecretCipherPort,
-
     @Inject(PPPOE_AUDITORIA)
     private readonly auditorias: PppoeAuditoriaFacadePort,
-
     @Inject(UNIDAD_DE_TRABAJO)
     private readonly unidadDeTrabajo: UnidadDeTrabajoPort,
   ) {}
@@ -185,17 +178,12 @@ export class AdoptarCuentaPppoeExistenteUseCase {
     try {
       session = await this.mikrotikSsh.abrirSesion({
         host: router.host,
-
         port: router.port,
-
         username: router.username,
-
         autenticacion: {
           metodo: MetodoAutenticacionMikrotikSsh.PASSWORD,
-
           password: router.password,
         },
-
         verificacionHost: {
           verificar: false,
         },
@@ -209,7 +197,6 @@ export class AdoptarCuentaPppoeExistenteUseCase {
 
       const verification = await session.verificarCredencialesSecret({
         usuarioPppoe: normalized.usuarioPppoe,
-
         passwordPppoe: normalized.passwordPppoe,
       });
 
@@ -253,12 +240,10 @@ export class AdoptarCuentaPppoeExistenteUseCase {
     const estado = deshabilitado
       ? {
           estadoCuenta: EstadoCuentaPppoe.SUSPENDIDA as const,
-
           estadoAcceso: EstadoAccesoInternet.SUSPENDIDO as const,
         }
       : {
           estadoCuenta: EstadoCuentaPppoe.ACTIVA as const,
-
           estadoAcceso: EstadoAccesoInternet.ACTIVO as const,
         };
 
@@ -327,9 +312,7 @@ export class AdoptarCuentaPppoeExistenteUseCase {
       adoptadoPorId: normalized.operadorId,
       adoptadoEn: fechaAdopcion,
       auditoriaId: persistida.auditoriaId,
-
       cumpleFormatoNova,
-
       advertencias,
     };
   }
@@ -427,9 +410,7 @@ export class AdoptarCuentaPppoeExistenteUseCase {
     input: AdoptarCuentaPppoeExistenteInput,
   ): AdoptarCuentaPppoeExistenteInput {
     this.assertPositiveInteger(input.empresaId, 'empresaId');
-
     this.assertPositiveInteger(input.clienteId, 'clienteId');
-
     this.assertPositiveInteger(
       input.perfilHomologacionId,
       'perfilHomologacionId',
@@ -490,9 +471,7 @@ export class AdoptarCuentaPppoeExistenteUseCase {
 
     return {
       ...input,
-
       usuarioPppoe,
-
       passwordPppoe: input.passwordPppoe,
     };
   }

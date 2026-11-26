@@ -90,16 +90,12 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
     @Inject(PPPOE_OPERACION)
     private readonly operaciones: PppoeOperacionFacadePort,
     private readonly ejecutarOperacion: EjecutarPppoeOperacionUseCase,
-
     @Inject(PPPOE_OPERACION_AUDITORIA)
     private readonly operacionAuditoria: PppoeOperacionAuditoriaPort,
-
     @Inject(PPPOE_CLIENTE_CUENTA)
     private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
-
     @Inject(PPPOE_PERFIL_HOMOLOGACION)
     private readonly perfilesHomologacion: PppoePerfilHomologacionFacadePort,
-
     @Inject(MIKROTIK_ROUTER_REPOSITORY)
     private readonly routerRepository: MikrotikRouterRepositoryPort,
   ) {}
@@ -108,12 +104,6 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
     input: CrearYEjecutarSuspensionPppoeInput,
   ): Promise<EjecutarOperacionPppoeResult> {
     this.validateInput(input);
-
-    /*
-     * ========================================================
-     * 1. CUENTA PPPoE
-     * ========================================================
-     */
 
     const cuenta = await this.cuentasPppoe.buscarPorId(input.cuentaPppoeId);
 
@@ -145,12 +135,6 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
     const tieneActivacionConfirmada =
       cuenta.activadoEn !== null || cuenta.esAdoptada;
 
-    /*
-     * ========================================================
-     * 2. HOMOLOGACIÓN ASIGNADA
-     * ========================================================
-     */
-
     const perfil = await this.perfilesHomologacion.buscarPorId(
       cuenta.perfilHomologacionId,
     );
@@ -173,12 +157,6 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
       );
     }
 
-    /*
-     * ========================================================
-     * 3. ROUTER MIKROTIK
-     * ========================================================
-     */
-
     const router = await this.routerRepository.findById(
       perfilProps.mikrotikRouterId,
     );
@@ -193,12 +171,6 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
       );
     }
 
-    /*
-     * ========================================================
-     * 4. IDEMPOTENCIA PREVIA
-     * ========================================================
-     */
-
     const existingOperation = await this.operaciones.buscar({
       por: 'CLAVE_IDEMPOTENCIA',
       claveIdempotencia: input.claveIdempotencia,
@@ -207,21 +179,15 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
     if (existingOperation) {
       this.assertCompatibleExistingOperation({
         input,
-
         operacion: existingOperation,
-
         routerId: router.id,
       });
 
       return this.resolveOperation({
         empresaId: input.empresaId,
-
         operacion: existingOperation,
-
         estadoCuenta: cuenta.estado,
-
         cuentaTieneSecret: cuenta.tieneSecretCreado,
-
         cuentaTieneActivacionConfirmada: tieneActivacionConfirmada,
       });
     }
@@ -235,67 +201,40 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
      */
     this.assertAccountCanStartSuspension({
       estado: cuenta.estado,
-
       tieneSecret: cuenta.tieneSecretCreado,
-
       tieneActivacionConfirmada,
     });
 
-    /*
-     * ========================================================
-     * 5. CREAR OPERACIÓN
-     * ========================================================
-     */
-
     const aggregate = await this.operaciones.crear({
       empresaId: input.empresaId,
-
       cuentaPppoeId: cuenta.id,
-
       mikrotikRouterId: router.id,
-
       perfilHomologacionId: perfilProps.id,
-
       /*
        * La suspensión manual actúa sobre la cuenta PPPoE,
        * no sobre la instalación que originó el acceso.
        */
       instalacionId: null,
-
       desinstalacionId: null,
-
       claveIdempotencia: input.claveIdempotencia.trim(),
-
       tipo: TipoOperacionPppoe.SUSPENDER_SERVICIO,
-
       origen: input.actor.origen,
-
       iniciadoPorId: input.actor.iniciadoPorId,
-
       requiereReautenticacion: false,
-
       motivo: input.motivo.trim(),
-
       usuarioPppoeSnapshot: cuenta.usuario,
-
       codigoPerfilSnapshot: perfilProps.codigoPerfil,
-
       routerHostSnapshot: router.host,
-
       routerPuertoSnapshot: router.sshPort,
     });
 
     if (aggregate.creada) {
       await this.operacionAuditoria.registrarCreada({
         operacion: aggregate.operacion,
-
         actor: {
           operadorId: input.actor.iniciadoPorId,
-
           operadorNombre: input.actor.operadorNombre ?? null,
-
           ipOrigen: input.actor.ipOrigen ?? null,
-
           userAgent: input.actor.userAgent ?? null,
         },
       });
@@ -308,13 +247,9 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
      */
     return this.resolveOperation({
       empresaId: input.empresaId,
-
       operacion: aggregate.operacion,
-
       estadoCuenta: cuenta.estado,
-
       cuentaTieneSecret: cuenta.tieneSecretCreado,
-
       cuentaTieneActivacionConfirmada: tieneActivacionConfirmada,
     });
   }
@@ -341,7 +276,6 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
     if (params.operacion.esTerminal) {
       return this.buildExistingResult({
         operacion: params.operacion,
-
         estadoCuenta: params.estadoCuenta,
       });
     }
@@ -354,7 +288,6 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
        */
       return this.buildExistingResult({
         operacion: params.operacion,
-
         estadoCuenta: params.estadoCuenta,
       });
     }
@@ -373,15 +306,12 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
 
     this.assertAccountCanStartSuspension({
       estado: params.estadoCuenta,
-
       tieneSecret: params.cuentaTieneSecret,
-
       tieneActivacionConfirmada: params.cuentaTieneActivacionConfirmada,
     });
 
     return this.ejecutarOperacion.execute({
       empresaId: params.empresaId,
-
       operacionId,
     });
   }
@@ -487,23 +417,14 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
 
     return {
       operacionId: this.requireOperationId(params.operacion),
-
       cuentaPppoeId: params.operacion.cuentaPppoeId,
-
       tipo: params.operacion.tipo,
-
       estadoOperacion: params.operacion.estado,
-
       estadoCuenta: params.estadoCuenta,
-
       numeroIntento: params.operacion.numeroIntento,
-
       reintentable: params.operacion.puedeReintentarse,
-
       resultado: primitives.resultado,
-
       errorCodigo: primitives.errorCodigo,
-
       errorMensaje: primitives.errorMensaje,
     };
   }
@@ -520,11 +441,8 @@ export class CrearYEjecutarSuspensionPppoeUseCase {
 
   private validateInput(input: CrearYEjecutarSuspensionPppoeInput): void {
     this.assertPositiveInteger(input.empresaId, 'empresaId');
-
     this.assertPositiveInteger(input.cuentaPppoeId, 'cuentaPppoeId');
-
     this.assertRequiredString(input.claveIdempotencia, 'claveIdempotencia');
-
     this.assertRequiredString(input.motivo, 'motivo');
 
     if (input.motivo.trim().length < 5) {

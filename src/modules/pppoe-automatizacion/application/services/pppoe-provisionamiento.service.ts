@@ -66,21 +66,14 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
     @Inject(PPPOE_OPERACION)
     private readonly operaciones: PppoeOperacionFacadePort,
     private readonly crearSecretUseCase: CrearYEjecutarOperacionPppoeUseCase,
-
     private readonly activarSecretUseCase: CrearYEjecutarActivacionPppoeUseCase,
-
     private readonly suspenderServicioUseCase: CrearYEjecutarSuspensionPppoeUseCase,
-
     private readonly eliminarSecretUseCase: CrearYEjecutarEliminacionPppoeUseCase,
-
     private readonly ejecutarOperacionUseCase: EjecutarPppoeOperacionUseCase,
-
     @Inject(MIKROTIK_ROUTER_CONNECTION_CONTEXT)
     private readonly routerContext: MikrotikRouterConnectionContextPort,
-
     @Inject(PPPOE_OPERACION_AUDITORIA)
     private readonly operacionAuditoria: PppoeOperacionAuditoriaPort,
-
     @Inject(PPPOE_CLIENTE_CUENTA)
     private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
   ) {}
@@ -117,27 +110,17 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
 
     return this.activarSecretUseCase.execute({
       modo: ModoActivacionPppoe.INSTALACION,
-
       empresaId: input.empresaId,
-
       cuentaPppoeId: input.cuentaPppoeId,
-
       instalacionId,
-
       claveIdempotencia: input.claveIdempotencia,
-
       actor: {
         origen: input.actor.origen,
-
         iniciadoPorId: input.actor.iniciadoPorId,
-
         operadorNombre: input.actor.operadorNombre ?? null,
-
         ipOrigen: input.actor.ipOrigen ?? null,
-
         userAgent: input.actor.userAgent ?? null,
       },
-
       motivo: input.motivo ?? null,
     });
   }
@@ -153,22 +136,14 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
   ): Promise<EjecutarOperacionPppoeResult> {
     return this.activarSecretUseCase.execute({
       modo: ModoActivacionPppoe.REACTIVACION_MANUAL,
-
       empresaId: input.empresaId,
-
       cuentaPppoeId: input.cuentaPppoeId,
-
       claveIdempotencia: input.claveIdempotencia,
-
       motivo: input.motivo,
-
       actor: {
         origen: input.actor.origen,
-
         iniciadoPorId: input.actor.iniciadoPorId,
-
         ipOrigen: input.actor.ipOrigen ?? null,
-
         userAgent: input.actor.userAgent ?? null,
       },
     });
@@ -227,30 +202,22 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
 
     const routerSnapshot = await this.resolveCurrentRetryRouterSnapshot({
       empresaId: input.empresaId,
-
       operacionId: input.operacionId,
     });
 
     const aggregate = await this.operaciones.crearReintento({
       operacionId: input.operacionId,
-
       claveIdempotencia: input.claveIdempotencia,
-
       iniciadoPorId: input.actor.iniciadoPorId,
-
       origen: input.actor.origen,
-
       motivo: input.motivo,
-
       /*
        * El reintento captura nuevamente el destino actual.
        *
        * No copia el snapshot histórico del intento anterior.
        */
       mikrotikRouterId: routerSnapshot.mikrotikRouterId,
-
       routerHostSnapshot: routerSnapshot.routerHostSnapshot,
-
       routerPuertoSnapshot: routerSnapshot.routerPuertoSnapshot,
     });
 
@@ -267,16 +234,11 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
 
       await this.operacionAuditoria.registrarReintentada({
         operacion,
-
         operacionAnteriorId: aggregate.operacionAnteriorId,
-
         actor: {
           operadorId: input.actor.iniciadoPorId,
-
           operadorNombre: input.actor.operadorNombre ?? null,
-
           ipOrigen: input.actor.ipOrigen ?? null,
-
           userAgent: input.actor.userAgent ?? null,
         },
       });
@@ -320,7 +282,6 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
 
     return this.ejecutarOperacionUseCase.execute({
       empresaId: input.empresaId,
-
       operacionId,
     });
   }
@@ -391,9 +352,7 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
 
     return {
       mikrotikRouterId: ultimoIntento.mikrotikRouterId,
-
       routerHostSnapshot: host,
-
       routerPuertoSnapshot: router.port,
     };
   }
@@ -409,29 +368,19 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
 
     const estadoCuenta = await this.findAccountStateSafely({
       empresaId: operacion.empresaId,
-
       cuentaPppoeId: operacion.cuentaPppoeId,
     });
 
     return {
       operacionId: this.requireOperationId(operacion),
-
       cuentaPppoeId: operacion.cuentaPppoeId,
-
       tipo: operacion.tipo,
-
       estadoOperacion: operacion.estado,
-
       estadoCuenta,
-
       numeroIntento: operacion.numeroIntento,
-
       reintentable: operacion.puedeReintentarse,
-
       resultado: primitives.resultado,
-
       errorCodigo: primitives.errorCodigo,
-
       errorMensaje: primitives.errorMensaje,
     };
   }
@@ -470,9 +419,7 @@ export class PppoeProvisionamientoService implements PppoeProvisionamientoPort {
 
   private validateRetryInput(input: ReintentarOperacionPppoeInput): void {
     this.assertPositiveInteger(input.empresaId, 'empresaId');
-
     this.assertPositiveInteger(input.operacionId, 'operacionId');
-
     this.assertRequiredString(input.claveIdempotencia, 'claveIdempotencia');
 
     if (!input.actor) {

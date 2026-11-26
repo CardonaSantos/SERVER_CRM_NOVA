@@ -79,16 +79,12 @@ export class VerificarAdopcionPppoeUseCase {
   constructor(
     @Inject(PPPOE_ACCESO_INTERNET)
     private readonly accesosInternet: PppoeAccesoInternetFacadePort,
-
     @Inject(PPPOE_CLIENTE_CUENTA)
     private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
-
     @Inject(PPPOE_PERFIL_HOMOLOGACION)
     private readonly perfilesHomologacion: PppoePerfilHomologacionFacadePort,
-
     @Inject(MIKROTIK_ROUTER_CONNECTION_CONTEXT)
     private readonly routerContext: MikrotikRouterConnectionContextPort,
-
     @Inject(MIKROTIK_SSH_PORT)
     private readonly mikrotikSsh: MikrotikSshPort,
   ) {}
@@ -98,11 +94,6 @@ export class VerificarAdopcionPppoeUseCase {
   ): Promise<VerificarAdopcionPppoeResult> {
     const normalized = this.validateAndNormalizeInput(input);
 
-    /**
-     * ==========================================================
-     * 1. COMPROBAR QUE EL CLIENTE TODAVÍA NO ESTÉ ADMINISTRADO
-     * ==========================================================
-     */
     /**
      * Un username histórico puede volver a utilizarse cuando
      * su ciclo anterior terminó en ELIMINADA o CANCELADA.
@@ -139,11 +130,6 @@ export class VerificarAdopcionPppoeUseCase {
       );
     }
 
-    /**
-     * ==========================================================
-     * 2. RESOLVER HOMOLOGACIÓN
-     * ==========================================================
-     */
     const perfil = await this.perfilesHomologacion.buscarPorId(
       normalized.perfilHomologacionId,
     );
@@ -169,34 +155,19 @@ export class VerificarAdopcionPppoeUseCase {
 
     const perfilEsperado = perfil.codigoPerfil;
 
-    /**
-     * ==========================================================
-     * 3. RESOLVER CREDENCIALES DEL ROUTER
-     * ==========================================================
-     */
     const router = await this.routerContext.resolve(mikrotikRouterId);
 
     let session: MikrotikSshSessionPort | null = null;
 
     try {
-      /**
-       * ========================================================
-       * 4. ABRIR SESIÓN SSH
-       * ========================================================
-       */
       session = await this.mikrotikSsh.abrirSesion({
         host: router.host,
-
         port: router.port,
-
         username: router.username,
-
         autenticacion: {
           metodo: MetodoAutenticacionMikrotikSsh.PASSWORD,
-
           password: router.password,
         },
-
         /**
          * Conservamos por ahora la misma política
          * utilizada por los executors PPPoE existentes.
@@ -212,42 +183,24 @@ export class VerificarAdopcionPppoeUseCase {
         );
       }
 
-      /**
-       * ========================================================
-       * 5. COMPROBAR CREDENCIALES REALES
-       * ========================================================
-       */
       const verification = await session.verificarCredencialesSecret({
         usuarioPppoe: normalized.usuarioPppoe,
-
         passwordPppoe: normalized.passwordPppoe,
       });
 
       return this.buildResult({
         empresaId: normalized.empresaId,
-
         clienteId: normalized.clienteId,
-
         perfilHomologacionId: normalized.perfilHomologacionId,
-
         mikrotikRouterId,
-
         servicioInternetId,
-
         usuarioPppoe: normalized.usuarioPppoe,
-
         passwordPppoe: normalized.passwordPppoe,
-
         perfilEsperado,
-
         encontrado: verification.encontrado,
-
         passwordCoincide: verification.passwordCoincide,
-
         perfilEncontrado: verification.secret?.codigoPerfil ?? null,
-
         servicioEncontrado: verification.secret?.servicio ?? null,
-
         deshabilitado: verification.secret?.deshabilitado ?? null,
       });
     } finally {
@@ -321,55 +274,32 @@ export class VerificarAdopcionPppoeUseCase {
 
     const advertencias = this.buildWarnings({
       encontrado: params.encontrado,
-
       passwordCoincide: params.passwordCoincide,
-
       perfilEsperado: params.perfilEsperado,
-
       perfilEncontrado: params.perfilEncontrado,
-
       servicioEncontrado: params.servicioEncontrado,
-
       servicioCompatible,
-
       cumpleFormatoNova,
     });
 
     return {
       empresaId: params.empresaId,
-
       clienteId: params.clienteId,
-
       perfilHomologacionId: params.perfilHomologacionId,
-
       mikrotikRouterId: params.mikrotikRouterId,
-
       servicioInternetId: params.servicioInternetId,
-
       usuarioPppoe: params.usuarioPppoe,
-
       encontrado: params.encontrado,
-
       passwordCoincide: params.passwordCoincide,
-
       perfilEsperado: params.perfilEsperado,
-
       perfilEncontrado: params.perfilEncontrado,
-
       perfilCoincide,
-
       servicioEncontrado: params.servicioEncontrado,
-
       servicioCompatible,
-
       deshabilitado: params.deshabilitado,
-
       estadoRemoto,
-
       cumpleFormatoNova,
-
       puedeAdoptar,
-
       advertencias,
     };
   }
@@ -467,9 +397,7 @@ export class VerificarAdopcionPppoeUseCase {
     input: VerificarAdopcionPppoeInput,
   ): VerificarAdopcionPppoeInput {
     this.assertPositiveInteger(input.empresaId, 'empresaId');
-
     this.assertPositiveInteger(input.clienteId, 'clienteId');
-
     this.assertPositiveInteger(
       input.perfilHomologacionId,
       'perfilHomologacionId',
@@ -524,9 +452,7 @@ export class VerificarAdopcionPppoeUseCase {
 
     return {
       ...input,
-
       usuarioPppoe,
-
       /**
        * Se conserva exactamente.
        */

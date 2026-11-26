@@ -65,9 +65,7 @@ export type ProvisionarPppoeClienteManualParams = {
 export class PppoeCuentaProvisionamientoAdminService {
   constructor(
     private readonly crearPrealtaUseCase: CrearPrealtaPppoeClienteUseCase,
-
     private readonly provisionarUseCase: ProvisionarPppoeClienteManualUseCase,
-
     private readonly authService: AuthService,
   ) {}
 
@@ -84,28 +82,18 @@ export class PppoeCuentaProvisionamientoAdminService {
     this.validateActor(params.actor);
 
     this.assertPositiveInteger(params.empresaId, 'empresaId');
-
     this.assertPositiveInteger(params.clienteId, 'clienteId');
-
     this.assertPositiveInteger(params.servicioInternetId, 'servicioInternetId');
-
     this.assertPositiveInteger(params.mikrotikRouterId, 'mikrotikRouterId');
 
     return this.crearPrealtaUseCase.execute({
       empresaId: params.empresaId,
-
       clienteId: params.clienteId,
-
       servicioInternetId: params.servicioInternetId,
-
       mikrotikRouterId: params.mikrotikRouterId,
-
       operadorId: params.actor.operadorId,
-
       operadorNombre: params.actor.operadorNombre ?? null,
-
       ipOrigen: params.actor.ipOrigen ?? null,
-
       userAgent: params.actor.userAgent ?? null,
     });
   }
@@ -123,7 +111,6 @@ export class PppoeCuentaProvisionamientoAdminService {
     this.validateActor(params.actor);
 
     this.assertPositiveInteger(params.empresaId, 'empresaId');
-
     this.assertPositiveInteger(params.cuentaPppoeId, 'cuentaPppoeId');
 
     /**
@@ -159,21 +146,14 @@ export class PppoeCuentaProvisionamientoAdminService {
 
     return this.provisionarUseCase.execute({
       empresaId: params.empresaId,
-
       cuentaPppoeId: params.cuentaPppoeId,
-
       actor: {
         origen: OrigenOperacionPppoe.OPERADOR,
-
         iniciadoPorId: params.actor.operadorId,
-
         operadorNombre: params.actor.operadorNombre ?? null,
-
         ipOrigen: params.actor.ipOrigen ?? null,
-
         userAgent: params.actor.userAgent ?? null,
       },
-
       motivo: params.motivo?.trim() || null,
     });
   }

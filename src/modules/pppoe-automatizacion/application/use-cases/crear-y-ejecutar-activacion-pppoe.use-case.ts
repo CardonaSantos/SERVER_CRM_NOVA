@@ -49,9 +49,7 @@ import { OperacionPppoeIdempotenciaError } from 'src/modules/pppoe-operacion/pub
  */
 export enum ModoActivacionPppoe {
   INSTALACION = 'INSTALACION',
-
   ALTA_MANUAL = 'ALTA_MANUAL',
-
   REACTIVACION_MANUAL = 'REACTIVACION_MANUAL',
 }
 
@@ -136,16 +134,12 @@ export class CrearYEjecutarActivacionPppoeUseCase {
     @Inject(PPPOE_OPERACION)
     private readonly operaciones: PppoeOperacionFacadePort,
     private readonly ejecutarOperacion: EjecutarPppoeOperacionUseCase,
-
     @Inject(PPPOE_OPERACION_AUDITORIA)
     private readonly operacionAuditoria: PppoeOperacionAuditoriaPort,
-
     @Inject(PPPOE_CLIENTE_CUENTA)
     private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
-
     @Inject(PPPOE_PERFIL_HOMOLOGACION)
     private readonly perfilesHomologacion: PppoePerfilHomologacionFacadePort,
-
     @Inject(MIKROTIK_ROUTER_REPOSITORY)
     private readonly routerRepository: MikrotikRouterRepositoryPort,
   ) {}
@@ -156,12 +150,6 @@ export class CrearYEjecutarActivacionPppoeUseCase {
     this.validateInput(input);
 
     const claveIdempotencia = input.claveIdempotencia.trim();
-
-    /*
-     * ========================================================
-     * 1. CUENTA PPPoE
-     * ========================================================
-     */
 
     const cuenta = await this.cuentasPppoe.buscarPorId(input.cuentaPppoeId);
 
@@ -182,12 +170,6 @@ export class CrearYEjecutarActivacionPppoeUseCase {
         'No puede activarse una cuenta PPPoE eliminada.',
       );
     }
-
-    /*
-     * ========================================================
-     * 2. HOMOLOGACIÓN
-     * ========================================================
-     */
 
     const perfil = await this.perfilesHomologacion.buscarPorId(
       cuenta.perfilHomologacionId,
@@ -213,12 +195,6 @@ export class CrearYEjecutarActivacionPppoeUseCase {
       );
     }
 
-    /*
-     * ========================================================
-     * 3. ROUTER
-     * ========================================================
-     */
-
     const router = await this.routerRepository.findById(
       perfilProps.mikrotikRouterId,
     );
@@ -239,12 +215,6 @@ export class CrearYEjecutarActivacionPppoeUseCase {
 
     const motivo = this.resolveMotivo(input);
 
-    /*
-     * ========================================================
-     * 4. IDEMPOTENCIA PREVIA
-     * ========================================================
-     */
-
     const existingOperation = await this.operaciones.buscar({
       por: 'CLAVE_IDEMPOTENCIA',
       claveIdempotencia,
@@ -253,21 +223,15 @@ export class CrearYEjecutarActivacionPppoeUseCase {
     if (existingOperation) {
       this.assertCompatibleExistingOperation({
         input,
-
         operacion: existingOperation,
-
         routerId,
       });
 
       return this.resolveOperation({
         empresaId: input.empresaId,
-
         operacion: existingOperation,
-
         estadoCuenta: cuenta.estado,
-
         cuentaTieneSecret: cuenta.tieneSecretCreado,
-
         modo: input.modo,
       });
     }
@@ -277,49 +241,26 @@ export class CrearYEjecutarActivacionPppoeUseCase {
      */
     this.assertAccountCanBeActivated({
       modo: input.modo,
-
       estado: cuenta.estado,
-
       tieneSecret: cuenta.tieneSecretCreado,
     });
 
-    /*
-     * ========================================================
-     * 5. CREAR OPERACIÓN
-     * ========================================================
-     */
-
     const aggregate = await this.operaciones.crear({
       empresaId: input.empresaId,
-
       cuentaPppoeId: cuentaId,
-
       mikrotikRouterId: routerId,
-
       perfilHomologacionId,
-
       instalacionId,
-
       desinstalacionId: null,
-
       claveIdempotencia,
-
       tipo: TipoOperacionPppoe.ACTIVAR_SECRET,
-
       origen: input.actor.origen,
-
       iniciadoPorId: input.actor.iniciadoPorId,
-
       requiereReautenticacion: false,
-
       motivo,
-
       usuarioPppoeSnapshot: cuenta.usuario,
-
       codigoPerfilSnapshot: perfilProps.codigoPerfil,
-
       routerHostSnapshot: router.host,
-
       routerPuertoSnapshot: router.sshPort,
     });
 
@@ -329,12 +270,9 @@ export class CrearYEjecutarActivacionPppoeUseCase {
     if (aggregate.creada) {
       await this.operacionAuditoria.registrarCreada({
         operacion: aggregate.operacion,
-
         actor: {
           operadorId: input.actor.iniciadoPorId,
-
           ipOrigen: input.actor.ipOrigen ?? null,
-
           userAgent: input.actor.userAgent ?? null,
         },
       });
@@ -346,13 +284,9 @@ export class CrearYEjecutarActivacionPppoeUseCase {
      */
     return this.resolveOperation({
       empresaId: input.empresaId,
-
       operacion: aggregate.operacion,
-
       estadoCuenta: cuenta.estado,
-
       cuentaTieneSecret: cuenta.tieneSecretCreado,
-
       modo: input.modo,
     });
   }
@@ -381,7 +315,6 @@ export class CrearYEjecutarActivacionPppoeUseCase {
     if (params.operacion.esTerminal) {
       return this.buildExistingResult({
         operacion: params.operacion,
-
         estadoCuenta: params.estadoCuenta,
       });
     }
@@ -394,7 +327,6 @@ export class CrearYEjecutarActivacionPppoeUseCase {
     if (params.operacion.estaEjecutando) {
       return this.buildExistingResult({
         operacion: params.operacion,
-
         estadoCuenta: params.estadoCuenta,
       });
     }
@@ -413,15 +345,12 @@ export class CrearYEjecutarActivacionPppoeUseCase {
 
     this.assertAccountCanBeActivated({
       modo: params.modo,
-
       estado: params.estadoCuenta,
-
       tieneSecret: params.cuentaTieneSecret,
     });
 
     return this.ejecutarOperacion.execute({
       empresaId: params.empresaId,
-
       operacionId,
     });
   }
@@ -456,7 +385,6 @@ export class CrearYEjecutarActivacionPppoeUseCase {
     if (params.modo === ModoActivacionPppoe.INSTALACION) {
       const estadosPermitidos: EstadoCuentaPppoe[] = [
         EstadoCuentaPppoe.EN_INSTALACION,
-
         EstadoCuentaPppoe.EN_ACTIVACION,
       ];
 
@@ -472,7 +400,6 @@ export class CrearYEjecutarActivacionPppoeUseCase {
     if (params.modo === ModoActivacionPppoe.ALTA_MANUAL) {
       const estadosPermitidos: EstadoCuentaPppoe[] = [
         EstadoCuentaPppoe.EN_INSTALACION,
-
         EstadoCuentaPppoe.EN_ACTIVACION,
       ];
 
@@ -553,23 +480,14 @@ export class CrearYEjecutarActivacionPppoeUseCase {
 
     return {
       operacionId: this.requireOperationId(params.operacion),
-
       cuentaPppoeId: params.operacion.cuentaPppoeId,
-
       tipo: params.operacion.tipo,
-
       estadoOperacion: params.operacion.estado,
-
       estadoCuenta: params.estadoCuenta,
-
       numeroIntento: params.operacion.numeroIntento,
-
       reintentable: params.operacion.puedeReintentarse,
-
       resultado: primitives.resultado,
-
       errorCodigo: primitives.errorCodigo,
-
       errorMensaje: primitives.errorMensaje,
     };
   }
@@ -624,9 +542,7 @@ export class CrearYEjecutarActivacionPppoeUseCase {
 
   private validateInput(input: CrearYEjecutarActivacionPppoeInput): void {
     this.assertPositiveInteger(input.empresaId, 'empresaId');
-
     this.assertPositiveInteger(input.cuentaPppoeId, 'cuentaPppoeId');
-
     this.assertRequiredString(input.claveIdempotencia, 'claveIdempotencia');
 
     if (!input.actor) {

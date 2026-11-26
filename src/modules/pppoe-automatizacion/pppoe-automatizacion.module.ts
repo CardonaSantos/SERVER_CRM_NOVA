@@ -67,24 +67,20 @@ import { ClienteInternetEstadoOperativoPrismaAdapter } from './infra/prisma/clie
     PppoeClienteCuentaModule,
     MikrotikSshModule,
     PppoeCredentialsModule,
-
     PppoeAuditoriaModule,
     PppoeAccesoInternetModule,
     MikroTikModule,
   ],
-
   providers: [
     AdoptarCuentaPppoeExistenteUseCase,
     /*
      * Prealta y consultas
      */
     PrepararPrealtaPppoeUseCase,
-
     /*
      * Adopción de cuentas existentes
      */
     VerificarAdopcionPppoeUseCase,
-
     /*
      * Servicios internos
      */
@@ -95,7 +91,6 @@ import { ClienteInternetEstadoOperativoPrismaAdapter } from './infra/prisma/clie
     PppoeOperacionAuditoriaService,
     PppoeProvisionamientoService,
     PppoeCuentaProvisionamientoAdminService,
-
     /*
      * Ejecutores SSH
      */
@@ -103,7 +98,6 @@ import { ClienteInternetEstadoOperativoPrismaAdapter } from './infra/prisma/clie
     EjecutorActivarSecretPppoeService,
     EjecutorSuspenderServicioPppoeService,
     EjecutorEliminarSecretPppoeService,
-
     /*
      * Orquestación
      */
@@ -114,33 +108,27 @@ import { ClienteInternetEstadoOperativoPrismaAdapter } from './infra/prisma/clie
     RecuperarPppoeOperacionInterrumpidaUseCase,
     CrearYEjecutarEliminacionPppoeUseCase,
     ProvisionarPppoeClienteManualUseCase,
-
     /*
      * Tokens / fachadas
      */
     CrearPrealtaPppoeClienteUseCase,
-
     {
       provide: PPPOE_PREALTA,
       useExisting: PrepararPrealtaPppoeUseCase,
     },
-
     {
       provide: PPPOE_PROVISIONAMIENTO,
       useExisting: PppoeProvisionamientoService,
     },
-
     {
       provide: PPPOE_OPERACION_AUDITORIA,
       useExisting: PppoeOperacionAuditoriaService,
     },
     {
       provide: CLIENTE_INTERNET_ESTADO_OPERATIVO,
-
       useClass: ClienteInternetEstadoOperativoPrismaAdapter,
     },
   ],
-
   exports: [PPPOE_PREALTA, PPPOE_PROVISIONAMIENTO],
 })
 export class PppoeAutomatizacionModule {}

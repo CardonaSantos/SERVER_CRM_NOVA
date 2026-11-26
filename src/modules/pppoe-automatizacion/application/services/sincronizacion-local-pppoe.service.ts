@@ -59,7 +59,6 @@ export class SincronizacionLocalPppoeService {
       case SUSPENDER_SERVICIO:
         return Promise.resolve(this.validarSuspension(cuenta));
       case ELIMINAR_SECRET:
-        // La autorización es de los casos de uso que crean la operación;
         // aquí solo se exige un origen coherente antes de tocar nada.
         if (
           resolverContextoEliminacion(operacion) ===

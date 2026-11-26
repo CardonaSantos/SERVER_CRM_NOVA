@@ -51,16 +51,12 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
   constructor(
     @Inject(PPPOE_PERFIL_HOMOLOGACION)
     private readonly perfilesHomologacion: PppoePerfilHomologacionFacadePort,
-
     @Inject(PPPOE_CLIENTE_CUENTA)
     private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
-
     @Inject(PPPOE_CREDENTIAL_GENERATOR)
     private readonly credentialGenerator: PppoeCredentialGeneratorPort,
-
     @Inject(PPPOE_SECRET_CIPHER)
     private readonly secretCipher: PppoeSecretCipherPort,
-
     @Inject(PPPOE_AUDITORIA)
     private readonly auditoria: PppoeAuditoriaFacadePort,
   ) {}
@@ -112,35 +108,22 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
 
     const cuentaCreada = await this.cuentasPppoe.crear({
       empresaId: input.empresaId,
-
       accesoInternetId: input.accesoInternetId,
-
       perfilHomologacionId: perfil.id,
-
       usuario: credenciales.usuario,
-
       secretoCifrado: secretoProtegido.secretoCifrado,
-
       secretoIv: secretoProtegido.secretoIv,
-
       secretoAuthTag: secretoProtegido.secretoAuthTag,
-
       versionClave: secretoProtegido.versionClave,
-
       generadoPorId: input.operadorId,
     });
 
     await this.registrarAuditoriasPrealta({
       input,
-
       cuentaPppoeId: cuentaCreada.id,
-
       perfilHomologacionId: perfil.id,
-
       usuario: cuentaCreada.usuario,
-
       codigoPerfil: perfil.codigoPerfil,
-
       generadoEn: credenciales.generadoEn,
     });
 
@@ -204,87 +187,50 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
 
     await this.auditoria.registrarEventoCuenta({
       empresaId: input.empresaId,
-
       clienteId: input.clienteId,
-
       accesoInternetId: input.accesoInternetId,
-
       cuentaPppoeId,
-
       perfilHomologacionId,
-
       instalacionId: input.instalacionId ?? null,
-
       operadorId: input.operadorId,
-
       origen: OrigenOperacionPppoe.OPERADOR,
-
       accion: AccionAuditoriaPppoe.CONTRASENA_GENERADA,
-
       descripcion: 'Se generó la contraseña de la cuenta PPPoE.',
-
       usuarioPppoeSnapshot: usuario,
-
       perfilCodigoSnapshot: codigoPerfil,
-
       operadorNombreSnapshot: input.operadorNombre ?? null,
-
       datos: {
         algoritmo: 'FORMATO_NOVA_PPPOE',
-
         credencialCifrada: true,
       },
-
       ipOrigen: input.ipOrigen ?? null,
-
       userAgent: input.userAgent ?? null,
-
       creadoEn: generadoEn,
     });
 
     await this.auditoria.registrarTransicionCuenta({
       empresaId: input.empresaId,
-
       clienteId: input.clienteId,
-
       accesoInternetId: input.accesoInternetId,
-
       cuentaPppoeId,
-
       perfilHomologacionId,
-
       instalacionId: input.instalacionId ?? null,
-
       operadorId: input.operadorId,
-
       origen: OrigenOperacionPppoe.OPERADOR,
-
       accion: AccionAuditoriaPppoe.PREALTA_CREADA,
-
       descripcion: 'Se creó la prealta de la cuenta PPPoE.',
-
       estadoCuentaAnterior: null,
-
       estadoCuentaNuevo: EstadoCuentaPppoe.PENDIENTE_ACTIVACION,
-
       usuarioPppoeSnapshot: usuario,
-
       perfilCodigoSnapshot: codigoPerfil,
-
       operadorNombreSnapshot: input.operadorNombre ?? null,
-
       datos: {
         mikrotikRouterId: input.mikrotikRouterId,
-
         servicioInternetId: input.servicioInternetId,
-
         requiereCreacionSecret: true,
       },
-
       ipOrigen: input.ipOrigen ?? null,
-
       userAgent: input.userAgent ?? null,
-
       creadoEn: generadoEn,
     });
   }
@@ -295,34 +241,22 @@ export class PrepararPrealtaPppoeUseCase implements PppoePrealtaPort {
   ): PrepararPrealtaPppoeResult {
     return {
       cuentaPppoeId: cuenta.id,
-
       empresaId: cuenta.empresaId,
-
       accesoInternetId: cuenta.accesoInternetId,
-
       perfilHomologacionId: cuenta.perfilHomologacionId,
-
       usuario: cuenta.usuario,
-
       estado: cuenta.estado,
-
       generadoEn: cuenta.generadoEn,
-
       creada,
     };
   }
 
   private validateInput(input: PrepararPrealtaPppoeInput): void {
     this.assertPositiveInteger(input.empresaId, 'empresaId');
-
     this.assertPositiveInteger(input.clienteId, 'clienteId');
-
     this.assertPositiveInteger(input.accesoInternetId, 'accesoInternetId');
-
     this.assertPositiveInteger(input.servicioInternetId, 'servicioInternetId');
-
     this.assertPositiveInteger(input.mikrotikRouterId, 'mikrotikRouterId');
-
     this.assertPositiveInteger(input.operadorId, 'operadorId');
 
     if (input.instalacionId !== null && input.instalacionId !== undefined) {

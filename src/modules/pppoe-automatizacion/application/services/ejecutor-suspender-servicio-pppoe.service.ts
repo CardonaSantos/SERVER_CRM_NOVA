@@ -72,7 +72,6 @@ export class EjecutorSuspenderServicioPppoeService {
   constructor(
     @Inject(MIKROTIK_SSH_PORT)
     private readonly mikrotikSsh: MikrotikSshPort,
-
     private readonly stepRunner: PppoeOperacionStepRunnerService,
   ) {}
 
@@ -147,41 +146,27 @@ export class EjecutorSuspenderServicioPppoeService {
     let session: MikrotikSshSessionPort | null = null;
 
     try {
-      /*
-       * ======================================================
-       * 1. CONECTAR AL ROUTER
-       * ======================================================
-       */
       this.logger.log(
         `[SUSPENSION] Abriendo SSH router=${contexto.router.host}:${contexto.router.port} usuarioPppoe=${usuarioPppoe}`,
       );
 
       await this.stepRunner.ejecutar({
         empresaId,
-
         operacionId,
-
         orden: ordenConectar,
-
         comandoSanitizado:
           `CONECTAR_ROUTER host=${contexto.router.host} ` +
           `port=${contexto.router.port} ` +
           `username=${contexto.router.username}`,
-
         ejecutar: async () => {
           session = await this.mikrotikSsh.abrirSesion({
             host: contexto.router.host,
-
             port: contexto.router.port,
-
             username: contexto.router.username,
-
             autenticacion: {
               metodo: MetodoAutenticacionMikrotikSsh.PASSWORD,
-
               password: contexto.router.password,
             },
-
             /*
              * Configuración actual de infraestructura.
              *
@@ -197,7 +182,6 @@ export class EjecutorSuspenderServicioPppoeService {
 
           return {
             value: true,
-
             respuestaSanitizada: `Sesión SSH abierta contra ${info.host}:${info.port}.`,
           };
         },
@@ -217,13 +201,9 @@ export class EjecutorSuspenderServicioPppoeService {
 
       const searchResult = await this.stepRunner.ejecutar({
         empresaId,
-
         operacionId,
-
         orden: ordenBuscar,
-
         comandoSanitizado: `BUSCAR_SECRET usuario=${usuarioPppoe}`,
-
         ejecutar: async () => {
           const result = await activeSession.buscarSecret({
             usuarioPppoe,
@@ -231,7 +211,6 @@ export class EjecutorSuspenderServicioPppoeService {
 
           return {
             value: result,
-
             respuestaSanitizada: result.respuestaSanitizada,
           };
         },
@@ -252,23 +231,15 @@ export class EjecutorSuspenderServicioPppoeService {
       if (!searchResult.encontrado || !searchResult.secret) {
         await this.stepRunner.ejecutar({
           empresaId,
-
           operacionId,
-
           orden: ordenDeshabilitar,
-
           comandoSanitizado: `DESHABILITAR_SECRET usuario=${usuarioPppoe}`,
-
           ejecutar: async () => {
             throw new PppoeOperacionStepError({
               errorCodigo: CodigoErrorMikrotikSsh.SECRET_NO_ENCONTRADO,
-
               errorMensaje: `No existe el secret PPPoE ${usuarioPppoe} en el router.`,
-
               efectoRemoto: EfectoRemotoMikrotik.NO_INICIADO,
-
               reintentable: true,
-
               fase: FaseFalloMikrotikSsh.EJECUCION,
             });
           },
@@ -305,13 +276,9 @@ export class EjecutorSuspenderServicioPppoeService {
 
       const disableResult = await this.stepRunner.ejecutar({
         empresaId,
-
         operacionId,
-
         orden: ordenDeshabilitar,
-
         comandoSanitizado: `DESHABILITAR_SECRET usuario=${usuarioPppoe}`,
-
         ejecutar: async () => {
           const result = await activeSession.deshabilitarSecret({
             usuarioPppoe,
@@ -319,7 +286,6 @@ export class EjecutorSuspenderServicioPppoeService {
 
           return {
             value: result,
-
             respuestaSanitizada: result.respuestaSanitizada,
           };
         },
@@ -341,13 +307,9 @@ export class EjecutorSuspenderServicioPppoeService {
        */
       const removeSessionResult = await this.stepRunner.ejecutar({
         empresaId,
-
         operacionId,
-
         orden: ordenRemoverSesion,
-
         comandoSanitizado: `REMOVER_SESION_ACTIVA usuario=${usuarioPppoe}`,
-
         ejecutar: async () => {
           const result = await activeSession.removerSesionActiva({
             usuarioPppoe,
@@ -355,7 +317,6 @@ export class EjecutorSuspenderServicioPppoeService {
 
           return {
             value: result,
-
             respuestaSanitizada: result.respuestaSanitizada,
           };
         },
@@ -385,26 +346,19 @@ export class EjecutorSuspenderServicioPppoeService {
 
       const confirmationResult = await this.stepRunner.ejecutar({
         empresaId,
-
         operacionId,
-
         orden: ordenConfirmar,
-
         comandoSanitizado:
           `CONFIRMAR_SECRET usuario=${usuarioPppoe} ` + 'deshabilitado=true',
-
         ejecutar: async () => {
           const result = await activeSession.confirmarSecret({
             debeExistir: true,
-
             usuarioPppoe,
-
             deshabilitadoEsperado: true,
           });
 
           return {
             value: result,
-
             respuestaSanitizada: result.respuestaSanitizada,
           };
         },
@@ -414,7 +368,6 @@ export class EjecutorSuspenderServicioPppoeService {
 
       return {
         secretEncontrado: true,
-
         /**
          * Se conserva para compatibilidad con resultados históricos.
          *
@@ -422,9 +375,7 @@ export class EjecutorSuspenderServicioPppoeService {
          * el comando /ppp secret disable se ejecuta explícitamente.
          */
         deshabilitacionOmitida: false,
-
         comandoDeshabilitarEjecutado: disableResult.comandoEjecutado,
-
         /**
          * Si llegamos hasta este punto significa que
          * removerSesionActiva() terminó satisfactoriamente.
@@ -435,13 +386,9 @@ export class EjecutorSuspenderServicioPppoeService {
          * - la confirmación posterior terminó con cero sesiones.
          */
         remocionSesionEjecutada: true,
-
         sesionesEncontradas: removeSessionResult.sesionesEncontradas,
-
         sesionesRemovidas: removeSessionResult.sesionesRemovidas,
-
         sesionesRestantes: removeSessionResult.sesionesRestantes,
-
         /**
          * Telemetría de convergencia.
          *
@@ -450,7 +397,6 @@ export class EjecutorSuspenderServicioPppoeService {
          * la sesión PPPoE.
          */
         confirmacionSesionIntentos: removeSessionResult.confirmacionIntentos,
-
         /**
          * Tiempo total dedicado a la confirmación de desaparición
          * de sesiones.
@@ -459,11 +405,8 @@ export class EjecutorSuspenderServicioPppoeService {
          */
         confirmacionSesionDuracionMs:
           removeSessionResult.confirmacionDuracionMs,
-
         secretConfirmado: confirmationResult.confirmado,
-
         deshabilitado: secretConfirmado?.deshabilitado === true,
-
         perfilCoincide: secretConfirmado?.codigoPerfil === codigoPerfil,
       };
     } finally {

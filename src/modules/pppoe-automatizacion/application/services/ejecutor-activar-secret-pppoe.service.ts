@@ -70,7 +70,6 @@ export class EjecutorActivarSecretPppoeService {
   constructor(
     @Inject(MIKROTIK_SSH_PORT)
     private readonly mikrotikSsh: MikrotikSshPort,
-
     private readonly stepRunner: PppoeOperacionStepRunnerService,
   ) {}
 
@@ -121,38 +120,23 @@ export class EjecutorActivarSecretPppoeService {
     let session: MikrotikSshSessionPort | null = null;
 
     try {
-      /*
-       * ======================================================
-       * 1. CONECTAR AL ROUTER
-       * ======================================================
-       */
-
       await this.stepRunner.ejecutar({
         empresaId,
-
         operacionId,
-
         orden: ordenConectar,
-
         comandoSanitizado:
           `CONECTAR_ROUTER host=${contexto.router.host} ` +
           `port=${contexto.router.port} ` +
           `username=${contexto.router.username}`,
-
         ejecutar: async () => {
           session = await this.mikrotikSsh.abrirSesion({
             host: contexto.router.host,
-
             port: contexto.router.port,
-
             username: contexto.router.username,
-
             autenticacion: {
               metodo: MetodoAutenticacionMikrotikSsh.PASSWORD,
-
               password: contexto.router.password,
             },
-
             /**
              * Configuración actual de infraestructura.
              *
@@ -168,7 +152,6 @@ export class EjecutorActivarSecretPppoeService {
 
           return {
             value: true,
-
             respuestaSanitizada: `Sesión SSH abierta contra ${info.host}:${info.port}.`,
           };
         },
@@ -192,13 +175,9 @@ export class EjecutorActivarSecretPppoeService {
 
       const searchResult = await this.stepRunner.ejecutar({
         empresaId,
-
         operacionId,
-
         orden: ordenBuscar,
-
         comandoSanitizado: `BUSCAR_SECRET usuario=${usuarioPppoe}`,
-
         ejecutar: async () => {
           const result = await session!.buscarSecret({
             usuarioPppoe,
@@ -206,7 +185,6 @@ export class EjecutorActivarSecretPppoeService {
 
           return {
             value: result,
-
             respuestaSanitizada: result.respuestaSanitizada,
           };
         },
@@ -225,23 +203,15 @@ export class EjecutorActivarSecretPppoeService {
       if (!searchResult.encontrado || !searchResult.secret) {
         await this.stepRunner.ejecutar({
           empresaId,
-
           operacionId,
-
           orden: ordenHabilitar,
-
           comandoSanitizado: `HABILITAR_SECRET usuario=${usuarioPppoe}`,
-
           ejecutar: async () => {
             throw new PppoeOperacionStepError({
               errorCodigo: CodigoErrorMikrotikSsh.SECRET_NO_ENCONTRADO,
-
               errorMensaje: `No existe el secret PPPoE ${usuarioPppoe} en el router.`,
-
               efectoRemoto: EfectoRemotoMikrotik.NO_INICIADO,
-
               reintentable: true,
-
               fase: FaseFalloMikrotikSsh.EJECUCION,
             });
           },
@@ -272,23 +242,15 @@ export class EjecutorActivarSecretPppoeService {
       if (secretActual.codigoPerfil !== codigoPerfil) {
         await this.stepRunner.ejecutar({
           empresaId,
-
           operacionId,
-
           orden: ordenHabilitar,
-
           comandoSanitizado: `HABILITAR_SECRET usuario=${usuarioPppoe}`,
-
           ejecutar: async () => {
             throw new PppoeOperacionStepError({
               errorCodigo: CodigoErrorMikrotikSsh.PERFIL_NO_COINCIDE,
-
               errorMensaje: `El secret PPPoE ${usuarioPppoe} utiliza un perfil diferente al homologado.`,
-
               efectoRemoto: EfectoRemotoMikrotik.NO_INICIADO,
-
               reintentable: false,
-
               fase: FaseFalloMikrotikSsh.CONFIRMACION,
             });
           },
@@ -320,13 +282,9 @@ export class EjecutorActivarSecretPppoeService {
 
       const enableResult = await this.stepRunner.ejecutar({
         empresaId,
-
         operacionId,
-
         orden: ordenHabilitar,
-
         comandoSanitizado: `HABILITAR_SECRET usuario=${usuarioPppoe}`,
-
         ejecutar: async () => {
           const result = await session!.habilitarSecret({
             usuarioPppoe,
@@ -334,7 +292,6 @@ export class EjecutorActivarSecretPppoeService {
 
           return {
             value: result,
-
             respuestaSanitizada: result.respuestaSanitizada,
           };
         },
@@ -356,24 +313,17 @@ export class EjecutorActivarSecretPppoeService {
 
       const confirmationResult = await this.stepRunner.ejecutar({
         empresaId,
-
         operacionId,
-
         orden: ordenConfirmar,
-
         comandoSanitizado:
           `CONFIRMAR_SECRET usuario=${usuarioPppoe} ` +
           `perfil=${codigoPerfil} ` +
           'deshabilitado=false',
-
         ejecutar: async () => {
           const result = await session!.confirmarSecret({
             debeExistir: true,
-
             usuarioPppoe,
-
             codigoPerfilEsperado: codigoPerfil,
-
             /**
              * disabled=false equivale a
              * Secret habilitado en RouterOS.
@@ -383,7 +333,6 @@ export class EjecutorActivarSecretPppoeService {
 
           return {
             value: result,
-
             respuestaSanitizada: result.respuestaSanitizada,
           };
         },
@@ -393,20 +342,15 @@ export class EjecutorActivarSecretPppoeService {
 
       return {
         secretEncontrado: true,
-
         /**
          * Se mantiene por compatibilidad con el resultado
          * anterior, pero en el flujo v3 nunca se omite
          * HABILITAR_SECRET una vez superadas las validaciones.
          */
         habilitacionOmitida: false,
-
         comandoHabilitarEjecutado: enableResult.comandoEjecutado,
-
         secretConfirmado: confirmationResult.confirmado,
-
         perfilCoincide: secretConfirmado?.codigoPerfil === codigoPerfil,
-
         habilitado: secretConfirmado?.deshabilitado === false,
       };
     } finally {

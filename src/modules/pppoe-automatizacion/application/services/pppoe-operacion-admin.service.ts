@@ -175,11 +175,8 @@ export class PppoeOperacionAdminService {
     @Inject(PPPOE_OPERACION)
     private readonly operaciones: PppoeOperacionFacadePort,
     private readonly ejecutarOperacionUseCase: EjecutarPppoeOperacionUseCase,
-
     private readonly recuperarOperacionUseCase: RecuperarPppoeOperacionInterrumpidaUseCase,
-
     private readonly authService: AuthService,
-
     @Inject(PPPOE_PROVISIONAMIENTO)
     private readonly provisionamiento: PppoeProvisionamientoPort,
   ) {}
@@ -234,9 +231,7 @@ export class PppoeOperacionAdminService {
 
     const operacion = await this.operaciones.autorizar({
       operacionId: params.operacionId,
-
       operadorId: params.actor.operadorId,
-
       password: params.password,
     });
 
@@ -244,7 +239,6 @@ export class PppoeOperacionAdminService {
 
     return this.ejecutarOperacionUseCase.execute({
       empresaId: params.empresaId,
-
       operacionId,
     });
   }
@@ -332,30 +326,21 @@ export class PppoeOperacionAdminService {
 
       await this.authService.reautenticarUsuarioPorId(
         params.actor.operadorId,
-
         params.contrasenaActual!,
       );
     }
 
     return this.provisionamiento.reintentarOperacion({
       empresaId: params.empresaId,
-
       operacionId: params.operacionId,
-
       claveIdempotencia: params.claveIdempotencia.trim(),
-
       actor: {
         origen: OrigenOperacionPppoe.OPERADOR,
-
         iniciadoPorId: params.actor.operadorId,
-
         operadorNombre: params.actor.operadorNombre ?? null,
-
         ipOrigen: params.actor.ipOrigen ?? null,
-
         userAgent: params.actor.userAgent ?? null,
       },
-
       motivo: params.motivo?.trim() || null,
     });
   }
@@ -373,11 +358,8 @@ export class PppoeOperacionAdminService {
 
     return this.recuperarOperacionUseCase.execute({
       empresaId: params.empresaId,
-
       operacionId: params.operacionId,
-
       confirmarAbandono: params.confirmarAbandono,
-
       fecha: params.fecha,
     });
   }
@@ -407,22 +389,14 @@ export class PppoeOperacionAdminService {
 
     return this.provisionamiento.suspenderServicio({
       empresaId: params.empresaId,
-
       cuentaPppoeId: params.cuentaPppoeId,
-
       claveIdempotencia: params.claveIdempotencia.trim(),
-
       motivo: params.motivo.trim(),
-
       actor: {
         origen: OrigenOperacionPppoe.OPERADOR,
-
         iniciadoPorId: params.actor.operadorId,
-
         operadorNombre: params.actor.operadorNombre ?? null,
-
         ipOrigen: params.actor.ipOrigen ?? null,
-
         userAgent: params.actor.userAgent ?? null,
       },
     });
@@ -447,20 +421,13 @@ export class PppoeOperacionAdminService {
 
     return this.provisionamiento.reactivarServicio({
       empresaId: params.empresaId,
-
       cuentaPppoeId: params.cuentaPppoeId,
-
       claveIdempotencia: params.claveIdempotencia.trim(),
-
       motivo: params.motivo.trim(),
-
       actor: {
         origen: OrigenOperacionPppoe.OPERADOR,
-
         iniciadoPorId: params.actor.operadorId,
-
         ipOrigen: params.actor.ipOrigen ?? null,
-
         userAgent: params.actor.userAgent ?? null,
       },
     });
@@ -519,28 +486,19 @@ export class PppoeOperacionAdminService {
      */
     const claveIdempotencia = this.buildManualTerminationIdempotencyKey({
       empresaId: params.empresaId,
-
       cuentaPppoeId: params.cuentaPppoeId,
     });
 
     return this.provisionamiento.darDeBajaServicio({
       empresaId: params.empresaId,
-
       cuentaPppoeId: params.cuentaPppoeId,
-
       claveIdempotencia,
-
       motivo: params.motivo.trim(),
-
       actor: {
         origen: OrigenOperacionPppoe.OPERADOR,
-
         iniciadoPorId: params.actor.operadorId,
-
         operadorNombre: params.actor.operadorNombre ?? null,
-
         ipOrigen: params.actor.ipOrigen ?? null,
-
         userAgent: params.actor.userAgent ?? null,
       },
     });

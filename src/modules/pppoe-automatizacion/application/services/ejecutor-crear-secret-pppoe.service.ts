@@ -66,7 +66,6 @@ export class EjecutorCrearSecretPppoeService {
   constructor(
     @Inject(MIKROTIK_SSH_PORT)
     private readonly mikrotikSsh: MikrotikSshPort,
-
     private readonly stepRunner: PppoeOperacionStepRunnerService,
   ) {}
 
@@ -128,22 +127,14 @@ export class EjecutorCrearSecretPppoeService {
     let secretCreado = false;
 
     try {
-      /*
-       * ======================================================
-       * 1. CONECTAR AL ROUTER
-       * ======================================================
-       */
-
       await this.stepRunner.ejecutar({
         empresaId,
         operacionId,
         orden: ordenConectar,
-
         comandoSanitizado:
           `CONECTAR_ROUTER host=${contexto.router.host} ` +
           `port=${contexto.router.port} ` +
           `username=${contexto.router.username}`,
-
         ejecutar: async () => {
           /**
            * Guardamos la sesión inmediatamente.
@@ -153,17 +144,12 @@ export class EjecutorCrearSecretPppoeService {
            */
           session = await this.mikrotikSsh.abrirSesion({
             host: contexto.router.host,
-
             port: contexto.router.port,
-
             username: contexto.router.username,
-
             autenticacion: {
               metodo: MetodoAutenticacionMikrotikSsh.PASSWORD,
-
               password: contexto.router.password,
             },
-
             /**
              * Configuración actual del proyecto.
              *
@@ -179,7 +165,6 @@ export class EjecutorCrearSecretPppoeService {
 
           return {
             value: true,
-
             respuestaSanitizada: `Sesión SSH abierta contra ${info.host}:${info.port}.`,
           };
         },
@@ -210,9 +195,7 @@ export class EjecutorCrearSecretPppoeService {
         empresaId,
         operacionId,
         orden: ordenBuscar,
-
         comandoSanitizado: `BUSCAR_SECRET usuario=${usuarioPppoe}`,
-
         ejecutar: async () => {
           const result = await session!.buscarSecret({
             usuarioPppoe,
@@ -220,19 +203,12 @@ export class EjecutorCrearSecretPppoeService {
 
           return {
             value: result,
-
             respuestaSanitizada: result.respuestaSanitizada,
           };
         },
       });
 
       secretEncontrado = searchResult.encontrado;
-
-      /*
-       * ======================================================
-       * 3. CREAR U OMITIR
-       * ======================================================
-       */
 
       if (searchResult.encontrado) {
         /**
@@ -251,7 +227,6 @@ export class EjecutorCrearSecretPppoeService {
           empresaId,
           operacionId,
           orden: ordenAgregar,
-
           motivo:
             'El secret PPPoE ya existe en el router. Se comprobará su perfil y estado actual.',
         });
@@ -260,7 +235,6 @@ export class EjecutorCrearSecretPppoeService {
           empresaId,
           operacionId,
           orden: ordenAgregar,
-
           /**
            * Nunca se incluye passwordPppoe.
            *
@@ -271,7 +245,6 @@ export class EjecutorCrearSecretPppoeService {
             `AGREGAR_SECRET usuario=${usuarioPppoe} ` +
             `perfil=${codigoPerfil} ` +
             'service=pppoe',
-
           ejecutar: async () => {
             /**
              * El contrato de creación contiene únicamente
@@ -291,15 +264,12 @@ export class EjecutorCrearSecretPppoeService {
              */
             const result = await session!.crearSecret({
               usuarioPppoe,
-
               passwordPppoe,
-
               codigoPerfil,
             });
 
             return {
               value: result,
-
               respuestaSanitizada: result.respuestaSanitizada,
             };
           },
@@ -330,20 +300,15 @@ export class EjecutorCrearSecretPppoeService {
         empresaId,
         operacionId,
         orden: ordenConfirmar,
-
         comandoSanitizado:
           `CONFIRMAR_SECRET usuario=${usuarioPppoe} ` +
           `perfil=${codigoPerfil} ` +
           'deshabilitado=false',
-
         ejecutar: async () => {
           const result = await session!.confirmarSecret({
             debeExistir: true,
-
             usuarioPppoe,
-
             codigoPerfilEsperado: codigoPerfil,
-
             /**
              * El Secret creado durante
              * "En Instalación" debe quedar habilitado.
@@ -353,7 +318,6 @@ export class EjecutorCrearSecretPppoeService {
 
           return {
             value: result,
-
             respuestaSanitizada: result.respuestaSanitizada,
           };
         },
@@ -363,13 +327,9 @@ export class EjecutorCrearSecretPppoeService {
 
       return {
         secretEncontrado,
-
         secretCreado,
-
         secretConfirmado: confirmationResult.confirmado,
-
         perfilCoincide: secretActual?.codigoPerfil === codigoPerfil,
-
         /**
          * Conservamos la propiedad existente del resultado
          * para no modificar innecesariamente consumidores.

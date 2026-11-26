@@ -30,15 +30,11 @@ export class ClienteInternetEstadoOperativoPrismaAdapter
       const cliente = await tx.clienteInternet.findFirst({
         where: {
           id: params.clienteId,
-
           empresaId: params.empresaId,
-
           isEliminado: false,
         },
-
         select: {
           id: true,
-
           estadoCliente: true,
         },
       });
@@ -71,14 +67,10 @@ export class ClienteInternetEstadoOperativoPrismaAdapter
       const updated = await tx.clienteInternet.updateMany({
         where: {
           id: cliente.id,
-
           empresaId: params.empresaId,
-
           isEliminado: false,
-
           estadoCliente: estadoAnterior,
         },
-
         data: {
           estadoCliente: estadoNuevo,
         },
@@ -99,19 +91,12 @@ export class ClienteInternetEstadoOperativoPrismaAdapter
       await tx.clienteEstadoHistorial.create({
         data: {
           empresaId: params.empresaId,
-
           clienteId: cliente.id,
-
           tipoCambio: TipoCambioEstadoCliente.CAMBIO_ESTADO,
-
           estadoAnterior,
-
           estadoNuevo,
-
           motivo: params.motivo?.trim() || null,
-
           descripcion: params.descripcion?.trim() || null,
-
           cambiadoPorId: params.cambiadoPorId ?? null,
         },
       });

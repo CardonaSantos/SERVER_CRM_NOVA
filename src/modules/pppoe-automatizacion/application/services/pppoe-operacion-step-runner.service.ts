@@ -90,13 +90,10 @@ export class PppoeOperacionStepRunnerService {
      */
     await this.operaciones.actualizarPaso({
       operacionId: params.operacionId,
-
       selector: {
         orden: params.orden,
       },
-
       accion: 'INICIAR',
-
       comandoSanitizado: params.comandoSanitizado ?? null,
     });
 
@@ -105,13 +102,10 @@ export class PppoeOperacionStepRunnerService {
 
       await this.operaciones.actualizarPaso({
         operacionId: params.operacionId,
-
         selector: {
           orden: params.orden,
         },
-
         accion: 'MARCAR_EXITOSO',
-
         respuestaSanitizada: executionResult.respuestaSanitizada ?? null,
       });
 
@@ -129,17 +123,12 @@ export class PppoeOperacionStepRunnerService {
       try {
         await this.operaciones.actualizarPaso({
           operacionId: params.operacionId,
-
           selector: {
             orden: params.orden,
           },
-
           accion: 'MARCAR_FALLIDO',
-
           errorCodigo: normalizedError.errorCodigo,
-
           errorMensaje: normalizedError.message,
-
           respuestaSanitizada: null,
         });
       } catch {
@@ -171,13 +160,10 @@ export class PppoeOperacionStepRunnerService {
 
     await this.operaciones.actualizarPaso({
       operacionId: params.operacionId,
-
       selector: {
         orden: params.orden,
       },
-
       accion: 'OMITIR',
-
       motivo: params.motivo ?? null,
     });
   }
@@ -200,9 +186,7 @@ export class PppoeOperacionStepRunnerService {
     orden: number;
   }): void {
     this.assertPositiveInteger(params.empresaId, 'empresaId');
-
     this.assertPositiveInteger(params.operacionId, 'operacionId');
-
     this.assertPositiveInteger(params.orden, 'orden');
   }
 

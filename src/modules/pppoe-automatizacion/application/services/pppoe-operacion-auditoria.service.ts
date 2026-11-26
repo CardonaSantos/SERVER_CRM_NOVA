@@ -53,11 +53,8 @@ export class PppoeOperacionAuditoriaService
   ): Promise<void> {
     await this.persistSafely({
       params,
-
       accion: AccionAuditoriaPppoe.OPERACION_CREADA,
-
       descripcion: `Se creó la operación PPPoE ${params.operacion.tipo}, intento ${params.operacion.numeroIntento}.`,
-
       datos: this.buildCommonData(params.operacion),
     });
   }
@@ -67,11 +64,8 @@ export class PppoeOperacionAuditoriaService
   ): Promise<void> {
     await this.persistSafely({
       params,
-
       accion: AccionAuditoriaPppoe.OPERACION_INICIADA,
-
       descripcion: `Se inició la ejecución técnica de la operación PPPoE ${params.operacion.tipo}.`,
-
       datos: this.buildCommonData(params.operacion),
     });
   }
@@ -93,11 +87,8 @@ export class PppoeOperacionAuditoriaService
 
     const datos: DatosAuditoriaPppoe = {
       ...this.buildCommonData(params.operacion),
-
       errorCodigo: primitives.errorCodigo,
-
       resultadoDisponible: primitives.resultado !== null,
-
       reintentable: params.operacion.puedeReintentarse,
     };
 
@@ -126,21 +117,15 @@ export class PppoeOperacionAuditoriaService
   ): Promise<void> {
     const datos: DatosAuditoriaPppoe = {
       ...this.buildCommonData(params.operacion),
-
       operacionAnteriorId: params.operacionAnteriorId,
-
       operacionRaizId: params.operacion.reintentoDeId,
-
       numeroIntento: params.operacion.numeroIntento,
     };
 
     await this.persistSafely({
       params,
-
       accion: AccionAuditoriaPppoe.OPERACION_REINTENTADA,
-
       descripcion: `Se creó el intento ${params.operacion.numeroIntento} de la operación PPPoE ${params.operacion.tipo}.`,
-
       datos,
     });
   }
@@ -150,19 +135,14 @@ export class PppoeOperacionAuditoriaService
   ): Promise<void> {
     const datos: DatosAuditoriaPppoe = {
       ...this.buildCommonData(params.operacion),
-
       recuperacion: params.recuperacion,
-
       estadoOperacionFinal: params.operacion.estado,
     };
 
     await this.persistSafely({
       params,
-
       accion: AccionAuditoriaPppoe.OPERACION_RECUPERADA,
-
       descripcion: `Se recuperó la operación PPPoE ${params.operacion.id}. Resultado: ${params.recuperacion}.`,
-
       datos,
     });
   }
@@ -200,41 +180,23 @@ export class PppoeOperacionAuditoriaService
 
       await this.auditoria.registrarEventoOperacion({
         empresaId: operacion.empresaId,
-
         cuentaPppoeId: operacion.cuentaPppoeId,
-
         perfilHomologacionId: operacion.perfilHomologacionId,
-
         instalacionId: operacion.instalacionId,
-
         desinstalacionId: operacion.desinstalacionId,
-
         operacionId,
-
         operadorId,
-
         origen: operacion.origen,
-
         accion: input.accion,
-
         descripcion: input.descripcion,
-
         estadoCuentaAnterior: input.params.estadoCuentaAnterior ?? null,
-
         estadoCuentaNuevo: input.params.estadoCuentaNuevo ?? null,
-
         usuarioPppoeSnapshot: operacion.usuarioPppoeSnapshot,
-
         perfilCodigoSnapshot: primitives.codigoPerfilSnapshot,
-
         operadorNombreSnapshot: input.params.actor?.operadorNombre ?? null,
-
         datos: input.datos,
-
         ipOrigen: input.params.actor?.ipOrigen ?? null,
-
         userAgent: input.params.actor?.userAgent ?? null,
-
         creadoEn: input.params.fecha,
       });
     } catch (error: unknown) {
@@ -265,21 +227,13 @@ export class PppoeOperacionAuditoriaService
 
     return {
       tipoOperacion: operacion.tipo,
-
       estadoOperacion: operacion.estado,
-
       numeroIntento: operacion.numeroIntento,
-
       reintentoDeId: operacion.reintentoDeId,
-
       routerId: operacion.mikrotikRouterId,
-
       perfilHomologacionId: operacion.perfilHomologacionId,
-
       instalacionId: operacion.instalacionId,
-
       desinstalacionId: operacion.desinstalacionId,
-
       motivo: primitives.motivo,
     };
   }
@@ -335,23 +289,17 @@ export class PppoeOperacionAuditoriaService
 
     const datos: DatosAuditoriaPppoe = {
       ...this.buildCommonData(operacion),
-
       motivo,
-
       operacionExitosa: true,
-
       secretEncontrado: this.readBoolean(resultado, 'secretEncontrado'),
-
       deshabilitacionOmitida: this.readBoolean(
         resultado,
         'deshabilitacionOmitida',
       ),
-
       comandoDeshabilitarEjecutado: this.readBoolean(
         resultado,
         'comandoDeshabilitarEjecutado',
       ),
-
       /*
        * Esto significa que se ejecutó el comando remoto.
        * No significa necesariamente que existiera una
@@ -361,7 +309,6 @@ export class PppoeOperacionAuditoriaService
         resultado,
         'remocionSesionEjecutada',
       ),
-
       /**
        * Estado observado alrededor de la remoción.
        *
@@ -372,11 +319,8 @@ export class PppoeOperacionAuditoriaService
        * - un comportamiento anómalo del router.
        */
       sesionesEncontradas: this.readNumber(resultado, 'sesionesEncontradas'),
-
       sesionesRemovidas: this.readNumber(resultado, 'sesionesRemovidas'),
-
       sesionesRestantes: this.readNumber(resultado, 'sesionesRestantes'),
-
       /**
        * Telemetría de convergencia de RouterOS.
        *
@@ -388,28 +332,21 @@ export class PppoeOperacionAuditoriaService
         resultado,
         'confirmacionSesionIntentos',
       ),
-
       confirmacionSesionDuracionMs: this.readNumber(
         resultado,
         'confirmacionSesionDuracionMs',
       ),
-
       secretConfirmado: this.readBoolean(resultado, 'secretConfirmado'),
-
       deshabilitadoConfirmado: this.readBoolean(resultado, 'deshabilitado'),
-
       perfilCoincide: this.readBoolean(resultado, 'perfilCoincide'),
     };
 
     await this.persistSafely({
       params,
-
       accion: AccionAuditoriaPppoe.SERVICIO_SUSPENDIDO,
-
       descripcion: operadorId
         ? `El operador ${operadorId} suspendió manualmente el servicio PPPoE. Motivo: ${motivo}.`
         : `El servicio PPPoE fue suspendido manualmente. Motivo: ${motivo}.`,
-
       datos,
     });
   }
@@ -491,21 +428,15 @@ export class PppoeOperacionAuditoriaService
 
     await this.persistSafely({
       params,
-
       accion: AccionAuditoriaPppoe.SERVICIO_ACTIVADO,
-
       descripcion:
         `Se activó el servicio PPPoE desde la ` +
         `instalación ${operacion.instalacionId}. ` +
         `Motivo: ${motivo}.`,
-
       datos: {
         ...this.buildCommonData(operacion),
-
         motivo,
-
         activacionConfirmada: true,
-
         instalacionPuestaEnProceso: true,
       },
     });

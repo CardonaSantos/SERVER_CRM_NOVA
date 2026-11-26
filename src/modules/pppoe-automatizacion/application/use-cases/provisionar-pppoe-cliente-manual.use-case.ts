@@ -83,9 +83,7 @@ export class ProvisionarPppoeClienteManualUseCase {
   constructor(
     @Inject(PPPOE_CLIENTE_CUENTA)
     private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
-
     private readonly crearSecret: CrearYEjecutarOperacionPppoeUseCase,
-
     private readonly activarSecret: CrearYEjecutarActivacionPppoeUseCase,
   ) {}
 
@@ -120,13 +118,11 @@ export class ProvisionarPppoeClienteManualUseCase {
 
     const claveCrearSecret = this.buildCreationIdempotencyKey({
       empresaId: input.empresaId,
-
       cuentaPppoeId: input.cuentaPppoeId,
     });
 
     const claveActivarSecret = this.buildActivationIdempotencyKey({
       empresaId: input.empresaId,
-
       cuentaPppoeId: input.cuentaPppoeId,
     });
 
@@ -145,15 +141,10 @@ export class ProvisionarPppoeClienteManualUseCase {
     if (!puedeContinuarDesdeSecretCreado) {
       creacionSecret = await this.crearSecret.execute({
         modo: ModoCreacionSecretPppoe.ALTA_MANUAL,
-
         empresaId: input.empresaId,
-
         cuentaPppoeId: input.cuentaPppoeId,
-
         claveIdempotencia: claveCrearSecret,
-
         actor: this.buildActor(input.actor),
-
         motivo: input.motivo ?? null,
       });
 
@@ -164,13 +155,9 @@ export class ProvisionarPppoeClienteManualUseCase {
       if (creacionSecret.estadoOperacion !== EstadoOperacionPppoe.EXITOSA) {
         return {
           cuentaPppoeId: input.cuentaPppoeId,
-
           completada: false,
-
           estadoCuenta: creacionSecret.estadoCuenta,
-
           creacionSecret,
-
           activacion: null,
         };
       }
@@ -178,15 +165,10 @@ export class ProvisionarPppoeClienteManualUseCase {
 
     const activacion = await this.activarSecret.execute({
       modo: ModoActivacionPppoe.ALTA_MANUAL,
-
       empresaId: input.empresaId,
-
       cuentaPppoeId: input.cuentaPppoeId,
-
       claveIdempotencia: claveActivarSecret,
-
       actor: this.buildActor(input.actor),
-
       motivo: input.motivo ?? null,
     });
 
@@ -196,13 +178,9 @@ export class ProvisionarPppoeClienteManualUseCase {
 
     return {
       cuentaPppoeId: input.cuentaPppoeId,
-
       completada,
-
       estadoCuenta: activacion.estadoCuenta,
-
       creacionSecret,
-
       activacion,
     };
   }
@@ -249,20 +227,15 @@ export class ProvisionarPppoeClienteManualUseCase {
   ): ActorOperacionPppoeInput {
     return {
       origen: actor.origen,
-
       iniciadoPorId: actor.iniciadoPorId,
-
       operadorNombre: actor.operadorNombre ?? null,
-
       ipOrigen: actor.ipOrigen ?? null,
-
       userAgent: actor.userAgent ?? null,
     };
   }
 
   private validateInput(input: ProvisionarPppoeClienteManualInput): void {
     this.assertPositiveInteger(input.empresaId, 'empresaId');
-
     this.assertPositiveInteger(input.cuentaPppoeId, 'cuentaPppoeId');
 
     if (!input.actor) {
@@ -303,15 +276,10 @@ export class ProvisionarPppoeClienteManualUseCase {
   }): string {
     return [
       'pppoe-alta-manual',
-
       'empresa',
-
       params.empresaId,
-
       'cuenta-pppoe',
-
       params.cuentaPppoeId,
-
       'crear-secret',
     ].join(':');
   }
@@ -323,15 +291,10 @@ export class ProvisionarPppoeClienteManualUseCase {
   }): string {
     return [
       'pppoe-alta-manual',
-
       'empresa',
-
       params.empresaId,
-
       'cuenta-pppoe',
-
       params.cuentaPppoeId,
-
       'activar-secret',
     ].join(':');
   }

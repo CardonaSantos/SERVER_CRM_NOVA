@@ -56,7 +56,6 @@ import { OperacionPppoeIdempotenciaError } from 'src/modules/pppoe-operacion/pub
  */
 export enum ModoEliminacionPppoe {
   DESINSTALACION = 'DESINSTALACION',
-
   BAJA_MANUAL = 'BAJA_MANUAL',
 }
 
@@ -109,16 +108,12 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
     @Inject(PPPOE_OPERACION)
     private readonly operaciones: PppoeOperacionFacadePort,
     private readonly ejecutarOperacion: EjecutarPppoeOperacionUseCase,
-
     @Inject(PPPOE_OPERACION_AUDITORIA)
     private readonly operacionAuditoria: PppoeOperacionAuditoriaPort,
-
     @Inject(PPPOE_CLIENTE_CUENTA)
     private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
-
     @Inject(PPPOE_PERFIL_HOMOLOGACION)
     private readonly perfilesHomologacion: PppoePerfilHomologacionFacadePort,
-
     @Inject(MIKROTIK_ROUTER_REPOSITORY)
     private readonly routerRepository: MikrotikRouterRepositoryPort,
   ) {}
@@ -134,19 +129,12 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
   ): Promise<EjecutarOperacionPppoeResult> {
     return this.executeInternal({
       modo: ModoEliminacionPppoe.DESINSTALACION,
-
       empresaId: input.empresaId,
-
       cuentaPppoeId: input.cuentaPppoeId,
-
       claveIdempotencia: input.claveIdempotencia,
-
       motivo: input.motivo ?? null,
-
       actor: input.actor,
-
       instalacionId: input.instalacionId ?? null,
-
       desinstalacionId: input.desinstalacionId,
     });
   }
@@ -166,19 +154,12 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
   ): Promise<EjecutarOperacionPppoeResult> {
     return this.executeInternal({
       modo: ModoEliminacionPppoe.BAJA_MANUAL,
-
       empresaId: input.empresaId,
-
       cuentaPppoeId: input.cuentaPppoeId,
-
       claveIdempotencia: input.claveIdempotencia,
-
       motivo: input.motivo,
-
       actor: input.actor,
-
       instalacionId: null,
-
       desinstalacionId: null,
     });
   }
@@ -187,12 +168,6 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
     input: EjecutarEliminacionPppoeInternaInput,
   ): Promise<EjecutarOperacionPppoeResult> {
     this.validateInput(input);
-
-    /*
-     * ========================================================
-     * 1. CUENTA PPPoE
-     * ========================================================
-     */
 
     const cuenta = await this.cuentasPppoe.buscarPorId(input.cuentaPppoeId);
 
@@ -205,12 +180,6 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
         'La cuenta PPPoE no contiene un identificador persistido.',
       );
     }
-
-    /*
-     * ========================================================
-     * 2. HOMOLOGACIÓN
-     * ========================================================
-     */
 
     const perfil = await this.perfilesHomologacion.buscarPorId(
       cuenta.perfilHomologacionId,
@@ -234,12 +203,6 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
       );
     }
 
-    /*
-     * ========================================================
-     * 3. ROUTER MIKROTIK
-     * ========================================================
-     */
-
     const router = await this.routerRepository.findById(
       perfilProps.mikrotikRouterId,
     );
@@ -254,12 +217,6 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
       );
     }
 
-    /*
-     * ========================================================
-     * 4. IDEMPOTENCIA PREVIA
-     * ========================================================
-     */
-
     const existingOperation = await this.operaciones.buscar({
       por: 'CLAVE_IDEMPOTENCIA',
       claveIdempotencia: input.claveIdempotencia,
@@ -268,19 +225,14 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
     if (existingOperation) {
       this.assertCompatibleExistingOperation({
         input,
-
         operacion: existingOperation,
-
         routerId: router.id,
       });
 
       return this.resolveOperation({
         empresaId: input.empresaId,
-
         operacion: existingOperation,
-
         estadoCuenta: cuenta.estado,
-
         modo: input.modo,
       });
     }
@@ -295,37 +247,20 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
      */
     this.assertAccountCanBeDeleted({
       estado: cuenta.estado,
-
       modo: input.modo,
     });
 
-    /*
-     * ========================================================
-     * 5. CREAR OPERACIÓN
-     * ========================================================
-     */
-
     const aggregate = await this.operaciones.crear({
       empresaId: input.empresaId,
-
       cuentaPppoeId: cuenta.id,
-
       mikrotikRouterId: router.id,
-
       perfilHomologacionId: perfilProps.id,
-
       instalacionId: input.instalacionId,
-
       desinstalacionId: input.desinstalacionId,
-
       claveIdempotencia: input.claveIdempotencia,
-
       tipo: TipoOperacionPppoe.ELIMINAR_SECRET,
-
       origen: input.actor.origen,
-
       iniciadoPorId: input.actor.iniciadoPorId,
-
       /*
        * Tanto DESINSTALACION como BAJA_MANUAL
        * llegan aquí después de una autorización
@@ -335,29 +270,20 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
        * La contraseña jamás entra al motor PPPoE.
        */
       requiereReautenticacion: false,
-
       motivo: this.resolveOperationReason(input),
-
       usuarioPppoeSnapshot: cuenta.usuario,
-
       codigoPerfilSnapshot: perfilProps.codigoPerfil,
-
       routerHostSnapshot: router.host,
-
       routerPuertoSnapshot: router.sshPort,
     });
 
     if (aggregate.creada) {
       await this.operacionAuditoria.registrarCreada({
         operacion: aggregate.operacion,
-
         actor: {
           operadorId: input.actor.iniciadoPorId,
-
           operadorNombre: input.actor.operadorNombre ?? null,
-
           ipOrigen: input.actor.ipOrigen ?? null,
-
           userAgent: input.actor.userAgent ?? null,
         },
       });
@@ -365,11 +291,8 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
 
     return this.resolveOperation({
       empresaId: input.empresaId,
-
       operacion: aggregate.operacion,
-
       estadoCuenta: cuenta.estado,
-
       modo: input.modo,
     });
   }
@@ -392,7 +315,6 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
     if (params.operacion.esTerminal) {
       return this.buildExistingResult({
         operacion: params.operacion,
-
         estadoCuenta: params.estadoCuenta,
       });
     }
@@ -400,7 +322,6 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
     if (params.operacion.estaEjecutando) {
       return this.buildExistingResult({
         operacion: params.operacion,
-
         estadoCuenta: params.estadoCuenta,
       });
     }
@@ -430,13 +351,11 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
 
     this.assertAccountCanBeDeleted({
       estado: params.estadoCuenta,
-
       modo: params.modo,
     });
 
     return this.ejecutarOperacion.execute({
       empresaId: params.empresaId,
-
       operacionId,
     });
   }
@@ -465,7 +384,6 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
     if (params.modo === ModoEliminacionPppoe.BAJA_MANUAL) {
       const estadosPermitidosBajaManual: EstadoCuentaPppoe[] = [
         EstadoCuentaPppoe.ACTIVA,
-
         EstadoCuentaPppoe.SUSPENDIDA,
       ];
 
@@ -480,17 +398,11 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
 
     const estadosPermitidosDesinstalacion: EstadoCuentaPppoe[] = [
       EstadoCuentaPppoe.PENDIENTE_ACTIVACION,
-
       EstadoCuentaPppoe.EN_INSTALACION,
-
       EstadoCuentaPppoe.EN_ACTIVACION,
-
       EstadoCuentaPppoe.ACTIVA,
-
       EstadoCuentaPppoe.SUSPENDIDA,
-
       EstadoCuentaPppoe.ERROR,
-
       EstadoCuentaPppoe.EN_DESINSTALACION,
     ];
 
@@ -592,23 +504,14 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
 
     return {
       operacionId: this.requireOperationId(params.operacion),
-
       cuentaPppoeId: params.operacion.cuentaPppoeId,
-
       tipo: params.operacion.tipo,
-
       estadoOperacion: params.operacion.estado,
-
       estadoCuenta: params.estadoCuenta,
-
       numeroIntento: params.operacion.numeroIntento,
-
       reintentable: params.operacion.puedeReintentarse,
-
       resultado: primitives.resultado,
-
       errorCodigo: primitives.errorCodigo,
-
       errorMensaje: primitives.errorMensaje,
     };
   }
@@ -629,9 +532,7 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
    */
   private validateInput(input: EjecutarEliminacionPppoeInternaInput): void {
     this.assertPositiveInteger(input.empresaId, 'empresaId');
-
     this.assertPositiveInteger(input.cuentaPppoeId, 'cuentaPppoeId');
-
     this.assertRequiredString(input.claveIdempotencia, 'claveIdempotencia');
 
     if (!input.actor) {
@@ -682,7 +583,6 @@ export class CrearYEjecutarEliminacionPppoeUseCase {
     }
 
     this.assertPositiveInteger(input.desinstalacionId, 'desinstalacionId');
-
     this.assertOptionalPositiveInteger(input.instalacionId, 'instalacionId');
   }
 

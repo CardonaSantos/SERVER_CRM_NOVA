@@ -56,11 +56,8 @@ export class PppoeOperacionStepError extends Error {
 
     Object.defineProperty(this, 'cause', {
       value: props.cause,
-
       enumerable: false,
-
       configurable: false,
-
       writable: false,
     });
 
@@ -83,15 +80,10 @@ export class PppoeOperacionStepError extends Error {
 
       return new PppoeOperacionStepError({
         errorCodigo: operationError.errorCodigo,
-
         errorMensaje: operationError.errorMensaje,
-
         efectoRemoto: error.efectoRemoto,
-
         reintentable: error.reintentable,
-
         fase: error.fase,
-
         cause: error,
       });
     }
@@ -105,16 +97,11 @@ export class PppoeOperacionStepError extends Error {
      */
     return new PppoeOperacionStepError({
       errorCodigo: 'ERROR_PASO_DESCONOCIDO',
-
       errorMensaje:
         'Ocurrió un error no controlado durante la ejecución del paso PPPoE.',
-
       efectoRemoto: EfectoRemotoMikrotik.POSIBLE,
-
       reintentable: true,
-
       fase: FaseFalloMikrotikSsh.EJECUCION,
-
       cause: error,
     });
   }
@@ -142,7 +129,6 @@ export class PppoeOperacionStepError extends Error {
   } {
     return {
       errorCodigo: this.errorCodigo,
-
       errorMensaje: this.message,
     };
   }

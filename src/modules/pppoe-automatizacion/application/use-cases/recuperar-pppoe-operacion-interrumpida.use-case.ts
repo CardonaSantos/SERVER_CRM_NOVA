@@ -76,7 +76,6 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
     private readonly operaciones: PppoeOperacionFacadePort,
     @Inject(PPPOE_OPERACION_AUDITORIA)
     private readonly operacionAuditoria: PppoeOperacionAuditoriaPort,
-
     @Inject(PPPOE_CLIENTE_CUENTA)
     private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
     private readonly sincronizacion: SincronizacionLocalPppoeService,
@@ -91,7 +90,6 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
 
     let aggregate = await this.loadAggregate({
       empresaId: input.empresaId,
-
       operacionId: input.operacionId,
     });
 
@@ -104,7 +102,6 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
     if (operacion.esTerminal) {
       return this.buildResult({
         operacion,
-
         cuenta: await this.findAccountSafely(operacion.cuentaPppoeId),
       });
     }
@@ -125,9 +122,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
     if (this.allStepsSuccessful(aggregate.pasos)) {
       return this.reconcileSuccessfulExecution({
         empresaId: input.empresaId,
-
         operacion,
-
         fecha,
       });
     }
@@ -140,7 +135,6 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
      */
     aggregate = await this.ensureInterruptedFailure({
       aggregate,
-
       fecha,
     });
 
@@ -157,9 +151,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
 
     const cuenta = await this.registerAccountErrorSafely({
       cuentaPppoeId: aggregate.operacion.cuentaPppoeId,
-
       errorMensaje,
-
       fecha,
     });
 
@@ -171,28 +163,18 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
       estadoFinal === EstadoOperacionPppoe.PARCIAL
         ? await this.operaciones.finalizar({
             operacionId: input.operacionId,
-
             estadoFinal: EstadoOperacionPppoe.PARCIAL,
-
             errorCodigo,
-
             errorMensaje,
-
             resultado: null,
-
             fecha,
           })
         : await this.operaciones.finalizar({
             operacionId: input.operacionId,
-
             estadoFinal: EstadoOperacionPppoe.FALLIDA,
-
             errorCodigo,
-
             errorMensaje,
-
             resultado: null,
-
             fecha,
           });
 
@@ -202,32 +184,24 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
 
     await this.operacionAuditoria.registrarFinalizada({
       operacion: finalAggregate.operacion,
-
       estadoCuentaAnterior,
-
       estadoCuentaNuevo: cuentaFinal?.estado ?? null,
-
       fecha,
     });
 
     await this.operacionAuditoria.registrarRecuperada({
       operacion: finalAggregate.operacion,
-
       estadoCuentaAnterior,
-
       estadoCuentaNuevo: cuentaFinal?.estado ?? null,
-
       recuperacion:
         estadoFinal === EstadoOperacionPppoe.PARCIAL
           ? 'CERRADA_COMO_PARCIAL'
           : 'CERRADA_COMO_FALLIDA',
-
       fecha,
     });
 
     return this.buildResult({
       operacion: finalAggregate.operacion,
-
       cuenta: cuentaFinal,
     });
   }
@@ -262,43 +236,31 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
 
     const finalAggregate = await this.operaciones.finalizar({
       operacionId: this.requireOperationId(params.operacion),
-
       estadoFinal: EstadoOperacionPppoe.EXITOSA,
-
       resultado: {
         recuperacionLocal: true,
-
         pasosRemotosConfirmados: true,
       },
-
       fecha: params.fecha,
     });
 
     await this.operacionAuditoria.registrarFinalizada({
       operacion: finalAggregate.operacion,
-
       estadoCuentaAnterior,
-
       estadoCuentaNuevo: cuenta.estado,
-
       fecha: params.fecha,
     });
 
     await this.operacionAuditoria.registrarRecuperada({
       operacion: finalAggregate.operacion,
-
       estadoCuentaAnterior,
-
       estadoCuentaNuevo: cuenta.estado,
-
       recuperacion: 'SINCRONIZACION_LOCAL_COMPLETADA',
-
       fecha: params.fecha,
     });
 
     return this.buildResult({
       operacion: finalAggregate.operacion,
-
       cuenta,
     });
   }
@@ -442,23 +404,14 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
 
     return {
       operacionId: this.requireOperationId(params.operacion),
-
       cuentaPppoeId: params.operacion.cuentaPppoeId,
-
       tipo: params.operacion.tipo,
-
       estadoOperacion: params.operacion.estado,
-
       estadoCuenta: params.cuenta?.estado ?? null,
-
       numeroIntento: params.operacion.numeroIntento,
-
       reintentable: params.operacion.puedeReintentarse,
-
       resultado: primitives.resultado,
-
       errorCodigo: primitives.errorCodigo,
-
       errorMensaje: primitives.errorMensaje,
     };
   }
@@ -475,7 +428,6 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
 
   private assertRecoveryDate(
     operacion: PppoeOperacionReadModel,
-
     fecha: Date,
   ): void {
     if (
@@ -490,7 +442,6 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
 
   private validateInput(input: RecuperarPppoeOperacionInterrumpidaInput): void {
     this.assertPositiveInteger(input.empresaId, 'empresaId');
-
     this.assertPositiveInteger(input.operacionId, 'operacionId');
 
     if (input.confirmarAbandono !== true) {

@@ -84,7 +84,6 @@ export class EjecutorEliminarSecretPppoeService {
   constructor(
     @Inject(MIKROTIK_SSH_PORT)
     private readonly mikrotikSsh: MikrotikSshPort,
-
     private readonly stepRunner: PppoeOperacionStepRunnerService,
   ) {}
 
@@ -160,38 +159,23 @@ export class EjecutorEliminarSecretPppoeService {
     let secretEncontrado = false;
 
     try {
-      /*
-       * ======================================================
-       * 1. CONECTAR AL ROUTER
-       * ======================================================
-       */
-
       await this.stepRunner.ejecutar({
         empresaId,
-
         operacionId,
-
         orden: ordenConectar,
-
         comandoSanitizado:
           `CONECTAR_ROUTER host=${contexto.router.host} ` +
           `port=${contexto.router.port} ` +
           `username=${contexto.router.username}`,
-
         ejecutar: async () => {
           session = await this.mikrotikSsh.abrirSesion({
             host: contexto.router.host,
-
             port: contexto.router.port,
-
             username: contexto.router.username,
-
             autenticacion: {
               metodo: MetodoAutenticacionMikrotikSsh.PASSWORD,
-
               password: contexto.router.password,
             },
-
             /*
              * Configuración actual de infraestructura.
              *
@@ -207,7 +191,6 @@ export class EjecutorEliminarSecretPppoeService {
 
           return {
             value: true,
-
             respuestaSanitizada: `Sesión SSH abierta contra ${info.host}:${info.port}.`,
           };
         },
@@ -227,13 +210,9 @@ export class EjecutorEliminarSecretPppoeService {
 
       const searchResult = await this.stepRunner.ejecutar({
         empresaId,
-
         operacionId,
-
         orden: ordenBuscar,
-
         comandoSanitizado: `BUSCAR_SECRET usuario=${usuarioPppoe}`,
-
         ejecutar: async () => {
           const result = await activeSession.buscarSecret({
             usuarioPppoe,
@@ -241,7 +220,6 @@ export class EjecutorEliminarSecretPppoeService {
 
           return {
             value: result,
-
             respuestaSanitizada: result.respuestaSanitizada,
           };
         },
@@ -270,24 +248,16 @@ export class EjecutorEliminarSecretPppoeService {
       ) {
         await this.stepRunner.ejecutar({
           empresaId,
-
           operacionId,
-
           orden: ordenEliminar,
-
           comandoSanitizado: `VALIDAR_PERFIL_SECRET usuario=${usuarioPppoe}`,
-
           ejecutar: async () => {
             throw new PppoeOperacionStepError({
               errorCodigo: CodigoErrorMikrotikSsh.PERFIL_NO_COINCIDE,
-
               errorMensaje:
                 'El perfil del secret remoto no coincide con la homologación asignada.',
-
               efectoRemoto: EfectoRemotoMikrotik.NO_INICIADO,
-
               reintentable: false,
-
               fase: FaseFalloMikrotikSsh.EJECUCION,
             });
           },
@@ -315,13 +285,9 @@ export class EjecutorEliminarSecretPppoeService {
 
       const deleteResult = await this.stepRunner.ejecutar({
         empresaId,
-
         operacionId,
-
         orden: ordenEliminar,
-
         comandoSanitizado: `ELIMINAR_SECRET usuario=${usuarioPppoe}`,
-
         ejecutar: async () => {
           const result = await activeSession.eliminarSecret({
             usuarioPppoe,
@@ -329,7 +295,6 @@ export class EjecutorEliminarSecretPppoeService {
 
           return {
             value: result,
-
             respuestaSanitizada: result.respuestaSanitizada,
           };
         },
@@ -367,13 +332,9 @@ export class EjecutorEliminarSecretPppoeService {
        */
       const removeSessionResult = await this.stepRunner.ejecutar({
         empresaId,
-
         operacionId,
-
         orden: ordenRemoverSesion,
-
         comandoSanitizado: `REMOVER_SESION_ACTIVA usuario=${usuarioPppoe}`,
-
         ejecutar: async () => {
           const result = await activeSession.removerSesionActiva({
             usuarioPppoe,
@@ -381,7 +342,6 @@ export class EjecutorEliminarSecretPppoeService {
 
           return {
             value: result,
-
             respuestaSanitizada: result.respuestaSanitizada,
           };
         },
@@ -407,24 +367,18 @@ export class EjecutorEliminarSecretPppoeService {
 
       const confirmationResult = await this.stepRunner.ejecutar({
         empresaId,
-
         operacionId,
-
         orden: ordenConfirmar,
-
         comandoSanitizado:
           `CONFIRMAR_SECRET usuario=${usuarioPppoe} ` + 'debeExistir=false',
-
         ejecutar: async () => {
           const result = await activeSession.confirmarSecret({
             usuarioPppoe,
-
             debeExistir: false,
           });
 
           return {
             value: result,
-
             respuestaSanitizada: result.respuestaSanitizada,
           };
         },
@@ -432,7 +386,6 @@ export class EjecutorEliminarSecretPppoeService {
 
       return {
         secretEncontrado,
-
         /**
          * Propiedad conservada por compatibilidad con
          * resultados históricos.
@@ -441,30 +394,22 @@ export class EjecutorEliminarSecretPppoeService {
          * dentro del Estado 5.
          */
         deshabilitacionOmitida: true,
-
         /**
          * Los dos comandos modificadores definidos por
          * Estado 5 fueron ejecutados.
          */
         eliminacionOmitida: false,
-
         remocionSesionOmitida: false,
-
         comandoEliminarEjecutado: deleteResult.comandoEjecutado,
-
         /**
          * Si removerSesionActiva() retornó satisfactoriamente,
          * RouterOS aceptó el comando de remoción y posteriormente
          * se confirmó que ya no permanecen sesiones activas.
          */
         remocionSesionEjecutada: true,
-
         sesionesEncontradas: removeSessionResult.sesionesEncontradas,
-
         sesionesRemovidas: removeSessionResult.sesionesRemovidas,
-
         sesionesRestantes: removeSessionResult.sesionesRestantes,
-
         /**
          * Telemetría de convergencia de /ppp active.
          *
@@ -473,12 +418,9 @@ export class EjecutorEliminarSecretPppoeService {
          * reflejar el estado final.
          */
         confirmacionSesionIntentos: removeSessionResult.confirmacionIntentos,
-
         confirmacionSesionDuracionMs:
           removeSessionResult.confirmacionDuracionMs,
-
         secretEliminado: confirmationResult.confirmado,
-
         secretExisteDespues: confirmationResult.secretActual !== null,
       };
     } finally {
