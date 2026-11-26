@@ -1,11 +1,7 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { TipoEvidenciaClienteOperacion } from '../../domain/enums/tipo-evidencia-cliente-operacion.enum';
-import {
-  CLIENTE_INSTALACION_MEDIA_REPOSITORY,
-  CLIENTE_INSTALACION_REPOSITORY,
-} from '../../infra/tokens/cliente-instalacion.tokens';
-import { ClienteInstalacionRepositoryPort } from '../../domain/ports/cliente-instalacion.repository.port';
-import { ClienteInstalacionMediaRepositoryPort } from '../../domain/ports/cliente-instalacion-media.repository.port';
+import { CLIENTE_INSTALACION_MEDIA_REPOSITORY, ClienteInstalacionMediaRepositoryPort } from '../../domain/ports/cliente-instalacion-media-repository.port';
+import { CLIENTE_INSTALACION_REPOSITORY, ClienteInstalacionRepositoryPort } from '../../domain/ports/cliente-instalacion-repository.port';
 import {
   ALMACENAMIENTO_MEDIA,
   AlmacenamientoMediaFacadePort,

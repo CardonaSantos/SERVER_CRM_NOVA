@@ -3,8 +3,8 @@ import { ClienteInstalacionMediaEntity } from '../../domain/entities/cliente-ins
 import {
   ClienteInstalacionMediaRepositoryPort,
   ClienteInstalacionMediaWithMedia,
-} from '../../domain/ports/cliente-instalacion-media.repository.port';
-import { ClienteInstalacionMediaPrismaMapper } from './cliente-instalacion-media.prisma.mapper';
+} from '../../domain/ports/cliente-instalacion-media-repository.port';
+import { ClienteInstalacionMediaPrismaMapper } from './cliente-instalacion-media-prisma.mapper';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

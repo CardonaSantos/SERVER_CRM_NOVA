@@ -1,7 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { ReprogramarClienteInstalacionDto } from '../dto/reprogramar-cliente-instalacion.dto';
-import { CLIENTE_INSTALACION_REPOSITORY } from '../../infra/tokens/cliente-instalacion.tokens';
-import { ClienteInstalacionRepositoryPort } from '../../domain/ports/cliente-instalacion.repository.port';
+import { ReprogramarClienteInstalacionDto } from '../../presentation/dto/reprogramar-cliente-instalacion.dto';
+import { CLIENTE_INSTALACION_REPOSITORY, ClienteInstalacionRepositoryPort } from '../../domain/ports/cliente-instalacion-repository.port';
 
 export type ReprogramarClienteInstalacionCommand =
   ReprogramarClienteInstalacionDto & {

@@ -6,13 +6,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { CLIENTE_INSTALACION_REPOSITORY } from '../../infra/tokens/cliente-instalacion.tokens';
+import { CLIENTE_INSTALACION_REPOSITORY, ClienteInstalacionRepositoryPort } from '../../domain/ports/cliente-instalacion-repository.port';
 
-import { ClienteInstalacionRepositoryPort } from '../../domain/ports/cliente-instalacion.repository.port';
 
 import { EstadoInstalacionCliente } from '../../domain/enums/estado-instalacion-cliente.enum';
 
-import { CompletarClienteInstalacionDto } from '../dto/completar-cliente-instalacion.dto';
+import { CompletarClienteInstalacionDto } from '../../presentation/dto/completar-cliente-instalacion.dto';
 
 export type CompletarInstalacionActor = {
   operadorId: number;
@@ -158,11 +157,11 @@ export class CompletarClienteInstalacionUseCase {
 
 // import { CLIENTE_INSTALACION_REPOSITORY } from '../../infra/tokens/cliente-instalacion.tokens';
 
-// import { ClienteInstalacionRepositoryPort } from '../../domain/ports/cliente-instalacion.repository.port';
+// import { ClienteInstalacionRepositoryPort } from '../../domain/ports/cliente-instalacion-repository.port';
 
 // import { EstadoInstalacionCliente } from '../../domain/enums/estado-instalacion-cliente.enum';
 
-// import { CompletarClienteInstalacionDto } from '../dto/completar-cliente-instalacion.dto';
+// import { CompletarClienteInstalacionDto } from '../../presentation/dto/completar-cliente-instalacion.dto';
 
 // import {
 //   PPPOE_PROVISIONAMIENTO,

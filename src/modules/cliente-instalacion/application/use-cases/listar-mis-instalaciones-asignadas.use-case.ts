@@ -2,12 +2,8 @@ import { Inject, Injectable } from '@nestjs/common';
 
 import { EstadoInstalacionCliente } from '../../domain/enums/estado-instalacion-cliente.enum';
 
-import {
-  ClienteInstalacionAssignedPaginatedResult,
-  ClienteInstalacionRepositoryPort,
-} from '../../domain/ports/cliente-instalacion.repository.port';
+import { ClienteInstalacionAssignedPaginatedResult, ClienteInstalacionRepositoryPort, CLIENTE_INSTALACION_REPOSITORY } from '../../domain/ports/cliente-instalacion-repository.port';
 
-import { CLIENTE_INSTALACION_REPOSITORY } from '../../infra/tokens/cliente-instalacion.tokens';
 
 export type ListarMisInstalacionesAsignadasInput = {
   /**

@@ -1,31 +1,27 @@
 import { DomainError } from 'src/common/hexagonal/domain-error';
 import { HttpException, Inject, Injectable, Logger } from '@nestjs/common';
 import { ClienteInstalacionEntity } from '../../domain/entities/cliente-instalacion.entity';
-import {
-  ClienteInstalacionRepositoryPort,
-  CrearTecnicoInstalacionInput,
-} from '../../domain/ports/cliente-instalacion.repository.port';
-import { CrearClienteInstalacionDto } from '../dto/crear-cliente-instalacion.dto';
-import { CLIENTE_INSTALACION_REPOSITORY } from '../../infra/tokens/cliente-instalacion.tokens';
+import { ClienteInstalacionRepositoryPort, CrearTecnicoInstalacionInput, CLIENTE_INSTALACION_REPOSITORY } from '../../domain/ports/cliente-instalacion-repository.port';
+import { CrearClienteInstalacionDto } from '../../presentation/dto/crear-cliente-instalacion.dto';
 import { RolTecnicoOperacionCliente } from '../../domain/enums/rol-tecnico-operacion-cliente.enum';
 import {
   PPPOE_ACCESO_INTERNET,
   PppoeAccesoInternetFacadePort,
 } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.facade.port';
-import { CLIENTE_INSTALACION_ACCESO_REPOSITORY } from 'src/modules/ppoe-instalacion-acceso/tokens/instalacion-acceso.token';
-import { ClienteInstalacionAccesoRepositoryPort } from 'src/modules/ppoe-instalacion-acceso/domain/ports/cliente-instalacion-acceso.port';
+import { CLIENTE_INSTALACION_ACCESO_REPOSITORY } from '../../domain/ports/cliente-instalacion-acceso-repository.port';
+import { ClienteInstalacionAccesoRepositoryPort } from 'src/modules/cliente-instalacion/domain/ports/cliente-instalacion-acceso-repository.port';
 import {
   AccesoInternetReadModel,
   MetodoAutenticacionInternet,
   TecnologiaAccesoInternet,
 } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
-import { ClienteInstalacionAccesoEntity } from 'src/modules/ppoe-instalacion-acceso/domain/entities/ppoe-instalacion-acceso.entity';
-import { AccionInstalacionAcceso } from 'src/modules/ppoe-instalacion-acceso/domain/enums/ppoe-instalacion-acceso.enum';
+import { ClienteInstalacionAccesoEntity } from 'src/modules/cliente-instalacion/domain/entities/cliente-instalacion-acceso.entity';
+import { AccionInstalacionAcceso } from 'src/modules/cliente-instalacion/domain/enums/accion-instalacion-acceso.enum';
 
 import {
   AccesoInstalacionInput,
   ModoAccesoInstalacion,
-} from '../dto/iniciar-acceso-types.dto';
+} from '../../presentation/dto/acceso-instalacion.dto';
 import {
   PPPOE_PREALTA,
   PppoePrealtaPort,

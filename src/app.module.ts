@@ -68,7 +68,6 @@ import { WhatsappTemplateModule } from './whatsapp-template/whatsapp-template.mo
 import { ClienteInstalacionModule } from './modules/cliente-instalacion/cliente-instalacion.module';
 import { ClienteDesinstalacionModule } from './modules/cliente-desinstalacion/cliente-desinstalacion.module';
 import { PppoeAccesoInternetModule } from './modules/pppoe-acceso-internet/pppoe-acceso-internet.module';
-import { PppoeInstalacionAccesoModule } from './modules/ppoe-instalacion-acceso/ppoe-instalacion-acceso.module';
 import { PppoePerfilHomologacionModule } from './modules/pppoe-perfil-homologacion/pppoe-perfil-homologacion.module';
 import { PppoeClienteCuentaModule } from './modules/pppoe-cliente-cuenta/pppoe-cliente-cuenta.module';
 import { PppoeCredentialsModule } from './modules/pppoe-credentials/pppoe-credentials.module';
@@ -162,7 +161,6 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     ClienteInstalacionModule,
     ClienteDesinstalacionModule,
     PppoeAccesoInternetModule,
-    PppoeInstalacionAccesoModule,
     PppoePerfilHomologacionModule,
     PppoeClienteCuentaModule,
     PppoeCredentialsModule,

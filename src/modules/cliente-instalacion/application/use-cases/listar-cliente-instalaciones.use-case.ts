@@ -1,10 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { CLIENTE_INSTALACION_REPOSITORY } from '../../infra/tokens/cliente-instalacion.tokens';
-import {
-  ClienteInstalacionPaginatedResult,
-  ClienteInstalacionRepositoryPort,
-} from '../../domain/ports/cliente-instalacion.repository.port';
-import { FiltrarClienteInstalacionesDto } from '../dto/filtrar-cliente-instalaciones.dto';
+import { CLIENTE_INSTALACION_REPOSITORY, ClienteInstalacionPaginatedResult, ClienteInstalacionRepositoryPort } from '../../domain/ports/cliente-instalacion-repository.port';
+import { FiltrarClienteInstalacionesDto } from '../../presentation/dto/listar-cliente-instalaciones-query.dto';
 
 @Injectable()
 export class ListarClienteInstalacionesUseCase {

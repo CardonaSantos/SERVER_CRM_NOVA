@@ -2,7 +2,7 @@ import { TipoEvidenciaClienteOperacion } from '../enums/tipo-evidencia-cliente-o
 import {
   ClienteInstalacionMediaProps,
   CrearClienteInstalacionMediaProps,
-} from './cliente-instalacion-media-props';
+} from '../props/cliente-instalacion-media.props';
 
 export class ClienteInstalacionMediaEntity {
   private constructor(private readonly props: ClienteInstalacionMediaProps) {}

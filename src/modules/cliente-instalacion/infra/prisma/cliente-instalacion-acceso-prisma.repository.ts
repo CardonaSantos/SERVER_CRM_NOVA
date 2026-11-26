@@ -5,10 +5,10 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import {
   BuscarInstalacionAccesoParams,
   ClienteInstalacionAccesoRepositoryPort,
-} from '../../domain/ports/cliente-instalacion-acceso.port';
+} from '../../domain/ports/cliente-instalacion-acceso-repository.port';
 
-import { ClienteInstalacionAccesoPrismaMapper } from './cliente-instalacion-acceso.mapper';
-import { ClienteInstalacionAccesoEntity } from '../../domain/entities/ppoe-instalacion-acceso.entity';
+import { ClienteInstalacionAccesoPrismaMapper } from './cliente-instalacion-acceso-prisma.mapper';
+import { ClienteInstalacionAccesoEntity } from '../../domain/entities/cliente-instalacion-acceso.entity';
 
 @Injectable()
 export class ClienteInstalacionAccesoPrismaRepository

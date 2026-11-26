@@ -1,4 +1,4 @@
-import { ClienteInstalacionAccesoEntity } from '../entities/ppoe-instalacion-acceso.entity';
+import { ClienteInstalacionAccesoEntity } from '../entities/cliente-instalacion-acceso.entity';
 
 export type BuscarInstalacionAccesoParams = {
   instalacionId: number;
@@ -18,3 +18,7 @@ export interface ClienteInstalacionAccesoRepositoryPort {
     params: BuscarInstalacionAccesoParams,
   ): Promise<ClienteInstalacionAccesoEntity | null>;
 }
+
+export const CLIENTE_INSTALACION_ACCESO_REPOSITORY = Symbol(
+  'CLIENTE_INSTALACION_ACCESO_REPOSITORY',
+);

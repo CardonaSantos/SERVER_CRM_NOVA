@@ -13,8 +13,8 @@ import {
   ClienteInstalacionRepositoryPort,
   ClienteInstalacionTechnicalDetail,
   CrearTecnicoInstalacionInput,
-} from '../../domain/ports/cliente-instalacion.repository.port';
-import { ClienteInstalacionPrismaMapper } from './cliente-instalacion.prisma.mapper';
+} from '../../domain/ports/cliente-instalacion-repository.port';
+import { ClienteInstalacionPrismaMapper } from './cliente-instalacion-prisma.mapper';
 import { TipoEvidenciaClienteOperacion } from '../../domain/enums/tipo-evidencia-cliente-operacion.enum';
 import { RolTecnicoOperacionCliente } from '../../domain/enums/rol-tecnico-operacion-cliente.enum';
 @Injectable()
@@ -446,14 +446,6 @@ export class ClienteInstalacionPrismaRepository
       }
       return ClienteInstalacionPrismaMapper.toDomain(record);
     });
-  }
-  async deleteAll(): Promise<any> {
-    try {
-      const records = await this.prisma.clienteInstalacion.deleteMany({});
-      return records;
-    } catch (error) {
-      throw new Error();
-    }
   }
   // DETALLES ClienteInstalacionListItem
   async findDetailById(params: {

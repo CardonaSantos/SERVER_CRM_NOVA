@@ -7,13 +7,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { IniciarInstalacionClienteDto } from '../dto/iniciar-instalacion.dto';
+import { IniciarInstalacionClienteDto } from '../../presentation/dto/iniciar-cliente-instalacion.dto';
 
 import { EstadoInstalacionCliente } from '../../domain/enums/estado-instalacion-cliente.enum';
 
-import { ClienteInstalacionRepositoryPort } from '../../domain/ports/cliente-instalacion.repository.port';
+import { ClienteInstalacionRepositoryPort, CLIENTE_INSTALACION_REPOSITORY } from '../../domain/ports/cliente-instalacion-repository.port';
 
-import { CLIENTE_INSTALACION_REPOSITORY } from '../../infra/tokens/cliente-instalacion.tokens';
 
 export type IniciarInstalacionClienteCommand = IniciarInstalacionClienteDto & {
   id: number;

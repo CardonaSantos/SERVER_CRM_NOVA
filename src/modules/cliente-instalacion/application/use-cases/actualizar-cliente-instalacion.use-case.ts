@@ -8,9 +8,8 @@ import {
 import { Money } from 'src/shared/domain/value-objects/money.vo';
 
 import { ClienteInstalacionEntity } from '../../domain/entities/cliente-instalacion.entity';
-import { ClienteInstalacionRepositoryPort } from '../../domain/ports/cliente-instalacion.repository.port';
-import { CLIENTE_INSTALACION_REPOSITORY } from '../../infra/tokens/cliente-instalacion.tokens';
-import { ActualizarClienteInstalacionDto } from '../dto/update-instalacion.dto';
+import { ClienteInstalacionRepositoryPort, CLIENTE_INSTALACION_REPOSITORY } from '../../domain/ports/cliente-instalacion-repository.port';
+import { ActualizarClienteInstalacionDto } from '../../presentation/dto/actualizar-cliente-instalacion.dto';
 import { RolTecnicoOperacionCliente } from '../../domain/enums/rol-tecnico-operacion-cliente.enum';
 
 export type ActualizarClienteInstalacionCommand =

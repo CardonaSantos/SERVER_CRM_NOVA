@@ -13,17 +13,14 @@ import { IniciarClienteInstalacionUseCase } from './application/use-cases/inicia
 import { CompletarClienteInstalacionUseCase } from './application/use-cases/completar-cliente-instalacion.use-case';
 import { CancelarClienteInstalacionUseCase } from './application/use-cases/cancelar-cliente-instalacion.use-case';
 import { SubirEvidenciaInstalacionUseCase } from './application/use-cases/subir-evidencia-instalacion.use-case';
-import { DeleteAllClienteInstalacionUseCase } from './application/use-cases/delete-all';
-import { ClienteInstalacionController } from './presentation/cliente-instalacion.controller';
-import {
-  CLIENTE_INSTALACION_MEDIA_REPOSITORY,
-  CLIENTE_INSTALACION_REPOSITORY,
-} from './infra/tokens/cliente-instalacion.tokens';
-import { CLIENTE_INSTALACION_ACCESO_REPOSITORY } from '../ppoe-instalacion-acceso/tokens/instalacion-acceso.token';
+import { ClienteInstalacionController } from './presentation/http/cliente-instalacion.controller';
+import { CLIENTE_INSTALACION_MEDIA_REPOSITORY } from './domain/ports/cliente-instalacion-media-repository.port';
+import { CLIENTE_INSTALACION_REPOSITORY } from './domain/ports/cliente-instalacion-repository.port';
+import { CLIENTE_INSTALACION_ACCESO_REPOSITORY } from './domain/ports/cliente-instalacion-acceso-repository.port';
 import { ClienteInstalacionApplicationService } from './application/services/cliente-instalacion.aplication-service.service';
-import { ClienteInstalacionPrismaRepository } from './infra/prisma/cliente-instalacion.prisma.repository';
-import { ClienteInstalacionMediaPrismaRepository } from './infra/prisma/cliente-instalacion-media.prisma.repository';
-import { ClienteInstalacionAccesoPrismaRepository } from '../ppoe-instalacion-acceso/infra/prisma/cliente-instalacion-acceso.repository.prisma';
+import { ClienteInstalacionPrismaRepository } from './infra/prisma/cliente-instalacion-prisma.repository';
+import { ClienteInstalacionMediaPrismaRepository } from './infra/prisma/cliente-instalacion-media-prisma.repository';
+import { ClienteInstalacionAccesoPrismaRepository } from './infra/prisma/cliente-instalacion-acceso-prisma.repository';
 import { PppoeAutomatizacionModule } from '../pppoe-automatizacion/pppoe-automatizacion.module';
 import { ReintentarPrealtaPppoeInstalacionUseCase } from './application/use-cases/reintentar-prealta-pppoe-instalacion.use-case';
 import { PppoeClienteCuentaModule } from '../pppoe-cliente-cuenta/pppoe-cliente-cuenta.module';
@@ -60,7 +57,6 @@ import { ActivarPppoeInstalacionUseCase } from './application/use-cases/activar-
     CompletarClienteInstalacionUseCase,
     CancelarClienteInstalacionUseCase,
     SubirEvidenciaInstalacionUseCase,
-    DeleteAllClienteInstalacionUseCase,
     ReintentarPrealtaPppoeInstalacionUseCase,
     {
       provide: CLIENTE_INSTALACION_REPOSITORY,

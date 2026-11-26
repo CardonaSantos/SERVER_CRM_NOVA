@@ -1,9 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import {
-  ClienteInstalacionDetalle,
-  ClienteInstalacionRepositoryPort,
-} from '../../domain/ports/cliente-instalacion.repository.port';
-import { CLIENTE_INSTALACION_REPOSITORY } from '../../infra/tokens/cliente-instalacion.tokens';
+import { ClienteInstalacionDetalle, ClienteInstalacionRepositoryPort, CLIENTE_INSTALACION_REPOSITORY } from '../../domain/ports/cliente-instalacion-repository.port';
 
 export type ObtenerClienteInstalacionCommand = {
   id: number;

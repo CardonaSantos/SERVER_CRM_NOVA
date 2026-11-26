@@ -1,12 +1,7 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 
-import {
-  ClienteInstalacionRepositoryPort,
-  ClienteInstalacionTechnicalResult,
-  InstalacionTecnicaAccion,
-} from '../../domain/ports/cliente-instalacion.repository.port';
+import { ClienteInstalacionRepositoryPort, ClienteInstalacionTechnicalResult, InstalacionTecnicaAccion, CLIENTE_INSTALACION_REPOSITORY } from '../../domain/ports/cliente-instalacion-repository.port';
 
-import { CLIENTE_INSTALACION_REPOSITORY } from '../../infra/tokens/cliente-instalacion.tokens';
 
 export type ObtenerDetalleTecnicoInstalacionInput = {
   instalacionId: number;

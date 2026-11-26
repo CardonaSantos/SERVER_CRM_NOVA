@@ -24,7 +24,7 @@ import {
   CrearAccesoNuevoInstalacionDto,
   ModoAccesoInstalacion,
   VincularAccesoExistenteInstalacionDto,
-} from './iniciar-acceso-types.dto';
+} from './acceso-instalacion.dto';
 
 const toNumber = ({ value }: { value: unknown }) => {
   if (value === undefined || value === null || value === '') {

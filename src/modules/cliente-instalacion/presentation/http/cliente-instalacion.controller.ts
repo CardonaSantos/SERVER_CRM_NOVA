@@ -17,30 +17,28 @@ import {
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
-import { CrearClienteInstalacionDto } from '../application/dto/crear-cliente-instalacion.dto';
-import { ClienteInstalacionPresenter } from './cliente-instalacion.presenter';
-import { ClienteInstalacionApplicationService } from '../application/services/cliente-instalacion.aplication-service.service';
-import { FiltrarClienteInstalacionesDto } from '../application/dto/filtrar-cliente-instalaciones.dto';
-// import { ActualizarClienteInstalacionDto } from '../application/dto/actualizar-cliente-instalacion.dto';
-import { ReprogramarClienteInstalacionDto } from '../application/dto/reprogramar-cliente-instalacion.dto';
-import { IniciarInstalacionClienteDto } from '../application/dto/iniciar-instalacion.dto';
-import { CompletarClienteInstalacionDto } from '../application/dto/completar-cliente-instalacion.dto';
-import { CancelarClienteInstalacionDto } from '../application/dto/cancelar-cliente-instalacion.dto';
+import { CrearClienteInstalacionDto } from '../dto/crear-cliente-instalacion.dto';
+import { ClienteInstalacionPresenter } from '../presenters/cliente-instalacion.presenter';
+import { ClienteInstalacionApplicationService } from '../../application/services/cliente-instalacion.aplication-service.service';
+import { FiltrarClienteInstalacionesDto } from '../dto/listar-cliente-instalaciones-query.dto';
+import { ReprogramarClienteInstalacionDto } from '../dto/reprogramar-cliente-instalacion.dto';
+import { IniciarInstalacionClienteDto } from '../dto/iniciar-cliente-instalacion.dto';
+import { CompletarClienteInstalacionDto } from '../dto/completar-cliente-instalacion.dto';
+import { CancelarClienteInstalacionDto } from '../dto/cancelar-cliente-instalacion.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { SubirEvidenciaInstalacionDto } from '../application/dto/subir-evidencia-instalacion.dto';
-import { ReintentarPrealtaPppoeDto } from '../application/dto/reintentar-prealta-pppoe.dto';
-import { ConsultarCredencialesPppoeDto } from '../application/dto/consultar-credenciales-pppoe.dto';
+import { SubirEvidenciaInstalacionDto } from '../dto/subir-evidencia-instalacion.dto';
+import { ReintentarPrealtaPppoeDto } from '../dto/reintentar-prealta-pppoe.dto';
 
 import type { Request } from 'express';
 
 import { OperacionSensible } from 'src/auth/step-up/operacion-sensible.decorator';
-import { FiltrarMisInstalacionesAsignadasDto } from '../application/dto/instalaciones-asignadas';
+import { FiltrarMisInstalacionesAsignadasDto } from '../dto/listar-mis-instalaciones-asignadas-query.dto';
 import {
   AuthenticatedActor,
   RequestWithAuthenticatedUser,
 } from 'src/auth/interfaces/request-with-authenticated-user.interface';
-import { ActivarPppoeInstalacionDto } from '../application/dto/activar-pppoe-instalacion.dto';
-import { ActualizarClienteInstalacionDto } from '../application/dto/update-instalacion.dto';
+import { ActivarPppoeInstalacionDto } from '../dto/activar-pppoe-instalacion.dto';
+import { ActualizarClienteInstalacionDto } from '../dto/actualizar-cliente-instalacion.dto';
 
 type AuthenticatedRequest = Request & {
   user?: {
@@ -432,9 +430,8 @@ export class ClienteInstalacionController {
 
   @Delete('delete-all')
   @EndpointRetirado()
-  async deleteAll() {
-    const detalle = await this.clienteInstalacionService.deleteAll();
-    return detalle;
+  deleteAll(): void {
+    // Retirado: el guard responde 410 antes de llegar aquí.
   }
 
   private getAuthenticatedActor(req: AuthenticatedRequest): {

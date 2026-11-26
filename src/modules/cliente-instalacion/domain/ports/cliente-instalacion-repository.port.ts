@@ -591,6 +591,8 @@ export interface ClienteInstalacionRepositoryPort {
   findByIdAssignedToTechnician(
     params: BuscarInstalacionAsignadaTecnicoParams,
   ): Promise<ClienteInstalacionEntity | null>;
-
-  deleteAll(): Promise<any>;
 }
+
+export const CLIENTE_INSTALACION_REPOSITORY = Symbol(
+  'CLIENTE_INSTALACION_REPOSITORY',
+);

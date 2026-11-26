@@ -1,4 +1,4 @@
-import { ClienteInstalacionEntity } from '../domain/entities/cliente-instalacion.entity';
+import { ClienteInstalacionEntity } from '../../domain/entities/cliente-instalacion.entity';
 import {
   ClienteInstalacionAssignedListItem,
   ClienteInstalacionAssignedPaginatedResult,
@@ -9,8 +9,8 @@ import {
   ClienteInstalacionTechnicalResult,
   ClienteInstalacionTecnicoDetalle,
   ClienteInstalacionUsuarioResumen,
-} from '../domain/ports/cliente-instalacion.repository.port';
-import { CrearClienteInstalacionResult } from '../results/crear-cliente-instalacion.result';
+} from '../../domain/ports/cliente-instalacion-repository.port';
+import { CrearClienteInstalacionResult } from '../../results/crear-cliente-instalacion.result';
 
 export class ClienteInstalacionPresenter {
   /**

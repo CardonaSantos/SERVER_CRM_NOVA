@@ -1,39 +1,38 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { CrearClienteInstalacionDto } from '../dto/crear-cliente-instalacion.dto';
-import { FiltrarClienteInstalacionesDto } from '../dto/filtrar-cliente-instalaciones.dto';
+import { CrearClienteInstalacionDto } from '../../presentation/dto/crear-cliente-instalacion.dto';
+import { FiltrarClienteInstalacionesDto } from '../../presentation/dto/listar-cliente-instalaciones-query.dto';
 import { CrearClienteInstalacionUseCase } from '../use-cases/crear-cliente-instalacion.use-case';
 import { ListarClienteInstalacionesUseCase } from '../use-cases/listar-cliente-instalaciones.use-case';
 import { ObtenerClienteInstalacionUseCase } from '../use-cases/obtener-cliente-instalacion.use-case';
 import { ActualizarClienteInstalacionUseCase } from '../use-cases/actualizar-cliente-instalacion.use-case';
-import { ActualizarClienteInstalacionDto } from '../dto/actualizar-cliente-instalacion.dto';
-import { ReprogramarClienteInstalacionDto } from '../dto/reprogramar-cliente-instalacion.dto';
+import { ActualizarClienteInstalacionDto } from '../../presentation/dto/actualizar-cliente-instalacion.dto';
+import { ReprogramarClienteInstalacionDto } from '../../presentation/dto/reprogramar-cliente-instalacion.dto';
 import { ReprogramarInstalacionClienteUseCase } from '../use-cases/reprogramar-cliente-instalacion.use-case';
-import { IniciarInstalacionClienteDto } from '../dto/iniciar-instalacion.dto';
+import { IniciarInstalacionClienteDto } from '../../presentation/dto/iniciar-cliente-instalacion.dto';
 import { IniciarClienteInstalacionUseCase } from '../use-cases/iniciar-cliente-instalacion.use-case';
-import { CompletarClienteInstalacionDto } from '../dto/completar-cliente-instalacion.dto';
+import { CompletarClienteInstalacionDto } from '../../presentation/dto/completar-cliente-instalacion.dto';
 import { CompletarClienteInstalacionUseCase } from '../use-cases/completar-cliente-instalacion.use-case';
-import { CancelarClienteInstalacionDto } from '../dto/cancelar-cliente-instalacion.dto';
+import { CancelarClienteInstalacionDto } from '../../presentation/dto/cancelar-cliente-instalacion.dto';
 import { CancelarClienteInstalacionUseCase } from '../use-cases/cancelar-cliente-instalacion.use-case';
 import {
   SubirEvidenciaInstalacionCommand,
   SubirEvidenciaInstalacionUseCase,
 } from '../use-cases/subir-evidencia-instalacion.use-case';
-import { DeleteAllClienteInstalacionUseCase } from '../use-cases/delete-all';
 import {
   CrearClienteInstalacionResult,
   PrealtaPppoeInstalacionResult,
 } from '../../results/crear-cliente-instalacion.result';
 import { ReintentarPrealtaPppoeInstalacionUseCase } from '../use-cases/reintentar-prealta-pppoe-instalacion.use-case';
-import { ReintentarPrealtaPppoeDto } from '../dto/reintentar-prealta-pppoe.dto';
+import { ReintentarPrealtaPppoeDto } from '../../presentation/dto/reintentar-prealta-pppoe.dto';
 import {
   ConsultarCredencialesPppoeInstalacionResult,
   PPPOE_CLIENTE_CUENTA,
   PppoeClienteCuentaFacadePort,
 } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
-import { FiltrarMisInstalacionesAsignadasDto } from '../dto/instalaciones-asignadas';
+import { FiltrarMisInstalacionesAsignadasDto } from '../../presentation/dto/listar-mis-instalaciones-asignadas-query.dto';
 import { ListarMisInstalacionesAsignadasUseCase } from '../use-cases/listar-mis-instalaciones-asignadas.use-case';
 import { ObtenerDetalleTecnicoInstalacionUseCase } from '../use-cases/obtener-detalle-tecnico-instalacion.use-case';
-import { ActivarPppoeInstalacionDto } from '../dto/activar-pppoe-instalacion.dto';
+import { ActivarPppoeInstalacionDto } from '../../presentation/dto/activar-pppoe-instalacion.dto';
 import { ActivarPppoeInstalacionUseCase } from '../use-cases/activar-pppoe-instalacion.use-case';
 import { ActivarPppoeInstalacionResult } from '../../results/activar-pppoe-instalacion.result';
 
@@ -133,8 +132,6 @@ export class ClienteInstalacionApplicationService {
 
     private readonly subirEvidenciaInstalacionUseCase: SubirEvidenciaInstalacionUseCase,
 
-    //test
-    private readonly deleteAllInstalacionUseCase: DeleteAllClienteInstalacionUseCase,
 
     private readonly reintentarPrealtaPppoeInstalacionUseCase: ReintentarPrealtaPppoeInstalacionUseCase,
 
@@ -282,10 +279,6 @@ export class ClienteInstalacionApplicationService {
 
   cargarEvidencias(dto: SubirEvidenciaInstalacionCommand) {
     return this.subirEvidenciaInstalacionUseCase.execute(dto);
-  }
-
-  deleteAll() {
-    return this.deleteAllInstalacionUseCase.execute();
   }
 
   obtener(id: number) {

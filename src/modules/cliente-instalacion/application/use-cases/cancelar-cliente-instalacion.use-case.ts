@@ -1,7 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { CLIENTE_INSTALACION_REPOSITORY } from '../../infra/tokens/cliente-instalacion.tokens';
-import { ClienteInstalacionRepositoryPort } from '../../domain/ports/cliente-instalacion.repository.port';
-import { CancelarClienteInstalacionDto } from '../dto/cancelar-cliente-instalacion.dto';
+import { CLIENTE_INSTALACION_REPOSITORY, ClienteInstalacionRepositoryPort } from '../../domain/ports/cliente-instalacion-repository.port';
+import { CancelarClienteInstalacionDto } from '../../presentation/dto/cancelar-cliente-instalacion.dto';
 
 export type CancelarClienteInstalacionCommand =
   CancelarClienteInstalacionDto & {

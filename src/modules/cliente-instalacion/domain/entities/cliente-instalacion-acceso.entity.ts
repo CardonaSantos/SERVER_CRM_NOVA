@@ -1,8 +1,8 @@
-import { AccionInstalacionAcceso } from '../enums/ppoe-instalacion-acceso.enum';
+import { AccionInstalacionAcceso } from '../enums/accion-instalacion-acceso.enum';
 import {
   ClienteInstalacionAccesoProps,
   CrearClienteInstalacionAccesoProps,
-} from '../props/cliente-instalacion-acces-props.props';
+} from '../props/cliente-instalacion-acceso.props';
 
 export class ClienteInstalacionAccesoEntity {
   private constructor(private readonly props: ClienteInstalacionAccesoProps) {}

@@ -2,8 +2,8 @@ import {
   Prisma,
   type ClienteInstalacionAcceso as PrismaClienteInstalacionAcceso,
 } from '@prisma/client';
-import { ClienteInstalacionAccesoEntity } from '../../domain/entities/ppoe-instalacion-acceso.entity';
-import { AccionInstalacionAcceso } from '../../domain/enums/ppoe-instalacion-acceso.enum';
+import { ClienteInstalacionAccesoEntity } from '../../domain/entities/cliente-instalacion-acceso.entity';
+import { AccionInstalacionAcceso } from '../../domain/enums/accion-instalacion-acceso.enum';
 
 export class ClienteInstalacionAccesoPrismaMapper {
   static toDomain(

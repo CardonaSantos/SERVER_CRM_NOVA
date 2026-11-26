@@ -1,4 +1,4 @@
-import { AccionInstalacionAcceso } from '../enums/ppoe-instalacion-acceso.enum';
+import { AccionInstalacionAcceso } from '../enums/accion-instalacion-acceso.enum';
 
 export type ClienteInstalacionAccesoProps = {
   id: number | null;

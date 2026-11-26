@@ -5,9 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { CLIENTE_INSTALACION_REPOSITORY } from '../../infra/tokens/cliente-instalacion.tokens';
+import { CLIENTE_INSTALACION_REPOSITORY, ClienteInstalacionRepositoryPort } from '../../domain/ports/cliente-instalacion-repository.port';
 
-import { ClienteInstalacionRepositoryPort } from '../../domain/ports/cliente-instalacion.repository.port';
 
 import {
   PPPOE_ACCESO_INTERNET,
@@ -30,8 +29,8 @@ import {
   EstadoResultadoPrealtaPppoe,
   PrealtaPppoeInstalacionResult,
 } from '../../results/crear-cliente-instalacion.result';
-import { CLIENTE_INSTALACION_ACCESO_REPOSITORY } from 'src/modules/ppoe-instalacion-acceso/tokens/instalacion-acceso.token';
-import { ClienteInstalacionAccesoRepositoryPort } from 'src/modules/ppoe-instalacion-acceso/domain/ports/cliente-instalacion-acceso.port';
+import { CLIENTE_INSTALACION_ACCESO_REPOSITORY } from '../../domain/ports/cliente-instalacion-acceso-repository.port';
+import { ClienteInstalacionAccesoRepositoryPort } from 'src/modules/cliente-instalacion/domain/ports/cliente-instalacion-acceso-repository.port';
 
 @Injectable()
 export class ReintentarPrealtaPppoeInstalacionUseCase {

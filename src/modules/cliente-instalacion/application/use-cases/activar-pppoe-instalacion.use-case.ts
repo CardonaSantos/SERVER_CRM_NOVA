@@ -9,11 +9,10 @@ import {
 
 import { AuthService } from 'src/auth/auth.service';
 
-import { ClienteInstalacionRepositoryPort } from '../../domain/ports/cliente-instalacion.repository.port';
+import { ClienteInstalacionRepositoryPort, CLIENTE_INSTALACION_REPOSITORY } from '../../domain/ports/cliente-instalacion-repository.port';
 
 import { EstadoInstalacionCliente } from '../../domain/enums/estado-instalacion-cliente.enum';
 
-import { CLIENTE_INSTALACION_REPOSITORY } from '../../infra/tokens/cliente-instalacion.tokens';
 
 import { ResolverPppoeInstalacionService } from '../services/resolver-pppoe-instalacion.service';
 

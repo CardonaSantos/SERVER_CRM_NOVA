@@ -2,9 +2,9 @@ import {
   MetodoAutenticacionInternet,
   TecnologiaAccesoInternet,
 } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
-import { ModoAccesoInstalacion } from '../application/dto/iniciar-acceso-types.dto';
+import { ModoAccesoInstalacion } from '../presentation/dto/acceso-instalacion.dto';
 import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
-import { ClienteInstalacionDetalle } from '../domain/ports/cliente-instalacion.repository.port';
+import { ClienteInstalacionDetalle } from '../domain/ports/cliente-instalacion-repository.port';
 
 /**
  * Resultado funcional del intento de preparar

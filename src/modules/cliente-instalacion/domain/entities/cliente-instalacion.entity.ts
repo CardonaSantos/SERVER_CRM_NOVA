@@ -10,7 +10,7 @@ import {
   IniciarClienteInstalacionParams,
   MarcarFallidaClienteInstalacionParams,
   ReprogramarClienteInstalacionParams,
-} from './entities-props.props';
+} from '../props/cliente-instalacion.props';
 import { EstadoInstalacionCliente } from '../enums/estado-instalacion-cliente.enum';
 
 export class ClienteInstalacionEntity {
