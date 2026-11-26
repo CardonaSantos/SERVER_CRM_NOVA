@@ -6,7 +6,8 @@ altera facturas reales. Trabaja en consecuencia.
 
 Lee antes de escribir código:
 - @docs/estandar-hexagonal-crm-nova.md — **el formato obligatorio** de todo módulo hexagonal
-- @docs/guia-post-auth-refactor-hexagonal-crm-nova.md — estado actual y orden de trabajo (§8)
+- @docs/guia-fase-legacy-crm-nova.md — **estado actual, siguiente paso y cómo refactorizar el legacy** (léela completa)
+- `docs/guia-post-auth-refactor-hexagonal-crm-nova.md` — historia de la etapa auth y orden original (§8.4)
 - `docs/guia-desarrollo-cobranza-corte-crm-nova.md` — diseño funcional del corte y de los módulos
   (en estructura y nombres manda el estándar)
 
@@ -26,7 +27,8 @@ La etapa de auth y NestJS 12 está terminada en código (aún no desplegada). Ah
    la adopción es atómica con la unidad de trabajo (`src/common/transaccion`).
 6. ✅ **C4**: `cliente-instalacion` y `cliente-desinstalacion` conformes (consumen el núcleo PPPoE por fachadas; `ppoe-instalacion-acceso` quedó fusionado en `cliente-instalacion`).
 7. ✅ **C5**: `ticket-soporte-historial`, `ticket-soporte-conformidad` (sin el flujo de enlace público, descartado) y `real-time-location` conformes. `excel-reports` y `reports` quedan fuera: se resuelven en el módulo `reporte` de la fase legacy.
-8. **Siguiente**: plan H1–H12 (módulos legacy fuera de `src/modules`).
+8. **Siguiente**: fase legacy (H1–H12 y resto de `src/`), según `docs/guia-fase-legacy-crm-nova.md`
+   §3. El próximo paso es **H1** (saneamiento de estados de cliente y día de zona, §6.1).
 
 **No empieces un paso hasta que el dueño diga que se empieza.**
 
