@@ -26,6 +26,7 @@ import {
   ESTADOS_FACTURA_PENDIENTE,
   getEstadoCobranza,
 } from 'src/zona-facturacion-cron/helpers/Functions';
+import { conCobranza } from 'src/Utils/filtro-cobranza';
 import { GetClientesRutaQueryDto } from './pagination/cliente-internet.dto';
 import { TZ } from 'src/Utils/tzgt';
 import { normalizarTexto } from 'src/Utils/normalizarTexto';
@@ -1546,21 +1547,15 @@ export class ClienteInternetService {
         }),
 
         this.prisma.clienteInternet.count({
-          where: {
-            estadoCliente: 'PENDIENTE_ACTIVO',
-          },
+          where: conCobranza('PAGO_PENDIENTE'),
         }),
 
         this.prisma.clienteInternet.count({
-          where: {
-            estadoCliente: 'ATRASADO',
-          },
+          where: conCobranza('ATRASADO'),
         }),
 
         this.prisma.clienteInternet.count({
-          where: {
-            estadoCliente: 'MOROSO',
-          },
+          where: conCobranza('MOROSO'),
         }),
       ]);
 
