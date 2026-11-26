@@ -68,6 +68,7 @@ Módulos hexagonales conformes en `src/modules/` (usa estos como **plantilla**):
 | `cliente-instalacion`, `cliente-desinstalacion` | Módulo de negocio completo: repo + query separados, read models, presenters, `@Roles` (oficina decide, técnico ejecuta), unidad de trabajo, fakes y specs (127 / 85 pruebas) |
 | `pppoe-automatizacion` | Efectos remotos (step runner §5.6), fachadas de otros módulos, recuperación |
 | `pppoe-cliente-cuenta` | Entidad con transiciones de estado |
+| `cliente` | Fachada de escritura para otros módulos, borrado lógico, listas con filtros, saldo calculado en una policy y puertos transitorios hacia módulos legacy |
 | `real-time-location` | Puerto de transacción de intención (`application/ports/<modulo>-transaction.port.ts`), cron delgado con `RELOJ`, policies de métricas |
 | `ticket-soporte-historial` | Fachada consumida por un módulo **legacy** (`tickets-soporte`) dentro de su transacción (`PrismaTransaccional.unirseA`, transitorio) |
 | `ticket-soporte-conformidad` | Compensación de efectos (subida de archivo + rollback), traducción de `P2002` a `CONFLICTO` |
@@ -94,10 +95,11 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 ### 2.3 Línea base medida
 
 - `npm run build`: verde.
-- `npm run lint:check`: **207** errores tras el paso 3 (no subir; los archivos que toques quedan sin errores nuevos).
-- Jest: 647/651; las suites de `src/common`, `src/auth/decoradores` y de todos los `src/modules/*`
+- `npm run lint:check`: **200** errores tras el paso 4 (no subir; los archivos que toques quedan sin errores nuevos).
+- Jest: 700/704; las suites de `src/common`, `src/auth/decoradores` y de todos los `src/modules/*`
   en verde. Fallan 4 suites boilerplate de `cloud-api-meta` y `location`.
-- Correr un spec: `npm test -- src/modules/<modulo>` (1–2 min).
+- Correr un spec: `npm test -- src/modules/<modulo>` (1–2 min). Con la caché fría la suite completa
+  puede pasar de 5 minutos: córrela en segundo plano.
 
 ### 2.4 Deudas abiertas que dejaron las tandas anteriores
 
@@ -106,7 +108,8 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 | `PrismaTransaccional.unirseA(tx, …)` (puente para que `tickets-soporte` legacy use la fachada del historial dentro de su `$transaction`) | Refactor de `ticket-soporte`: se borra `unirseA` y su spec |
 | `real-time-location` y otros emiten por `WebSocketServices` legacy (`src/web-sockets`) | Paso `common/tiempo-real` |
 | `pppoe-automatizacion` lee el router con puertos internos de `src/mikro-tik` | `mikrotik-router` |
-| Puerto `CLIENTE_INTERNET_ESTADO_OPERATIVO` vive en `pppoe-automatizacion/application/ports` (lo implementa algo que escribe en `ClienteInternet`) | H3 (`cliente`): pasa a ser fachada del módulo `cliente` |
+| `cliente` escribe la primera factura (`PRIMERA_FACTURA`, con el registro de `SaldoCliente`) y el contrato (`CONTRATO_FISICO`) por adaptadores propios, y usa el servicio de `credito` (`CLASIFICACION_CREDITO`) | `facturacion`, `contrato-cliente` y `credito`: pasan a sus fachadas |
+| `SaldoCliente`: `cliente` ya no la lee; la escriben `facturacion` y el alta, y la lee `ruta-cobro` | `facturacion` y `ruta-cobro`: calcular al leer (`modules/cliente/domain/policies/saldo.policy.ts` es la referencia) y dejar de escribirla |
 | Los `Input` públicos de prealta/provisionamiento PPPoE aún llevan `empresaId` | Cuando se toquen; `empresaId` no es filtro (una empresa por BD) |
 | `ClienteDesinstalacionEntity` ~950 líneas; varios use cases de C3 > 300 líneas | Opcional, cuando se toquen |
 | Enum viejo comentado en `pppoe-cliente-cuenta/domain/enums/estado-cuenta-pppoe.enum.ts` | Cualquier commit de limpieza |
@@ -142,6 +145,13 @@ Decisiones del dueño del **26-nov-2026**. Los nombres nuevos siguen §15 del es
   dominio lo pida.
 - **Estados del cliente:** `estadoCliente` depende de su PPPoE y del ajuste manual; facturas y pagos
   no lo cambian. `estadoCobranza` sale solo de las facturas.
+- **Desinstalación:** completar una de cualquier tipo deja al cliente `DESINSTALADO` (salvo que
+  conserve otro acceso vigente). Las completadas antes no se migran.
+- **Eliminar un cliente es borrado lógico**; no habrá eliminación definitiva. Facturas, pagos,
+  contrato e historial se conservan, y sus valores únicos (contrato, boleta, confirmación) siguen
+  ocupados. El flujo para restaurar no existe todavía.
+- **Despliegue:** el servidor sale junto con una interfaz refactorizada; no se crea interfaz ni
+  funciones nuevas en esta fase.
 - **Los crons van al final** y tendrán un tratamiento especial que definirá el dueño. Hasta entonces
   no se toca su comportamiento (tampoco el de `credito`).
 - **Reportes** no se migra hasta nuevo aviso.
@@ -158,8 +168,8 @@ En nombres, fusiones y alcance esta tabla manda sobre la propuesta de §15.1 del
 | 1 | **H1** saneamiento (sin crons) | `facturacion`, `cliente-internet`, `dashboard` | ✅ Hecho | `facturacion #1–#2`, `cliente-internet #1–#3`, `dashboard #1` (§6.1) |
 | 2 | **H2** roles | API legacy que quede | En espera | El dueño definirá los permisos (§3.1). No agregar restricciones sin su mapa |
 | 3 | Ubicación de técnicos → `real-time-location` | `real-time-location` legacy | ✅ Hecho | `real-time-location #3–#5`: rutas abiertas a cualquier sesión, `last-locations` en el módulo (misma ruta), retiro de `update-location` y de la carpeta legacy |
-| 4 | `cliente` (H3) | `cliente-internet`, `customer-network-config` | **Siguiente** | Revisar `src/cliente-internet/domain/`. Fachada `CLIENTE` |
-| 5 | `zona-facturacion` (H5) | `facturacion-zona` | Pendiente | `modoCorte`, días 1–31, `@Roles` |
+| 4 | `cliente` (H3) | `cliente-internet`, `customer-network-config` | ✅ Hecho | `cliente #1–#4`: fachada `CLIENTE`, borrado lógico, saldo calculado, rutas sin uso retiradas |
+| 5 | `zona-facturacion` (H5) | `facturacion-zona` | **Siguiente** | `modoCorte`, días 1–31, `@Roles` |
 | 6 | `facturacion` | `facturacion`, `factura-eliminacion` | Pendiente | Incluye los pagos |
 | 7 | `mensajeria-cliente` (H6) | `whatsapp-template`, `cloud-api-meta`, `whatsapp-api-meta`, `whatsapp-campaigns` | Pendiente | Meta como adaptador. **Nunca** enviar mensajes en pruebas |
 | 8 | `ruta-cobro` | `ruta-cobro` | Pendiente | Registra pagos por la fachada de `facturacion` |
@@ -361,11 +371,11 @@ H1 es saneamiento en sitio: commits `refactorizacion facturacion #N`, `refactori
 
 | Dónde | Problema | Paso |
 |---|---|---|
-| `modules/cliente-desinstalacion` | Completar una desinstalación **no** marca al cliente `DESINSTALADO` ni `desinstaladoEn` (ningún archivo de `src/modules` lo escribe) | `cliente`, con su fachada |
+| `modules/cliente-desinstalacion` | **Corregido** (paso 4): completar una desinstalación no marcaba al cliente `DESINSTALADO` | Hecho |
 | Toda la API legacy | Sin `@Roles` (G1): cualquier usuario autenticado, técnico incluido, borra pagos, edita facturas y zonas | H2 |
 | Sesiones, refresh e intentos de auth | Nadie los limpia (G6) | `tareas-programadas` |
 | `src/real-time-location` legacy | **Corregido** (paso 3): su `POST update-location` permitía escribir la ubicación de otro usuario y registraba datos personales en los logs | Hecho |
-| `SaldoCliente` | `facturacion` aún la escribe y `cliente-internet` (detalle y listados) y `ruta-cobro` aún la **leen**. Los crons no la actualizan, así que esos saldos quedan atrasados. `facturacion #3` la recalcula desde las facturas al editar o eliminar pagos | `facturacion`, `cliente` y `ruta-cobro`: calcular al leer y dejar de escribirla |
+| `SaldoCliente` | El saldo guardado está atrasado (los crons no lo actualizan): en la copia local difería en 299 de 573 clientes. `cliente` ya lo calcula al leer | `facturacion` y `ruta-cobro` |
 | `facturacion` `delete-one-factura` | El usuario que elimina llega en el body (`userId`) en vez de salir de la sesión | Módulo `facturacion` |
 | `generate-reports` `QueryCobranzaReport` | Fechas con `@IsDate` sin conversión: probable 400 con el pipe estricto (sin probar) | Antes del deploy |
 | Legacy en general | `throw new BadRequestException(...)` en services, `console.log` con datos, `new Date()` en UTC para fechas de negocio, métodos con `tx?: Prisma.TransactionClient` opcional (escrituras que a veces son atómicas y a veces no), `findMany` sin `count` en la misma transacción | Cada módulo al refactorizarse |
@@ -382,11 +392,11 @@ a la UI (fugas de campos), y `catch` que tragan errores y devuelven `200`.
 | # | Pregunta | Paso | Recomendación |
 |---|---|---|---|
 | 1 | Mapa de roles por módulo (SUPER_ADMIN, ADMIN, COORDINADOR_OPERACIONES, OFICINA, TIENDA, TECNICO, COBRADOR) | H2, en espera | Lo define el dueño |
-| 2 | ¿El dominio inicial de `src/cliente-internet/domain/` se aprovecha tal cual? | `cliente` | Llevarlo a `src/modules/cliente/domain/` y ajustarlo al estándar |
+| 2 | **Resuelta**: se aprovechó, en `src/modules/cliente/domain/` | `cliente` | — |
 | 3 | **Resuelta**: la app Android usa solo `real-time-location/*` (verificado en su repo) | Paso 3 | — |
 | 4 | Nombres finales de cada módulo (§3.2) | Cada paso | Los de §3.2 |
 | 5 | ¿La etapa auth ya se desplegó? Si no, cada paso se acumula sobre un deploy grande | Siempre que aplique | |
-| 6 | ¿Se quita `SaldoCliente` ahora o al refactorizar `cliente` y `ruta-cobro`? | `cliente` | Al refactorizar, calculando el saldo al leer |
+| 6 | **Resuelta**: cada módulo deja de usarla al refactorizarse, calculando al leer | `cliente`, `facturacion`, `ruta-cobro` | — |
 
 ---
 
@@ -395,6 +405,12 @@ a la UI (fugas de campos), y `catch` que tragan errores y devuelven `200`.
 - **Permisos:** no agregues `@Roles` a una ruta por convención (decisión de §3.1). Antes, mira qué
   roles usan esa pantalla en la app Android; en el paso 3 la restricción puesta en C5 la habría dejado
   con 403.
+- **Clientes eliminados:** toda consulta nueva sobre `ClienteInternet` (directa o por relación) debe
+  filtrar `isEliminado: false`, salvo reportes o bitácoras que los pidan a propósito.
+- **Si el dueño tiene `start:dev` corriendo**, no ejecutes `npm run build` (borra `dist` y su
+  servidor): compila con `npx tsc -p tsconfig.build.json --outDir <carpeta temporal>`.
+- **Probar adaptadores Prisma:** ejecútalos contra la base local dentro de
+  `PrismaTransaccional.ejecutar` y lanza un error al final para revertir.
 - **App Android:** https://github.com/CardonaSantos/ANDROID-BASE, rama `checkpoint-android-studio`
   (la que compiló el dueño). Sirve para verificar rutas, roles, cuerpos y eventos de socket antes de
   retirar o cambiar algo. Clónala fuera del proyecto y trátala solo como lectura.

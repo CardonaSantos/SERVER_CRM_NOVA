@@ -28,9 +28,9 @@ La etapa de auth y NestJS 12 está terminada en código (aún no desplegada). Ah
 6. ✅ **C4**: `cliente-instalacion` y `cliente-desinstalacion` conformes (consumen el núcleo PPPoE por fachadas; `ppoe-instalacion-acceso` quedó fusionado en `cliente-instalacion`).
 7. ✅ **C5**: `ticket-soporte-historial`, `ticket-soporte-conformidad` (sin el flujo de enlace público, descartado) y `real-time-location` conformes. `excel-reports` y `reports` quedan fuera: se resuelven en el módulo `reporte` de la fase legacy.
 8. **En curso**: fase legacy, en el orden de `docs/guia-fase-legacy-crm-nova.md` §3.2: ✅ limpieza de
-   lo que no se usa, ✅ **H1** (saneamiento de estados, §6.1) y ✅ paso 3 (ubicación de técnicos en
-   `real-time-location`); H2 (roles) queda en espera del dueño; sigue el paso 4 (`cliente`). **Los
-   crons van al final**; reportes queda aplazado.
+   lo que no se usa, ✅ **H1** (saneamiento de estados, §6.1), ✅ paso 3 (ubicación de técnicos en
+   `real-time-location`) y ✅ paso 4 (`cliente`); H2 (roles) queda en espera del dueño; sigue el
+   paso 5 (`zona-facturacion`). **Los crons van al final**; reportes queda aplazado.
 
 **No empieces un paso hasta que el dueño diga que se empieza.**
 
@@ -76,7 +76,7 @@ npm run start:dev
 npx prisma migrate status
 ```
 
-Node 24 (`.nvmrc`). Línea base: lint ≤ 207 errores (tras el paso 3; sin errores nuevos en
+Node 24 (`.nvmrc`). Línea base: lint ≤ 200 errores (tras el paso 4; sin errores nuevos en
 archivos tocados); Jest: las suites de `src/common`, `src/auth/decoradores` y de `src/modules` en
 verde; 4 suites boilerplate de `cloud-api-meta` y `location` siguen rotas.
 
