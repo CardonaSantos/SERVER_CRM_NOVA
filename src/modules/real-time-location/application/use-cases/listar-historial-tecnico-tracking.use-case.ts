@@ -1,139 +1,75 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import {
+  normalizarPaginacion,
+  ResultadoPaginado,
+} from 'src/common/hexagonal/paginacion';
 import { EstadoTrackingTecnico } from '../../domain/enums/estado-tracking-tecnico.enum';
-import { TecnicoTrackingHistorialPaginatedResult } from '../../domain/ports/tecnico-tracking-query.port';
-import { TecnicoTrackingQueryPort } from '../../domain/ports/TecnicoTrackingQueryPort.port';
-import { TECNICO_TRACKING_QUERY } from '../../infra/tokens/tokens';
+import { TrackingDatosInvalidosError } from '../../domain/errors/real-time-location.errors';
+import {
+  TECNICO_TRACKING_QUERY,
+  TecnicoTrackingQueryPort,
+} from '../../domain/ports/tecnico-tracking-query.port';
+import { TecnicoTrackingHistorialListItem } from '../../domain/read-models/tecnico-tracking.read-model';
 
-export type ListarHistorialTecnicoTrackingCommand = {
+export type ListarHistorialTecnicoTrackingInput = {
   page?: number;
   limit?: number;
 
+  /** Nombre, correo o teléfono del técnico. */
   search?: string | null;
-
   tecnicoId?: number | null;
 
-  fechaDesde?: string | Date | null;
-  fechaHasta?: string | Date | null;
+  /** Fechas ISO 8601. */
+  fechaDesde?: string | null;
+  fechaHasta?: string | null;
 
   estadoSesion?: EstadoTrackingTecnico | null;
 };
 
 @Injectable()
 export class ListarHistorialTecnicoTrackingUseCase {
-  private static readonly DEFAULT_PAGE = 1;
-  private static readonly DEFAULT_LIMIT = 10;
-  private static readonly MAX_LIMIT = 100;
-
   constructor(
     @Inject(TECNICO_TRACKING_QUERY)
-    private readonly trackingQuery: TecnicoTrackingQueryPort,
+    private readonly consulta: TecnicoTrackingQueryPort,
   ) {}
 
-  async execute(
-    command: ListarHistorialTecnicoTrackingCommand,
-  ): Promise<TecnicoTrackingHistorialPaginatedResult> {
-    const page = this.resolvePage(command.page);
+  execute(
+    input: ListarHistorialTecnicoTrackingInput,
+  ): Promise<ResultadoPaginado<TecnicoTrackingHistorialListItem>> {
+    const fechaDesde = this.fecha(input.fechaDesde, 'fechaDesde');
+    const fechaHasta = this.fecha(input.fechaHasta, 'fechaHasta');
 
-    const limit = this.resolveLimit(command.limit);
-
-    const tecnicoId = this.resolveTechnicianId(command.tecnicoId);
-
-    const fechaDesde = this.parseOptionalDate(command.fechaDesde, 'fechaDesde');
-
-    const fechaHasta = this.parseOptionalDate(command.fechaHasta, 'fechaHasta');
-
-    this.assertValidDateRange(fechaDesde, fechaHasta);
-
-    return this.trackingQuery.findAttendanceHistory({
-      page,
-      limit,
-
-      search: this.normalizeSearch(command.search),
-
-      tecnicoId,
-
-      fechaDesde,
-      fechaHasta,
-
-      estadoSesion: command.estadoSesion ?? null,
-    });
-  }
-
-  private resolvePage(value?: number): number {
-    if (value === undefined) {
-      return ListarHistorialTecnicoTrackingUseCase.DEFAULT_PAGE;
-    }
-
-    if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException('page debe ser un entero positivo.');
-    }
-
-    return value;
-  }
-
-  private resolveLimit(value?: number): number {
-    if (value === undefined) {
-      return ListarHistorialTecnicoTrackingUseCase.DEFAULT_LIMIT;
-    }
-
-    if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException('limit debe ser un entero positivo.');
-    }
-
-    return Math.min(value, ListarHistorialTecnicoTrackingUseCase.MAX_LIMIT);
-  }
-
-  private resolveTechnicianId(value?: number | null): number | null {
-    if (value === undefined || value === null) {
-      return null;
-    }
-
-    if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException('tecnicoId debe ser un entero positivo.');
-    }
-
-    return value;
-  }
-
-  private normalizeSearch(value?: string | null): string | null {
-    if (value === undefined || value === null) {
-      return null;
-    }
-
-    const normalized = value.trim();
-
-    return normalized.length > 0 ? normalized : null;
-  }
-
-  private parseOptionalDate(
-    value: string | Date | null | undefined,
-    field: string,
-  ): Date | null {
-    if (value === undefined || value === null) {
-      return null;
-    }
-
-    const date = new Date(value);
-
-    if (Number.isNaN(date.getTime())) {
-      throw new BadRequestException(`${field} debe contener una fecha válida.`);
-    }
-
-    return date;
-  }
-
-  private assertValidDateRange(
-    fechaDesde: Date | null,
-    fechaHasta: Date | null,
-  ): void {
     if (
       fechaDesde &&
       fechaHasta &&
       fechaDesde.getTime() > fechaHasta.getTime()
     ) {
-      throw new BadRequestException(
-        'fechaDesde no puede ser posterior a fechaHasta.',
+      throw new TrackingDatosInvalidosError(
+        'La fecha inicial no puede ser posterior a la final.',
       );
     }
+
+    return this.consulta.findAttendanceHistory(
+      {
+        search: input.search?.trim() || null,
+        tecnicoId: input.tecnicoId ?? null,
+        fechaDesde,
+        fechaHasta,
+        estadoSesion: input.estadoSesion ?? null,
+      },
+      normalizarPaginacion(input),
+    );
+  }
+
+  private fecha(valor: string | null | undefined, campo: string): Date | null {
+    if (valor === undefined || valor === null) return null;
+
+    const fecha = new Date(valor);
+
+    if (Number.isNaN(fecha.getTime())) {
+      throw new TrackingDatosInvalidosError(`La fecha ${campo} no es válida.`);
+    }
+
+    return fecha;
   }
 }

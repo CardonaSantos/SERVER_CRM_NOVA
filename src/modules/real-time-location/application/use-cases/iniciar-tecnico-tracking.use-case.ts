@@ -1,38 +1,34 @@
+import { Inject, Injectable } from '@nestjs/common';
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
+import { EstadoTrackingTecnico } from '../../domain/enums/estado-tracking-tecnico.enum';
 import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-} from '@nestjs/common';
+  TrackingDatosInvalidosError,
+  TrackingSesionInconsistenteError,
+} from '../../domain/errors/real-time-location.errors';
+import { getTrackingBusinessDate } from '../../domain/policies/fecha-laboral-tracking.policy';
+import {
+  TECNICO_TRACKING_REPOSITORY,
+  TecnicoTrackingRepositoryPort,
+} from '../../domain/ports/tecnico-tracking-repository.port';
+import {
+  REAL_TIME_LOCATION_TRANSACTION,
+  RealTimeLocationTransactionPort,
+} from '../ports/real-time-location-transaction.port';
+import {
+  TECNICO_TRACKING_REALTIME,
+  TecnicoTrackingRealtimePort,
+} from '../ports/tecnico-tracking-realtime.port';
 
-import { TecnicoTrackingRepositoryPort } from '../../domain/ports/tecnico-tracking.repository.port';
-
-import { getTrackingBusinessDate } from '../helpers/tracking-date.helper';
-import { TECNICO_TRACKING_REPOSITORY } from '../../infra/tokens/tokens';
-
-import { TecnicoTrackingRealtimePort } from '../../domain/ports/tecnico-tracking-realtime.port';
-
-import { TECNICO_TRACKING_REALTIME } from '../../infra/tokens/tokens';
-
-export type IniciarTecnicoTrackingCommand = {
-  /**
-   * Identidad obtenida exclusivamente del JWT.
-   */
+export type IniciarTecnicoTrackingInput = {
+  /** El técnico autenticado. */
   tecnicoId: number;
-
-  iniciadoEn?: Date;
 };
 
 export type IniciarTecnicoTrackingResult = {
   sesionTrackingId: number;
-
   asistenciaId: number;
-
-  estado: string;
-
+  estado: EstadoTrackingTecnico;
   iniciadoEn: Date;
-
   ultimoHeartbeatEn: Date;
 };
 
@@ -40,170 +36,85 @@ export type IniciarTecnicoTrackingResult = {
 export class IniciarTecnicoTrackingUseCase {
   constructor(
     @Inject(TECNICO_TRACKING_REPOSITORY)
-    private readonly trackingRepository: TecnicoTrackingRepositoryPort,
-
+    private readonly sesiones: TecnicoTrackingRepositoryPort,
+    @Inject(REAL_TIME_LOCATION_TRANSACTION)
+    private readonly transaccion: RealTimeLocationTransactionPort,
     @Inject(TECNICO_TRACKING_REALTIME)
-    private readonly trackingRealtime: TecnicoTrackingRealtimePort,
+    private readonly realtime: TecnicoTrackingRealtimePort,
+    @Inject(RELOJ) private readonly reloj: RelojPort,
   ) {}
 
   async execute(
-    command: IniciarTecnicoTrackingCommand,
+    input: IniciarTecnicoTrackingInput,
   ): Promise<IniciarTecnicoTrackingResult> {
-    this.validateCommand(command);
-
-    // this.assertTechnicianRole(command.actorRol);
-
-    const iniciadoEn = this.resolveStartedAt(command.iniciadoEn);
-
-    /*
-     * Idempotencia.
-     *
-     * Si la APK perdió la respuesta HTTP y vuelve
-     * a solicitar inicio, no creamos otra sesión.
-     */
-    const activeSession =
-      await this.trackingRepository.findActiveSessionByTechnician(
-        command.tecnicoId,
+    if (!Number.isInteger(input.tecnicoId) || input.tecnicoId <= 0) {
+      throw new TrackingDatosInvalidosError(
+        'El técnico autenticado no es válido.',
       );
+    }
 
-    if (activeSession) {
-      const asistenciaId = activeSession.asistenciaId;
+    // Idempotencia: si la app perdió la respuesta y vuelve a pedir el inicio,
+    // no se crea otra sesión.
+    const activa = await this.sesiones.findActiveSessionByTechnician(
+      input.tecnicoId,
+    );
 
-      if (!asistenciaId) {
-        throw new ConflictException(
+    if (activa) {
+      if (!activa.id || !activa.asistenciaId) {
+        throw new TrackingSesionInconsistenteError(
           'La sesión activa no posee una asistencia asociada.',
         );
       }
 
-      if (!activeSession.id) {
-        throw new ConflictException(
-          'La sesión activa no posee un identificador persistido.',
-        );
-      }
-
-      // ============================================
-      // SOCKET - SESIÓN ACTIVA EXISTENTE
-      // ============================================
-
-      await this.trackingRealtime.emitTrackingStateChanged({
-        tecnicoId: command.tecnicoId,
-
-        sesionTrackingId: activeSession.id,
-
-        asistenciaId,
-
-        estado: activeSession.estado,
-
-        iniciadoEn: activeSession.iniciadoEn,
-
-        finalizadoEn: activeSession.finalizadoEn,
-
-        ultimoHeartbeatEn: activeSession.ultimoHeartbeatEn,
+      await this.realtime.emitTrackingStateChanged({
+        tecnicoId: input.tecnicoId,
+        sesionTrackingId: activa.id,
+        asistenciaId: activa.asistenciaId,
+        estado: activa.estado,
+        iniciadoEn: activa.iniciadoEn,
+        finalizadoEn: activa.finalizadoEn,
+        ultimoHeartbeatEn: activa.ultimoHeartbeatEn,
       });
 
       return {
-        sesionTrackingId: activeSession.id,
-
-        asistenciaId,
-
-        estado: activeSession.estado,
-
-        iniciadoEn: activeSession.iniciadoEn,
-
-        ultimoHeartbeatEn: activeSession.ultimoHeartbeatEn,
+        sesionTrackingId: activa.id,
+        asistenciaId: activa.asistenciaId,
+        estado: activa.estado,
+        iniciadoEn: activa.iniciadoEn,
+        ultimoHeartbeatEn: activa.ultimoHeartbeatEn,
       };
     }
 
-    const fecha = getTrackingBusinessDate(iniciadoEn);
+    const iniciadoEn = this.reloj.ahora();
 
-    const result = await this.trackingRepository.startTracking({
-      tecnicoId: command.tecnicoId,
-
-      fecha,
-
+    const resultado = await this.transaccion.iniciarTracking({
+      tecnicoId: input.tecnicoId,
+      fecha: getTrackingBusinessDate(iniciadoEn),
       iniciadoEn,
     });
 
-    const sesionId = result.sesion.id;
-
-    if (!sesionId) {
-      throw new ConflictException(
+    if (!resultado.sesion.id) {
+      throw new TrackingSesionInconsistenteError(
         'La sesión de tracking fue creada sin identificador.',
       );
     }
 
-    // ============================================
-    // SOCKET - NUEVA SESIÓN ACTIVA
-    // ============================================
-
-    await this.trackingRealtime.emitTrackingStateChanged({
-      tecnicoId: command.tecnicoId,
-
-      sesionTrackingId: sesionId,
-
-      asistenciaId: result.asistencia.id,
-
-      estado: result.sesion.estado,
-
-      iniciadoEn: result.sesion.iniciadoEn,
-
-      finalizadoEn: result.sesion.finalizadoEn,
-
-      ultimoHeartbeatEn: result.sesion.ultimoHeartbeatEn,
+    await this.realtime.emitTrackingStateChanged({
+      tecnicoId: input.tecnicoId,
+      sesionTrackingId: resultado.sesion.id,
+      asistenciaId: resultado.asistencia.id,
+      estado: resultado.sesion.estado,
+      iniciadoEn: resultado.sesion.iniciadoEn,
+      finalizadoEn: resultado.sesion.finalizadoEn,
+      ultimoHeartbeatEn: resultado.sesion.ultimoHeartbeatEn,
     });
 
     return {
-      sesionTrackingId: sesionId,
-
-      asistenciaId: result.asistencia.id,
-
-      estado: result.sesion.estado,
-
-      iniciadoEn: result.sesion.iniciadoEn,
-
-      ultimoHeartbeatEn: result.sesion.ultimoHeartbeatEn,
+      sesionTrackingId: resultado.sesion.id,
+      asistenciaId: resultado.asistencia.id,
+      estado: resultado.sesion.estado,
+      iniciadoEn: resultado.sesion.iniciadoEn,
+      ultimoHeartbeatEn: resultado.sesion.ultimoHeartbeatEn,
     };
-  }
-
-  private resolveStartedAt(value?: Date): Date {
-    if (value === undefined) {
-      return new Date();
-    }
-
-    const date = new Date(value);
-
-    if (Number.isNaN(date.getTime())) {
-      throw new BadRequestException(
-        'iniciadoEn debe contener una fecha válida.',
-      );
-    }
-
-    return date;
-  }
-
-  //   private assertTechnicianRole(actorRol: string): void {
-  //     const normalizedRole = actorRol.trim().toUpperCase();
-
-  //     if (normalizedRole === 'TECNICO') {
-  //       return;
-  //     }
-
-  //     throw new ForbiddenException('Solo un técnico puede iniciar el tracking.');
-  //   }
-
-  private validateCommand(command: IniciarTecnicoTrackingCommand): void {
-    this.assertPositiveInteger(command.tecnicoId, 'tecnicoId');
-
-    // if (typeof command.actorRol !== 'string' || !command.actorRol.trim()) {
-    //   throw new ForbiddenException(
-    //     'No fue posible determinar el rol del usuario autenticado.',
-    //   );
-    // }
-  }
-
-  private assertPositiveInteger(value: number, field: string): void {
-    if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
-    }
   }
 }

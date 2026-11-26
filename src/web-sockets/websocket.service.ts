@@ -7,9 +7,9 @@ import { throwFatalError } from 'src/Utils/CommonFatalError';
 
 import { RealTimeLocationMapDto } from 'src/real-time-location/dto/dto-shape';
 
-import type { TecnicoTrackingRealtimeView } from 'src/modules/real-time-location/domain/ports/tecnico-tracking-query.port';
+import type { TecnicoTrackingRealtimeView } from 'src/modules/real-time-location/public/real-time-location.types';
 
-import type { TecnicoTrackingStateChangedPayload } from 'src/modules/real-time-location/domain/ports/tecnico-tracking-realtime.port';
+import type { TecnicoTrackingStateChangedPayload } from 'src/modules/real-time-location/public/real-time-location.types';
 
 /*
  * =========================================================
@@ -308,9 +308,9 @@ export class WebSocketServices {
 // import { BroadCastNewMessage } from './websocket.controller';
 // import { throwFatalError } from 'src/Utils/CommonFatalError';
 // import { RealTimeLocationMapDto } from 'src/real-time-location/dto/dto-shape';
-// import type { TecnicoTrackingRealtimeView } from 'src/modules/real-time-location/domain/ports/tecnico-tracking-query.port';
+// import type { TecnicoTrackingRealtimeView } from 'src/modules/real-time-location/public/real-time-location.types';
 
-// import type { TecnicoTrackingStateChangedPayload } from 'src/modules/real-time-location/domain/ports/tecnico-tracking-realtime.port';
+// import type { TecnicoTrackingStateChangedPayload } from 'src/modules/real-time-location/public/real-time-location.types';
 
 // @Injectable()
 // export class WebSocketServices {

@@ -1,7 +1,8 @@
+import { TrackingDatosInvalidosError } from '../errors/real-time-location.errors';
 import {
   CrearUbicacionTecnicoProps,
   UbicacionTecnicoProps,
-} from '../props/tecnico-trackin-session.props';
+} from '../props/ubicacion-tecnico.props';
 
 export class UbicacionTecnicoEntity {
   private constructor(private readonly props: UbicacionTecnicoProps) {}
@@ -163,43 +164,57 @@ export class UbicacionTecnicoEntity {
 
   private ensureLatitude(value: number): void {
     if (!Number.isFinite(value) || value < -90 || value > 90) {
-      throw new Error('latitud debe ser un valor válido entre -90 y 90.');
+      throw new TrackingDatosInvalidosError(
+        'latitud debe ser un valor válido entre -90 y 90.',
+      );
     }
   }
 
   private ensureLongitude(value: number): void {
     if (!Number.isFinite(value) || value < -180 || value > 180) {
-      throw new Error('longitud debe ser un valor válido entre -180 y 180.');
+      throw new TrackingDatosInvalidosError(
+        'longitud debe ser un valor válido entre -180 y 180.',
+      );
     }
   }
 
   private ensurePrecision(value: number): void {
     if (!Number.isFinite(value) || value < 0) {
-      throw new Error('precision debe ser un número mayor o igual a 0.');
+      throw new TrackingDatosInvalidosError(
+        'precision debe ser un número mayor o igual a 0.',
+      );
     }
   }
 
   private ensureVelocidad(value: number): void {
     if (!Number.isFinite(value) || value < 0) {
-      throw new Error('velocidad debe ser un número mayor o igual a 0.');
+      throw new TrackingDatosInvalidosError(
+        'velocidad debe ser un número mayor o igual a 0.',
+      );
     }
   }
 
   private ensureBateria(value: number): void {
     if (!Number.isInteger(value) || value < 0 || value > 100) {
-      throw new Error('bateria debe ser un número entero entre 0 y 100.');
+      throw new TrackingDatosInvalidosError(
+        'bateria debe ser un número entero entre 0 y 100.',
+      );
     }
   }
 
   private ensurePositiveId(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new Error(`${field} debe ser un identificador válido.`);
+      throw new TrackingDatosInvalidosError(
+        `${field} debe ser un identificador válido.`,
+      );
     }
   }
 
   private ensureValidDate(value: Date, field: string): void {
     if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
-      throw new Error(`${field} debe contener una fecha válida.`);
+      throw new TrackingDatosInvalidosError(
+        `${field} debe contener una fecha válida.`,
+      );
     }
   }
 }

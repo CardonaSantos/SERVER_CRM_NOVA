@@ -1,49 +1,33 @@
-import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-} from '@nestjs/common';
-
+import { Inject, Injectable } from '@nestjs/common';
 import { EstadoTrackingTecnico } from '../../domain/enums/estado-tracking-tecnico.enum';
+import {
+  TrackingDatosInvalidosError,
+  TrackingSesionInconsistenteError,
+} from '../../domain/errors/real-time-location.errors';
+import {
+  TECNICO_TRACKING_REPOSITORY,
+  TecnicoTrackingRepositoryPort,
+} from '../../domain/ports/tecnico-tracking-repository.port';
 
-import { TecnicoTrackingRepositoryPort } from '../../domain/ports/tecnico-tracking.repository.port';
-
-import { TECNICO_TRACKING_REPOSITORY } from '../../infra/tokens/tokens';
-
-export type ObtenerEstadoTrackingTecnicoCommand = {
-  /**
-   * Identidad obtenida exclusivamente del JWT.
-   */
+export type ObtenerEstadoTrackingTecnicoInput = {
+  /** El técnico autenticado. */
   tecnicoId: number;
-
-  /**
-   * Rol obtenido exclusivamente del JWT.
-   */
-  //   actorRol: string;
 };
 
 export type ObtenerEstadoTrackingTecnicoResult =
   | {
       activo: false;
-
       sesionTrackingId: null;
       asistenciaId: null;
-
       estado: null;
-
       iniciadoEn: null;
       ultimoHeartbeatEn: null;
     }
   | {
       activo: true;
-
       sesionTrackingId: number;
       asistenciaId: number;
-
       estado: EstadoTrackingTecnico;
-
       iniciadoEn: Date;
       ultimoHeartbeatEn: Date;
     };
@@ -52,86 +36,52 @@ export type ObtenerEstadoTrackingTecnicoResult =
 export class ObtenerEstadoTrackingTecnicoUseCase {
   constructor(
     @Inject(TECNICO_TRACKING_REPOSITORY)
-    private readonly trackingRepository: TecnicoTrackingRepositoryPort,
+    private readonly sesiones: TecnicoTrackingRepositoryPort,
   ) {}
 
   async execute(
-    command: ObtenerEstadoTrackingTecnicoCommand,
+    input: ObtenerEstadoTrackingTecnicoInput,
   ): Promise<ObtenerEstadoTrackingTecnicoResult> {
-    this.validateCommand(command);
-
-    // this.assertTechnicianRole(command.actorRol);
-
-    const activeSession =
-      await this.trackingRepository.findActiveSessionByTechnician(
-        command.tecnicoId,
+    if (!Number.isInteger(input.tecnicoId) || input.tecnicoId <= 0) {
+      throw new TrackingDatosInvalidosError(
+        'El técnico autenticado no es válido.',
       );
+    }
 
-    if (!activeSession) {
+    const activa = await this.sesiones.findActiveSessionByTechnician(
+      input.tecnicoId,
+    );
+
+    if (!activa) {
       return {
         activo: false,
-
         sesionTrackingId: null,
         asistenciaId: null,
-
         estado: null,
-
         iniciadoEn: null,
         ultimoHeartbeatEn: null,
       };
     }
 
-    const sesionTrackingId = activeSession.id;
-
-    if (!sesionTrackingId) {
-      throw new ConflictException(
+    if (!activa.id) {
+      throw new TrackingSesionInconsistenteError(
         'La sesión activa no posee un identificador persistido.',
       );
     }
 
-    const asistenciaId = activeSession.asistenciaId;
-
-    if (!asistenciaId) {
-      throw new ConflictException(
+    if (!activa.asistenciaId) {
+      throw new TrackingSesionInconsistenteError(
         'La sesión activa no posee una asistencia asociada.',
       );
     }
 
     return {
       activo: true,
-
-      sesionTrackingId,
-      asistenciaId,
-
-      estado: activeSession.estado,
-
-      iniciadoEn: activeSession.iniciadoEn,
-
-      ultimoHeartbeatEn: activeSession.ultimoHeartbeatEn,
+      sesionTrackingId: activa.id,
+      asistenciaId: activa.asistenciaId,
+      estado: activa.estado,
+      iniciadoEn: activa.iniciadoEn,
+      ultimoHeartbeatEn: activa.ultimoHeartbeatEn,
     };
-  }
-
-  //   private assertTechnicianRole(actorRol: string): void {
-  //     const normalizedRole = actorRol.trim().toUpperCase();
-
-  //     if (normalizedRole === 'TECNICO') {
-  //       return;
-  //     }
-
-  //     throw new ForbiddenException(
-  //       'Solo un técnico puede consultar su estado de tracking.',
-  //     );
-  //   }
-
-  private validateCommand(command: ObtenerEstadoTrackingTecnicoCommand): void {
-    if (!Number.isInteger(command.tecnicoId) || command.tecnicoId <= 0) {
-      throw new BadRequestException('tecnicoId debe ser un entero positivo.');
-    }
-
-    // if (typeof command.actorRol !== 'string' || !command.actorRol.trim()) {
-    //   throw new ForbiddenException(
-    //     'No fue posible determinar el rol del usuario autenticado.',
-    //   );
-    // }
   }
 }

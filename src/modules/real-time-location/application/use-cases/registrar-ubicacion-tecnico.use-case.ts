@@ -1,50 +1,50 @@
-import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
-
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
 import { UbicacionTecnicoEntity } from '../../domain/entities/ubicacion-tecnico.entity';
-
-import { TecnicoTrackingRepositoryPort } from '../../domain/ports/tecnico-tracking.repository.port';
+import { EstadoTrackingTecnico } from '../../domain/enums/estado-tracking-tecnico.enum';
+import {
+  TrackingDatosInvalidosError,
+  TrackingSesionEstadoInvalidoError,
+  TrackingSesionInconsistenteError,
+  TrackingSesionNoEncontradaError,
+} from '../../domain/errors/real-time-location.errors';
 import {
   TECNICO_TRACKING_QUERY,
-  TECNICO_TRACKING_REALTIME,
+  TecnicoTrackingQueryPort,
+} from '../../domain/ports/tecnico-tracking-query.port';
+import {
   TECNICO_TRACKING_REPOSITORY,
-} from '../../infra/tokens/tokens';
-import { TecnicoTrackingQueryPort } from '../../domain/ports/TecnicoTrackingQueryPort.port';
-import { TecnicoTrackingRealtimePort } from '../../domain/ports/tecnico-tracking-realtime.port';
+  TecnicoTrackingRepositoryPort,
+} from '../../domain/ports/tecnico-tracking-repository.port';
+import {
+  REAL_TIME_LOCATION_TRANSACTION,
+  RealTimeLocationTransactionPort,
+} from '../ports/real-time-location-transaction.port';
+import {
+  TECNICO_TRACKING_REALTIME,
+  TecnicoTrackingRealtimePort,
+} from '../ports/tecnico-tracking-realtime.port';
 
-export type RegistrarUbicacionTecnicoCommand = {
+export type RegistrarUbicacionTecnicoInput = {
+  /** El técnico autenticado. */
   tecnicoId: number;
-
   sesionTrackingId: number;
-
   latitud: number;
   longitud: number;
-
   precision?: number | null;
   velocidad?: number | null;
   bateria?: number | null;
 
-  capturadoEn: string | Date;
+  /** Instante en que el dispositivo capturó el punto; no se usa como heartbeat. */
+  capturadoEn: Date;
 };
 
 export type RegistrarUbicacionTecnicoResult = {
   ubicacionId: number;
-
   sesionTrackingId: number;
-
-  estado: string;
-
+  estado: EstadoTrackingTecnico;
   capturadoEn: Date;
-
   recibidoEn: Date;
-
   ultimoHeartbeatEn: Date;
 };
 
@@ -54,194 +54,101 @@ export class RegistrarUbicacionTecnicoUseCase {
 
   constructor(
     @Inject(TECNICO_TRACKING_REPOSITORY)
-    private readonly trackingRepository: TecnicoTrackingRepositoryPort,
-
+    private readonly sesiones: TecnicoTrackingRepositoryPort,
+    @Inject(REAL_TIME_LOCATION_TRANSACTION)
+    private readonly transaccion: RealTimeLocationTransactionPort,
     @Inject(TECNICO_TRACKING_QUERY)
-    private readonly trackingQuery: TecnicoTrackingQueryPort,
-
+    private readonly consulta: TecnicoTrackingQueryPort,
     @Inject(TECNICO_TRACKING_REALTIME)
-    private readonly trackingRealtime: TecnicoTrackingRealtimePort,
+    private readonly realtime: TecnicoTrackingRealtimePort,
+    @Inject(RELOJ) private readonly reloj: RelojPort,
   ) {}
 
   async execute(
-    command: RegistrarUbicacionTecnicoCommand,
+    input: RegistrarUbicacionTecnicoInput,
   ): Promise<RegistrarUbicacionTecnicoResult> {
-    this.validateCommand(command);
+    for (const [campo, valor] of [
+      ['técnico', input.tecnicoId],
+      ['sesión de tracking', input.sesionTrackingId],
+    ] as const) {
+      if (!Number.isInteger(valor) || valor <= 0) {
+        throw new TrackingDatosInvalidosError(
+          `El dato de ${campo} no es válido.`,
+        );
+      }
+    }
 
-    // this.assertTechnicianRole(command.actorRol);
-
-    const sesion = await this.trackingRepository.findSessionForTechnician({
-      tecnicoId: command.tecnicoId,
-      sesionTrackingId: command.sesionTrackingId,
+    const sesion = await this.sesiones.findSessionForTechnician({
+      tecnicoId: input.tecnicoId,
+      sesionTrackingId: input.sesionTrackingId,
     });
 
-    if (!sesion) {
-      throw new NotFoundException(
-        'No se encontró una sesión de tracking para el técnico autenticado.',
-      );
-    }
+    if (!sesion) throw new TrackingSesionNoEncontradaError();
 
     if (!sesion.isActiva) {
-      throw new ConflictException(
-        `La sesión de tracking no está activa. Estado actual: ${sesion.estado}.`,
+      throw new TrackingSesionEstadoInvalidoError(
+        'La sesión de tracking no está activa.',
       );
     }
 
-    const capturadoEn = this.parseCapturedAt(command.capturadoEn);
-
     const ubicacion = UbicacionTecnicoEntity.create({
-      tecnicoId: command.tecnicoId,
-
-      sesionTrackingId: command.sesionTrackingId,
-
-      latitud: command.latitud,
-      longitud: command.longitud,
-
-      precision: command.precision ?? null,
-      velocidad: command.velocidad ?? null,
-      bateria: command.bateria ?? null,
-
-      capturadoEn,
+      tecnicoId: input.tecnicoId,
+      sesionTrackingId: input.sesionTrackingId,
+      latitud: input.latitud,
+      longitud: input.longitud,
+      precision: input.precision ?? null,
+      velocidad: input.velocidad ?? null,
+      bateria: input.bateria ?? null,
+      capturadoEn: input.capturadoEn,
     });
 
-    /*
-     * Heartbeat = comunicación confirmada con backend.
-     *
-     * No usamos capturadoEn porque esa fecha
-     * pertenece al dispositivo.
-     */
-    const recibidoEn = new Date();
+    // El heartbeat es la comunicación confirmada con el backend: la hora del
+    // servidor, no la del dispositivo.
+    sesion.registrarHeartbeat(this.reloj.ahora());
 
-    sesion.registrarHeartbeat({
-      ocurridoEn: recibidoEn,
-    });
-
-    const persisted = await this.trackingRepository.registerLocation({
+    const guardado = await this.transaccion.registrarUbicacion({
       sesion,
       ubicacion,
     });
 
-    if (!persisted.applied) {
-      throw new ConflictException(
+    if (!guardado.applied) {
+      throw new TrackingSesionEstadoInvalidoError(
         'La sesión dejó de estar activa mientras se registraba la ubicación.',
       );
     }
 
-    const ubicacionId = persisted.ubicacion.id;
-
-    if (!ubicacionId) {
-      throw new ConflictException(
-        'La ubicación fue persistida sin identificador.',
+    if (!guardado.ubicacion.id || !guardado.ubicacion.creadoEn) {
+      throw new TrackingSesionInconsistenteError(
+        'La ubicación fue persistida sin identificador o sin fecha de recepción.',
       );
     }
 
-    const recibidoPersistido = persisted.ubicacion.creadoEn;
-
-    if (!recibidoPersistido) {
-      throw new ConflictException(
-        'La ubicación fue persistida sin fecha de recepción.',
-      );
-    }
-
-    // =====================================================
-    // SOCKET - ACTUALIZAR VISTA REALTIME
-    // =====================================================
-
-    await this.emitRealtimeLocationSafely(command.tecnicoId);
+    await this.emitirRealtimeSinFallar(input.tecnicoId);
 
     return {
-      ubicacionId,
-
-      sesionTrackingId: command.sesionTrackingId,
-
-      estado: persisted.sesion.estado,
-
-      capturadoEn,
-
-      recibidoEn: recibidoPersistido,
-
-      ultimoHeartbeatEn: persisted.sesion.ultimoHeartbeatEn,
+      ubicacionId: guardado.ubicacion.id,
+      sesionTrackingId: input.sesionTrackingId,
+      estado: guardado.sesion.estado,
+      capturadoEn: input.capturadoEn,
+      recibidoEn: guardado.ubicacion.creadoEn,
+      ultimoHeartbeatEn: guardado.sesion.ultimoHeartbeatEn,
     };
   }
 
-  private parseCapturedAt(value: string | Date): Date {
-    const date = new Date(value);
-
-    if (Number.isNaN(date.getTime())) {
-      throw new BadRequestException(
-        'capturadoEn debe contener una fecha válida.',
-      );
-    }
-
-    return date;
-  }
-
-  //   private assertTechnicianRole(actorRol: string): void {
-  //     const normalizedRole = actorRol.trim().toUpperCase();
-
-  //     if (normalizedRole === 'TECNICO') {
-  //       return;
-  //     }
-
-  //     throw new ForbiddenException(
-  //       'Solo un técnico puede registrar su ubicación.',
-  //     );
-  //   }
-
-  private validateCommand(command: RegistrarUbicacionTecnicoCommand): void {
-    this.assertPositiveInteger(command.tecnicoId, 'tecnicoId');
-
-    this.assertPositiveInteger(command.sesionTrackingId, 'sesionTrackingId');
-
-    // if (typeof command.actorRol !== 'string' || !command.actorRol.trim()) {
-    //   throw new ForbiddenException(
-    //     'No fue posible determinar el rol del usuario autenticado.',
-    //   );
-    // }
-  }
-
-  private assertPositiveInteger(value: number, field: string): void {
-    if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${field} debe ser un entero positivo.`);
-    }
-  }
-
-  private async emitRealtimeLocationSafely(tecnicoId: number): Promise<void> {
+  /**
+   * El socket es un efecto secundario: una ubicación ya guardada nunca se
+   * convierte en 500 porque falló la vista enriquecida o la emisión (la app
+   * reintentaría y duplicaría el punto).
+   */
+  private async emitirRealtimeSinFallar(tecnicoId: number): Promise<void> {
     try {
-      /*
-       * La ubicación ya fue persistida antes de llegar aquí.
-       *
-       * Construimos ahora la vista enriquecida que consume
-       * el mapa administrativo.
-       */
-      const realtimeView =
-        await this.trackingQuery.findRealtimeViewByTechnician(tecnicoId);
+      const vista = await this.consulta.findRealtimeViewByTechnician(tecnicoId);
 
-      /*
-       * Puede ocurrir que un OFF gane la carrera justo
-       * después del INSERT del GPS.
-       *
-       * En ese caso ya no existe una sesión ACTIVA
-       * para construir la vista realtime.
-       *
-       * No es un error de persistencia.
-       */
-      if (!realtimeView) {
-        return;
-      }
+      // Un OFF pudo ganar la carrera justo después del INSERT: ya no hay sesión activa.
+      if (!vista) return;
 
-      await this.trackingRealtime.emitLocationUpdated(realtimeView);
+      await this.realtime.emitLocationUpdated(vista);
     } catch (error) {
-      /*
-       * Socket/realtime es un efecto secundario.
-       *
-       * Nunca convertimos un GPS correctamente persistido
-       * en un HTTP 500 solamente porque falló la consulta
-       * enriquecida o la emisión Socket.
-       *
-       * Esto también evita que la APK reintente y pueda
-       * insertar innecesariamente el mismo punto otra vez.
-       */
       this.logger.error(
         'La ubicación fue persistida, pero no pudo emitirse la actualización realtime.',
         error instanceof Error ? error.stack : String(error),

@@ -1,284 +1,48 @@
-import { EstadoTrackingTecnico } from '../enums/estado-tracking-tecnico.enum';
-
-// TECNICO
-
-export type TecnicoTrackingTecnicoResumen = {
-  id: number;
-
-  nombre: string;
-
-  correo: string | null;
-  telefono: string | null;
-
-  rol: string;
-
-  avatarUrl: string | null;
-
-  activo: boolean;
-};
-
-// HISTORICO - FILTROS
-
-export type TecnicoTrackingHistorialFilters = {
-  page: number;
-  limit: number;
-
-  /**
-   * Nombre, correo o teléfono del técnico.
-   */
-  search?: string | null;
-
-  tecnicoId?: number | null;
-
-  fechaDesde?: Date | null;
-  fechaHasta?: Date | null;
-
-  /**
-   * Permite, por ejemplo, buscar jornadas
-   * que tuvieron al menos una sesión EXPIRADA.
-   */
-  estadoSesion?: EstadoTrackingTecnico | null;
-};
-
-export type TecnicoTrackingHistorialListItem = {
-  asistenciaId: number;
-
-  fecha: Date;
-
-  horaEntrada: Date;
-  horaSalida: Date | null;
-
-  tecnico: TecnicoTrackingTecnicoResumen;
-
-  asistencia: {
-    minutosTarde: number | null;
-    trabajoCompleto: boolean;
-  };
-
-  tracking: {
-    sesionesTotal: number;
-
-    sesionesFinalizadas: number;
-    sesionesExpiradas: number;
-
-    haySesionActiva: boolean;
-
-    primeraActivacion: Date | null;
-    ultimaFinalizacion: Date | null;
-
-    ultimoHeartbeatEn: Date | null;
-
-    /**
-     * Derivado. Nunca persistido.
-     */
-    minutosTracking: number;
-  };
-};
-
-// detalles
-
-export type TecnicoTrackingSesionDetalle = {
-  id: number;
-
-  estado: EstadoTrackingTecnico;
-
-  iniciadoEn: Date;
-  finalizadoEn: Date | null;
-
-  ultimoHeartbeatEn: Date;
-
-  /**
-   * Tiempo confirmado de tracking.
-   *
-   * FINALIZADA / EXPIRADA:
-   * finalizadoEn - iniciadoEn.
-   *
-   * ACTIVA:
-   * ultimoHeartbeatEn - iniciadoEn.
-   *
-   * Nunca se extiende artificialmente hasta "ahora".
-   */
-  duracionMinutos: number;
-
-  puntosRegistrados: number;
-
-  bateriaInicial: number | null;
-  bateriaFinal: number | null;
-
-  primeraUbicacion: {
-    latitud: number;
-    longitud: number;
-    capturadoEn: Date | null;
-  } | null;
-
-  ultimaUbicacion: {
-    latitud: number;
-    longitud: number;
-    capturadoEn: Date | null;
-  } | null;
-};
-
-export type TecnicoTrackingAsistenciaDetalle = {
-  asistencia: {
-    id: number;
-
-    fecha: Date;
-
-    horaEntrada: Date;
-    horaSalida: Date | null;
-
-    minutosTarde: number | null;
-
-    trabajoCompleto: boolean;
-  };
-
-  tecnico: TecnicoTrackingTecnicoResumen;
-
-  resumen: {
-    sesionesTotal: number;
-
-    sesionesFinalizadas: number;
-    sesionesExpiradas: number;
-
-    haySesionActiva: boolean;
-
-    primeraActivacion: Date | null;
-    ultimaFinalizacion: Date | null;
-
-    ultimoHeartbeatEn: Date | null;
-
-    /**
-     * Tiempo confirmado de tracking.
-     *
-     * FINALIZADA / EXPIRADA:
-     * finalizadoEn - iniciadoEn.
-     *
-     * ACTIVA:
-     * ultimoHeartbeatEn - iniciadoEn.
-     *
-     * Nunca se extiende artificialmente hasta "ahora".
-     */
-    minutosTracking: number;
-
-    /**
-     * Solo puede calcularse completamente
-     * cuando existe una horaSalida.
-     */
-    minutosJornada: number | null;
-
-    minutosSinTracking: number | null;
-  };
-
-  sesiones: TecnicoTrackingSesionDetalle[];
-};
-
-// OTROS
-export type TecnicoTrackingUbicacionListItem = {
-  id: number;
-
-  sesionTrackingId: number | null;
-
-  latitud: number;
-  longitud: number;
-
-  precision: number | null;
-  velocidad: number | null;
-
-  bateria: number | null;
-
-  capturadoEn: Date | null;
-
-  /**
-   * UbicacionTecnico.creadoEn
-   */
-  recibidoEn: Date;
-};
-
-export type TecnicoTrackingUbicacionesFilters = {
-  asistenciaId: number;
-
-  sesionTrackingId?: number | null;
-
-  page: number;
-  limit: number;
-};
-
-export type TecnicoTrackingUbicacionesPaginatedResult = {
-  items: TecnicoTrackingUbicacionListItem[];
-
-  total: number;
-
-  page: number;
-  limit: number;
-
-  totalPages: number;
-};
-
-export type TecnicoTrackingRealtimeView = {
-  tecnico: {
-    id: number;
-    nombre: string;
-    telefono: string | null;
-    rol: string;
-    avatarUrl: string | null;
-  };
-
-  tracking: {
-    sesionId: number;
-
-    // NUEVO
+import { Paginacion, ResultadoPaginado } from 'src/common/hexagonal/paginacion';
+import {
+  TecnicoTrackingAsistenciaDetalle,
+  TecnicoTrackingHistorialFilters,
+  TecnicoTrackingHistorialListItem,
+  TecnicoTrackingRealtimeView,
+  TecnicoTrackingUbicacionesFilters,
+  TecnicoTrackingUbicacionListItem,
+} from '../read-models/tecnico-tracking.read-model';
+
+export const TECNICO_TRACKING_QUERY = Symbol('TECNICO_TRACKING_QUERY');
+
+export interface TecnicoTrackingQueryPort {
+  findAttendanceHistory(
+    filters: TecnicoTrackingHistorialFilters,
+    paginacion: Paginacion,
+  ): Promise<ResultadoPaginado<TecnicoTrackingHistorialListItem>>;
+
+  findAttendanceDetail(params: {
     asistenciaId: number;
+  }): Promise<TecnicoTrackingAsistenciaDetalle | null>;
 
-    minutosSesionActual: number;
+  findAttendanceLocations(
+    filters: TecnicoTrackingUbicacionesFilters,
+    paginacion: Paginacion,
+  ): Promise<ResultadoPaginado<TecnicoTrackingUbicacionListItem>>;
 
-    estado: EstadoTrackingTecnico;
+  /**
+   * Construye la vista operacional enriquecida
+   * de un técnico con tracking activo.
+   *
+   * Utilizada principalmente por los eventos realtime
+   * posteriores a un heartbeat/GPS.
+   */
+  findRealtimeViewByTechnician(
+    tecnicoId: number,
+  ): Promise<TecnicoTrackingRealtimeView | null>;
 
-    iniciadoEn: Date;
-    ultimoHeartbeatEn: Date;
-  };
-
-  jornada: {
-    fecha: Date;
-    horaEntrada: Date;
-    horaSalida: Date;
-    sesionesTotal: number;
-    sesionesFinalizadas: number;
-    sesionesExpiradas: number;
-    minutosTracking: number;
-    minutosJornadaConfirmados: number;
-    minutosSinTrackingConfirmados: number;
-  };
-
-  ubicacion: {
-    latitud: number;
-    longitud: number;
-
-    precision: number | null;
-    velocidad: number | null;
-
-    bateria: number | null;
-
-    capturadoEn: Date | null;
-    recibidoEn: Date;
-  } | null;
-
-  actividad: {
-    ticketsEnProceso: Array<{
-      id: number;
-      titulo: string | null;
-      estado: string;
-      prioridad: string;
-    }>;
-  };
-};
-
-export type TecnicoTrackingHistorialPaginatedResult = {
-  items: TecnicoTrackingHistorialListItem[];
-
-  total: number;
-
-  page: number;
-  limit: number;
-
-  totalPages: number;
-};
+  /**
+   * Snapshot operacional de todos los técnicos
+   * que actualmente poseen una sesión de tracking ACTIVA.
+   *
+   * Es la fuente HTTP inicial para los mapas realtime.
+   * Después de este snapshot, Socket.IO mantiene
+   * la información actualizada incrementalmente.
+   */
+  findActiveRealtimeViews(): Promise<TecnicoTrackingRealtimeView[]>;
+}

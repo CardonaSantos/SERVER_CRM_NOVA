@@ -1,227 +1,148 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
-
-import { TecnicoTrackingRepositoryPort } from '../../domain/ports/tecnico-tracking.repository.port';
+import { Inject, Injectable } from '@nestjs/common';
+import { TrackingDatosInvalidosError } from '../../domain/errors/real-time-location.errors';
+import { minutosEntre } from '../../domain/policies/metricas-tracking.policy';
+import {
+  TECNICO_TRACKING_REPOSITORY,
+  TecnicoTrackingRepositoryPort,
+} from '../../domain/ports/tecnico-tracking-repository.port';
+import {
+  REAL_TIME_LOCATION_TRANSACTION,
+  RealTimeLocationTransactionPort,
+} from '../ports/real-time-location-transaction.port';
 import {
   TECNICO_TRACKING_REALTIME,
-  TECNICO_TRACKING_REPOSITORY,
-} from '../../infra/tokens/tokens';
-import { TecnicoTrackingRealtimePort } from '../../domain/ports/tecnico-tracking-realtime.port';
+  TecnicoTrackingRealtimePort,
+} from '../ports/tecnico-tracking-realtime.port';
 
-export type ExpirarTecnicoTrackingCommand = {
-  /**
-   * Toda sesión ACTIVA cuyo heartbeat sea
-   * anterior a esta fecha es candidata.
-   */
+export type ExpirarTecnicoTrackingInput = {
+  /** Toda sesión ACTIVA con el último heartbeat anterior a esta fecha es candidata. */
   heartbeatBefore: Date;
 
-  /**
-   * Procesamiento acotado por lote.
-   */
+  /** Tamaño del lote; por defecto 100, máximo 500. */
   limit?: number;
 };
 
 export type ExpirarTecnicoTrackingResult = {
   encontradas: number;
-
   expiradas: number;
-
   omitidasPorConcurrencia: number;
-
   sesionesExpiradas: Array<{
     sesionTrackingId: number;
     asistenciaId: number;
-
     tecnicoId: number;
-
     iniciadoEn: Date;
-
     finalizadoEn: Date;
-
     ultimoHeartbeatEn: Date;
-
     duracionMinutos: number;
   }>;
 };
 
+const LIMITE_POR_DEFECTO = 100;
+const LIMITE_MAXIMO = 500;
+
 @Injectable()
 export class ExpirarTecnicoTrackingUseCase {
-  private static readonly DEFAULT_LIMIT = 100;
-  private static readonly MAX_LIMIT = 500;
-
   constructor(
     @Inject(TECNICO_TRACKING_REPOSITORY)
-    private readonly trackingRepository: TecnicoTrackingRepositoryPort,
-
+    private readonly sesiones: TecnicoTrackingRepositoryPort,
+    @Inject(REAL_TIME_LOCATION_TRANSACTION)
+    private readonly transaccion: RealTimeLocationTransactionPort,
     @Inject(TECNICO_TRACKING_REALTIME)
-    private readonly trackingRealtime: TecnicoTrackingRealtimePort,
+    private readonly realtime: TecnicoTrackingRealtimePort,
   ) {}
 
   async execute(
-    command: ExpirarTecnicoTrackingCommand,
+    input: ExpirarTecnicoTrackingInput,
   ): Promise<ExpirarTecnicoTrackingResult> {
-    const heartbeatBefore = this.parseHeartbeatBefore(command.heartbeatBefore);
+    const before = new Date(input.heartbeatBefore);
 
-    const limit = this.resolveLimit(command.limit);
+    if (Number.isNaN(before.getTime())) {
+      throw new TrackingDatosInvalidosError(
+        'La fecha límite de heartbeat no es válida.',
+      );
+    }
+
+    if (
+      input.limit !== undefined &&
+      (!Number.isInteger(input.limit) || input.limit <= 0)
+    ) {
+      throw new TrackingDatosInvalidosError(
+        'El tamaño del lote debe ser un entero positivo.',
+      );
+    }
 
     const candidatas =
-      await this.trackingRepository.findActiveSessionsWithHeartbeatBefore({
-        before: heartbeatBefore,
-        limit,
+      await this.sesiones.findActiveSessionsWithHeartbeatBefore({
+        before,
+        limit: Math.min(input.limit ?? LIMITE_POR_DEFECTO, LIMITE_MAXIMO),
       });
 
     const sesionesExpiradas: ExpirarTecnicoTrackingResult['sesionesExpiradas'] =
       [];
-
     let omitidasPorConcurrencia = 0;
 
     for (const sesion of candidatas) {
-      /*
-       * La consulta ya debería devolver únicamente
-       * sesiones ACTIVA, pero mantenemos esta defensa.
-       */
-      if (!sesion.isActiva) {
-        continue;
-      }
-
-      const sesionId = sesion.id;
       const asistenciaId = sesion.asistenciaId;
 
-      if (!sesionId || !asistenciaId) {
-        /*
-         * No podemos cerrar correctamente una sesión
-         * que no posee identidad persistida o asistencia.
-         *
-         * Más adelante esto puede convertirse en
-         * observabilidad/log de integridad.
-         */
-        continue;
-      }
+      // Sin identidad persistida o sin asistencia no se puede cerrar bien.
+      if (!sesion.isActiva || !sesion.id || !asistenciaId) continue;
 
-      /*
-       * Guardamos el heartbeat observado ANTES
-       * de modificar la entidad.
-       */
+      // El heartbeat observado ANTES de transitar: la persistencia comprueba
+      // que no haya cambiado.
       const expectedHeartbeatEn = sesion.ultimoHeartbeatEn;
 
-      /*
-       * Regla de dominio:
-       *
-       * estado       → EXPIRADA
-       * finalizadoEn → ultimoHeartbeatEn
-       */
       sesion.expirar();
 
-      const result = await this.trackingRepository.expireTracking({
+      const resultado = await this.transaccion.expirarTracking({
         sesion,
-
         asistenciaId,
-
         expectedHeartbeatEn,
       });
 
-      /*
-       * Puede ocurrir:
-       *
-       * 1. encontramos stale a las 10:30;
-       * 2. llega GPS a las 10:30:01;
-       * 3. repository detecta que heartbeat cambió;
-       * 4. NO expira.
-       *
-       * Esto no es un error.
-       */
-      if (!result.applied) {
+      // Pudo llegar GPS entre la búsqueda y la expiración: no es un error.
+      if (!resultado.applied) {
         omitidasPorConcurrencia += 1;
         continue;
       }
 
-      const persistedSession = result.sesion;
+      const expirada = resultado.sesion;
 
-      if (
-        !persistedSession ||
-        !persistedSession.id ||
-        !persistedSession.finalizadoEn
-      ) {
-        throw new Error(
-          'La expiración fue aplicada sin devolver una sesión persistida válida.',
+      if (!expirada?.id || !expirada.finalizadoEn) {
+        // Error de programación: la persistencia dijo "aplicado" sin sesión válida.
+        throw new TrackingDatosInvalidosError(
+          'La expiración fue aplicada sin devolver una sesión válida.',
         );
       }
 
-      // SOCKET - SESIÓN EXPIRADA
-
-      await this.trackingRealtime.emitTrackingStateChanged({
-        tecnicoId: persistedSession.tecnicoId,
-
-        sesionTrackingId: persistedSession.id,
-
+      await this.realtime.emitTrackingStateChanged({
+        tecnicoId: expirada.tecnicoId,
+        sesionTrackingId: expirada.id,
         asistenciaId,
-
-        estado: persistedSession.estado,
-
-        iniciadoEn: persistedSession.iniciadoEn,
-
-        finalizadoEn: persistedSession.finalizadoEn,
-
-        ultimoHeartbeatEn: persistedSession.ultimoHeartbeatEn,
+        estado: expirada.estado,
+        iniciadoEn: expirada.iniciadoEn,
+        finalizadoEn: expirada.finalizadoEn,
+        ultimoHeartbeatEn: expirada.ultimoHeartbeatEn,
       });
 
       sesionesExpiradas.push({
-        sesionTrackingId: persistedSession.id,
-
+        sesionTrackingId: expirada.id,
         asistenciaId,
-
-        tecnicoId: persistedSession.tecnicoId,
-
-        iniciadoEn: persistedSession.iniciadoEn,
-
-        finalizadoEn: persistedSession.finalizadoEn,
-
-        ultimoHeartbeatEn: persistedSession.ultimoHeartbeatEn,
-
-        duracionMinutos: this.calculateDurationMinutes(
-          persistedSession.iniciadoEn,
-          persistedSession.finalizadoEn,
+        tecnicoId: expirada.tecnicoId,
+        iniciadoEn: expirada.iniciadoEn,
+        finalizadoEn: expirada.finalizadoEn,
+        ultimoHeartbeatEn: expirada.ultimoHeartbeatEn,
+        duracionMinutos: minutosEntre(
+          expirada.iniciadoEn,
+          expirada.finalizadoEn,
         ),
       });
     }
 
     return {
       encontradas: candidatas.length,
-
       expiradas: sesionesExpiradas.length,
-
       omitidasPorConcurrencia,
-
       sesionesExpiradas,
     };
-  }
-
-  private parseHeartbeatBefore(value: Date): Date {
-    const date = new Date(value);
-
-    if (Number.isNaN(date.getTime())) {
-      throw new BadRequestException(
-        'heartbeatBefore debe contener una fecha válida.',
-      );
-    }
-
-    return date;
-  }
-
-  private resolveLimit(value?: number): number {
-    if (value === undefined) {
-      return ExpirarTecnicoTrackingUseCase.DEFAULT_LIMIT;
-    }
-
-    if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException('limit debe ser un entero positivo.');
-    }
-
-    return Math.min(value, ExpirarTecnicoTrackingUseCase.MAX_LIMIT);
-  }
-
-  private calculateDurationMinutes(start: Date, end: Date): number {
-    const milliseconds = end.getTime() - start.getTime();
-
-    return Math.max(0, Math.floor(milliseconds / 60_000));
   }
 }

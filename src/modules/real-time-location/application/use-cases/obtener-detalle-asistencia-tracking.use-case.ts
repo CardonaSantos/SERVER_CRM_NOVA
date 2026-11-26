@@ -1,15 +1,12 @@
+import { Inject, Injectable } from '@nestjs/common';
+import { TrackingAsistenciaNoEncontradaError } from '../../domain/errors/real-time-location.errors';
 import {
-  BadRequestException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+  TECNICO_TRACKING_QUERY,
+  TecnicoTrackingQueryPort,
+} from '../../domain/ports/tecnico-tracking-query.port';
+import { TecnicoTrackingAsistenciaDetalle } from '../../domain/read-models/tecnico-tracking.read-model';
 
-import { TecnicoTrackingAsistenciaDetalle } from '../../domain/ports/tecnico-tracking-query.port';
-import { TECNICO_TRACKING_QUERY } from '../../infra/tokens/tokens';
-import { TecnicoTrackingQueryPort } from '../../domain/ports/TecnicoTrackingQueryPort.port';
-
-export type ObtenerDetalleAsistenciaTrackingCommand = {
+export type ObtenerDetalleAsistenciaTrackingInput = {
   asistenciaId: number;
 };
 
@@ -17,32 +14,19 @@ export type ObtenerDetalleAsistenciaTrackingCommand = {
 export class ObtenerDetalleAsistenciaTrackingUseCase {
   constructor(
     @Inject(TECNICO_TRACKING_QUERY)
-    private readonly trackingQuery: TecnicoTrackingQueryPort,
+    private readonly consulta: TecnicoTrackingQueryPort,
   ) {}
 
+  /** Jornada de un técnico con sus sesiones de tracking y el resumen de tiempos. */
   async execute(
-    command: ObtenerDetalleAsistenciaTrackingCommand,
+    input: ObtenerDetalleAsistenciaTrackingInput,
   ): Promise<TecnicoTrackingAsistenciaDetalle> {
-    this.validateCommand(command);
-
-    const detail = await this.trackingQuery.findAttendanceDetail({
-      asistenciaId: command.asistenciaId,
+    const detalle = await this.consulta.findAttendanceDetail({
+      asistenciaId: input.asistenciaId,
     });
 
-    if (!detail) {
-      throw new NotFoundException('No se encontró la asistencia solicitada.');
-    }
+    if (!detalle) throw new TrackingAsistenciaNoEncontradaError();
 
-    return detail;
-  }
-
-  private validateCommand(
-    command: ObtenerDetalleAsistenciaTrackingCommand,
-  ): void {
-    if (!Number.isInteger(command.asistenciaId) || command.asistenciaId <= 0) {
-      throw new BadRequestException(
-        'asistenciaId debe ser un entero positivo.',
-      );
-    }
+    return detalle;
   }
 }

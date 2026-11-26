@@ -1,96 +1,70 @@
 import { Module } from '@nestjs/common';
-
-import { AuthModule } from 'src/auth/auth.module';
 import { PrismaModule } from 'src/prisma/prisma.module';
-
-import { ExpirarTecnicoTrackingUseCase } from './application/use-cases/expirar-tecnico-tracking.use-case';
-
-import { FinalizarTecnicoTrackingUseCase } from './application/use-cases/finalizar-tecnico-tracking.use-case';
-
-import { IniciarTecnicoTrackingUseCase } from './application/use-cases/iniciar-tecnico-tracking.use-case';
-
-import { ListarHistorialTecnicoTrackingUseCase } from './application/use-cases/listar-historial-tecnico-tracking.use-case';
-
-import { ListarTecnicosTrackingRealtimeUseCase } from './application/use-cases/listar-tecnicos-tracking-realtime.use-case';
-
-import { ListarUbicacionesAsistenciaTrackingUseCase } from './application/use-cases/listar-ubicaciones-asistencia-tracking.use-case';
-
-import { ObtenerDetalleAsistenciaTrackingUseCase } from './application/use-cases/obtener-detalle-asistencia-tracking.use-case';
-
-import { RegistrarUbicacionTecnicoUseCase } from './application/use-cases/registrar-ubicacion-tecnico.use-case';
-
-import { AsistenciaTrackingPrismaAdapter } from './infra/prisma/asistencia-tracking.prisma.adapter';
-
-import { TecnicoTrackingPrismaQuery } from './infra/prisma/tecnico-tracking.prisma.query';
-
-import { TecnicoTrackingPrismaRepository } from './infra/prisma/tecnico-tracking.prisma.repository';
-
-import {
-  ASISTENCIA_TRACKING_PORT,
-  TECNICO_TRACKING_QUERY,
-  TECNICO_TRACKING_REALTIME,
-  TECNICO_TRACKING_REPOSITORY,
-} from './infra/tokens/tokens';
-
-import { RealTimeLocationController } from './presentation/controllers/real-time-location.controller';
-
-import { TecnicoTrackingExpirationScheduler } from './infra/scheduler/tecnico-tracking-expiration.scheduler';
-
 import { GatewayModule } from 'src/web-sockets/websocket.module';
-
-import { TecnicoTrackingWebSocketAdapter } from './infra/realtime/tecnico-tracking.websocket.adapter';
-
+import { REAL_TIME_LOCATION_TRANSACTION } from './application/ports/real-time-location-transaction.port';
+import { TECNICO_TRACKING_REALTIME } from './application/ports/tecnico-tracking-realtime.port';
+import { ExpirarTecnicoTrackingUseCase } from './application/use-cases/expirar-tecnico-tracking.use-case';
+import { FinalizarTecnicoTrackingUseCase } from './application/use-cases/finalizar-tecnico-tracking.use-case';
+import { IniciarTecnicoTrackingUseCase } from './application/use-cases/iniciar-tecnico-tracking.use-case';
+import { ListarHistorialTecnicoTrackingUseCase } from './application/use-cases/listar-historial-tecnico-tracking.use-case';
+import { ListarTecnicosTrackingRealtimeUseCase } from './application/use-cases/listar-tecnicos-tracking-realtime.use-case';
+import { ListarUbicacionesAsistenciaTrackingUseCase } from './application/use-cases/listar-ubicaciones-asistencia-tracking.use-case';
+import { ObtenerDetalleAsistenciaTrackingUseCase } from './application/use-cases/obtener-detalle-asistencia-tracking.use-case';
 import { ObtenerEstadoTrackingTecnicoUseCase } from './application/use-cases/obtener-estado-tracking-tecnico.use-case';
+import { RegistrarUbicacionTecnicoUseCase } from './application/use-cases/registrar-ubicacion-tecnico.use-case';
+import { ASISTENCIA_TRACKING_QUERY } from './domain/ports/asistencia-tracking-query.port';
+import { TECNICO_TRACKING_QUERY } from './domain/ports/tecnico-tracking-query.port';
+import { TECNICO_TRACKING_REPOSITORY } from './domain/ports/tecnico-tracking-repository.port';
+import { AsistenciaTrackingPrismaQuery } from './infra/prisma/asistencia-tracking-prisma.query';
+import { RealTimeLocationPrismaTransaction } from './infra/prisma/real-time-location-prisma.transaction';
+import { TecnicoTrackingPrismaQuery } from './infra/prisma/tecnico-tracking-prisma.query';
+import { TecnicoTrackingPrismaRepository } from './infra/prisma/tecnico-tracking-prisma.repository';
+import { TecnicoTrackingWebSocketAdapter } from './infra/websocket/tecnico-tracking-websocket.adapter';
+import { TecnicoTrackingExpiracionCron } from './presentation/cron/tecnico-tracking-expiracion.cron';
+import { RealTimeLocationController } from './presentation/http/real-time-location.controller';
 
+/**
+ * Tracking en vivo de técnicos (sesiones, ubicaciones y jornada).
+ *
+ * API pública (`public/`): los tipos de `real-time-location.types.ts`.
+ */
 @Module({
-  imports: [PrismaModule, AuthModule, GatewayModule],
-
+  imports: [PrismaModule, GatewayModule],
   controllers: [RealTimeLocationController],
-
   providers: [
+    // Casos de uso
     IniciarTecnicoTrackingUseCase,
-
+    ObtenerEstadoTrackingTecnicoUseCase,
     RegistrarUbicacionTecnicoUseCase,
-
     FinalizarTecnicoTrackingUseCase,
-
     ExpirarTecnicoTrackingUseCase,
-
     ListarHistorialTecnicoTrackingUseCase,
-
     ListarTecnicosTrackingRealtimeUseCase,
-
     ObtenerDetalleAsistenciaTrackingUseCase,
-
     ListarUbicacionesAsistenciaTrackingUseCase,
 
-    ObtenerEstadoTrackingTecnicoUseCase,
+    // Cron
+    TecnicoTrackingExpiracionCron,
 
-    // SCHEDULER
-    TecnicoTrackingExpirationScheduler,
-
+    // Adaptadores
     {
       provide: TECNICO_TRACKING_REPOSITORY,
-
       useClass: TecnicoTrackingPrismaRepository,
     },
-
     {
-      provide: ASISTENCIA_TRACKING_PORT,
-
-      useClass: AsistenciaTrackingPrismaAdapter,
+      provide: REAL_TIME_LOCATION_TRANSACTION,
+      useClass: RealTimeLocationPrismaTransaction,
     },
-
     {
       provide: TECNICO_TRACKING_QUERY,
-
       useClass: TecnicoTrackingPrismaQuery,
     },
-
-    // GATEWAY
+    {
+      provide: ASISTENCIA_TRACKING_QUERY,
+      useClass: AsistenciaTrackingPrismaQuery,
+    },
     {
       provide: TECNICO_TRACKING_REALTIME,
-
       useClass: TecnicoTrackingWebSocketAdapter,
     },
   ],
