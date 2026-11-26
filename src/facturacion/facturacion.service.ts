@@ -1300,10 +1300,10 @@ export class FacturacionService {
     }
   }
   async updateFactura(id: number, dto: UpdateFacturaDto) {
-    try {
-      console.log('actualizando la factura', dto);
-
-      const facturaToUpdate = await this.prisma.facturaInternet.findUnique({
+    // La factura, el saldo y la cobranza se guardan juntos. El estado operativo
+    // del cliente no cambia aquí: depende de su PPPoE y del ajuste manual.
+    return this.prisma.$transaction(async (tx) => {
+      const facturaToUpdate = await tx.facturaInternet.findUnique({
         where: { id },
       });
       if (!facturaToUpdate)
@@ -1313,7 +1313,7 @@ export class FacturacionService {
 
       const nuevoSaldoFactura = dto.montoPago;
 
-      const facturaUpdated = await this.prisma.facturaInternet.update({
+      const facturaUpdated = await tx.facturaInternet.update({
         where: { id },
         data: {
           montoPago: dto.montoPago,
@@ -1328,86 +1328,29 @@ export class FacturacionService {
         },
       });
 
-      const clienteSaldo = await this.prisma.saldoCliente.findUnique({
+      const clienteSaldo = await tx.saldoCliente.findUnique({
         where: { clienteId: facturaToUpdate.clienteId },
       });
       //Actualizar solo una vez
       if (clienteSaldo) {
-        if (dto.estadoFacturaInternet === 'ANULADA') {
-          const nuevoSaldoPendiente = Math.max(
-            clienteSaldo.saldoPendiente - saldoOriginalFactura,
-            0,
-          );
-          await this.prisma.saldoCliente.update({
-            where: { clienteId: clienteSaldo.clienteId },
-            data: { saldoPendiente: nuevoSaldoPendiente },
-          });
-        } else {
-          const diferencia = saldoOriginalFactura - nuevoSaldoFactura;
-          const saldoClienteAjustado = Math.max(
-            clienteSaldo.saldoPendiente - diferencia,
-            0,
-          );
+        const ajuste =
+          dto.estadoFacturaInternet === 'ANULADA'
+            ? saldoOriginalFactura
+            : saldoOriginalFactura -
+              (nuevoSaldoFactura ?? saldoOriginalFactura);
 
-          await this.prisma.saldoCliente.update({
-            where: { clienteId: clienteSaldo.clienteId },
-            data: { saldoPendiente: saldoClienteAjustado },
-          });
-        }
-      }
-
-      const facturasPendientes = await this.prisma.facturaInternet.findMany({
-        where: {
-          clienteId: facturaToUpdate.clienteId,
-          estadoFacturaInternet: {
-            in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'],
+        await tx.saldoCliente.update({
+          where: { clienteId: clienteSaldo.clienteId },
+          data: {
+            saldoPendiente: Math.max(clienteSaldo.saldoPendiente - ajuste, 0),
           },
-        },
-      });
-
-      console.log('Las facturas pendientes son: ', facturasPendientes);
-
-      const estadoPendiente = facturasPendientes.length;
-
-      let estadoCliente: EstadoCliente;
-
-      switch (estadoPendiente) {
-        case 0:
-          estadoCliente = 'ACTIVO';
-          break;
-
-        case 1:
-          estadoCliente = 'PENDIENTE_ACTIVO';
-          break;
-
-        case 2:
-          estadoCliente = 'ATRASADO';
-          break;
-
-        case 3:
-          estadoCliente = 'MOROSO';
-          break;
-
-        default:
-          if (facturasPendientes.length > 3) {
-            estadoCliente = 'MOROSO';
-          }
-          break;
+        });
       }
 
-      await this.prisma.clienteInternet.update({
-        where: {
-          id: facturaToUpdate.clienteId,
-        },
-        data: {
-          estadoCliente: estadoCliente,
-        },
-      });
+      await this.recalcularEstadoCobranzaCliente(facturaToUpdate.clienteId, tx);
 
       return facturaUpdated;
-    } catch (error) {
-      console.log(error);
-    }
+    });
   }
 
   async getFacturaToPDf(id: number) {
@@ -1737,41 +1680,8 @@ export class FacturacionService {
           });
         }
 
-        // 3. Recalcular estado del cliente
-        const facturasPendientes = await tx.facturaInternet.findMany({
-          where: {
-            clienteId,
-            estadoFacturaInternet: {
-              in: ['PENDIENTE', 'PARCIAL', 'VENCIDA'],
-            },
-          },
-        });
-
-        const estadoPendiente = facturasPendientes.length;
-        let estadoCliente: EstadoCliente;
-
-        switch (estadoPendiente) {
-          case 0:
-            estadoCliente = 'ACTIVO';
-            break;
-          case 1:
-            estadoCliente = 'PENDIENTE_ACTIVO';
-            break;
-          case 2:
-            estadoCliente = 'ATRASADO';
-            break;
-          case 3:
-          default:
-            estadoCliente = 'MOROSO';
-            break;
-        }
-
-        await tx.clienteInternet.update({
-          where: { id: clienteId },
-          data: {
-            estadoCliente,
-          },
-        });
+        // 3. Recalcular la cobranza. El estado operativo no cambia.
+        await this.recalcularEstadoCobranzaCliente(clienteId, tx);
 
         return { ok: true };
       });
