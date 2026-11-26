@@ -11,7 +11,12 @@ import {
 
 import { cuenta as construirCuenta } from './pppoe-read-models.fake';
 
-const TRAS: Partial<Record<TransicionCuentaPppoe, EstadoCuentaPppoe>> = {
+const TRAS: Record<TransicionCuentaPppoe, EstadoCuentaPppoe> = {
+  INICIAR_INSTALACION: EstadoCuentaPppoe.EN_INSTALACION,
+  REINTENTAR_INSTALACION: EstadoCuentaPppoe.EN_INSTALACION,
+  INICIAR_ACTIVACION: EstadoCuentaPppoe.EN_ACTIVACION,
+  REINTENTAR_ACTIVACION: EstadoCuentaPppoe.EN_ACTIVACION,
+  INICIAR_DESINSTALACION: EstadoCuentaPppoe.EN_DESINSTALACION,
   MARCAR_SECRET_CREADO: EstadoCuentaPppoe.PENDIENTE_ACTIVACION,
   MARCAR_ACTIVA: EstadoCuentaPppoe.ACTIVA,
   MARCAR_SUSPENDIDA: EstadoCuentaPppoe.SUSPENDIDA,
@@ -34,7 +39,7 @@ export class PppoeClienteCuentaFacadeFake
     input: CambiarEstadoCuentaPppoeInput,
   ): Promise<ClientePppoeCuentaReadModel> {
     const estado = TRAS[input.transicion];
-    if (!this.cuenta || !estado) throw new Error('Transición no simulada.');
+    if (!this.cuenta) throw new Error('Sin cuenta en el fake.');
     this.transiciones.push(input.transicion);
     this.cuenta = construirCuenta({
       ...this.cuenta,
@@ -54,6 +59,7 @@ export class PppoeClienteCuentaFacadeFake
     this.errores.push(input);
     this.cuenta = construirCuenta({
       ...this.cuenta,
+      estado: EstadoCuentaPppoe.ERROR,
       ultimoError: input.mensaje,
     });
     return Promise.resolve(this.cuenta);

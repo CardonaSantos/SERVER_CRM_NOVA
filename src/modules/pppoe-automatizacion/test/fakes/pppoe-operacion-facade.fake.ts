@@ -4,6 +4,7 @@ import {
   PppoeOperacionFacadePort,
 } from 'src/modules/pppoe-operacion/public/pppoe-operacion.facade.port';
 import {
+  EstadoOperacionPppoe,
   EstadoPasoPppoe,
   PppoeOperacionAgregadoReadModel,
 } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
@@ -64,6 +65,19 @@ export class PppoeOperacionFacadeFake implements PppoeOperacionFacadePort {
     );
   }
 
+  /** Reclama la operación: pasa a EJECUTANDO. */
+  iniciar(): Promise<PppoeOperacionAgregadoReadModel> {
+    if (!this.agregado) throw new Error('Sin operación en el fake.');
+    this.agregado = {
+      ...this.agregado,
+      operacion: conEstadoOperacion({
+        ...this.agregado.operacion,
+        estado: EstadoOperacionPppoe.EJECUTANDO,
+      }),
+    };
+    return Promise.resolve(this.agregado);
+  }
+
   finalizar(
     input: FinalizarPppoeOperacionInput,
   ): Promise<PppoeOperacionAgregadoReadModel> {
@@ -90,7 +104,6 @@ export class PppoeOperacionFacadeFake implements PppoeOperacionFacadePort {
   buscar = noUsado;
   crear = noUsado;
   autorizar = noUsado;
-  iniciar = noUsado;
   cancelar = noUsado;
   crearReintento = noUsado;
   listar = noUsado;
