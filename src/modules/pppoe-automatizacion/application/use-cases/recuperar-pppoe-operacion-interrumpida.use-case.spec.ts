@@ -30,6 +30,8 @@ describe('RecuperarPppoeOperacionInterrumpidaUseCase', () => {
   let operaciones: PppoeOperacionFacadeFake;
   let cuentas: PppoeClienteCuentaFacadeFake;
   let auditoria: PppoeOperacionAuditoriaFake;
+  let transicionesAcceso: string[];
+  let estadosCliente: string[];
   let recuperar: RecuperarPppoeOperacionInterrumpidaUseCase;
 
   const ejecutar = () =>
@@ -43,13 +45,32 @@ describe('RecuperarPppoeOperacionInterrumpidaUseCase', () => {
     operaciones = new PppoeOperacionFacadeFake();
     cuentas = new PppoeClienteCuentaFacadeFake();
     auditoria = new PppoeOperacionAuditoriaFake();
+    transicionesAcceso = [];
+    estadosCliente = [];
+    const acceso = { id: 30, empresaId: 1, clienteId: 50 };
+    const accesos = {
+      buscarPorId: () => Promise.resolve(acceso),
+      cambiarEstado: (i: { transicion: string }) => {
+        transicionesAcceso.push(i.transicion);
+        return Promise.resolve(acceso);
+      },
+    };
+    const cliente = {
+      sincronizar: (p: { estado: string }) => {
+        estadosCliente.push(p.estado);
+        return Promise.resolve();
+      },
+    };
     recuperar = new RecuperarPppoeOperacionInterrumpidaUseCase(
       new RelojFijo(AHORA),
       operaciones,
       auditoria,
       cuentas,
-      // La recuperación solo confirma en la cuenta: acceso y cliente no se tocan.
-      new SincronizacionLocalPppoeService(cuentas, {} as never, {} as never),
+      new SincronizacionLocalPppoeService(
+        cuentas,
+        accesos as never,
+        cliente as never,
+      ),
     );
   });
 
@@ -70,6 +91,9 @@ describe('RecuperarPppoeOperacionInterrumpidaUseCase', () => {
       expect(r.estadoOperacion).toBe(EstadoOperacionPppoe.EXITOSA);
       expect(r.estadoCuenta).toBe(EstadoCuentaPppoe.SUSPENDIDA);
       expect(cuentas.transiciones).toEqual(['MARCAR_SUSPENDIDA']);
+      // Igual que una ejecución normal: el acceso y el cliente también quedan suspendidos.
+      expect(transicionesAcceso).toEqual(['SUSPENDER']);
+      expect(estadosCliente).toEqual(['SUSPENDIDO']);
       expect(operaciones.finalizaciones[0]).toMatchObject({ fecha: AHORA });
       // No se repite ningún comando: los pasos no se tocan.
       expect(operaciones.pasos).toHaveLength(0);

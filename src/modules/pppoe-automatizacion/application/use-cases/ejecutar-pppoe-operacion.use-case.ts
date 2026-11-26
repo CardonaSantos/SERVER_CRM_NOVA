@@ -167,18 +167,12 @@ export class EjecutarPppoeOperacionUseCase {
       // El ejecutor solo regresa cuando el router confirmó el resultado.
       avance.remotoConfirmado = true;
 
-      const fecha = this.reloj.ahora();
-      cuenta = await this.sincronizacion.confirmarEnCuenta(
+      ({ cuenta } = await this.sincronizacion.confirmarResultado(
         operacion,
         cuenta,
-        fecha,
-      );
-      acceso = await this.sincronizacion.confirmarEnAcceso(
-        operacion,
+        this.reloj.ahora(),
         acceso,
-        fecha,
-      );
-      await this.sincronizacion.confirmarEnCliente(operacion, acceso);
+      ));
 
       const final = await this.operaciones.finalizar({
         operacionId: input.operacionId,

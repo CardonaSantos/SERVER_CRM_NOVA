@@ -90,11 +90,38 @@ export class SincronizacionLocalPppoeService {
   }
 
   /**
+   * Aplica en orden a cuenta, acceso y cliente el resultado que el router ya
+   * confirmó. Idempotente, para que la recuperación lo pueda repetir. Sin
+   * `acceso`, lo busca por la cuenta.
+   */
+  async confirmarResultado(
+    operacion: PppoeOperacionReadModel,
+    cuenta: ClientePppoeCuentaReadModel,
+    fecha: Date,
+    acceso?: AccesoInternetReadModel,
+  ): Promise<{
+    cuenta: ClientePppoeCuentaReadModel;
+    acceso: AccesoInternetReadModel;
+  }> {
+    const actual =
+      acceso ?? (await this.accesos.buscarPorId(cuenta.accesoInternetId));
+    if (!actual) {
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
+        'No existe el acceso de internet asociado a la cuenta PPPoE.',
+      );
+    }
+    const cuentaFinal = await this.confirmarEnCuenta(operacion, cuenta, fecha);
+    const accesoFinal = await this.confirmarEnAcceso(operacion, actual, fecha);
+    await this.confirmarEnCliente(operacion, accesoFinal);
+    return { cuenta: cuentaFinal, acceso: accesoFinal };
+  }
+
+  /**
    * Aplica a la cuenta el resultado que el router ya confirmó. Idempotente:
    * si la cuenta ya quedó en el estado final la devuelve sin cambios, así la
    * recuperación puede repetirlo sin riesgo.
    */
-  confirmarEnCuenta(
+  private confirmarEnCuenta(
     operacion: PppoeOperacionReadModel,
     cuenta: ClientePppoeCuentaReadModel,
     fecha: Date,
@@ -154,7 +181,7 @@ export class SincronizacionLocalPppoeService {
    * CREAR_SECRET deja el acceso CONFIGURANDO: el secret existe, pero el
    * servicio no es ACTIVO hasta que ACTIVAR_SECRET lo confirme.
    */
-  confirmarEnAcceso(
+  private confirmarEnAcceso(
     operacion: PppoeOperacionReadModel,
     acceso: AccesoInternetReadModel,
     fecha: Date,
@@ -180,7 +207,7 @@ export class SincronizacionLocalPppoeService {
    * suspender lo cambian: una baja PPPoE no completa por sí sola una
    * desinstalación.
    */
-  async confirmarEnCliente(
+  private async confirmarEnCliente(
     operacion: PppoeOperacionReadModel,
     acceso: AccesoInternetReadModel,
   ): Promise<void> {

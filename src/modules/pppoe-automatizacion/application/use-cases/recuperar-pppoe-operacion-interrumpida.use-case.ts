@@ -253,11 +253,12 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
 
     const estadoCuentaAnterior = cuenta.estado;
 
-    cuenta = await this.sincronizacion.confirmarEnCuenta(
+    // Lo mismo que una ejecución normal: cuenta, acceso y estado del cliente.
+    ({ cuenta } = await this.sincronizacion.confirmarResultado(
       params.operacion,
       cuenta,
       params.fecha,
-    );
+    ));
 
     const finalAggregate = await this.operaciones.finalizar({
       operacionId: this.requireOperationId(params.operacion),
