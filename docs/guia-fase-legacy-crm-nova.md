@@ -94,8 +94,8 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 ### 2.3 Línea base medida
 
 - `npm run build`: verde.
-- `npm run lint:check`: **215** errores tras la limpieza (no subir; los archivos que toques quedan sin errores nuevos).
-- Jest: 598/602; las suites de `src/common`, `src/auth/decoradores` y de todos los `src/modules/*`
+- `npm run lint:check`: **214** errores tras H1 (no subir; los archivos que toques quedan sin errores nuevos).
+- Jest: 636/640; las suites de `src/common`, `src/auth/decoradores` y de todos los `src/modules/*`
   en verde. Fallan 4 suites boilerplate de `cloud-api-meta` y `location`.
 - Correr un spec: `npm test -- src/modules/<modulo>` (1–2 min).
 
@@ -144,9 +144,9 @@ Decisiones del dueño del **26-nov-2026**. Los nombres nuevos siguen §15 del es
 
 | # | Paso / destino | Legacy | Estado | Notas |
 |---|---|---|---|---|
-| 0 | Limpieza | Las carpetas de §3.1 | ✅ **Hecho** | `refactorizacion limpieza #1–#7`. Quedan instaladas sin uso las dependencias `twilio`, `openai`, `node-ssh`, `csvtojson` y `routeros-client`: quitarlas se pregunta |
-| 1 | **H1** saneamiento (sin crons) | `facturacion`, `cliente-internet`, `dashboard` | **Siguiente** | §6.1. Bug reportado por usuarios: se corrige con pruebas |
-| 2 | **H2** roles | API legacy que quede | Pendiente | `@Roles` en sitio, 403 anotados. Falta el mapa de roles (§7) |
+| 0 | Limpieza | Las carpetas de §3.1 | ✅ Hecho | `refactorizacion limpieza #1–#7` y `dependencias #1` |
+| 1 | **H1** saneamiento (sin crons) | `facturacion`, `cliente-internet`, `dashboard` | ✅ Hecho | `facturacion #1–#2`, `cliente-internet #1–#3`, `dashboard #1` (§6.1) |
+| 2 | **H2** roles | API legacy que quede | **Siguiente** | `@Roles` en sitio, 403 anotados. Falta el mapa de roles (§7) |
 | 3 | Ubicación de técnicos → `real-time-location` | `real-time-location` legacy | Pendiente | `GET /real-time/last-locations` conserva la ruta (alimenta el dashboard de admin) |
 | 4 | `cliente` (H3) | `cliente-internet`, `customer-network-config` | Pendiente | Revisar `src/cliente-internet/domain/`. Fachada `CLIENTE` |
 | 5 | `zona-facturacion` (H5) | `facturacion-zona` | Pendiente | `modoCorte`, días 1–31, `@Roles` |
@@ -329,6 +329,8 @@ Contexto que hay que entender primero (verificado en `prisma/schema.prisma`):
   otro valor, ese cliente **deja de facturarse**. Ocurre en producción y los usuarios lo reportaron.
   Los clientes ya afectados se revisan **después** de refactorizar.
 
+**Estado: corregido** (26-nov-2026), con pruebas junto a cada archivo. La tabla queda como registro.
+
 | # | Dónde | Bug | Corrección (aprobada) |
 |---|---|---|---|
 | 1 | `facturacion.service.ts` `updateFactura` | Escribe `estadoCliente`, no recalcula cobranza, no usa transacción y su `catch` devuelve éxito vacío | Una transacción; recalcular `estadoCobranza`; no tocar `estadoCliente`; los errores salen |
@@ -353,6 +355,9 @@ H1 es saneamiento en sitio: commits `refactorizacion facturacion #N`, `refactori
 | Toda la API legacy | Sin `@Roles` (G1): cualquier usuario autenticado, técnico incluido, borra pagos, edita facturas y zonas | H2 |
 | Sesiones, refresh e intentos de auth | Nadie los limpia (G6) | `tareas-programadas` |
 | `src/real-time-location` legacy | Montado vía `LocationModule`; su `GET last-locations` alimenta el dashboard y su `POST update-location` es el único que emite `emit:location:real-time` | Paso 3 |
+| `facturacion` `updateFactura` | Editar una factura **pagada** (aunque sea solo el detalle) pone su `saldoPendiente` igual al monto y sube la deuda del cliente en ese monto. Es cálculo de facturas: no se tocó en H1 | Preguntar (§7) |
+| `facturacion` `deleteOnePayment` | No devuelve el monto a `saldoCliente.saldoPendiente` (registrar un pago sí lo recalcula) | Preguntar (§7) |
+| `facturacion` `delete-one-factura` | El usuario que elimina llega en el body (`userId`) en vez de salir de la sesión | Módulo `facturacion` |
 | `generate-reports` `QueryCobranzaReport` | Fechas con `@IsDate` sin conversión: probable 400 con el pipe estricto (sin probar) | Antes del deploy |
 | Legacy en general | `throw new BadRequestException(...)` en services, `console.log` con datos, `new Date()` en UTC para fechas de negocio, métodos con `tx?: Prisma.TransactionClient` opcional (escrituras que a veces son atómicas y a veces no), `findMany` sin `count` en la misma transacción | Cada módulo al refactorizarse |
 | Cálculo de fechas | `dayjs().tz(...)` disperso y constantes `TZ` locales | Usar `RELOJ` |
@@ -372,6 +377,7 @@ a la UI (fugas de campos), y `catch` que tragan errores y devuelven `200`.
 | 3 | ¿La app Android envía su ubicación a `real-time/update-location` o a `real-time-location/tracking/location`? | Paso 3 | Retirar la vieja solo si ya usa la nueva |
 | 4 | Nombres finales de cada módulo (§3.2) | Cada paso | Los de §3.2 |
 | 5 | ¿La etapa auth ya se desplegó? Si no, cada paso se acumula sobre un deploy grande | Siempre que aplique | |
+| 6 | ¿Se corrigen ya los dos saldos de §6.2 (editar factura pagada y eliminar pago)? | Antes del deploy | Sí: recalcular `saldoCliente` desde las facturas pendientes, como al registrar un pago |
 
 ---
 
