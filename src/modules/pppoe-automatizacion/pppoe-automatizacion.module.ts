@@ -7,6 +7,7 @@ import { PppoeAuditoriaModule } from '../pppoe-auditoria/pppoe-auditoria.module'
 import { PrepararPrealtaPppoeUseCase } from './application/use-cases/preparar-prealta-pppoe.use-case';
 
 import { ResolverContextoEjecucionPppoeService } from './application/services/resolver-contexto-ejecucion-pppoe.service';
+import { SincronizacionLocalPppoeService } from './application/services/sincronizacion-local-pppoe.service';
 
 import { PPPOE_PREALTA } from './public/pppoe-prealta.port';
 
@@ -89,6 +90,7 @@ import { ClienteInternetEstadoOperativoPrismaAdapter } from './infra/prisma/clie
      */
     PppoeOperacionAdminService,
     ResolverContextoEjecucionPppoeService,
+    SincronizacionLocalPppoeService,
     PppoeOperacionStepRunnerService,
     PppoeOperacionAuditoriaService,
     PppoeProvisionamientoService,

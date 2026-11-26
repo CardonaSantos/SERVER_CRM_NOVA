@@ -1,1257 +1,350 @@
-import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
-import {
-  EstadoCuentaPppoe,
-  ClientePppoeCuentaReadModel,
-} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
-
-import {
-  PPPOE_CLIENTE_CUENTA,
-  PppoeClienteCuentaFacadePort,
-} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
-
-import {
-  EstadoOperacionPppoe,
-  TipoOperacionPppoe,
-  TipoPasoPppoe,
-} from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
-
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
 import {
   EfectoRemotoMikrotik,
   FaseFalloMikrotikSsh,
 } from 'src/modules/mikrotik-ssh/public/mikrotik-ssh.types';
-
-import { PppoeOperacionStepError } from '../../domain/errors/pppoe-automatizacion.errors';
-
-import { EjecutorCrearSecretPppoeService } from '../services/ejecutor-crear-secret-pppoe.service';
-
-import {
-  ContextoEjecucionPppoe,
-  ResolverContextoEjecucionPppoeService,
-} from '../services/resolver-contexto-ejecucion-pppoe.service';
-
-import { EjecutarOperacionPppoeResult } from '../../public/pppoe-provisionamiento.port';
-
-import { PppoeOperacionStepRunnerService } from '../services/pppoe-operacion-step-runner.service';
-import { EjecutorSuspenderServicioPppoeService } from '../services/ejecutor-suspender-servicio-pppoe.service';
-import { EjecutorActivarSecretPppoeService } from '../services/ejecutor-activar-secret-pppoe.service';
-import {
-  PPPOE_OPERACION_AUDITORIA,
-  PppoeOperacionAuditoriaPort,
-} from '../ports/pppoe-operacion-auditoria.port';
-import { EjecutorEliminarSecretPppoeService } from '../services/ejecutor-eliminar-secret-pppoe.service';
 import {
   PPPOE_ACCESO_INTERNET,
   PppoeAccesoInternetFacadePort,
 } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.facade.port';
-import { AccesoInternetReadModel } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
 import {
-  CLIENTE_INTERNET_ESTADO_OPERATIVO,
-  ClienteInternetEstadoOperativoPort,
-  EstadoOperativoClienteInternet,
-} from '../ports/cliente-internet-estado-operativo.port';
+  PPPOE_CLIENTE_CUENTA,
+  PppoeClienteCuentaFacadePort,
+} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
+import {
+  ClientePppoeCuentaReadModel,
+  EstadoCuentaPppoe,
+} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 import {
   PPPOE_OPERACION,
   PppoeOperacionFacadePort,
 } from 'src/modules/pppoe-operacion/public/pppoe-operacion.facade.port';
 import {
+  EstadoOperacionPppoe,
   PppoeOperacionAgregadoReadModel,
   PppoeOperacionPasoReadModel,
   PppoeOperacionReadModel,
   PppoeOperacionResultado,
+  TipoOperacionPppoe,
 } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
+
 import {
   OperacionPppoeRequiereRecuperacionError,
+  PppoeOperacionStepError,
   ProvisionamientoPppoeDatosInvalidosError,
   ProvisionamientoPppoeEstadoInvalidoError,
 } from '../../domain/errors/pppoe-automatizacion.errors';
+import { huboPosibleEfectoRemoto } from '../../domain/policies/efecto-remoto-pppoe.policy';
+import { EjecutarOperacionPppoeResult } from '../../public/pppoe-provisionamiento.port';
+import {
+  PPPOE_OPERACION_AUDITORIA,
+  PppoeOperacionAuditoriaPort,
+} from '../ports/pppoe-operacion-auditoria.port';
+import { EjecutorActivarSecretPppoeService } from '../services/ejecutor-activar-secret-pppoe.service';
+import { EjecutorCrearSecretPppoeService } from '../services/ejecutor-crear-secret-pppoe.service';
+import { EjecutorEliminarSecretPppoeService } from '../services/ejecutor-eliminar-secret-pppoe.service';
+import { EjecutorSuspenderServicioPppoeService } from '../services/ejecutor-suspender-servicio-pppoe.service';
+import { PppoeOperacionStepRunnerService } from '../services/pppoe-operacion-step-runner.service';
+import {
+  ContextoEjecucionPppoe,
+  ResolverContextoEjecucionPppoeService,
+} from '../services/resolver-contexto-ejecucion-pppoe.service';
+import { SincronizacionLocalPppoeService } from '../services/sincronizacion-local-pppoe.service';
 
-/**
- * Ejecuta una operación PPPoE previamente creada.
- *
- * Operaciones actualmente admitidas:
- *
- * - CREAR_SECRET;
- * - ACTIVAR_SECRET;
- * - SUSPENDER_SERVICIO.
- */
-/**
- * Ejecuta una operación PPPoE previamente creada.
- *
- * Operaciones admitidas:
- *
- * - CREAR_SECRET;
- * - ACTIVAR_SECRET;
- * - SUSPENDER_SERVICIO;
- * - ELIMINAR_SECRET.
- */
 export type EjecutarPppoeOperacionUseCaseInput = {
   empresaId: number;
-
   operacionId: number;
-
-  /**
-   * Útil para pruebas deterministas.
-   *
-   * En ejecución normal debe omitirse.
-   */
+  /** Solo para pruebas deterministas; en ejecución normal se omite. */
   fechaInicio?: Date;
 };
 
+/** Hasta dónde llegó la ejecución cuando algo falló. */
+type Avance = {
+  cuentaPreparada: boolean;
+  ejecutorIniciado: boolean;
+  remotoConfirmado: boolean;
+};
+
+const TIPOS_SOPORTADOS = new Set<TipoOperacionPppoe>([
+  TipoOperacionPppoe.CREAR_SECRET,
+  TipoOperacionPppoe.ACTIVAR_SECRET,
+  TipoOperacionPppoe.SUSPENDER_SERVICIO,
+  TipoOperacionPppoe.ELIMINAR_SECRET,
+]);
+
 /**
- * Ejecuta una operación PPPoE previamente creada.
- *
- * Operaciones actualmente admitidas:
- *
- * - CREAR_SECRET;
- * - ACTIVAR_SECRET;
- * - SUSPENDER_SERVICIO;
- * - ELIMINAR_SECRET.
+ * Ejecuta una operación PPPoE ya creada (crear, activar, suspender o
+ * eliminar el secret): la reclama como EJECUTANDO, prepara el estado local,
+ * corre los pasos contra el router y sincroniza cuenta, acceso y cliente.
+ * Si el router confirmó pero lo local falló, la operación queda EJECUTANDO
+ * para la recuperación; nunca se repite un comando remoto a ciegas.
  */
 @Injectable()
 export class EjecutarPppoeOperacionUseCase {
   private readonly logger = new Logger(EjecutarPppoeOperacionUseCase.name);
-
-  /**
-   * Pasos que pueden modificar el estado remoto.
-   *
-   * Debe mantenerse alineado con
-   * FinalizarPppoeOperacionUseCase.
-   */
-  private static readonly PASOS_CON_EFECTO_REMOTO = new Set<TipoPasoPppoe>([
-    TipoPasoPppoe.AGREGAR_SECRET,
-
-    TipoPasoPppoe.HABILITAR_SECRET,
-
-    TipoPasoPppoe.DESHABILITAR_SECRET,
-
-    TipoPasoPppoe.REMOVER_SESION_ACTIVA,
-
-    TipoPasoPppoe.ELIMINAR_SECRET,
-  ]);
 
   constructor(
     @Inject(RELOJ) private readonly reloj: RelojPort,
     @Inject(PPPOE_OPERACION)
     private readonly operaciones: PppoeOperacionFacadePort,
     private readonly resolverContexto: ResolverContextoEjecucionPppoeService,
-
     private readonly ejecutorCrearSecret: EjecutorCrearSecretPppoeService,
-
     private readonly stepRunner: PppoeOperacionStepRunnerService,
-
     private readonly ejecutorActivarSecret: EjecutorActivarSecretPppoeService,
-
     private readonly ejecutorSuspenderServicio: EjecutorSuspenderServicioPppoeService,
-
     private readonly ejecutorEliminarSecret: EjecutorEliminarSecretPppoeService,
-
     @Inject(PPPOE_OPERACION_AUDITORIA)
     private readonly operacionAuditoria: PppoeOperacionAuditoriaPort,
-
     @Inject(PPPOE_CLIENTE_CUENTA)
     private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
-
     @Inject(PPPOE_ACCESO_INTERNET)
     private readonly accesosInternet: PppoeAccesoInternetFacadePort,
-
-    @Inject(CLIENTE_INTERNET_ESTADO_OPERATIVO)
-    private readonly clienteEstadoOperativo: ClienteInternetEstadoOperativoPort,
+    private readonly sincronizacion: SincronizacionLocalPppoeService,
   ) {}
 
   async execute(
     input: EjecutarPppoeOperacionUseCaseInput,
   ): Promise<EjecutarOperacionPppoeResult> {
-    let acceso: AccesoInternetReadModel | null = null;
+    this.validarEntrada(input);
+    this.logger.log(`[PPPOE] Ejecutando operación ${input.operacionId}`);
 
-    this.logger.log(
-      `[PPPOE] Ejecutando operación ${input.operacionId} empresa=${input.empresaId}`,
-    );
-
-    this.validateInput(input);
-
-    /*
-     * La operación se persiste como EJECUTANDO antes
-     * de comenzar cualquier acción técnica.
-     */
-    const aggregate = await this.operaciones.iniciar({
+    // Se reclama como EJECUTANDO antes de cualquier acción técnica.
+    const agregado = await this.operaciones.iniciar({
       operacionId: input.operacionId,
-
       fecha: input.fechaInicio,
     });
-
-    this.assertSupportedOperation(aggregate.operacion);
-
-    /*
-     * Una operación EJECUTANDO que ya contiene pasos
-     * procesados no se continúa ciegamente.
-     *
-     * Debe pasar posteriormente por el proceso explícito
-     * de recuperación de operaciones interrumpidas.
-     */
-    this.assertNotInterrupted(aggregate);
-
-    /*
-     * La operación ya fue reclamada atómicamente
-     * y se encuentra EJECUTANDO.
-     */
+    const { operacion } = agregado;
+    if (!TIPOS_SOPORTADOS.has(operacion.tipo)) {
+      throw new ProvisionamientoPppoeEstadoInvalidoError(
+        `El motor PPPoE todavía no admite operaciones de tipo ${operacion.tipo}.`,
+      );
+    }
+    // Con pasos ya procesados no se continúa: va por la recuperación.
+    const procesado = agregado.pasos.find((paso) => !paso.estaPendiente);
+    if (procesado) {
+      throw new OperacionPppoeRequiereRecuperacionError(
+        `La operación PPPoE ya contiene el paso ${procesado.orden} en estado ${procesado.estado}. Debe pasar por recuperación antes de continuar.`,
+      );
+    }
     await this.operacionAuditoria.registrarIniciada({
-      operacion: aggregate.operacion,
-
+      operacion,
       fecha: input.fechaInicio,
     });
 
+    const avance: Avance = {
+      cuentaPreparada: false,
+      ejecutorIniciado: false,
+      remotoConfirmado: false,
+    };
     let cuenta: ClientePppoeCuentaReadModel | null = null;
-
-    let contexto: ContextoEjecucionPppoe | null = null;
-
-    let accountPrepared = false;
-
-    let executorStarted = false;
-
-    let remoteStateConfirmed = false;
     let estadoCuentaInicial: EstadoCuentaPppoe | null = null;
 
     try {
-      /*
-       * ======================================================
-       * 1. RESOLVER CONTEXTO
-       * ======================================================
-       */
-
-      contexto = await this.resolverContexto.resolve(aggregate.operacion);
-
-      this.logger.log(
-        [
-          `[PPPOE] Contexto resuelto`,
-          `operacionId=${input.operacionId}`,
-          `tipo=${aggregate.operacion.tipo}`,
-          `cuentaId=${contexto.cuenta.id ?? 'null'}`,
-          `usuario=${contexto.cuenta.usuario}`,
-          `estado=${contexto.cuenta.estado}`,
-          `esAdoptada=${contexto.cuenta.esAdoptada}`,
-        ].join(' | '),
-      );
-
-      /*
-       * Se conserva antes de cualquier transición local.
-       *
-       * Ejemplos:
-       *
-       * PENDIENTE_ACTIVACION -> EN_INSTALACION
-       * EN_INSTALACION -> ACTIVA
-       * ACTIVA -> SUSPENDIDA
-       */
+      let contexto = await this.resolverContexto.resolve(operacion);
       estadoCuentaInicial = contexto.cuenta.estado;
 
-      acceso = await this.findRequiredAccess({
-        empresaId: input.empresaId,
-
-        cuenta: contexto.cuenta,
-      });
-
-      /*
-       * ======================================================
-       * 2. PREPARAR ESTADO LOCAL
-       * ======================================================
-       */
-
-      cuenta = await this.prepareAccountForOperation({
-        operacion: aggregate.operacion,
-
-        cuenta: contexto.cuenta,
-      });
-
-      accountPrepared = true;
-
-      acceso = await this.prepareAccessForOperation({
-        operacion: aggregate.operacion,
-
-        acceso,
-      });
-
-      contexto = {
-        ...contexto,
-
-        cuenta,
-      };
-
-      /*
-       * ======================================================
-       * 3. EJECUTAR ROUTEROS
-       * ======================================================
-       */
-
-      executorStarted = true;
-      this.logger.log(
-        `[PPPOE] Iniciando operación técnica RouterOS. operacionId=${input.operacionId} tipo=${aggregate.operacion.tipo}`,
+      let acceso = await this.accesosInternet.buscarPorId(
+        contexto.cuenta.accesoInternetId,
       );
+      if (!acceso) {
+        throw new ProvisionamientoPppoeEstadoInvalidoError(
+          'No existe el acceso de internet asociado a la cuenta PPPoE.',
+        );
+      }
 
-      const technicalResult = await this.executeTechnicalOperation({
-        contexto,
+      cuenta = await this.sincronizacion.prepararCuenta(
+        operacion,
+        contexto.cuenta,
+      );
+      avance.cuentaPreparada = true;
+      acceso = await this.sincronizacion.prepararAcceso(operacion, acceso);
+      contexto = { ...contexto, cuenta };
 
-        pasos: aggregate.pasos,
-      });
+      avance.ejecutorIniciado = true;
+      const resultado = await this.ejecutarEnRouter(contexto, agregado.pasos);
+      // El ejecutor solo regresa cuando el router confirmó el resultado.
+      avance.remotoConfirmado = true;
 
-      /*
-       * El executor solo regresa después de que
-       * CONFIRMAR_SECRET fue satisfactorio.
-       */
-      remoteStateConfirmed = true;
-
-      /*
-       * ======================================================
-       * 4. SINCRONIZAR CUENTA LOCAL
-       * ======================================================
-       */
-      const fechaSincronizacion = this.reloj.ahora();
-
-      cuenta = await this.applySuccessfulAccountResult({
-        operacion: aggregate.operacion,
-
+      const fecha = this.reloj.ahora();
+      cuenta = await this.sincronizacion.confirmarEnCuenta(
+        operacion,
         cuenta,
-
-        fecha: fechaSincronizacion,
-      });
-
-      acceso = await this.applySuccessfulAccessResult({
-        operacion: aggregate.operacion,
-
+        fecha,
+      );
+      acceso = await this.sincronizacion.confirmarEnAcceso(
+        operacion,
         acceso,
+        fecha,
+      );
+      await this.sincronizacion.confirmarEnCliente(operacion, acceso);
 
-        fecha: fechaSincronizacion,
-      });
-
-      /*
-       * Sincronizamos el estado operativo general
-       * del cliente únicamente después de que:
-       *
-       * - RouterOS confirmó el resultado;
-       * - ClientePppoeCuenta fue sincronizada;
-       * - ClienteAccesoInternet fue sincronizado.
-       */
-      await this.applySuccessfulClientResult({
-        operacion: aggregate.operacion,
-
-        acceso,
-      });
-
-      /*
-       * ======================================================
-       * 5. FINALIZAR OPERACIÓN
-       * ======================================================
-       */
-
-      const finalAggregate = await this.operaciones.finalizar({
+      const final = await this.operaciones.finalizar({
         operacionId: input.operacionId,
-
         estadoFinal: EstadoOperacionPppoe.EXITOSA,
-
-        resultado: technicalResult,
+        resultado,
       });
-
       await this.operacionAuditoria.registrarFinalizada({
-        operacion: finalAggregate.operacion,
-
+        operacion: final.operacion,
         estadoCuentaAnterior: estadoCuentaInicial,
-
         estadoCuentaNuevo: cuenta.estado,
       });
-
-      return this.toResult({
-        operacion: finalAggregate.operacion,
-
-        cuenta,
-
-        technicalError: null,
-      });
+      return this.resultado(final.operacion, cuenta, null);
     } catch (error: unknown) {
-      /*
-       * RouterOS ya confirmó el estado remoto, pero falló
-       * una escritura local o la finalización de la operación.
-       *
-       * No debe convertirse en FALLIDA ni repetirse el
-       * comando remoto automáticamente.
-       *
-       * La operación permanece EJECUTANDO para que el futuro
-       * recuperador reconcilie el estado local.
-       */
-      if (remoteStateConfirmed) {
+      if (avance.remotoConfirmado) {
         throw new OperacionPppoeRequiereRecuperacionError(
           'La operación PPPoE confirmó el estado remoto, pero no pudo completar su sincronización local. Requiere recuperación.',
         );
       }
-
-      const normalizedError = this.normalizeExecutionError({
+      return this.cerrarConFallo({
+        input,
+        operacion,
         error,
-
-        executorStarted,
-      });
-
-      this.logger.error(
-        [
-          `[PPPOE] Operación técnica fallida`,
-          `operacionId=${input.operacionId}`,
-          `tipo=${aggregate.operacion.tipo}`,
-          `codigo=${normalizedError.errorCodigo}`,
-          `mensaje=${normalizedError.message}`,
-          `executorStarted=${executorStarted}`,
-          `remoteStateConfirmed=${remoteStateConfirmed}`,
-        ].join(' | '),
-      );
-
-      /*
-       * Si el fallo ocurrió antes de que el executor
-       * iniciara un paso, registramos el siguiente paso
-       * pendiente como FALLIDO.
-       *
-       * Esto permite que la operación alcance un estado
-       * terminal coherente.
-       */
-      const failedAggregate = await this.ensureFailedStep({
-        empresaId: input.empresaId,
-
-        operacionId: input.operacionId,
-
-        error: normalizedError,
-      });
-
-      if (accountPrepared || executorStarted) {
-        cuenta = await this.registerAccountErrorSafely({
-          cuenta,
-
-          cuentaPppoeId: failedAggregate.operacion.cuentaPppoeId,
-
-          errorMessage: normalizedError.message,
-        });
-      } else {
-        cuenta =
-          cuenta ??
-          (await this.findAccountSafely(
-            failedAggregate.operacion.cuentaPppoeId,
-          ));
-      }
-
-      const finalState = this.resolveFailedOperationState({
-        error: normalizedError,
-
-        pasos: failedAggregate.pasos,
-      });
-
-      const finalAggregate =
-        finalState === EstadoOperacionPppoe.PARCIAL
-          ? await this.operaciones.finalizar({
-              operacionId: input.operacionId,
-
-              estadoFinal: EstadoOperacionPppoe.PARCIAL,
-
-              errorCodigo: normalizedError.errorCodigo,
-
-              errorMensaje: normalizedError.message,
-
-              resultado: null,
-            })
-          : await this.operaciones.finalizar({
-              operacionId: input.operacionId,
-
-              estadoFinal: EstadoOperacionPppoe.FALLIDA,
-
-              errorCodigo: normalizedError.errorCodigo,
-
-              errorMensaje: normalizedError.message,
-
-              resultado: null,
-            });
-
-      /*
-       * Reconsultamos para no devolver un estado de cuenta
-       * únicamente modificado en memoria.
-       */
-      const persistedAccount = await this.findAccountSafely(
-        finalAggregate.operacion.cuentaPppoeId,
-      );
-
-      const finalAccount = persistedAccount ?? cuenta;
-
-      await this.operacionAuditoria.registrarFinalizada({
-        operacion: finalAggregate.operacion,
-
-        estadoCuentaAnterior: estadoCuentaInicial,
-
-        estadoCuentaNuevo: finalAccount?.estado ?? null,
-      });
-
-      return this.toResult({
-        operacion: finalAggregate.operacion,
-
-        cuenta: finalAccount,
-
-        technicalError: normalizedError,
+        avance,
+        cuenta,
+        estadoCuentaInicial,
       });
     }
   }
 
-  private async applySuccessfulAccessResult(params: {
+  /** Cierra como FALLIDA o PARCIAL un intento que no confirmó en el router. */
+  private async cerrarConFallo(params: {
+    input: EjecutarPppoeOperacionUseCaseInput;
     operacion: PppoeOperacionReadModel;
-
-    acceso: AccesoInternetReadModel;
-
-    fecha: Date;
-  }): Promise<AccesoInternetReadModel> {
-    switch (params.operacion.tipo) {
-      case TipoOperacionPppoe.CREAR_SECRET:
-        /*
-         * Estado 2 — EN INSTALACIÓN.
-         *
-         * El Secret ya fue creado físicamente en RouterOS
-         * y quedó habilitado según el requerimiento PPPoE v3.
-         *
-         * Sin embargo, el acceso continúa CONFIGURANDO porque
-         * la instalación todavía no ha sido formalmente
-         * confirmada como servicio ACTIVO dentro del CRM.
-         *
-         * La condición técnica del Secret en RouterOS y el
-         * estado de negocio del acceso son conceptos distintos:
-         *
-         * RouterOS:
-         *   Secret existente + habilitado.
-         *
-         * CRM:
-         *   Acceso CONFIGURANDO.
-         *
-         * La transición a ACTIVO corresponde posteriormente
-         * a ACTIVAR_SECRET / Estado 3.
-         */
-        return params.acceso;
-
-      case TipoOperacionPppoe.ACTIVAR_SECRET:
-        /*
-         * Estado 3 — ACTIVO.
-         *
-         * El comando enable ya fue ejecutado y confirmado
-         * remotamente. Ahora sincronizamos el estado formal
-         * del acceso en el CRM.
-         */
-        return this.accesosInternet.cambiarEstado({
-          accesoInternetId: params.acceso.id,
-          transicion: 'ACTIVAR',
-          fecha: params.fecha,
-        });
-
-      case TipoOperacionPppoe.SUSPENDER_SERVICIO:
-        /*
-         * Estado 4 — SUSPENDIDO.
-         *
-         * RouterOS ya confirmó:
-         *
-         * - Secret deshabilitado;
-         * - ausencia de sesiones PPPoE activas.
-         */
-        return this.accesosInternet.cambiarEstado({
-          accesoInternetId: params.acceso.id,
-          transicion: 'SUSPENDER',
-          fecha: params.fecha,
-        });
-
-      case TipoOperacionPppoe.ELIMINAR_SECRET:
-        /*
-         * Estado 5 — BAJA DEFINITIVA.
-         *
-         * RouterOS ya confirmó:
-         *
-         * - Secret eliminado;
-         * - ausencia de sesiones PPPoE activas.
-         */
-        return this.accesosInternet.cambiarEstado({
-          accesoInternetId: params.acceso.id,
-          transicion: 'DAR_DE_BAJA',
-          fecha: params.fecha,
-        });
-
-      default:
-        throw new ProvisionamientoPppoeEstadoInvalidoError(
-          `No existe transición exitosa del acceso para la operación ${params.operacion.tipo}.`,
-        );
-    }
-  }
-
-  /**
-   * Prepara la cuenta según el tipo de operación.
-   */
-
-  /**
-   * Prepara la cuenta según el tipo de operación.
-   */
-  private async prepareAccountForOperation(params: {
-    operacion: PppoeOperacionReadModel;
-
-    cuenta: ClientePppoeCuentaReadModel;
-  }): Promise<ClientePppoeCuentaReadModel> {
-    switch (params.operacion.tipo) {
-      case TipoOperacionPppoe.CREAR_SECRET:
-        return this.prepareAccountForSecretCreation(params.cuenta);
-
-      case TipoOperacionPppoe.ACTIVAR_SECRET:
-        return this.prepareAccountForActivation(params.cuenta);
-
-      case TipoOperacionPppoe.SUSPENDER_SERVICIO:
-        return this.prepareAccountForSuspension(params.cuenta);
-
-      case TipoOperacionPppoe.ELIMINAR_SECRET:
-        /*
-         * ELIMINAR_SECRET puede provenir de:
-         *
-         * 1. una ClienteDesinstalacion;
-         * 2. una baja administrativa manual.
-         *
-         * La autorización funcional y la reautenticación
-         * pertenecen a los casos de uso superiores.
-         *
-         * Este motor solamente valida que la operación
-         * persistida posea un contexto estructural coherente
-         * antes de modificar el estado local o RouterOS.
-         */
-        this.assertValidDeletionContext(params.operacion);
-
-        return this.prepareAccountForDeletion(params.cuenta);
-
-      default:
-        throw new ProvisionamientoPppoeEstadoInvalidoError(
-          `No existe preparación local para la operación ${params.operacion.tipo}.`,
-        );
-    }
-  }
-
-  private async prepareAccessForOperation(params: {
-    operacion: PppoeOperacionReadModel;
-
-    acceso: AccesoInternetReadModel;
-  }): Promise<AccesoInternetReadModel> {
-    switch (params.operacion.tipo) {
-      case TipoOperacionPppoe.CREAR_SECRET:
-        return this.accesosInternet.cambiarEstado({
-          accesoInternetId: params.acceso.id,
-          transicion: 'INICIAR_CONFIGURACION',
-        });
-
-      case TipoOperacionPppoe.ACTIVAR_SECRET:
-      case TipoOperacionPppoe.SUSPENDER_SERVICIO:
-      case TipoOperacionPppoe.ELIMINAR_SECRET:
-        return params.acceso;
-
-      default:
-        throw new ProvisionamientoPppoeEstadoInvalidoError(
-          `No existe preparación del acceso para la operación ${params.operacion.tipo}.`,
-        );
-    }
-  }
-
-  private async findRequiredAccess(params: {
-    empresaId: number;
-
-    cuenta: ClientePppoeCuentaReadModel;
-  }): Promise<AccesoInternetReadModel> {
-    const acceso = await this.accesosInternet.buscarPorId(
-      params.cuenta.accesoInternetId,
+    error: unknown;
+    avance: Avance;
+    cuenta: ClientePppoeCuentaReadModel | null;
+    estadoCuentaInicial: EstadoCuentaPppoe | null;
+  }): Promise<EjecutarOperacionPppoeResult> {
+    const { input, avance } = params;
+    const fallo = normalizarError(params.error, avance.ejecutorIniciado);
+    this.logger.error(
+      `[PPPOE] Operación fallida operacionId=${input.operacionId} tipo=${params.operacion.tipo} codigo=${fallo.errorCodigo} ejecutorIniciado=${avance.ejecutorIniciado}`,
     );
 
-    if (!acceso) {
-      throw new ProvisionamientoPppoeEstadoInvalidoError(
-        'No existe el acceso de internet asociado a la cuenta PPPoE.',
+    const conFallo = await this.asegurarPasoFallido(input, fallo);
+    let cuenta = params.cuenta;
+    if (avance.cuentaPreparada || avance.ejecutorIniciado) {
+      cuenta = await this.registrarErrorEnCuenta(
+        cuenta,
+        conFallo.operacion.cuentaPppoeId,
+        fallo.message,
       );
+    } else {
+      cuenta ??= await this.buscarCuenta(conFallo.operacion.cuentaPppoeId);
     }
 
-    return acceso;
-  }
-
-  /**
-   * Sincroniza el estado operativo general de ClienteInternet
-   * después de confirmar exitosamente el resultado PPPoE.
-   *
-   * Importante:
-   *
-   * - ACTIVAR_SECRET -> ACTIVO
-   * - SUSPENDER_SERVICIO -> SUSPENDIDO
-   *
-   * No modifica estadoCobranza.
-   *
-   * CREAR_SECRET todavía no representa un servicio operativo.
-   *
-   * ELIMINAR_SECRET se conserva fuera de esta regla porque
-   * una baja PPPoE no equivale necesariamente, por sí sola,
-   * a completar una ClienteDesinstalacion.
-   */
-  private async applySuccessfulClientResult(params: {
-    operacion: PppoeOperacionReadModel;
-
-    acceso: AccesoInternetReadModel;
-  }): Promise<void> {
-    const operacion = params.operacion;
-
-    switch (params.operacion.tipo) {
-      case TipoOperacionPppoe.ACTIVAR_SECRET:
-        await this.clienteEstadoOperativo.sincronizar({
-          empresaId: params.acceso.empresaId,
-
-          clienteId: params.acceso.clienteId,
-
-          estado: EstadoOperativoClienteInternet.ACTIVO,
-
-          cambiadoPorId: operacion.iniciadoPorId,
-
-          motivo: operacion.motivo,
-
-          descripcion:
-            `Estado operativo sincronizado automáticamente ` +
-            `después de confirmar la operación PPPoE ` +
-            `${operacion.id ?? 'sin-id'} ACTIVAR_SECRET.`,
-        });
-
-        return;
-
-      case TipoOperacionPppoe.SUSPENDER_SERVICIO:
-        await this.clienteEstadoOperativo.sincronizar({
-          empresaId: params.acceso.empresaId,
-
-          clienteId: params.acceso.clienteId,
-
-          estado: EstadoOperativoClienteInternet.SUSPENDIDO,
-
-          cambiadoPorId: operacion.iniciadoPorId,
-
-          motivo: operacion.motivo,
-
-          descripcion:
-            `Estado operativo sincronizado automáticamente ` +
-            `después de confirmar la operación PPPoE ` +
-            `${operacion.id ?? 'sin-id'} SUSPENDER_SERVICIO.`,
-        });
-
-        return;
-
-      case TipoOperacionPppoe.CREAR_SECRET:
-      case TipoOperacionPppoe.ELIMINAR_SECRET:
-        return;
-
-      default:
-        return;
-    }
-  }
-
-  /**
-   * Prepara la cuenta para eliminar definitivamente
-   * el secret del router.
-   *
-   * Flujo inicial:
-   *
-   * estado actual -> EN_DESINSTALACION
-   *
-   * Ejecución previamente preparada:
-   *
-   * EN_DESINSTALACION -> sin cambios
-   *
-   * Reintento:
-   *
-   * ERROR -> EN_DESINSTALACION
-   */
-  private async prepareAccountForDeletion(
-    cuenta: ClientePppoeCuentaReadModel,
-  ): Promise<ClientePppoeCuentaReadModel> {
-    switch (cuenta.estado) {
-      case EstadoCuentaPppoe.PENDIENTE_ACTIVACION:
-      case EstadoCuentaPppoe.EN_INSTALACION:
-      case EstadoCuentaPppoe.EN_ACTIVACION:
-      case EstadoCuentaPppoe.ACTIVA:
-      case EstadoCuentaPppoe.SUSPENDIDA:
-      case EstadoCuentaPppoe.ERROR:
-        return this.cuentasPppoe.cambiarEstado({
-          cuentaPppoeId: cuenta.id,
-          transicion: 'INICIAR_DESINSTALACION',
-        });
-
-      case EstadoCuentaPppoe.EN_DESINSTALACION:
-        /*
-         * La cuenta ya fue preparada, pero todos los pasos
-         * técnicos de la operación continúan PENDIENTES.
-         */
-        return cuenta;
-
-      case EstadoCuentaPppoe.ELIMINADA:
-        throw new ProvisionamientoPppoeEstadoInvalidoError(
-          'La cuenta PPPoE ya se encuentra eliminada.',
-        );
-
-      default:
-        throw new ProvisionamientoPppoeEstadoInvalidoError(
-          `No puede ejecutarse ELIMINAR_SECRET con la cuenta en estado ${cuenta.estado}.`,
-        );
-    }
-  }
-
-  /**
-   * Valida que la cuenta pueda entrar en una operación
-   * de suspensión.
-   *
-   * No se cambia el estado antes de ejecutar SSH porque
-   * actualmente el dominio no contiene EN_SUSPENSION.
-   *
-   * Flujo inicial:
-   *
-   * ACTIVA -> SUSPENDIDA
-   *
-   * Reintento:
-   *
-   * ERROR -> SUSPENDIDA
-   */
-  private async prepareAccountForSuspension(
-    cuenta: ClientePppoeCuentaReadModel,
-  ): Promise<ClientePppoeCuentaReadModel> {
-    /**
-     * La existencia del secret debe estar confirmada.
-     *
-     * Cuenta creada por CRM:
-     *   secretCreadoEn != null
-     *
-     * Cuenta adoptada:
-     *   adoptadoEn != null
-     *
-     * Esta distinción ya está encapsulada en
-     * cuenta.tieneSecretCreado.
-     */
-    if (!cuenta.tieneSecretCreado) {
-      throw new ProvisionamientoPppoeEstadoInvalidoError(
-        'No puede suspenderse una cuenta cuyo secret no está confirmado como existente.',
-      );
-    }
-
-    /**
-     * Las cuentas generadas por CRM conocen su
-     * fecha de activación.
-     *
-     * Las cuentas adoptadas pueden desconocer la fecha
-     * histórica, pero fueron verificadas directamente
-     * contra MikroTik antes de ser incorporadas.
-     */
-    const tieneActivacionConfirmada =
-      cuenta.activadoEn !== null || cuenta.esAdoptada;
-
-    if (!tieneActivacionConfirmada) {
-      throw new ProvisionamientoPppoeEstadoInvalidoError(
-        'No puede suspenderse una cuenta que no tiene una activación confirmada.',
-      );
-    }
-
-    switch (cuenta.estado) {
-      case EstadoCuentaPppoe.ACTIVA:
-        return cuenta;
-
-      case EstadoCuentaPppoe.ERROR:
-        /**
-         * ERROR solamente se admite aquí para la ejecución
-         * de un reintento de suspensión previamente fallido.
-         *
-         * La cadena de reintento se valida fuera de este método.
-         */
-        return cuenta;
-
-      default:
-        throw new ProvisionamientoPppoeEstadoInvalidoError(
-          `No puede ejecutarse SUSPENDER_SERVICIO con la cuenta en estado ${cuenta.estado}.`,
-        );
-    }
-  }
-
-  /**
-   * Prepara la cuenta para crear el secret.
-   *
-   * Flujo inicial:
-   *
-   * PENDIENTE_ACTIVACION -> EN_INSTALACION
-   *
-   * Reintento:
-   *
-   * ERROR -> EN_INSTALACION
-   */
-  private async prepareAccountForSecretCreation(
-    cuenta: ClientePppoeCuentaReadModel,
-  ): Promise<ClientePppoeCuentaReadModel> {
-    switch (cuenta.estado) {
-      case EstadoCuentaPppoe.PENDIENTE_ACTIVACION:
-        return this.cuentasPppoe.cambiarEstado({
-          cuentaPppoeId: cuenta.id,
-          transicion: 'INICIAR_INSTALACION',
-        });
-
-      case EstadoCuentaPppoe.ERROR:
-        return this.cuentasPppoe.cambiarEstado({
-          cuentaPppoeId: cuenta.id,
-          transicion: 'REINTENTAR_INSTALACION',
-        });
-
-      case EstadoCuentaPppoe.EN_INSTALACION:
-        /*
-         * La cuenta pudo prepararse previamente,
-         * mientras todos los pasos continúan PENDIENTES.
-         */
-        return cuenta;
-
-      default:
-        throw new ProvisionamientoPppoeEstadoInvalidoError(
-          `No puede ejecutarse CREAR_SECRET con la cuenta en estado ${cuenta.estado}.`,
-        );
-    }
-  }
-
-  /**
-   * Prepara la cuenta para habilitar el secret.
-   *
-   * Primera activación:
-   *
-   * EN_INSTALACION -> EN_ACTIVACION
-   *
-   * Reactivación:
-   *
-   * SUSPENDIDA -> EN_ACTIVACION
-   *
-   * Reintento:
-   *
-   * ERROR -> EN_ACTIVACION
-   */
-  /**
-   * Prepara la cuenta para la activación formal del servicio.
-   *
-   * Estado 3 vuelve a ejecutar explícitamente:
-   *
-   * /ppp secret enable [find name="..."]
-   *
-   * aunque el Secret creado durante Estado 2 haya quedado
-   * habilitado. Esto corresponde al comando definido por
-   * la transición formal a ACTIVO en el requerimiento v3.
-   *
-   * Primera activación:
-   *
-   * EN_INSTALACION -> EN_ACTIVACION
-   *
-   * Reactivación:
-   *
-   * SUSPENDIDA -> EN_ACTIVACION
-   *
-   * Reintento:
-   *
-   * ERROR -> EN_ACTIVACION
-   */
-  private async prepareAccountForActivation(
-    cuenta: ClientePppoeCuentaReadModel,
-  ): Promise<ClientePppoeCuentaReadModel> {
-    switch (cuenta.estado) {
-      case EstadoCuentaPppoe.EN_INSTALACION:
-      case EstadoCuentaPppoe.SUSPENDIDA:
-        return this.cuentasPppoe.cambiarEstado({
-          cuentaPppoeId: cuenta.id,
-          transicion: 'INICIAR_ACTIVACION',
-        });
-
-      case EstadoCuentaPppoe.ERROR:
-        return this.cuentasPppoe.cambiarEstado({
-          cuentaPppoeId: cuenta.id,
-          transicion: 'REINTENTAR_ACTIVACION',
-        });
-
-      case EstadoCuentaPppoe.EN_ACTIVACION:
-        /*
-         * La cuenta ya fue preparada, pero todavía
-         * no comenzó ningún paso técnico.
-         */
-        return cuenta;
-
-      default:
-        throw new ProvisionamientoPppoeEstadoInvalidoError(
-          `No puede ejecutarse ACTIVAR_SECRET con la cuenta en estado ${cuenta.estado}.`,
-        );
-    }
-  }
-
-  /**
-   * Selecciona el ejecutor técnico correspondiente.
-   */
-  private async executeTechnicalOperation(params: {
-    contexto: ContextoEjecucionPppoe;
-
-    pasos: PppoeOperacionPasoReadModel[];
-  }): Promise<PppoeOperacionResultado> {
-    switch (params.contexto.operacion.tipo) {
-      case TipoOperacionPppoe.CREAR_SECRET:
-        return this.ejecutorCrearSecret.execute({
-          contexto: params.contexto,
-
-          pasos: params.pasos,
-        });
-
-      case TipoOperacionPppoe.ACTIVAR_SECRET:
-        return this.ejecutorActivarSecret.execute({
-          contexto: params.contexto,
-
-          pasos: params.pasos,
-        });
-
-      case TipoOperacionPppoe.SUSPENDER_SERVICIO:
-        return this.ejecutorSuspenderServicio.execute({
-          contexto: params.contexto,
-
-          pasos: params.pasos,
-        });
-
-      case TipoOperacionPppoe.ELIMINAR_SECRET:
-        return this.ejecutorEliminarSecret.execute({
-          contexto: params.contexto,
-
-          pasos: params.pasos,
-        });
-
-      default:
-        throw new ProvisionamientoPppoeEstadoInvalidoError(
-          `No existe ejecutor técnico para la operación ${params.contexto.operacion.tipo}.`,
-        );
-    }
-  }
-
-  /**
-   * Aplica a la cuenta el resultado remoto ya confirmado.
-   */
-  private async applySuccessfulAccountResult(params: {
-    operacion: PppoeOperacionReadModel;
-    cuenta: ClientePppoeCuentaReadModel;
-    fecha: Date;
-  }): Promise<ClientePppoeCuentaReadModel> {
-    switch (params.operacion.tipo) {
-      case TipoOperacionPppoe.CREAR_SECRET:
-        return this.cuentasPppoe.cambiarEstado({
-          cuentaPppoeId: params.cuenta.id,
-          transicion: 'MARCAR_SECRET_CREADO',
-          fecha: params.fecha,
-        });
-
-      case TipoOperacionPppoe.ACTIVAR_SECRET:
-        return this.cuentasPppoe.cambiarEstado({
-          cuentaPppoeId: params.cuenta.id,
-          transicion: 'MARCAR_ACTIVA',
-          fecha: params.fecha,
-        });
-
-      case TipoOperacionPppoe.SUSPENDER_SERVICIO:
-        return this.cuentasPppoe.cambiarEstado({
-          cuentaPppoeId: params.cuenta.id,
-          transicion: 'MARCAR_SUSPENDIDA',
-          fecha: params.fecha,
-        });
-
-      case TipoOperacionPppoe.ELIMINAR_SECRET:
-        return this.cuentasPppoe.cambiarEstado({
-          cuentaPppoeId: params.cuenta.id,
-          transicion: 'MARCAR_ELIMINADA',
-          fecha: params.fecha,
-        });
-
-      default:
-        throw new ProvisionamientoPppoeEstadoInvalidoError(
-          `No existe transición local exitosa para la operación ${params.operacion.tipo}.`,
-        );
-    }
-  }
-
-  /**
-   * Convierte un error en una clasificación técnica segura.
-   */
-  private normalizeExecutionError(params: {
-    error: unknown;
-
-    executorStarted: boolean;
-  }): PppoeOperacionStepError {
-    if (params.error instanceof PppoeOperacionStepError) {
-      return params.error;
-    }
-
-    /*
-     * Una vez entregado el control al executor,
-     * cualquier error no clasificado se considera
-     * conservadoramente como posible efecto remoto.
-     */
-    if (params.executorStarted) {
-      return PppoeOperacionStepError.from(params.error);
-    }
-
-    /*
-     * Resolución de contexto y preparación de cuenta ocurren
-     * antes de abrir la sesión y no modifican RouterOS.
-     */
-    return new PppoeOperacionStepError({
-      errorCodigo: 'PPPOE_CONTEXTO_EJECUCION_INVALIDO',
-
-      errorMensaje:
-        'No pudo prepararse el contexto necesario para ejecutar la operación PPPoE.',
-
-      efectoRemoto: EfectoRemotoMikrotik.NO_INICIADO,
-
-      reintentable: true,
-
-      fase: FaseFalloMikrotikSsh.CONFIGURACION,
-
-      cause: params.error,
-    });
-  }
-
-  /**
-   * Garantiza que exista un paso FALLIDO antes de finalizar
-   * la operación como FALLIDA o PARCIAL.
-   */
-  private async ensureFailedStep(params: {
-    empresaId: number;
-
-    operacionId: number;
-
-    error: PppoeOperacionStepError;
-  }): Promise<PppoeOperacionAgregadoReadModel> {
-    let aggregate = await this.loadAggregate({
-      empresaId: params.empresaId,
-
-      operacionId: params.operacionId,
+    const parcial =
+      fallo.debeFinalizarComoParcial() &&
+      huboPosibleEfectoRemoto(conFallo.pasos);
+    const final = await this.operaciones.finalizar({
+      operacionId: input.operacionId,
+      estadoFinal: parcial
+        ? EstadoOperacionPppoe.PARCIAL
+        : EstadoOperacionPppoe.FALLIDA,
+      errorCodigo: fallo.errorCodigo,
+      errorMensaje: fallo.message,
+      resultado: null,
     });
 
-    const executingStep = aggregate.pasos.find((paso) => paso.estaEjecutando);
+    // Se relee para no devolver un estado de cuenta solo cambiado en memoria.
+    const cuentaFinal =
+      (await this.buscarCuenta(final.operacion.cuentaPppoeId)) ?? cuenta;
+    await this.operacionAuditoria.registrarFinalizada({
+      operacion: final.operacion,
+      estadoCuentaAnterior: params.estadoCuentaInicial,
+      estadoCuentaNuevo: cuentaFinal?.estado ?? null,
+    });
+    return this.resultado(final.operacion, cuentaFinal, fallo);
+  }
 
-    if (executingStep) {
+  private ejecutarEnRouter(
+    contexto: ContextoEjecucionPppoe,
+    pasos: PppoeOperacionPasoReadModel[],
+  ): Promise<PppoeOperacionResultado> {
+    const ejecutores = {
+      [TipoOperacionPppoe.CREAR_SECRET]: this.ejecutorCrearSecret,
+      [TipoOperacionPppoe.ACTIVAR_SECRET]: this.ejecutorActivarSecret,
+      [TipoOperacionPppoe.SUSPENDER_SERVICIO]: this.ejecutorSuspenderServicio,
+      [TipoOperacionPppoe.ELIMINAR_SECRET]: this.ejecutorEliminarSecret,
+    };
+    return ejecutores[contexto.operacion.tipo].execute({ contexto, pasos });
+  }
+
+  /**
+   * Una operación FALLIDA o PARCIAL necesita un paso FALLIDO. Si el error
+   * ocurrió antes de que el ejecutor tomara un paso, se marca el primero
+   * pendiente. Un paso que siga EJECUTANDO solo lo cierra la recuperación.
+   */
+  private async asegurarPasoFallido(
+    input: EjecutarPppoeOperacionUseCaseInput,
+    fallo: PppoeOperacionStepError,
+  ): Promise<PppoeOperacionAgregadoReadModel> {
+    let agregado = await this.cargar(input.operacionId);
+    const enCurso = agregado.pasos.find((paso) => paso.estaEjecutando);
+    if (enCurso) {
       throw new OperacionPppoeRequiereRecuperacionError(
-        `La operación PPPoE conserva el paso ${executingStep.orden} en estado EJECUTANDO y requiere recuperación.`,
+        `La operación PPPoE conserva el paso ${enCurso.orden} en estado EJECUTANDO y requiere recuperación.`,
       );
     }
+    if (agregado.pasos.some((paso) => paso.fueFallido)) return agregado;
 
-    const failedStep = aggregate.pasos.find((paso) => paso.fueFallido);
-
-    if (failedStep) {
-      return aggregate;
-    }
-
-    const pendingStep = [...aggregate.pasos]
-      .sort((left, right) => left.orden - right.orden)
+    const pendiente = [...agregado.pasos]
+      .sort((a, b) => a.orden - b.orden)
       .find((paso) => paso.estaPendiente);
-
-    if (!pendingStep) {
+    if (!pendiente) {
       throw new OperacionPppoeRequiereRecuperacionError(
         'La operación PPPoE no contiene un paso disponible para registrar el fallo y requiere recuperación.',
       );
     }
-
-    try {
-      await this.stepRunner.ejecutar({
-        empresaId: params.empresaId,
-
-        operacionId: params.operacionId,
-
-        orden: pendingStep.orden,
-
+    // El runner persiste el paso FALLIDO y siempre vuelve a lanzar el error.
+    await this.stepRunner
+      .ejecutar({
+        empresaId: input.empresaId,
+        operacionId: input.operacionId,
+        orden: pendiente.orden,
         comandoSanitizado: 'INTERRUMPIR_PASO_POR_ERROR_PREVIO',
+        ejecutar: () => Promise.reject(fallo),
+      })
+      .catch(() => undefined);
 
-        ejecutar: async () => {
-          throw params.error;
-        },
-      });
-    } catch {
-      /*
-       * El runner siempre propaga el error técnico después
-       * de persistir el paso FALLIDO.
-       */
-    }
-
-    aggregate = await this.loadAggregate({
-      empresaId: params.empresaId,
-
-      operacionId: params.operacionId,
-    });
-
-    const persistedExecutingStep = aggregate.pasos.find(
-      (paso) => paso.estaEjecutando,
-    );
-
-    if (persistedExecutingStep) {
+    agregado = await this.cargar(input.operacionId);
+    const sigueEnCurso = agregado.pasos.find((paso) => paso.estaEjecutando);
+    if (sigueEnCurso) {
       throw new OperacionPppoeRequiereRecuperacionError(
-        `El paso ${persistedExecutingStep.orden} no pudo finalizarse y la operación PPPoE requiere recuperación.`,
+        `El paso ${sigueEnCurso.orden} no pudo finalizarse y la operación PPPoE requiere recuperación.`,
       );
     }
-
-    const persistedFailedStep = aggregate.pasos.find((paso) => paso.fueFallido);
-
-    if (!persistedFailedStep) {
+    if (!agregado.pasos.some((paso) => paso.fueFallido)) {
       throw new ProvisionamientoPppoeEstadoInvalidoError(
         'No pudo registrarse el fallo técnico de la operación PPPoE.',
       );
     }
-
-    return aggregate;
+    return agregado;
   }
 
-  /**
-   * Determina si existe evidencia suficiente para PARCIAL.
-   *
-   * La clasificación debe coincidir con las reglas
-   * de FinalizarPppoeOperacionUseCase.
-   */
-  private resolveFailedOperationState(params: {
-    error: PppoeOperacionStepError;
-
-    pasos: PppoeOperacionPasoReadModel[];
-  }): EstadoOperacionPppoe.PARCIAL | EstadoOperacionPppoe.FALLIDA {
-    if (!params.error.debeFinalizarComoParcial()) {
-      return EstadoOperacionPppoe.FALLIDA;
-    }
-
-    const hasRemoteEffectEvidence = params.pasos.some(
-      (paso) =>
-        EjecutarPppoeOperacionUseCase.PASOS_CON_EFECTO_REMOTO.has(paso.tipo) &&
-        (paso.fueExitoso || paso.fueFallido),
-    );
-
-    return hasRemoteEffectEvidence
-      ? EstadoOperacionPppoe.PARCIAL
-      : EstadoOperacionPppoe.FALLIDA;
-  }
-
-  /**
-   * Registra el error en la cuenta sin sustituir
-   * el error técnico principal.
-   */
-  private async registerAccountErrorSafely(params: {
-    cuenta: ClientePppoeCuentaReadModel | null;
-
-    cuentaPppoeId: number;
-
-    errorMessage: string;
-  }): Promise<ClientePppoeCuentaReadModel | null> {
+  /** Anota el error en la cuenta sin ocultar el error técnico principal. */
+  private async registrarErrorEnCuenta(
+    cuenta: ClientePppoeCuentaReadModel | null,
+    cuentaPppoeId: number,
+    mensaje: string,
+  ): Promise<ClientePppoeCuentaReadModel | null> {
     try {
-      const cuenta =
-        params.cuenta ??
-        (await this.cuentasPppoe.buscarPorId(params.cuentaPppoeId));
-
-      if (!cuenta || cuenta.estaEliminada) {
-        return cuenta;
-      }
-
+      const actual =
+        cuenta ?? (await this.cuentasPppoe.buscarPorId(cuentaPppoeId));
+      if (!actual || actual.estaEliminada) return actual;
       return await this.cuentasPppoe.registrarError({
-        cuentaPppoeId: cuenta.id,
-        mensaje: params.errorMessage,
+        cuentaPppoeId: actual.id,
+        mensaje,
       });
     } catch {
-      /*
-       * La operación conserva el error principal.
-       *
-       * La reconciliación de la cuenta será responsabilidad
-       * del recuperador si esta escritura local falla.
-       */
-      return params.cuenta;
+      // Si esta escritura falla, la recuperación reconcilia la cuenta.
+      return cuenta;
     }
   }
 
-  private async findAccountSafely(
+  private async buscarCuenta(
     cuentaPppoeId: number,
   ): Promise<ClientePppoeCuentaReadModel | null> {
     try {
@@ -1261,178 +354,75 @@ export class EjecutarPppoeOperacionUseCase {
     }
   }
 
-  private async loadAggregate(params: {
-    empresaId: number;
-
-    operacionId: number;
-  }): Promise<PppoeOperacionAgregadoReadModel> {
-    const aggregate = await this.operaciones.buscarAgregado({
-      operacionId: params.operacionId,
-    });
-
-    if (!aggregate) {
+  private async cargar(
+    operacionId: number,
+  ): Promise<PppoeOperacionAgregadoReadModel> {
+    const agregado = await this.operaciones.buscarAgregado({ operacionId });
+    if (!agregado) {
       throw new ProvisionamientoPppoeEstadoInvalidoError(
         'No pudo recargarse la operación PPPoE.',
       );
     }
-
-    return aggregate;
+    return agregado;
   }
 
-  private assertSupportedOperation(operacion: PppoeOperacionReadModel): void {
-    switch (operacion.tipo) {
-      case TipoOperacionPppoe.CREAR_SECRET:
-      case TipoOperacionPppoe.ACTIVAR_SECRET:
-      case TipoOperacionPppoe.SUSPENDER_SERVICIO:
-      case TipoOperacionPppoe.ELIMINAR_SECRET:
-        return;
-
-      default:
-        throw new ProvisionamientoPppoeEstadoInvalidoError(
-          `EjecutarPppoeOperacionUseCase todavía no admite operaciones de tipo ${operacion.tipo}.`,
-        );
-    }
-  }
-
-  /**
-   * Evita reanudar ciegamente una ejecución previa.
-   */
-  private assertNotInterrupted(
-    aggregate: PppoeOperacionAgregadoReadModel,
-  ): void {
-    const processedStep = aggregate.pasos.find((paso) => !paso.estaPendiente);
-
-    if (!processedStep) {
-      return;
-    }
-
-    throw new OperacionPppoeRequiereRecuperacionError(
-      `La operación PPPoE ya contiene el paso ${processedStep.orden} en estado ${processedStep.estado}. Debe pasar por recuperación antes de continuar.`,
-    );
-  }
-
-  private toResult(params: {
-    operacion: PppoeOperacionReadModel;
-
-    cuenta: ClientePppoeCuentaReadModel | null;
-
-    technicalError: PppoeOperacionStepError | null;
-  }): EjecutarOperacionPppoeResult {
-    const operationProps = params.operacion;
-
+  private resultado(
+    operacion: PppoeOperacionReadModel,
+    cuenta: ClientePppoeCuentaReadModel | null,
+    fallo: PppoeOperacionStepError | null,
+  ): EjecutarOperacionPppoeResult {
     return {
-      operacionId: this.requirePersistedId(params.operacion),
-
-      cuentaPppoeId: params.operacion.cuentaPppoeId,
-
-      tipo: params.operacion.tipo,
-
-      estadoOperacion: params.operacion.estado,
-
-      estadoCuenta: params.cuenta?.estado ?? null,
-
-      numeroIntento: params.operacion.numeroIntento,
-
+      operacionId: operacion.id,
+      cuentaPppoeId: operacion.cuentaPppoeId,
+      tipo: operacion.tipo,
+      estadoOperacion: operacion.estado,
+      estadoCuenta: cuenta?.estado ?? null,
+      numeroIntento: operacion.numeroIntento,
       reintentable:
-        params.operacion.puedeReintentarse &&
-        (params.technicalError?.reintentable ?? true),
-
-      resultado: operationProps.resultado,
-
-      errorCodigo: operationProps.errorCodigo,
-
-      errorMensaje: operationProps.errorMensaje,
+        operacion.puedeReintentarse && (fallo?.reintentable ?? true),
+      resultado: operacion.resultado,
+      errorCodigo: operacion.errorCodigo,
+      errorMensaje: operacion.errorMensaje,
     };
   }
 
-  private requirePersistedId(operacion: PppoeOperacionReadModel): number {
-    return operacion.id;
-  }
-
-  private validateInput(input: EjecutarPppoeOperacionUseCaseInput): void {
-    this.assertPositiveInteger(input.empresaId, 'empresaId');
-
-    this.assertPositiveInteger(input.operacionId, 'operacionId');
-
+  private validarEntrada(input: EjecutarPppoeOperacionUseCaseInput): void {
+    for (const campo of ['empresaId', 'operacionId'] as const) {
+      if (!Number.isInteger(input[campo]) || input[campo] <= 0) {
+        throw new ProvisionamientoPppoeDatosInvalidosError(
+          `${campo} debe ser un entero positivo.`,
+        );
+      }
+    }
+    const fecha = input.fechaInicio;
     if (
-      input.fechaInicio !== undefined &&
-      (!(input.fechaInicio instanceof Date) ||
-        Number.isNaN(input.fechaInicio.getTime()))
+      fecha !== undefined &&
+      (!(fecha instanceof Date) || Number.isNaN(fecha.getTime()))
     ) {
       throw new ProvisionamientoPppoeDatosInvalidosError(
         'fechaInicio debe contener una fecha válida.',
       );
     }
   }
+}
 
-  private assertPositiveInteger(value: number, field: string): void {
-    if (!Number.isInteger(value) || value <= 0) {
-      throw new ProvisionamientoPppoeDatosInvalidosError(
-        `${field} debe ser un entero positivo.`,
-      );
-    }
-  }
-
-  /**
-   * Valida el contexto persistido de una operación
-   * ELIMINAR_SECRET.
-   *
-   * Contextos válidos:
-   *
-   * DESINSTALACION
-   *   desinstalacionId != null
-   *
-   * BAJA_MANUAL
-   *   desinstalacionId == null
-   *   instalacionId == null
-   *
-   * Una instalación por sí sola no constituye un
-   * contexto válido para eliminar definitivamente
-   * una cuenta PPPoE.
-   *
-   * La autorización del operador no se valida aquí.
-   * Este caso de uso pertenece al motor técnico y
-   * recibe operaciones previamente creadas por los
-   * flujos de aplicación correspondientes.
-   */
-  private assertValidDeletionContext(operacion: PppoeOperacionReadModel): void {
-    if (operacion.tipo !== TipoOperacionPppoe.ELIMINAR_SECRET) {
-      throw new ProvisionamientoPppoeEstadoInvalidoError(
-        'La operación PPPoE no corresponde a ELIMINAR_SECRET.',
-      );
-    }
-
-    /*
-     * Flujo tradicional:
-     *
-     * ClienteDesinstalacion -> ELIMINAR_SECRET
-     *
-     * Puede conservar instalacionId o no.
-     */
-    if (operacion.desinstalacionId !== null) {
-      return;
-    }
-
-    /*
-     * Baja manual:
-     *
-     * No existe ClienteInstalacion ni
-     * ClienteDesinstalacion como origen funcional.
-     */
-    if (operacion.instalacionId === null) {
-      return;
-    }
-
-    /*
-     * Contexto inconsistente:
-     *
-     * existe instalacionId pero no desinstalacionId.
-     *
-     * No admitimos que una instalación por sí sola
-     * origine una eliminación definitiva.
-     */
-    throw new ProvisionamientoPppoeEstadoInvalidoError(
-      'La operación ELIMINAR_SECRET contiene un contexto inválido: una eliminación sin desinstalación no puede estar vinculada únicamente a una instalación.',
-    );
-  }
+/**
+ * Antes de entregar el control al ejecutor nada tocó el router; después,
+ * un error sin clasificar se trata como posible efecto remoto.
+ */
+function normalizarError(
+  error: unknown,
+  ejecutorIniciado: boolean,
+): PppoeOperacionStepError {
+  if (error instanceof PppoeOperacionStepError) return error;
+  if (ejecutorIniciado) return PppoeOperacionStepError.from(error);
+  return new PppoeOperacionStepError({
+    errorCodigo: 'PPPOE_CONTEXTO_EJECUCION_INVALIDO',
+    errorMensaje:
+      'No pudo prepararse el contexto necesario para ejecutar la operación PPPoE.',
+    efectoRemoto: EfectoRemotoMikrotik.NO_INICIADO,
+    reintentable: true,
+    fase: FaseFalloMikrotikSsh.CONFIGURACION,
+    cause: error,
+  });
 }

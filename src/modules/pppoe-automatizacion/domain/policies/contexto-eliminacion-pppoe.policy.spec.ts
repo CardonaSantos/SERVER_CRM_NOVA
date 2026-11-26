@@ -32,8 +32,11 @@ describe('resolverContextoEliminacion', () => {
     expect(eliminar(null, null)).toBe(ContextoEliminacionPppoe.BAJA_MANUAL);
   });
 
-  it('con instalación es un contexto inválido', () => {
+  it('con desinstalación sigue siendo el flujo formal aunque conserve la instalación', () => {
+    expect(eliminar(3, 7)).toBe(ContextoEliminacionPppoe.DESINSTALACION);
+  });
+
+  it('una instalación sola es un contexto inválido', () => {
     expect(eliminar(3, null)).toBe(ContextoEliminacionPppoe.CONTEXTO_INVALIDO);
-    expect(eliminar(3, 7)).toBe(ContextoEliminacionPppoe.CONTEXTO_INVALIDO);
   });
 });

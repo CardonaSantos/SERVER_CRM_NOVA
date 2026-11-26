@@ -1,16 +1,11 @@
 import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
 import { Inject, Injectable } from '@nestjs/common';
+import { huboPosibleEfectoRemoto } from '../../domain/policies/efecto-remoto-pppoe.policy';
+import { SincronizacionLocalPppoeService } from '../services/sincronizacion-local-pppoe.service';
 
-import {
-  ClientePppoeCuentaReadModel,
-  EstadoCuentaPppoe,
-} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
+import { ClientePppoeCuentaReadModel } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
 
-import {
-  EstadoOperacionPppoe,
-  TipoOperacionPppoe,
-  TipoPasoPppoe,
-} from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
+import { EstadoOperacionPppoe } from 'src/modules/pppoe-operacion/public/pppoe-operacion.types';
 
 import { EjecutarOperacionPppoeResult } from '../../public/pppoe-provisionamiento.port';
 import {
@@ -75,24 +70,6 @@ export type RecuperarPppoeOperacionInterrumpidaInput = {
  */
 @Injectable()
 export class RecuperarPppoeOperacionInterrumpidaUseCase {
-  /**
-   * Pasos que pueden haber modificado RouterOS.
-   *
-   * Debe permanecer alineado con
-   * FinalizarPppoeOperacionUseCase.
-   */
-  private static readonly PASOS_CON_EFECTO_REMOTO = new Set<TipoPasoPppoe>([
-    TipoPasoPppoe.AGREGAR_SECRET,
-
-    TipoPasoPppoe.HABILITAR_SECRET,
-
-    TipoPasoPppoe.DESHABILITAR_SECRET,
-
-    TipoPasoPppoe.REMOVER_SESION_ACTIVA,
-
-    TipoPasoPppoe.ELIMINAR_SECRET,
-  ]);
-
   constructor(
     @Inject(RELOJ) private readonly reloj: RelojPort,
     @Inject(PPPOE_OPERACION)
@@ -102,6 +79,7 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
 
     @Inject(PPPOE_CLIENTE_CUENTA)
     private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
+    private readonly sincronizacion: SincronizacionLocalPppoeService,
   ) {}
 
   async execute(
@@ -185,7 +163,9 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
       fecha,
     });
 
-    const estadoFinal = this.resolveInterruptedFinalState(aggregate.pasos);
+    const estadoFinal = huboPosibleEfectoRemoto(aggregate.pasos)
+      ? EstadoOperacionPppoe.PARCIAL
+      : EstadoOperacionPppoe.FALLIDA;
 
     const finalAggregate =
       estadoFinal === EstadoOperacionPppoe.PARCIAL
@@ -273,13 +253,11 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
 
     const estadoCuentaAnterior = cuenta.estado;
 
-    cuenta = await this.applyConfirmedRemoteResult({
-      operacion: params.operacion,
-
+    cuenta = await this.sincronizacion.confirmarEnCuenta(
+      params.operacion,
       cuenta,
-
-      fecha: params.fecha,
-    });
+      params.fecha,
+    );
 
     const finalAggregate = await this.operaciones.finalizar({
       operacionId: this.requireOperationId(params.operacion),
@@ -322,100 +300,6 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
 
       cuenta,
     });
-  }
-
-  /**
-   * Aplica idempotentemente el resultado remoto
-   * confirmado sobre la cuenta local.
-   */
-  private async applyConfirmedRemoteResult(params: {
-    operacion: PppoeOperacionReadModel;
-
-    cuenta: ClientePppoeCuentaReadModel;
-
-    fecha: Date;
-  }): Promise<ClientePppoeCuentaReadModel> {
-    switch (params.operacion.tipo) {
-      case TipoOperacionPppoe.CREAR_SECRET:
-        if (params.cuenta.tieneSecretCreado) {
-          return params.cuenta;
-        }
-
-        if (params.cuenta.estado !== EstadoCuentaPppoe.EN_INSTALACION) {
-          throw new ProvisionamientoPppoeEstadoInvalidoError(
-            `No puede reconciliarse CREAR_SECRET con la cuenta en estado ${params.cuenta.estado}.`,
-          );
-        }
-
-        return this.cuentasPppoe.cambiarEstado({
-          cuentaPppoeId: params.cuenta.id,
-          transicion: 'MARCAR_SECRET_CREADO',
-          fecha: params.fecha,
-        });
-
-      case TipoOperacionPppoe.ACTIVAR_SECRET:
-        if (params.cuenta.estaActiva) {
-          return params.cuenta;
-        }
-
-        if (params.cuenta.estado !== EstadoCuentaPppoe.EN_ACTIVACION) {
-          throw new ProvisionamientoPppoeEstadoInvalidoError(
-            `No puede reconciliarse ACTIVAR_SECRET con la cuenta en estado ${params.cuenta.estado}.`,
-          );
-        }
-
-        return this.cuentasPppoe.cambiarEstado({
-          cuentaPppoeId: params.cuenta.id,
-          transicion: 'MARCAR_ACTIVA',
-          fecha: params.fecha,
-        });
-
-      case TipoOperacionPppoe.SUSPENDER_SERVICIO:
-        if (params.cuenta.estaSuspendida) {
-          return params.cuenta;
-        }
-
-        if (
-          params.cuenta.estado !== EstadoCuentaPppoe.ACTIVA &&
-          params.cuenta.estado !== EstadoCuentaPppoe.ERROR
-        ) {
-          throw new ProvisionamientoPppoeEstadoInvalidoError(
-            `No puede reconciliarse SUSPENDER_SERVICIO con la cuenta en estado ${params.cuenta.estado}.`,
-          );
-        }
-
-        return this.cuentasPppoe.cambiarEstado({
-          cuentaPppoeId: params.cuenta.id,
-          transicion: 'MARCAR_SUSPENDIDA',
-          fecha: params.fecha,
-        });
-
-      case TipoOperacionPppoe.ELIMINAR_SECRET:
-        /*
-         * La cuenta pudo actualizarse antes de que
-         * la operación alcanzara el estado EXITOSA.
-         */
-        if (params.cuenta.estaEliminada) {
-          return params.cuenta;
-        }
-
-        if (params.cuenta.estado !== EstadoCuentaPppoe.EN_DESINSTALACION) {
-          throw new ProvisionamientoPppoeEstadoInvalidoError(
-            `No puede reconciliarse ELIMINAR_SECRET con la cuenta en estado ${params.cuenta.estado}.`,
-          );
-        }
-
-        return this.cuentasPppoe.cambiarEstado({
-          cuentaPppoeId: params.cuenta.id,
-          transicion: 'MARCAR_ELIMINADA',
-          fecha: params.fecha,
-        });
-
-      default:
-        throw new ProvisionamientoPppoeEstadoInvalidoError(
-          `La recuperación todavía no admite operaciones de tipo ${params.operacion.tipo}.`,
-        );
-    }
   }
 
   /**
@@ -485,27 +369,6 @@ export class RecuperarPppoeOperacionInterrumpidaUseCase {
       respuestaSanitizada:
         'Interrupción registrada durante recuperación controlada.',
     });
-  }
-
-  /**
-   * PARCIAL requiere evidencia de un posible efecto remoto.
-   *
-   * Sin esa evidencia la operación se considera FALLIDA.
-   */
-  private resolveInterruptedFinalState(
-    pasos: PppoeOperacionPasoReadModel[],
-  ): EstadoOperacionPppoe.PARCIAL | EstadoOperacionPppoe.FALLIDA {
-    const possibleRemoteEffect = pasos.some(
-      (paso) =>
-        RecuperarPppoeOperacionInterrumpidaUseCase.PASOS_CON_EFECTO_REMOTO.has(
-          paso.tipo,
-        ) &&
-        (paso.fueExitoso || paso.fueFallido),
-    );
-
-    return possibleRemoteEffect
-      ? EstadoOperacionPppoe.PARCIAL
-      : EstadoOperacionPppoe.FALLIDA;
   }
 
   /**

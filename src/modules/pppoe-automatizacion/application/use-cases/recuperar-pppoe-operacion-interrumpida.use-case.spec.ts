@@ -20,6 +20,7 @@ import {
   operacion,
   paso,
 } from '../../test/fakes/pppoe-read-models.fake';
+import { SincronizacionLocalPppoeService } from '../services/sincronizacion-local-pppoe.service';
 import { RecuperarPppoeOperacionInterrumpidaUseCase } from './recuperar-pppoe-operacion-interrumpida.use-case';
 
 const AHORA = new Date('2026-11-25T15:10:00.000Z');
@@ -47,6 +48,8 @@ describe('RecuperarPppoeOperacionInterrumpidaUseCase', () => {
       operaciones,
       auditoria,
       cuentas,
+      // La recuperación solo confirma en la cuenta: acceso y cliente no se tocan.
+      new SincronizacionLocalPppoeService(cuentas, {} as never, {} as never),
     );
   });
 
