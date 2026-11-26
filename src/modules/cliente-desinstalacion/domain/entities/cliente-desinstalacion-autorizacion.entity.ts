@@ -1,4 +1,4 @@
-import { EstadoAutorizacionDesinstalacion } from '../enums/estado-autorizacion-desintalacion.enum';
+import { EstadoAutorizacionDesinstalacion } from '../enums/estado-autorizacion-desinstalacion.enum';
 import { EstadoDesinstalacionCliente } from '../enums/estado-desinstalacion-cliente.enum';
 
 export type ClienteDesinstalacionAutorizacionProps = {

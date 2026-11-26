@@ -1,6 +1,6 @@
 import { ClienteDesinstalacionAutorizacion, Prisma } from '@prisma/client';
-import { ClienteDesinstalacionAutorizacionEntity } from '../../domain/entities/cliente-desintalacion-autorizacion.entitie';
-import { EstadoAutorizacionDesinstalacion } from '../../domain/enums/estado-autorizacion-desintalacion.enum';
+import { ClienteDesinstalacionAutorizacionEntity } from '../../domain/entities/cliente-desinstalacion-autorizacion.entity';
+import { EstadoAutorizacionDesinstalacion } from '../../domain/enums/estado-autorizacion-desinstalacion.enum';
 
 export class ClienteDesinstalacionAutorizacionPrismaMapper {
   static toDomain(

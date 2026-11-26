@@ -1,15 +1,15 @@
-import { CrearClienteDesinstalacionResult } from '../application/use-cases/crear-desinstalacion.use-case';
+import { CrearClienteDesinstalacionResult } from '../../application/use-cases/crear-cliente-desinstalacion.use-case';
 
-import { ClienteDesinstalacionEntity } from '../domain/entities/cliente-desinstalacion.entitie';
+import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entity';
 
-import { ClienteDesInstalacionPaginatedResult } from '../domain/ports/cliente-desinstalacion.repository.port';
+import { ClienteDesInstalacionPaginatedResult } from '../../domain/ports/cliente-desinstalacion-repository.port';
 
 import {
   ClienteDesinstalacionDetalle,
   ClienteDesinstalacionListadoItem,
-} from '../domain/read-models/cliente-desinstalacion.read-model';
+} from '../../domain/read-models/cliente-desinstalacion.read-model';
 
-import { ClienteDesinstalacionTecnicoPresenter } from './cliente-desinstalacion-tecnico.presenter';
+import { ClienteDesinstalacionTecnicoPresenter } from './tecnico-desinstalacion.presenter';
 
 export class ClienteDesinstalacionPresenter {
   /**

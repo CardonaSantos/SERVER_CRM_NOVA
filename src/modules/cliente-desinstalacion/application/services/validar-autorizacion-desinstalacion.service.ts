@@ -1,11 +1,10 @@
 import { ConflictException, Inject, Injectable } from '@nestjs/common';
 
-import { ClienteDesinstalacionAutorizacionEntity } from '../../domain/entities/cliente-desintalacion-autorizacion.entitie';
+import { ClienteDesinstalacionAutorizacionEntity } from '../../domain/entities/cliente-desinstalacion-autorizacion.entity';
 
-import { ClienteDesinstalacionAutorizacionRepositoryPort } from '../../domain/ports/cliente-desinstalacion-autorizacion.repository.port';
+import { ClienteDesinstalacionAutorizacionRepositoryPort, CLIENTE_DESINSTALACION_AUTORIZACION_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-autorizacion-repository.port';
 
-import { CLIENTE_DESINSTALACION_AUTORIZACION_REPOSITORY } from '../../infra/tokens/cliente-desinstalacion.token';
-import { EstadoAutorizacionDesinstalacion } from '../../domain/enums/estado-autorizacion-desintalacion.enum';
+import { EstadoAutorizacionDesinstalacion } from '../../domain/enums/estado-autorizacion-desinstalacion.enum';
 
 @Injectable()
 export class ValidarAutorizacionDesinstalacionService {

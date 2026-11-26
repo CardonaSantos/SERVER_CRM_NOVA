@@ -1,9 +1,8 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { ActualizarClienteDesinstalacionDto } from '../dto/actualizar-desinstalacion-cliente.dto';
-import { CLIENTE_DESINSTALACION_REPOSITORY } from '../../infra/tokens/cliente-desinstalacion.token';
-import { ClienteDesInstalacionRepositoryPort } from '../../domain/ports/cliente-desinstalacion.repository.port';
+import { ActualizarClienteDesinstalacionDto } from '../../presentation/dto/actualizar-cliente-desinstalacion.dto';
+import { CLIENTE_DESINSTALACION_REPOSITORY, ClienteDesInstalacionRepositoryPort } from '../../domain/ports/cliente-desinstalacion-repository.port';
 import { dayjs } from 'src/Utils/dayjs.config';
-import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entitie';
+import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entity';
 import { ValidarAccesoDesinstalacionService } from '../services/validar-acceso-desinstalacion.service';
 
 export type ActualizarClienteDesinstalacionCommand =

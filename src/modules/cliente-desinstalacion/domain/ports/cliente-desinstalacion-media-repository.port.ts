@@ -29,3 +29,7 @@ export interface ClienteDesinstalacionMediaRepositoryPort {
 
   delete(id: number): Promise<void>;
 }
+
+export const CLIENTE_DESINSTALACION_MEDIA_REPOSITORY = Symbol(
+  'CLIENTE_DESINSTALACION_MEDIA_REPOSITORY',
+);

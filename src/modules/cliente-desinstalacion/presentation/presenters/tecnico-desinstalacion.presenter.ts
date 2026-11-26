@@ -1,4 +1,4 @@
-import { ClienteDesinstalacionTecnicoEntity } from '../domain/entities/cliente-desinstalacion-tecnico.entity';
+import { ClienteDesinstalacionTecnicoEntity } from '../../domain/entities/cliente-desinstalacion-tecnico.entity';
 
 export class ClienteDesinstalacionTecnicoPresenter {
   static toHttp(entity: ClienteDesinstalacionTecnicoEntity) {

@@ -1,10 +1,10 @@
-import { ClienteDesinstalacionAutorizacionEntity } from '../domain/entities/cliente-desintalacion-autorizacion.entitie';
+import { ClienteDesinstalacionAutorizacionEntity } from '../../domain/entities/cliente-desinstalacion-autorizacion.entity';
 import {
   AutorizacionDesinstalacionPendiente,
   AutorizacionesPendientesPaginatedResult,
-} from '../domain/ports/cliente-desinstalacion-autorizacion.repository.port';
+} from '../../domain/ports/cliente-desinstalacion-autorizacion-repository.port';
 import { ClienteDesinstalacionPresenter } from './cliente-desinstalacion.presenter';
-import { ClienteDesinstalacionEntity } from '../domain/entities/cliente-desinstalacion.entitie';
+import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entity';
 
 export class ClienteDesinstalacionAutorizacionPresenter {
   static toHttp(entity: ClienteDesinstalacionAutorizacionEntity) {

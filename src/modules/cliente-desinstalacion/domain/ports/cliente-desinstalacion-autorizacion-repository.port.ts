@@ -1,4 +1,4 @@
-import { ClienteDesinstalacionAutorizacionEntity } from '../entities/cliente-desintalacion-autorizacion.entitie';
+import { ClienteDesinstalacionAutorizacionEntity } from '../entities/cliente-desinstalacion-autorizacion.entity';
 
 export type AutorizacionDesinstalacionPendiente = {
   autorizacion: ClienteDesinstalacionAutorizacionEntity;
@@ -92,3 +92,7 @@ export interface ClienteDesinstalacionAutorizacionRepositoryPort {
     desinstalacionId: number,
   ): Promise<ClienteDesinstalacionAutorizacionEntity | null>;
 }
+
+export const CLIENTE_DESINSTALACION_AUTORIZACION_REPOSITORY = Symbol(
+  'CLIENTE_DESINSTALACION_AUTORIZACION_REPOSITORY',
+);

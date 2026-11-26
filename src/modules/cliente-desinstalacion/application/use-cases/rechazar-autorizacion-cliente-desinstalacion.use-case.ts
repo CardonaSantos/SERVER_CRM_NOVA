@@ -4,15 +4,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entitie';
-import { ClienteDesinstalacionAutorizacionEntity } from '../../domain/entities/cliente-desintalacion-autorizacion.entitie';
-import { ClienteDesinstalacionAutorizacionRepositoryPort } from '../../domain/ports/cliente-desinstalacion-autorizacion.repository.port';
-import { ClienteDesInstalacionRepositoryPort } from '../../domain/ports/cliente-desinstalacion.repository.port';
-import {
-  CLIENTE_DESINSTALACION_AUTORIZACION_REPOSITORY,
-  CLIENTE_DESINSTALACION_REPOSITORY,
-} from '../../infra/tokens/cliente-desinstalacion.token';
-import { RechazarDesinstalacionAutorizacionDto } from '../dto/autorizacion-desinstalacion.dto';
+import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entity';
+import { ClienteDesinstalacionAutorizacionEntity } from '../../domain/entities/cliente-desinstalacion-autorizacion.entity';
+import { ClienteDesinstalacionAutorizacionRepositoryPort, CLIENTE_DESINSTALACION_AUTORIZACION_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-autorizacion-repository.port';
+import { ClienteDesInstalacionRepositoryPort, CLIENTE_DESINSTALACION_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-repository.port';
+import { RechazarDesinstalacionAutorizacionDto } from '../../presentation/dto/autorizacion-desinstalacion.dto';
 
 export type RechazarAutorizacionDesinstalacionCommand =
   RechazarDesinstalacionAutorizacionDto & {

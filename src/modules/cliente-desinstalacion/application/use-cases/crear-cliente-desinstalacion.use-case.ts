@@ -3,23 +3,18 @@ import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import { dayjs } from 'src/Utils/dayjs.config';
 import { Money } from 'src/common/hexagonal/money.vo';
 
-import {
-  CLIENTE_DESINSTALACION_CONTEXTO_REPOSITORY,
-  CLIENTE_DESINSTALACION_REPOSITORY,
-  CLIENTE_DESINSTALACION_TECNICO_REPOSITORY,
-} from '../../infra/tokens/cliente-desinstalacion.token';
+import { CLIENTE_DESINSTALACION_CONTEXTO_QUERY, ClienteDesinstalacionContextoRepositoryPort } from '../../domain/ports/cliente-desinstalacion-contexto-query.port';
+import { CLIENTE_DESINSTALACION_REPOSITORY, ClienteDesInstalacionRepositoryPort } from '../../domain/ports/cliente-desinstalacion-repository.port';
+import { CLIENTE_DESINSTALACION_TECNICO_REPOSITORY, ClienteDesinstalacionTecnicoRepositoryPort } from '../../domain/ports/cliente-desinstalacion-tecnico-repository.port';
 
-import { ClienteDesInstalacionRepositoryPort } from '../../domain/ports/cliente-desinstalacion.repository.port';
 
-import { ClienteDesinstalacionTecnicoRepositoryPort } from '../../domain/ports/cliente-desinstalacion-tecnico.repository.port';
 
-import { ClienteDesinstalacionContextoRepositoryPort } from '../../domain/ports/cliente-desinstalacion-contexto.repository.port';
 
-import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entitie';
+import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entity';
 
 import { ClienteDesinstalacionTecnicoEntity } from '../../domain/entities/cliente-desinstalacion-tecnico.entity';
 
-import { CrearClienteDesinstalacionDto } from '../dto/create-desinstalacion-cliente.dto';
+import { CrearClienteDesinstalacionDto } from '../../presentation/dto/crear-cliente-desinstalacion.dto';
 
 import { ValidarAccesoDesinstalacionService } from '../services/validar-acceso-desinstalacion.service';
 
@@ -37,7 +32,7 @@ export type CrearClienteDesinstalacionResult = {
 @Injectable()
 export class CrearDesinstalacionUseCase {
   constructor(
-    @Inject(CLIENTE_DESINSTALACION_CONTEXTO_REPOSITORY)
+    @Inject(CLIENTE_DESINSTALACION_CONTEXTO_QUERY)
     private readonly contextoRepository: ClienteDesinstalacionContextoRepositoryPort,
 
     private readonly validarAccesoDesinstalacionService: ValidarAccesoDesinstalacionService,

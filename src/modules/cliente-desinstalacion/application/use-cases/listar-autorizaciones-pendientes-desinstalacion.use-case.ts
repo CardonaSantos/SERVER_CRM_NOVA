@@ -1,13 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 
-import {
-  AutorizacionesPendientesPaginatedResult,
-  ClienteDesinstalacionAutorizacionRepositoryPort,
-} from '../../domain/ports/cliente-desinstalacion-autorizacion.repository.port';
+import { AutorizacionesPendientesPaginatedResult, ClienteDesinstalacionAutorizacionRepositoryPort, CLIENTE_DESINSTALACION_AUTORIZACION_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-autorizacion-repository.port';
 
-import { CLIENTE_DESINSTALACION_AUTORIZACION_REPOSITORY } from '../../infra/tokens/cliente-desinstalacion.token';
 
-import { FiltrarAutorizacionesPendientesDto } from '../dto/filtrar-autorizaciones-pendientes.dto';
+import { FiltrarAutorizacionesPendientesDto } from '../../presentation/dto/listar-autorizaciones-pendientes-query.dto';
 
 @Injectable()
 export class ListarAutorizacionesPendientesUseCase {

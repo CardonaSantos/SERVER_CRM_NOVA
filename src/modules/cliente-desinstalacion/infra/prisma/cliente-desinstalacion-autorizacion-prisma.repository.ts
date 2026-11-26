@@ -9,9 +9,9 @@ import {
   AutorizacionesPendientesPaginatedResult,
   BuscarAutorizacionesPendientesParams,
   ClienteDesinstalacionAutorizacionRepositoryPort,
-} from '../../domain/ports/cliente-desinstalacion-autorizacion.repository.port';
-import { ClienteDesinstalacionAutorizacionEntity } from '../../domain/entities/cliente-desintalacion-autorizacion.entitie';
-import { ClienteDesinstalacionAutorizacionPrismaMapper } from './cliente-desinstalacion-autorizacion.mapper';
+} from '../../domain/ports/cliente-desinstalacion-autorizacion-repository.port';
+import { ClienteDesinstalacionAutorizacionEntity } from '../../domain/entities/cliente-desinstalacion-autorizacion.entity';
+import { ClienteDesinstalacionAutorizacionPrismaMapper } from './cliente-desinstalacion-autorizacion-prisma.mapper';
 
 @Injectable()
 export class ClienteDesinstalacionAutorizacionPrismaRepository

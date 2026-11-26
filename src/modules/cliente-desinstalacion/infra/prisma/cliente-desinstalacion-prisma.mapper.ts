@@ -2,7 +2,7 @@ import { ClienteDesinstalacion, Prisma } from '@prisma/client';
 
 import { Money } from 'src/common/hexagonal/money.vo';
 
-import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entitie';
+import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entity';
 
 import { EstadoDesinstalacionCliente } from '../../domain/enums/estado-desinstalacion-cliente.enum';
 

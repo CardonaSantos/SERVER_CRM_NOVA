@@ -1,4 +1,4 @@
-import { ClienteDesinstalacionEntity } from '../entities/cliente-desinstalacion.entitie';
+import { ClienteDesinstalacionEntity } from '../entities/cliente-desinstalacion.entity';
 
 /**
  * Usuario utilizado en relaciones de lectura y auditoría.

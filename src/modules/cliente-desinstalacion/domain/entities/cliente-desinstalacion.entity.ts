@@ -15,7 +15,7 @@ import {
   MarcarFallidaClienteDesinstalacionParams,
   RegistrarFirmaClienteDesinstalacionParams,
   ReprogramarClienteDesinstalacionParams,
-} from './props-entities.props';
+} from '../props/cliente-desinstalacion.props';
 
 /**
  * Agregado raíz del flujo de desinstalación de un cliente.

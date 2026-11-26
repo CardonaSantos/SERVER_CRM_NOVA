@@ -1,43 +1,43 @@
 import { Injectable } from '@nestjs/common';
 
-import { CrearClienteDesinstalacionDto } from '../dto/create-desinstalacion-cliente.dto';
-import { ActualizarClienteDesinstalacionDto } from '../dto/actualizar-desinstalacion-cliente.dto';
-import { FiltrarClienteDesinstalacionesDto } from '../dto/filtrar-cliente-desinstalaciones.dto';
-import { ReprogramarClienteDesinstalacionDto } from '../dto/reprogramar-cliente-desinstalacion.dto';
-import { IniciarClienteDesinstalacionDto } from '../dto/iniciar-cliente-desinstalacion.dto';
-import { CompletarClienteDesinstalacionDto } from '../dto/completar-cliente-desinstalacion.dto';
-import { CancelarClienteDesinstalacionDto } from '../dto/cancelar-cliente-desinstalacion.dto';
-import { ActualizarCostosDesinstalacionDto } from '../dto/actualizar-costos-desinstalacion.dto';
+import { CrearClienteDesinstalacionDto } from '../../presentation/dto/crear-cliente-desinstalacion.dto';
+import { ActualizarClienteDesinstalacionDto } from '../../presentation/dto/actualizar-cliente-desinstalacion.dto';
+import { FiltrarClienteDesinstalacionesDto } from '../../presentation/dto/listar-cliente-desinstalaciones-query.dto';
+import { ReprogramarClienteDesinstalacionDto } from '../../presentation/dto/reprogramar-cliente-desinstalacion.dto';
+import { IniciarClienteDesinstalacionDto } from '../../presentation/dto/iniciar-cliente-desinstalacion.dto';
+import { CompletarClienteDesinstalacionDto } from '../../presentation/dto/completar-cliente-desinstalacion.dto';
+import { CancelarClienteDesinstalacionDto } from '../../presentation/dto/cancelar-cliente-desinstalacion.dto';
+import { ActualizarCostosDesinstalacionDto } from '../../presentation/dto/actualizar-costos-desinstalacion.dto';
 import {
   AprobarDesinstalacionAutorizacionDto,
   RechazarDesinstalacionAutorizacionDto,
   SolicitarDesinstalacionAutorizacionDto,
-} from '../dto/autorizacion-desinstalacion.dto';
-import { CrearDesinstalacionUseCase } from '../use-cases/crear-desinstalacion.use-case';
-import { ListarClienteDesinstalacionesUseCase } from '../use-cases/listar-clientes-desinstalaciones.use-case';
+} from '../../presentation/dto/autorizacion-desinstalacion.dto';
+import { CrearDesinstalacionUseCase } from '../use-cases/crear-cliente-desinstalacion.use-case';
+import { ListarClienteDesinstalacionesUseCase } from '../use-cases/listar-cliente-desinstalaciones.use-case';
 import { ObtenerClienteDesinstalacionUseCase } from '../use-cases/obtener-cliente-desinstalacion.use-case';
-import { ActualizarClienteDesinstalacionUseCase } from '../use-cases/actualizar-desinstalacion-cliente.dto';
-import { ReprogramarClienteDesinstalacionUseCase } from '../use-cases/reprogramar-desinstalacion.use-case';
-import { IniciarClienteDesinstalacionUseCase } from '../use-cases/iniciar-cliente-desintalacion.use-case';
+import { ActualizarClienteDesinstalacionUseCase } from '../use-cases/actualizar-cliente-desinstalacion.use-case';
+import { ReprogramarClienteDesinstalacionUseCase } from '../use-cases/reprogramar-cliente-desinstalacion.use-case';
+import { IniciarClienteDesinstalacionUseCase } from '../use-cases/iniciar-cliente-desinstalacion.use-case';
 import { CompletarClienteDesinstalacionUseCase } from '../use-cases/completar-cliente-desinstalacion.use-case';
 import { CancelarClienteDesinstalacionUseCase } from '../use-cases/cancelar-cliente-desinstalacion.use-case';
 import { ActualizarCostosDesinstalacionUseCase } from '../use-cases/actualizar-costos-desinstalacion.use-case';
 import { CrearAutorizacionDesinstalacionUseCase } from '../use-cases/crear-autorizacion-cliente-desinstalacion.use-case';
-import { ListarAutorizacionesPendientesUseCase } from '../use-cases/listar-autorizacion-cliente-desintalacion.use-case';
+import { ListarAutorizacionesPendientesUseCase } from '../use-cases/listar-autorizaciones-pendientes-desinstalacion.use-case';
 import { AprobarAutorizacionDesinstalacionUseCase } from '../use-cases/aprobar-autorizacion-cliente-desinstalacion.use-case';
 import { RechazarAutorizacionDesinstalacionUseCase } from '../use-cases/rechazar-autorizacion-cliente-desinstalacion.use-case';
 import { AsignarTecnicoDesinstalacionUseCase } from '../use-cases/asignar-tecnico-desinstalacion.use-case';
-import { ListarTecnicosDesinstalacionUseCase } from '../use-cases/listar-tecnicos-desintalacion.use-case';
+import { ListarTecnicosDesinstalacionUseCase } from '../use-cases/listar-tecnicos-desinstalacion.use-case';
 import { EliminarTecnicoDesinstalacionUseCase } from '../use-cases/eliminar-tecnico-desinstalacion.use-case';
-import { AsignarTecnicoDesinstalacionDto } from '../dto/tecnico-desinstalacion.dto';
+import { AsignarTecnicoDesinstalacionDto } from '../../presentation/dto/asignar-tecnico-desinstalacion.dto';
 import { MarcarFallidaClienteDesinstalacionUseCase } from '../use-cases/marcar-fallida-cliente-desinstalacion.use-case';
-import { MarcarFallidaClienteDesinstalacionDto } from '../dto/marcar-fallida-cliente-desinstalacion.dto';
+import { MarcarFallidaClienteDesinstalacionDto } from '../../presentation/dto/marcar-fallida-cliente-desinstalacion.dto';
 import {
   SubirEvidenciaDesinstalacionCommand,
   SubirEvidenciaDesinstalacionUseCase,
 } from '../use-cases/subir-evidencia-desinstalacion.use-case';
 import { ObtenerContextoCreacionDesinstalacionUseCase } from '../use-cases/obtener-contexto-creacion-desinstalacion.use-case';
-import { FiltrarAutorizacionesPendientesDto } from '../dto/filtrar-autorizaciones-pendientes.dto';
+import { FiltrarAutorizacionesPendientesDto } from '../../presentation/dto/listar-autorizaciones-pendientes-query.dto';
 
 @Injectable()
 export class ClienteDesInstalacionApplicationService {

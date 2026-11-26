@@ -7,13 +7,12 @@ import {
 
 import { dayjs } from 'src/Utils/dayjs.config';
 
-import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entitie';
+import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entity';
 
-import { ClienteDesInstalacionRepositoryPort } from '../../domain/ports/cliente-desinstalacion.repository.port';
+import { ClienteDesInstalacionRepositoryPort, CLIENTE_DESINSTALACION_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-repository.port';
 
-import { CLIENTE_DESINSTALACION_REPOSITORY } from '../../infra/tokens/cliente-desinstalacion.token';
 
-import { IniciarClienteDesinstalacionDto } from '../dto/iniciar-cliente-desinstalacion.dto';
+import { IniciarClienteDesinstalacionDto } from '../../presentation/dto/iniciar-cliente-desinstalacion.dto';
 
 import { ValidarAutorizacionDesinstalacionService } from '../services/validar-autorizacion-desinstalacion.service';
 

@@ -7,9 +7,9 @@ import { ClienteDesinstalacionMediaEntity } from '../../domain/entities/cliente-
 import {
   ClienteDesinstalacionMediaRepositoryPort,
   ClienteDesinstalacionMediaWithMedia,
-} from '../../domain/ports/cliente-desinstalacion-media.repository.port';
+} from '../../domain/ports/cliente-desinstalacion-media-repository.port';
 
-import { ClienteDesinstalacionMediaPrismaMapper } from './cliente-desinstalacion-media.prisma.mapper';
+import { ClienteDesinstalacionMediaPrismaMapper } from './cliente-desinstalacion-media-prisma.mapper';
 
 @Injectable()
 export class ClienteDesinstalacionMediaPrismaRepository

@@ -15,31 +15,31 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 
-import { ActualizarClienteDesinstalacionDto } from '../application/dto/actualizar-desinstalacion-cliente.dto';
-import { ActualizarCostosDesinstalacionDto } from '../application/dto/actualizar-costos-desinstalacion.dto';
+import { ActualizarClienteDesinstalacionDto } from '../dto/actualizar-cliente-desinstalacion.dto';
+import { ActualizarCostosDesinstalacionDto } from '../dto/actualizar-costos-desinstalacion.dto';
 import {
   AprobarDesinstalacionAutorizacionDto,
   RechazarDesinstalacionAutorizacionDto,
   SolicitarDesinstalacionAutorizacionDto,
-} from '../application/dto/autorizacion-desinstalacion.dto';
-import { CancelarClienteDesinstalacionDto } from '../application/dto/cancelar-cliente-desinstalacion.dto';
-import { CompletarClienteDesinstalacionDto } from '../application/dto/completar-cliente-desinstalacion.dto';
-import { CrearClienteDesinstalacionDto } from '../application/dto/create-desinstalacion-cliente.dto';
-import { FiltrarClienteDesinstalacionesDto } from '../application/dto/filtrar-cliente-desinstalaciones.dto';
-import { IniciarClienteDesinstalacionDto } from '../application/dto/iniciar-cliente-desinstalacion.dto';
-import { ReprogramarClienteDesinstalacionDto } from '../application/dto/reprogramar-cliente-desinstalacion.dto';
-import { AsignarTecnicoDesinstalacionDto } from '../application/dto/tecnico-desinstalacion.dto';
+} from '../dto/autorizacion-desinstalacion.dto';
+import { CancelarClienteDesinstalacionDto } from '../dto/cancelar-cliente-desinstalacion.dto';
+import { CompletarClienteDesinstalacionDto } from '../dto/completar-cliente-desinstalacion.dto';
+import { CrearClienteDesinstalacionDto } from '../dto/crear-cliente-desinstalacion.dto';
+import { FiltrarClienteDesinstalacionesDto } from '../dto/listar-cliente-desinstalaciones-query.dto';
+import { IniciarClienteDesinstalacionDto } from '../dto/iniciar-cliente-desinstalacion.dto';
+import { ReprogramarClienteDesinstalacionDto } from '../dto/reprogramar-cliente-desinstalacion.dto';
+import { AsignarTecnicoDesinstalacionDto } from '../dto/asignar-tecnico-desinstalacion.dto';
 
-import { ClienteDesInstalacionApplicationService } from '../application/services/cliente-desinstalacion.service';
+import { ClienteDesInstalacionApplicationService } from '../../application/services/cliente-desinstalacion.service';
 
-import { ClienteDesinstalacionAutorizacionPresenter } from './autorizacion-cliente-desinstalacion.presenter';
-import { ClienteDesinstalacionPresenter } from './cliente-desinstalacion.presenter';
-import { ClienteDesinstalacionTecnicoPresenter } from './cliente-desinstalacion-tecnico.presenter';
-import { MarcarFallidaClienteDesinstalacionDto } from '../application/dto/marcar-fallida-cliente-desinstalacion.dto';
+import { ClienteDesinstalacionAutorizacionPresenter } from '../presenters/autorizacion-desinstalacion.presenter';
+import { ClienteDesinstalacionPresenter } from '../presenters/cliente-desinstalacion.presenter';
+import { ClienteDesinstalacionTecnicoPresenter } from '../presenters/tecnico-desinstalacion.presenter';
+import { MarcarFallidaClienteDesinstalacionDto } from '../dto/marcar-fallida-cliente-desinstalacion.dto';
 import { OperacionSensible } from 'src/auth/step-up/operacion-sensible.decorator';
-import { SubirEvidenciaDesinstalacionDto } from '../application/dto/subir-evidencia-desinstalacion.dto';
+import { SubirEvidenciaDesinstalacionDto } from '../dto/subir-evidencia-desinstalacion.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { FiltrarAutorizacionesPendientesDto } from '../application/dto/filtrar-autorizaciones-pendientes.dto';
+import { FiltrarAutorizacionesPendientesDto } from '../dto/listar-autorizaciones-pendientes-query.dto';
 
 @Controller('cliente-desinstalaciones')
 export class ClienteDesinstalacionController {

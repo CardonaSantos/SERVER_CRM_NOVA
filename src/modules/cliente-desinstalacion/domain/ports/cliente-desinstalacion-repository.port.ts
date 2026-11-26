@@ -1,4 +1,4 @@
-import { ClienteDesinstalacionEntity } from '../entities/cliente-desinstalacion.entitie';
+import { ClienteDesinstalacionEntity } from '../entities/cliente-desinstalacion.entity';
 
 import { EstadoDesinstalacionCliente } from '../enums/estado-desinstalacion-cliente.enum';
 
@@ -90,3 +90,7 @@ export interface ClienteDesInstalacionRepositoryPort {
     entity: ClienteDesinstalacionEntity,
   ): Promise<ClienteDesinstalacionEntity>;
 }
+
+export const CLIENTE_DESINSTALACION_REPOSITORY = Symbol(
+  'CLIENTE_DESINSTALACION_REPOSITORY',
+);

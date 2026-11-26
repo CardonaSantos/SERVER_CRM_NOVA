@@ -14,7 +14,7 @@ import {
 import { MotivoDesinstalacionCliente } from '../../domain/enums/motivo-desinstalacion-cliente.enum';
 import { TipoDesinstalacionCliente } from '../../domain/enums/tipo-desinstalacion-cliente.enum';
 
-import { AsignarTecnicoDesinstalacionDto } from './tecnico-desinstalacion.dto';
+import { AsignarTecnicoDesinstalacionDto } from './asignar-tecnico-desinstalacion.dto';
 
 export class CrearClienteDesinstalacionDto {
   @Type(() => Number)

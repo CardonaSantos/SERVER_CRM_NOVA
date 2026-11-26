@@ -19,14 +19,10 @@ import { TipoEvidenciaClienteOperacion } from 'src/modules/cliente-instalacion/p
 
 import { ClienteDesinstalacionMediaEntity } from '../../domain/entities/cliente-desinstalacion-media.entity';
 
-import { ClienteDesinstalacionMediaRepositoryPort } from '../../domain/ports/cliente-desinstalacion-media.repository.port';
+import { ClienteDesinstalacionMediaRepositoryPort, CLIENTE_DESINSTALACION_MEDIA_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-media-repository.port';
 
-import { ClienteDesInstalacionRepositoryPort } from '../../domain/ports/cliente-desinstalacion.repository.port';
+import { ClienteDesInstalacionRepositoryPort, CLIENTE_DESINSTALACION_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-repository.port';
 
-import {
-  CLIENTE_DESINSTALACION_MEDIA_REPOSITORY,
-  CLIENTE_DESINSTALACION_REPOSITORY,
-} from '../../infra/tokens/cliente-desinstalacion.token';
 
 export type SubirEvidenciaDesinstalacionCommand = {
   desinstalacionId: number;

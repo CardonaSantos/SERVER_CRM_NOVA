@@ -4,13 +4,13 @@ import { Prisma } from '@prisma/client';
 
 import { PrismaService } from 'src/prisma/prisma.service';
 
-import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entitie';
+import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entity';
 
 import {
   ClienteDesInstalacionFindManyFilters,
   ClienteDesInstalacionPaginatedResult,
   ClienteDesInstalacionRepositoryPort,
-} from '../../domain/ports/cliente-desinstalacion.repository.port';
+} from '../../domain/ports/cliente-desinstalacion-repository.port';
 
 import {
   ClienteDesinstalacionAccesoResumen,
@@ -26,7 +26,7 @@ import {
   UsuarioDesinstalacionResumen,
 } from '../../domain/read-models/cliente-desinstalacion.read-model';
 
-import { ClienteDesinstalacionPrismaMapper } from './cliente-desinstalacion.prisma.mapper';
+import { ClienteDesinstalacionPrismaMapper } from './cliente-desinstalacion-prisma.mapper';
 
 /**
  * ============================================================

@@ -18,3 +18,7 @@ export interface ClienteDesinstalacionTecnicoRepositoryPort {
     tecnicoOperacionId: number;
   }): Promise<void>;
 }
+
+export const CLIENTE_DESINSTALACION_TECNICO_REPOSITORY = Symbol(
+  'CLIENTE_DESINSTALACION_TECNICO_REPOSITORY',
+);

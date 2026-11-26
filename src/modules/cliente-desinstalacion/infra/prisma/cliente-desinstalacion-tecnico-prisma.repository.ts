@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ClienteDesinstalacionTecnicoEntity } from '../../domain/entities/cliente-desinstalacion-tecnico.entity';
-import { ClienteDesinstalacionTecnicoRepositoryPort } from '../../domain/ports/cliente-desinstalacion-tecnico.repository.port';
-import { ClienteDesinstalacionTecnicoPrismaMapper } from './cliente-desinstalacion-tecnico.prisma.mapper';
+import { ClienteDesinstalacionTecnicoRepositoryPort } from '../../domain/ports/cliente-desinstalacion-tecnico-repository.port';
+import { ClienteDesinstalacionTecnicoPrismaMapper } from './cliente-desinstalacion-tecnico-prisma.mapper';
 
 @Injectable()
 export class ClienteDesinstalacionTecnicoPrismaRepository

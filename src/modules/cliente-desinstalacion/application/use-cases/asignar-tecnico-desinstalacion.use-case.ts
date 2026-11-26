@@ -5,13 +5,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ClienteDesinstalacionTecnicoEntity } from '../../domain/entities/cliente-desinstalacion-tecnico.entity';
-import { ClienteDesinstalacionTecnicoRepositoryPort } from '../../domain/ports/cliente-desinstalacion-tecnico.repository.port';
-import { ClienteDesInstalacionRepositoryPort } from '../../domain/ports/cliente-desinstalacion.repository.port';
-import {
-  CLIENTE_DESINSTALACION_REPOSITORY,
-  CLIENTE_DESINSTALACION_TECNICO_REPOSITORY,
-} from '../../infra/tokens/cliente-desinstalacion.token';
-import { AsignarTecnicoDesinstalacionDto } from '../dto/tecnico-desinstalacion.dto';
+import { ClienteDesinstalacionTecnicoRepositoryPort, CLIENTE_DESINSTALACION_TECNICO_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-tecnico-repository.port';
+import { ClienteDesInstalacionRepositoryPort, CLIENTE_DESINSTALACION_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-repository.port';
+import { AsignarTecnicoDesinstalacionDto } from '../../presentation/dto/asignar-tecnico-desinstalacion.dto';
 
 export type AsignarTecnicoDesinstalacionCommand =
   AsignarTecnicoDesinstalacionDto & {
