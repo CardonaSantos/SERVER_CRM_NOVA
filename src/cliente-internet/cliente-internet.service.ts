@@ -22,6 +22,10 @@ import {
 
 import { IdContratoService } from 'src/id-contrato/id-contrato.service';
 import { periodoFrom } from 'src/facturacion/Utils';
+import {
+  ESTADOS_FACTURA_PENDIENTE,
+  getEstadoCobranza,
+} from 'src/zona-facturacion-cron/helpers/Functions';
 import { GetClientesRutaQueryDto } from './pagination/cliente-internet.dto';
 import { TZ } from 'src/Utils/tzgt';
 import { normalizarTexto } from 'src/Utils/normalizarTexto';
@@ -108,7 +112,19 @@ export class ClienteInternetService {
         await this.assignMk(cliente.id, dto.mkSelected, tx);
       }
 
-      return { cliente };
+      // La cobranza sale de las facturas: el cliente nace con la primera pendiente.
+      const pendientes = await tx.facturaInternet.count({
+        where: {
+          clienteId: cliente.id,
+          estadoFacturaInternet: { in: ESTADOS_FACTURA_PENDIENTE },
+        },
+      });
+      const clienteConCobranza = await tx.clienteInternet.update({
+        where: { id: cliente.id },
+        data: { estadoCobranza: getEstadoCobranza(pendientes) },
+      });
+
+      return { cliente: clienteConCobranza };
     });
   }
 
@@ -2163,12 +2179,23 @@ export class ClienteInternetService {
     return undefined;
   }
 
+  /** undefined: no llegó y no se escribe. Texto vacío: se borra. */
+  private textoEditado(valor: string | undefined): string | null | undefined {
+    return valor === undefined ? undefined : valor || null;
+  }
+
+  /** La fecha de baja se fija una sola vez y se limpia solo al cambiar de estado. */
+  private resolverFechaDesinstalacion(
+    estadoNuevo: EstadoCliente | undefined,
+    fechaActual: Date | null,
+  ): Date | null | undefined {
+    if (estadoNuevo === undefined) return undefined;
+    if (estadoNuevo !== EstadoCliente.DESINSTALADO) return null;
+    return fechaActual ? undefined : dayjs().tz(TZ).toDate();
+  }
+
   // ─── PRINCIPAL ────────────────────────────────────────────────────────────────
   async updateClienteInternet(id: number, dto: UpdateClienteInternetDto) {
-    const fullName = `${dto.nombre ?? ''} ${dto.apellidos ?? ''}`.trim();
-    const nombreSearch = normalizarTexto(fullName);
-    const serviceIds: number[] = dto.servicesIds ?? [];
-
     return this.prisma.$transaction(async (tx) => {
       //OBTENER ESTADO ANTERIOR ──────────────────────────────────────
       const clienteBefore = await tx.clienteInternet.findUnique({
@@ -2183,6 +2210,13 @@ export class ClienteInternetService {
       });
 
       if (!clienteBefore) throw new NotFoundException('Cliente no encontrado');
+
+      const guardado = await tx.clienteInternet.findUnique({
+        where: { id },
+        select: { desinstaladoEn: true, apellidos: true },
+      });
+      const apellidos = dto.apellidos ?? guardado?.apellidos ?? '';
+      const nombreSearch = normalizarTexto(`${dto.nombre} ${apellidos}`.trim());
 
       //  CALCULAR NUEVO ESTADO MK ─────────────────────────────────────
       const nuevoEstadoServicioMk = this.resolveNuevoEstadoMk(
@@ -2199,8 +2233,10 @@ export class ClienteInternetService {
       );
 
       // FECHA DESINSTALACIÓN ─────────────────────────────────────────
-      const desinstaladoEn: Date | null =
-        dto.estado === 'DESINSTALADO' ? dayjs().tz(TZ).toDate() : null;
+      const desinstaladoEn = this.resolverFechaDesinstalacion(
+        dto.estado,
+        guardado?.desinstaladoEn ?? null,
+      );
 
       // ACTUALIZAR CLIENTE ───────────────────────────────────────────
       const updatedCliente = await tx.clienteInternet.update({
@@ -2208,18 +2244,22 @@ export class ClienteInternetService {
         data: {
           searchNombre: nombreSearch,
           nombre: dto.nombre,
-          apellidos: dto.apellidos || null,
-          telefono: dto.telefono || null,
-          direccion: dto.direccion || null,
-          dpi: dto.dpi || null,
-          observaciones: dto.observaciones || null,
-          contactoReferenciaNombre: dto.contactoReferenciaNombre || null,
-          contactoReferenciaTelefono: dto.contactoReferenciaTelefono || null,
+          apellidos: this.textoEditado(dto.apellidos),
+          telefono: this.textoEditado(dto.telefono),
+          direccion: this.textoEditado(dto.direccion),
+          dpi: this.textoEditado(dto.dpi),
+          observaciones: this.textoEditado(dto.observaciones),
+          contactoReferenciaNombre: this.textoEditado(
+            dto.contactoReferenciaNombre,
+          ),
+          contactoReferenciaTelefono: this.textoEditado(
+            dto.contactoReferenciaTelefono,
+          ),
           contrasenaWifi: dto.contrasenaWifi,
           ssidRouter: dto.ssidRouter,
-          fechaInstalacion: dto.fechaInstalacion || null,
-          estadoCliente: dto.estado || 'ACTIVO',
-          estadoCobranza: dto.estadoCobranza || 'AL_DIA',
+          fechaInstalacion: dto.fechaInstalacion,
+          // estadoCobranza no se edita aquí: sale de las facturas.
+          estadoCliente: dto.estado,
           enviarRecordatorio: dto.enviarRecordatorio,
           desinstaladoEn,
 
@@ -2247,9 +2287,9 @@ export class ClienteInternetService {
 
           MikrotikRouter: this.resolveMkRelation(dto.mikrotikRouterId),
 
-          clienteServicios: {
+          clienteServicios: dto.servicesIds && {
             deleteMany: {},
-            create: serviceIds.map((serviceId) => ({
+            create: dto.servicesIds.map((serviceId) => ({
               servicio: { connect: { id: serviceId } },
               fechaInicio: dto.fechaInstalacion,
               estado: 'ACTIVO',
