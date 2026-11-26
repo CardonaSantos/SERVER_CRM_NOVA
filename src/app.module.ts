@@ -39,7 +39,6 @@ import { AlmacenamientoMediaModule } from './modules/almacenamiento-media/almace
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { TicketSolucionesModule } from './ticket-soluciones/ticket-soluciones.module';
 import { SshMikrotikConnectionModule } from './ssh-mikrotik-connection/ssh-mikrotik-connection.module';
-import { FireworksIaModule } from './fireworks-ia/fireworks-ia.module';
 import { WhatsappApiMetaModule } from './whatsapp-api-meta/whatsapp-api-meta.module';
 import { GatewayModule } from './web-sockets/websocket.module';
 import { TicketResumenModule } from './ticket-resumen/ticket-resumen.module';
@@ -118,7 +117,6 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     NotificacionesModule,
     TicketSolucionesModule,
     SshMikrotikConnectionModule,
-    FireworksIaModule,
     WhatsappApiMetaModule,
     GatewayModule,
     TicketResumenModule,
