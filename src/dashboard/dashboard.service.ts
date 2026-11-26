@@ -8,6 +8,7 @@ import { dayjs } from 'src/Utils/dayjs.config';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { TZ } from 'src/Utils/tzgt';
+import { conCobranza } from 'src/Utils/filtro-cobranza';
 import { EstadoInstalacionCliente } from 'src/modules/cliente-instalacion/public/cliente-instalacion.types';
 import {
   EstadoTicketSoporte,
@@ -997,7 +998,7 @@ export class DashboardService {
           },
         },
       }),
-      this.prisma.clienteInternet.count({ where: { estadoCliente: 'MOROSO' } }),
+      this.prisma.clienteInternet.count({ where: conCobranza('MOROSO') }),
       this.prisma.clienteInternet.count({
         where: { estadoCliente: 'SUSPENDIDO' },
       }),
@@ -1071,7 +1072,7 @@ export class DashboardService {
       this.prisma.facturaInternet.aggregate({
         where: {
           estadoFacturaInternet: { in: ['PARCIAL', 'PENDIENTE', 'VENCIDA'] },
-          cliente: { estadoCliente: 'MOROSO' },
+          cliente: conCobranza('MOROSO'),
         },
         _sum: { montoPago: true },
       }),
@@ -1080,7 +1081,7 @@ export class DashboardService {
       this.prisma.facturaInternet.aggregate({
         where: {
           estadoFacturaInternet: 'PARCIAL',
-          cliente: { estadoCliente: 'MOROSO' },
+          cliente: conCobranza('MOROSO'),
         },
         _sum: { montoPago: true },
       }),
@@ -1092,15 +1093,11 @@ export class DashboardService {
       }),
 
       this.prisma.clienteInternet.count({
-        where: {
-          estadoCliente: 'PENDIENTE_ACTIVO',
-        },
+        where: conCobranza('PAGO_PENDIENTE'),
       }),
 
       this.prisma.clienteInternet.count({
-        where: {
-          estadoCliente: 'ATRASADO',
-        },
+        where: conCobranza('ATRASADO'),
       }),
 
       this.prisma.clienteInternet.count({
