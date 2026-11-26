@@ -1,24 +1,27 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { ClienteDesinstalacionContextoRepositoryPort, CLIENTE_DESINSTALACION_CONTEXTO_QUERY } from '../../domain/ports/cliente-desinstalacion-contexto-query.port';
+import { Inject, Injectable } from '@nestjs/common';
+import { ClienteDesinstalacionClienteNoEncontradoError } from '../../domain/errors/cliente-desinstalacion.errors';
+import {
+  CLIENTE_DESINSTALACION_CONTEXTO_QUERY,
+  ClienteDesinstalacionContextoQueryPort,
+} from '../../domain/ports/cliente-desinstalacion-contexto-query.port';
 import { ContextoCreacionDesinstalacion } from '../../domain/read-models/contexto-creacion-desinstalacion.read-model';
 
+/** Lo que la pantalla necesita para armar una desinstalación: accesos, servicios y tickets del cliente. */
 @Injectable()
 export class ObtenerContextoCreacionDesinstalacionUseCase {
   constructor(
     @Inject(CLIENTE_DESINSTALACION_CONTEXTO_QUERY)
-    private readonly contextoRepository: ClienteDesinstalacionContextoRepositoryPort,
+    private readonly contexto: ClienteDesinstalacionContextoQueryPort,
   ) {}
 
   async execute(clienteId: number): Promise<ContextoCreacionDesinstalacion> {
-    const contexto =
-      await this.contextoRepository.findContextoCreacionByClienteId(clienteId);
+    const resultado =
+      await this.contexto.findContextoCreacionByClienteId(clienteId);
 
-    if (!contexto) {
-      throw new NotFoundException(
-        `No se encontró el cliente con id ${clienteId}.`,
-      );
+    if (!resultado) {
+      throw new ClienteDesinstalacionClienteNoEncontradoError();
     }
 
-    return contexto;
+    return resultado;
   }
 }

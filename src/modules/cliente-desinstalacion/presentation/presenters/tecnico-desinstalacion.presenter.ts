@@ -1,33 +1,25 @@
-import { ClienteDesinstalacionTecnicoEntity } from '../../domain/entities/cliente-desinstalacion-tecnico.entity';
+import { TecnicoDesinstalacionResumen } from '../../domain/read-models/cliente-desinstalacion-resumen.read-model';
 
 export class ClienteDesinstalacionTecnicoPresenter {
-  static toHttp(entity: ClienteDesinstalacionTecnicoEntity) {
-    const props = entity.toPrimitives();
-
+  static toHttp(tecnico: TecnicoDesinstalacionResumen) {
     return {
-      id: props.id,
-      desinstalacionId: props.desinstalacionId,
-      tecnicoId: props.tecnicoId,
-
-      rol: props.rol,
-      esResponsable: props.esResponsable,
-
-      tiempoMinutos: props.tiempoMinutos,
-      observaciones: props.observaciones,
-      tecnicoNombreSnapshot: props.tecnicoNombreSnapshot,
-
-      creadoEn: props.creadoEn,
-      actualizadoEn: props.actualizadoEn,
+      id: tecnico.id,
+      desinstalacionId: tecnico.desinstalacionId,
+      tecnicoId: tecnico.tecnicoId,
+      rol: tecnico.rol,
+      esResponsable: tecnico.esResponsable,
+      tiempoMinutos: tecnico.tiempoMinutos,
+      observaciones: tecnico.observaciones,
+      tecnicoNombreSnapshot: tecnico.tecnicoNombreSnapshot,
+      creadoEn: tecnico.creadoEn,
+      actualizadoEn: tecnico.actualizadoEn,
     };
   }
 
-  static listToHttp(items: ClienteDesinstalacionTecnicoEntity[]) {
+  static lista(tecnicos: TecnicoDesinstalacionResumen[]) {
     return {
-      data: items.map((item) => this.toHttp(item)),
-
-      meta: {
-        total: items.length,
-      },
+      data: tecnicos.map((tecnico) => this.toHttp(tecnico)),
+      meta: { total: tecnicos.length },
     };
   }
 }

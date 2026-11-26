@@ -1,48 +1,58 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { dayjs } from 'src/Utils/dayjs.config';
-import { CLIENTE_DESINSTALACION_REPOSITORY, ClienteDesInstalacionRepositoryPort } from '../../domain/ports/cliente-desinstalacion-repository.port';
-import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entity';
-import { CompletarClienteDesinstalacionDto } from '../../presentation/dto/completar-cliente-desinstalacion.dto';
+import { Inject, Injectable } from '@nestjs/common';
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
+import { ClienteDesinstalacionNoEncontradaError } from '../../domain/errors/cliente-desinstalacion.errors';
+import {
+  CLIENTE_DESINSTALACION_REPOSITORY,
+  ClienteDesinstalacionRepositoryPort,
+} from '../../domain/ports/cliente-desinstalacion-repository.port';
+import {
+  ClienteDesinstalacionResumen,
+  resumirDesinstalacion,
+} from '../../domain/read-models/cliente-desinstalacion-resumen.read-model';
 
-export type CompletarClienteDesinstalacionCommand =
-  CompletarClienteDesinstalacionDto & {
-    id: number;
-  };
+export type CompletarClienteDesinstalacionInput = {
+  id: number;
+  ejecutadoPorId: number;
+  resultado?: string | null;
+  observaciones?: string | null;
+  fechaFinalizacion?: string;
+  equipoRecuperado?: boolean;
+  conforme?: boolean | null;
+};
 
+/** Cierra el trabajo físico; no repite la baja PPPoE (esa ya ocurrió al aprobar). */
 @Injectable()
 export class CompletarClienteDesinstalacionUseCase {
   constructor(
     @Inject(CLIENTE_DESINSTALACION_REPOSITORY)
-    private readonly clienteDesinstalacionRepository: ClienteDesInstalacionRepositoryPort,
+    private readonly desinstalaciones: ClienteDesinstalacionRepositoryPort,
+
+    @Inject(RELOJ)
+    private readonly reloj: RelojPort,
   ) {}
 
   async execute(
-    command: CompletarClienteDesinstalacionCommand,
-  ): Promise<ClienteDesinstalacionEntity> {
-    const desinstalacion = await this.clienteDesinstalacionRepository.findById(
-      command.id,
-    );
+    input: CompletarClienteDesinstalacionInput,
+  ): Promise<ClienteDesinstalacionResumen> {
+    const desinstalacion = await this.desinstalaciones.findById(input.id);
 
     if (!desinstalacion) {
-      throw new NotFoundException('Desinstalación no encontrada.');
+      throw new ClienteDesinstalacionNoEncontradaError();
     }
 
     desinstalacion.completar({
-      ejecutadoPorId: command.ejecutadoPorId,
-
-      resultado: command.resultado,
-
-      observaciones: command.observaciones,
-
-      fechaFinalizacion: command.fechaFinalizacion
-        ? dayjs(command.fechaFinalizacion).toDate()
-        : undefined,
-
-      equipoRecuperado: command.equipoRecuperado,
-
-      conforme: command.conforme,
+      ejecutadoPorId: input.ejecutadoPorId,
+      resultado: input.resultado,
+      observaciones: input.observaciones,
+      fechaFinalizacion: input.fechaFinalizacion
+        ? new Date(input.fechaFinalizacion)
+        : this.reloj.ahora(),
+      equipoRecuperado: input.equipoRecuperado,
+      conforme: input.conforme,
     });
 
-    return this.clienteDesinstalacionRepository.save(desinstalacion);
+    return resumirDesinstalacion(
+      await this.desinstalaciones.save(desinstalacion),
+    );
   }
 }

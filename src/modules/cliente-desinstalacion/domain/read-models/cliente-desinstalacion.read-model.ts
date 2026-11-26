@@ -1,4 +1,7 @@
-import { ClienteDesinstalacionEntity } from '../entities/cliente-desinstalacion.entity';
+import { EstadoDesinstalacionCliente } from '../enums/estado-desinstalacion-cliente.enum';
+import { MotivoDesinstalacionCliente } from '../enums/motivo-desinstalacion-cliente.enum';
+import { TipoDesinstalacionCliente } from '../enums/tipo-desinstalacion-cliente.enum';
+import { ClienteDesinstalacionResumen } from './cliente-desinstalacion-resumen.read-model';
 
 /**
  * Usuario utilizado en relaciones de lectura y auditoría.
@@ -417,7 +420,7 @@ export type ClienteDesinstalacionConteos = {
  * rápidamente el registro.
  */
 export type ClienteDesinstalacionListadoItem = {
-  desinstalacion: ClienteDesinstalacionEntity;
+  desinstalacion: ClienteDesinstalacionResumen;
 
   cliente: ClienteDesinstalacionClienteResumen;
 
@@ -459,4 +462,23 @@ export type ClienteDesinstalacionDetalle = ClienteDesinstalacionListadoItem & {
   operacionesPppoe: ClienteDesinstalacionOperacionPppoeDetalle[];
 
   auditoriasPppoe: ClienteDesinstalacionAuditoriaPppoeDetalle[];
+};
+
+/** Filtros del listado; la paginación viaja aparte. */
+export type ClienteDesinstalacionFiltros = {
+  search?: string | null;
+  clienteId?: number | null;
+  servicioInternetId?: number | null;
+  ticketId?: number | null;
+  accesoInternetId?: number | null;
+  creadoPorId?: number | null;
+  solicitadoPorId?: number | null;
+  ejecutadoPorId?: number | null;
+  motivo?: MotivoDesinstalacionCliente | null;
+  estado?: EstadoDesinstalacionCliente | null;
+  tipo?: TipoDesinstalacionCliente | null;
+  fechaProgramadaDesde?: Date | null;
+  fechaProgramadaHasta?: Date | null;
+  fechaFinalizacionDesde?: Date | null;
+  fechaFinalizacionHasta?: Date | null;
 };

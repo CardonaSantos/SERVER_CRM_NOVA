@@ -1,25 +1,23 @@
-import {
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-
-import { EstadoAccesoInternet } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
-
-import { AccesoInternetReadModel } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
-
+import { Inject, Injectable } from '@nestjs/common';
 import {
   PPPOE_ACCESO_INTERNET,
   PppoeAccesoInternetFacadePort,
 } from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.facade.port';
+import {
+  AccesoInternetReadModel,
+  EstadoAccesoInternet,
+} from 'src/modules/pppoe-acceso-internet/public/pppoe-acceso-internet.types';
+import {
+  ClienteDesinstalacionAccesoInvalidoError,
+  ClienteDesinstalacionAccesoNoEncontradoError,
+} from '../../domain/errors/cliente-desinstalacion.errors';
 
 export type ValidarAccesoDesinstalacionParams = {
   clienteId: number;
-
   accesoInternetId: number;
 };
 
+/** El acceso debe ser del cliente, no estar dado de baja y tener un servicio asociado. */
 @Injectable()
 export class ValidarAccesoDesinstalacionService {
   constructor(
@@ -32,24 +30,21 @@ export class ValidarAccesoDesinstalacionService {
   ): Promise<AccesoInternetReadModel> {
     const acceso = await this.accesosInternet.buscarDelCliente({
       clienteId: params.clienteId,
-
       accesoInternetId: params.accesoInternetId,
     });
 
     if (!acceso) {
-      throw new NotFoundException(
-        `No existe el acceso ${params.accesoInternetId} para el cliente ${params.clienteId}.`,
-      );
+      throw new ClienteDesinstalacionAccesoNoEncontradoError();
     }
 
     if (acceso.estado === EstadoAccesoInternet.BAJA) {
-      throw new ConflictException(
+      throw new ClienteDesinstalacionAccesoInvalidoError(
         'El acceso seleccionado ya se encuentra dado de baja.',
       );
     }
 
     if (acceso.servicioInternetId === null) {
-      throw new ConflictException(
+      throw new ClienteDesinstalacionAccesoInvalidoError(
         'El acceso seleccionado no tiene un servicio de internet asociado.',
       );
     }

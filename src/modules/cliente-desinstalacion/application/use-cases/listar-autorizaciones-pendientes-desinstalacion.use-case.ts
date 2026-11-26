@@ -1,24 +1,29 @@
 import { Inject, Injectable } from '@nestjs/common';
+import {
+  normalizarPaginacion,
+  ResultadoPaginado,
+} from 'src/common/hexagonal/paginacion';
+import {
+  AUTORIZACION_DESINSTALACION_QUERY,
+  AutorizacionDesinstalacionQueryPort,
+} from '../../domain/ports/autorizacion-desinstalacion-query.port';
+import { AutorizacionDesinstalacionPendiente } from '../../domain/read-models/autorizacion-desinstalacion-pendiente.read-model';
 
-import { AutorizacionesPendientesPaginatedResult, ClienteDesinstalacionAutorizacionRepositoryPort, CLIENTE_DESINSTALACION_AUTORIZACION_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-autorizacion-repository.port';
-
-
-import { FiltrarAutorizacionesPendientesDto } from '../../presentation/dto/listar-autorizaciones-pendientes-query.dto';
+export type ListarAutorizacionesPendientesInput = {
+  page?: number;
+  limit?: number;
+};
 
 @Injectable()
 export class ListarAutorizacionesPendientesUseCase {
   constructor(
-    @Inject(CLIENTE_DESINSTALACION_AUTORIZACION_REPOSITORY)
-    private readonly autorizacionRepository: ClienteDesinstalacionAutorizacionRepositoryPort,
+    @Inject(AUTORIZACION_DESINSTALACION_QUERY)
+    private readonly consultas: AutorizacionDesinstalacionQueryPort,
   ) {}
 
-  async execute(
-    filters: FiltrarAutorizacionesPendientesDto,
-  ): Promise<AutorizacionesPendientesPaginatedResult> {
-    return this.autorizacionRepository.findPendientes({
-      page: filters.page,
-
-      limit: filters.limit,
-    });
+  execute(
+    input: ListarAutorizacionesPendientesInput,
+  ): Promise<ResultadoPaginado<AutorizacionDesinstalacionPendiente>> {
+    return this.consultas.findPendientes(normalizarPaginacion(input));
   }
 }

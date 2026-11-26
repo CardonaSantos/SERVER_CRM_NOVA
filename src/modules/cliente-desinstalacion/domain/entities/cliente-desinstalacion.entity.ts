@@ -1,4 +1,8 @@
 import { Money } from 'src/common/hexagonal/money.vo';
+import {
+  ClienteDesinstalacionDatosInvalidosError,
+  ClienteDesinstalacionEstadoInvalidoError,
+} from '../errors/cliente-desinstalacion.errors';
 
 import { EstadoDesinstalacionCliente } from '../enums/estado-desinstalacion-cliente.enum';
 
@@ -36,86 +40,46 @@ import {
 export class ClienteDesinstalacionEntity {
   private constructor(private readonly props: ClienteDesinstalacionProps) {}
 
-  /**
-   * ==========================================================
-   * CONSTRUCCIÓN
-   * ==========================================================
-   */
-
   static create(
     input: CrearClienteDesinstalacionProps,
   ): ClienteDesinstalacionEntity {
     const entity = new ClienteDesinstalacionEntity({
       empresaId: input.empresaId,
-
       clienteId: input.clienteId,
-
       servicioInternetId: input.servicioInternetId ?? null,
-
       ticketId: input.ticketId ?? null,
-
       accesoInternetId: input.accesoInternetId ?? null,
-
       solicitadoPorId: input.solicitadoPorId ?? null,
-
       ejecutadoPorId: input.ejecutadoPorId ?? null,
-
       creadoPorId: input.creadoPorId ?? null,
-
       tipo: input.tipo ?? TipoDesinstalacionCliente.COMPLETA,
-
       motivo: input.motivo ?? null,
-
       estado: EstadoDesinstalacionCliente.PROGRAMADA,
-
-      fechaSolicitud: input.fechaSolicitud ?? new Date(),
-
+      fechaSolicitud: input.fechaSolicitud,
       fechaProgramada: input.fechaProgramada ?? null,
-
       fechaInicio: null,
-
       fechaFinalizacion: null,
-
       fechaCancelacion: null,
-
       requiereRetiroEquipo: input.requiereRetiroEquipo ?? true,
-
       equipoRecuperado: false,
-
       saldoClienteAlMomento: input.saldoClienteAlMomento ?? Money.zero(),
-
       costoDesinstalacion: Money.zero(),
-
       costoTransporte: Money.zero(),
-
       costoManoObra: Money.zero(),
-
       costoOtros: Money.zero(),
-
       direccionServicio: this.normalizeOptionalText(input.direccionServicio),
-
       referenciaUbicacion: this.normalizeOptionalText(
         input.referenciaUbicacion,
       ),
-
       latitud: input.latitud ?? null,
-
       longitud: input.longitud ?? null,
-
       firmadoPor: null,
-
       dpiFirmante: null,
-
       conforme: null,
-
       observaciones: this.normalizeOptionalText(input.observaciones),
-
       resultado: null,
-
       metadata: input.metadata,
-
       creadoEn: undefined,
-
       actualizadoEn: undefined,
     });
 
@@ -132,33 +96,20 @@ export class ClienteDesinstalacionEntity {
   ): ClienteDesinstalacionEntity {
     const entity = new ClienteDesinstalacionEntity({
       ...input,
-
       direccionServicio: this.normalizeOptionalText(input.direccionServicio),
-
       referenciaUbicacion: this.normalizeOptionalText(
         input.referenciaUbicacion,
       ),
-
       firmadoPor: this.normalizeOptionalText(input.firmadoPor),
-
       dpiFirmante: this.normalizeOptionalText(input.dpiFirmante),
-
       observaciones: this.normalizeOptionalText(input.observaciones),
-
       resultado: this.normalizeOptionalText(input.resultado),
-
       fechaSolicitud: this.cloneOptionalDate(input.fechaSolicitud),
-
       fechaProgramada: this.cloneOptionalDate(input.fechaProgramada),
-
       fechaInicio: this.cloneOptionalDate(input.fechaInicio),
-
       fechaFinalizacion: this.cloneOptionalDate(input.fechaFinalizacion),
-
       fechaCancelacion: this.cloneOptionalDate(input.fechaCancelacion),
-
       creadoEn: input.creadoEn ? new Date(input.creadoEn) : undefined,
-
       actualizadoEn: input.actualizadoEn
         ? new Date(input.actualizadoEn)
         : undefined,
@@ -168,12 +119,6 @@ export class ClienteDesinstalacionEntity {
 
     return entity;
   }
-
-  /**
-   * ==========================================================
-   * GETTERS
-   * ==========================================================
-   */
 
   get id(): number | undefined {
     return this.props.id;
@@ -260,19 +205,13 @@ export class ClienteDesinstalacionEntity {
   }
 
   /**
-   * ==========================================================
-   * TRANSICIONES
-   * ==========================================================
-   */
-
-  /**
    * PROGRAMADA -> EN_PROCESO
    */
-  iniciar(params: IniciarClienteDesinstalacionParams = {}): void {
+  iniciar(params: IniciarClienteDesinstalacionParams): void {
     this.ensurePersisted('iniciar');
 
     if (!this.isProgramada) {
-      throw new Error(
+      throw new ClienteDesinstalacionEstadoInvalidoError(
         `Solo una desinstalación PROGRAMADA puede iniciarse. Estado actual: ${this.props.estado}.`,
       );
     }
@@ -283,18 +222,15 @@ export class ClienteDesinstalacionEntity {
       this.props.ejecutadoPorId = params.ejecutadoPorId;
     }
 
-    const fechaInicio = params.fechaInicio ?? new Date();
+    const fechaInicio = params.fechaInicio;
 
     this.ensureValidDate(fechaInicio, 'fechaInicio');
 
     this.ensureDateNotBeforeRequest(fechaInicio, 'fechaInicio');
 
     this.props.estado = EstadoDesinstalacionCliente.EN_PROCESO;
-
     this.props.fechaInicio = new Date(fechaInicio);
-
     this.props.fechaFinalizacion = null;
-
     this.props.fechaCancelacion = null;
 
     this.ensureValid();
@@ -310,25 +246,22 @@ export class ClienteDesinstalacionEntity {
     this.ensurePersisted('completar');
 
     if (!this.isEnProceso) {
-      throw new Error(
+      throw new ClienteDesinstalacionEstadoInvalidoError(
         `Solo una desinstalación EN_PROCESO puede completarse. Estado actual: ${this.props.estado}.`,
       );
     }
 
     this.ensurePositiveId(params.ejecutadoPorId, 'ejecutadoPorId');
 
-    const fechaFinalizacion = params.fechaFinalizacion ?? new Date();
+    const fechaFinalizacion = params.fechaFinalizacion;
 
     this.ensureValidDate(fechaFinalizacion, 'fechaFinalizacion');
 
     this.ensureDateNotBeforeStart(fechaFinalizacion, 'fechaFinalizacion');
 
     this.props.estado = EstadoDesinstalacionCliente.COMPLETADA;
-
     this.props.ejecutadoPorId = params.ejecutadoPorId;
-
     this.props.fechaFinalizacion = new Date(fechaFinalizacion);
-
     this.props.fechaCancelacion = null;
 
     if (params.resultado !== undefined) {
@@ -354,25 +287,23 @@ export class ClienteDesinstalacionEntity {
   /**
    * EN_PROCESO -> FALLIDA
    */
-  marcarFallida(params: MarcarFallidaClienteDesinstalacionParams = {}): void {
+  marcarFallida(params: MarcarFallidaClienteDesinstalacionParams): void {
     this.ensurePersisted('marcar como fallida');
 
     if (!this.isEnProceso) {
-      throw new Error(
+      throw new ClienteDesinstalacionEstadoInvalidoError(
         `Solo una desinstalación EN_PROCESO puede marcarse como FALLIDA. Estado actual: ${this.props.estado}.`,
       );
     }
 
-    const fechaFinalizacion = params.fechaFinalizacion ?? new Date();
+    const fechaFinalizacion = params.fechaFinalizacion;
 
     this.ensureValidDate(fechaFinalizacion, 'fechaFinalizacion');
 
     this.ensureDateNotBeforeStart(fechaFinalizacion, 'fechaFinalizacion');
 
     this.props.estado = EstadoDesinstalacionCliente.FALLIDA;
-
     this.props.fechaFinalizacion = new Date(fechaFinalizacion);
-
     this.props.fechaCancelacion = null;
 
     if (params.motivo !== undefined) {
@@ -396,16 +327,16 @@ export class ClienteDesinstalacionEntity {
   /**
    * PROGRAMADA | EN_PROCESO -> CANCELADA
    */
-  cancelar(params: CancelarClienteDesinstalacionParams = {}): void {
+  cancelar(params: CancelarClienteDesinstalacionParams): void {
     this.ensurePersisted('cancelar');
 
     if (!this.isProgramada && !this.isEnProceso) {
-      throw new Error(
+      throw new ClienteDesinstalacionEstadoInvalidoError(
         `Solo una desinstalación PROGRAMADA o EN_PROCESO puede cancelarse. Estado actual: ${this.props.estado}.`,
       );
     }
 
-    const fechaCancelacion = params.fechaCancelacion ?? new Date();
+    const fechaCancelacion = params.fechaCancelacion;
 
     this.ensureValidDate(fechaCancelacion, 'fechaCancelacion');
 
@@ -421,9 +352,7 @@ export class ClienteDesinstalacionEntity {
     }
 
     this.props.estado = EstadoDesinstalacionCliente.CANCELADA;
-
     this.props.fechaCancelacion = new Date(fechaCancelacion);
-
     this.props.fechaFinalizacion = null;
 
     this.ensureValid();
@@ -436,7 +365,7 @@ export class ClienteDesinstalacionEntity {
     this.ensurePersisted('reprogramar');
 
     if (!this.isProgramada) {
-      throw new Error(
+      throw new ClienteDesinstalacionEstadoInvalidoError(
         `Solo una desinstalación PROGRAMADA puede reprogramarse. Estado actual: ${this.props.estado}.`,
       );
     }
@@ -475,7 +404,7 @@ export class ClienteDesinstalacionEntity {
     this.ensurePersisted('autorizar');
 
     if (!this.isProgramada) {
-      throw new Error(
+      throw new ClienteDesinstalacionEstadoInvalidoError(
         `Solo una desinstalación PROGRAMADA puede autorizarse. Estado actual: ${this.props.estado}.`,
       );
     }
@@ -487,19 +416,17 @@ export class ClienteDesinstalacionEntity {
    * El rechazo de la autorización cancela la
    * desinstalación programada.
    */
-  rechazarAutorizacion(): void {
+  rechazarAutorizacion(fecha: Date): void {
     this.ensurePersisted('rechazar la autorización');
 
     if (!this.isProgramada) {
-      throw new Error(
+      throw new ClienteDesinstalacionEstadoInvalidoError(
         `Solo una desinstalación PROGRAMADA puede cancelarse por rechazo de autorización. Estado actual: ${this.props.estado}.`,
       );
     }
 
     this.props.estado = EstadoDesinstalacionCliente.CANCELADA;
-
-    this.props.fechaCancelacion = new Date();
-
+    this.props.fechaCancelacion = new Date(fecha);
     this.props.fechaFinalizacion = null;
 
     this.ensureValid();
@@ -515,7 +442,7 @@ export class ClienteDesinstalacionEntity {
     this.ensurePersisted('registrar la firma');
 
     if (!this.isEnProceso && !this.isCompletada) {
-      throw new Error(
+      throw new ClienteDesinstalacionEstadoInvalidoError(
         `La firma solo puede registrarse en una desinstalación EN_PROCESO o COMPLETADA. Estado actual: ${this.props.estado}.`,
       );
     }
@@ -523,11 +450,12 @@ export class ClienteDesinstalacionEntity {
     const firmadoPor = params.firmadoPor?.trim();
 
     if (!firmadoPor) {
-      throw new Error('firmadoPor es obligatorio.');
+      throw new ClienteDesinstalacionDatosInvalidosError(
+        'firmadoPor es obligatorio.',
+      );
     }
 
     this.props.firmadoPor = firmadoPor;
-
     this.props.dpiFirmante = ClienteDesinstalacionEntity.normalizeOptionalText(
       params.dpiFirmante,
     );
@@ -536,12 +464,6 @@ export class ClienteDesinstalacionEntity {
 
     this.ensureValid();
   }
-
-  /**
-   * ==========================================================
-   * ACTUALIZACIONES SIN TRANSICIÓN
-   * ==========================================================
-   */
 
   actualizarDatosGenerales(
     params: ActualizarDatosGeneralesDesinstalacionParams,
@@ -555,7 +477,7 @@ export class ClienteDesinstalacionEntity {
       params.servicioInternetId !== undefined;
 
     if (intentaModificarRelacionTecnica && !this.isProgramada) {
-      throw new Error(
+      throw new ClienteDesinstalacionEstadoInvalidoError(
         'El acceso y el servicio de internet solo pueden modificarse mientras la desinstalación está PROGRAMADA.',
       );
     }
@@ -664,49 +586,30 @@ export class ClienteDesinstalacionEntity {
     this.ensureValid();
   }
 
-  /**
-   * ==========================================================
-   * CONVERSIÓN
-   * ==========================================================
-   */
-
   toPrimitives(): ClienteDesinstalacionProps {
     return {
       ...this.props,
-
       fechaSolicitud: ClienteDesinstalacionEntity.cloneOptionalDate(
         this.props.fechaSolicitud,
       ),
-
       fechaProgramada: ClienteDesinstalacionEntity.cloneOptionalDate(
         this.props.fechaProgramada,
       ),
-
       fechaInicio: ClienteDesinstalacionEntity.cloneOptionalDate(
         this.props.fechaInicio,
       ),
-
       fechaFinalizacion: ClienteDesinstalacionEntity.cloneOptionalDate(
         this.props.fechaFinalizacion,
       ),
-
       fechaCancelacion: ClienteDesinstalacionEntity.cloneOptionalDate(
         this.props.fechaCancelacion,
       ),
-
       creadoEn: this.props.creadoEn ? new Date(this.props.creadoEn) : undefined,
-
       actualizadoEn: this.props.actualizadoEn
         ? new Date(this.props.actualizadoEn)
         : undefined,
     };
   }
-
-  /**
-   * ==========================================================
-   * VALIDACIONES
-   * ==========================================================
-   */
 
   private ensureValid(): void {
     this.ensurePositiveId(this.props.empresaId, 'empresaId');
@@ -773,7 +676,7 @@ export class ClienteDesinstalacionEntity {
           this.props.fechaFinalizacion ||
           this.props.fechaCancelacion
         ) {
-          throw new Error(
+          throw new ClienteDesinstalacionEstadoInvalidoError(
             'Una desinstalación PROGRAMADA no puede contener fechas de inicio, finalización o cancelación.',
           );
         }
@@ -783,13 +686,13 @@ export class ClienteDesinstalacionEntity {
 
       case EstadoDesinstalacionCliente.EN_PROCESO: {
         if (!this.props.fechaInicio) {
-          throw new Error(
+          throw new ClienteDesinstalacionEstadoInvalidoError(
             'Una desinstalación EN_PROCESO debe contener fechaInicio.',
           );
         }
 
         if (this.props.fechaFinalizacion || this.props.fechaCancelacion) {
-          throw new Error(
+          throw new ClienteDesinstalacionEstadoInvalidoError(
             'Una desinstalación EN_PROCESO no puede contener fechaFinalizacion ni fechaCancelacion.',
           );
         }
@@ -799,13 +702,13 @@ export class ClienteDesinstalacionEntity {
 
       case EstadoDesinstalacionCliente.COMPLETADA: {
         if (!this.props.fechaInicio || !this.props.fechaFinalizacion) {
-          throw new Error(
+          throw new ClienteDesinstalacionEstadoInvalidoError(
             'Una desinstalación COMPLETADA debe contener fechaInicio y fechaFinalizacion.',
           );
         }
 
         if (this.props.fechaCancelacion) {
-          throw new Error(
+          throw new ClienteDesinstalacionEstadoInvalidoError(
             'Una desinstalación COMPLETADA no puede contener fechaCancelacion.',
           );
         }
@@ -815,13 +718,13 @@ export class ClienteDesinstalacionEntity {
 
       case EstadoDesinstalacionCliente.CANCELADA: {
         if (!this.props.fechaCancelacion) {
-          throw new Error(
+          throw new ClienteDesinstalacionEstadoInvalidoError(
             'Una desinstalación CANCELADA debe contener fechaCancelacion.',
           );
         }
 
         if (this.props.fechaFinalizacion) {
-          throw new Error(
+          throw new ClienteDesinstalacionEstadoInvalidoError(
             'Una desinstalación CANCELADA no puede contener fechaFinalizacion.',
           );
         }
@@ -831,13 +734,13 @@ export class ClienteDesinstalacionEntity {
 
       case EstadoDesinstalacionCliente.FALLIDA: {
         if (!this.props.fechaInicio || !this.props.fechaFinalizacion) {
-          throw new Error(
+          throw new ClienteDesinstalacionEstadoInvalidoError(
             'Una desinstalación FALLIDA debe contener fechaInicio y fechaFinalizacion.',
           );
         }
 
         if (this.props.fechaCancelacion) {
-          throw new Error(
+          throw new ClienteDesinstalacionEstadoInvalidoError(
             'Una desinstalación FALLIDA no puede contener fechaCancelacion.',
           );
         }
@@ -863,7 +766,9 @@ export class ClienteDesinstalacionEntity {
       this.props.fechaInicio &&
       this.props.fechaInicio.getTime() < fechaSolicitud.getTime()
     ) {
-      throw new Error('fechaInicio no puede ser anterior a fechaSolicitud.');
+      throw new ClienteDesinstalacionDatosInvalidosError(
+        'fechaInicio no puede ser anterior a fechaSolicitud.',
+      );
     }
 
     if (
@@ -871,7 +776,9 @@ export class ClienteDesinstalacionEntity {
       this.props.fechaFinalizacion &&
       this.props.fechaFinalizacion.getTime() < this.props.fechaInicio.getTime()
     ) {
-      throw new Error('fechaFinalizacion no puede ser anterior a fechaInicio.');
+      throw new ClienteDesinstalacionDatosInvalidosError(
+        'fechaFinalizacion no puede ser anterior a fechaInicio.',
+      );
     }
 
     if (
@@ -879,7 +786,7 @@ export class ClienteDesinstalacionEntity {
       this.props.fechaCancelacion &&
       this.props.fechaCancelacion.getTime() < fechaSolicitud.getTime()
     ) {
-      throw new Error(
+      throw new ClienteDesinstalacionDatosInvalidosError(
         'fechaCancelacion no puede ser anterior a fechaSolicitud.',
       );
     }
@@ -893,7 +800,9 @@ export class ClienteDesinstalacionEntity {
       this.props.longitud !== null && this.props.longitud !== undefined;
 
     if (hasLatitude !== hasLongitude) {
-      throw new Error('latitud y longitud deben proporcionarse juntas.');
+      throw new ClienteDesinstalacionDatosInvalidosError(
+        'latitud y longitud deben proporcionarse juntas.',
+      );
     }
   }
 
@@ -905,7 +814,9 @@ export class ClienteDesinstalacionEntity {
         this.props.latitud < -90 ||
         this.props.latitud > 90)
     ) {
-      throw new Error('latitud debe estar entre -90 y 90.');
+      throw new ClienteDesinstalacionDatosInvalidosError(
+        'latitud debe estar entre -90 y 90.',
+      );
     }
 
     if (
@@ -915,7 +826,9 @@ export class ClienteDesinstalacionEntity {
         this.props.longitud < -180 ||
         this.props.longitud > 180)
     ) {
-      throw new Error('longitud debe estar entre -180 y 180.');
+      throw new ClienteDesinstalacionDatosInvalidosError(
+        'longitud debe estar entre -180 y 180.',
+      );
     }
   }
 
@@ -930,14 +843,16 @@ export class ClienteDesinstalacionEntity {
 
     for (const [field, value] of moneyFields) {
       if (value.isNegative()) {
-        throw new Error(`${field} no puede ser negativo.`);
+        throw new ClienteDesinstalacionDatosInvalidosError(
+          `${field} no puede ser negativo.`,
+        );
       }
     }
   }
 
   private ensureEditable(): void {
     if (this.isFinalizada) {
-      throw new Error(
+      throw new ClienteDesinstalacionEstadoInvalidoError(
         'No se puede editar una desinstalación completada, cancelada o fallida.',
       );
     }
@@ -945,7 +860,7 @@ export class ClienteDesinstalacionEntity {
 
   private ensurePersisted(action: string): void {
     if (!this.isPersisted) {
-      throw new Error(
+      throw new ClienteDesinstalacionEstadoInvalidoError(
         `No se puede ${action} una desinstalación que aún no ha sido guardada.`,
       );
     }
@@ -955,7 +870,9 @@ export class ClienteDesinstalacionEntity {
     const fechaSolicitud = this.props.fechaSolicitud;
 
     if (fechaSolicitud && value.getTime() < fechaSolicitud.getTime()) {
-      throw new Error(`${field} no puede ser anterior a fechaSolicitud.`);
+      throw new ClienteDesinstalacionDatosInvalidosError(
+        `${field} no puede ser anterior a fechaSolicitud.`,
+      );
     }
   }
 
@@ -963,17 +880,23 @@ export class ClienteDesinstalacionEntity {
     const fechaInicio = this.props.fechaInicio;
 
     if (!fechaInicio) {
-      throw new Error('La desinstalación no contiene fechaInicio.');
+      throw new ClienteDesinstalacionDatosInvalidosError(
+        'La desinstalación no contiene fechaInicio.',
+      );
     }
 
     if (value.getTime() < fechaInicio.getTime()) {
-      throw new Error(`${field} no puede ser anterior a fechaInicio.`);
+      throw new ClienteDesinstalacionDatosInvalidosError(
+        `${field} no puede ser anterior a fechaInicio.`,
+      );
     }
   }
 
   private ensurePositiveId(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new Error(`${field} debe ser un entero positivo.`);
+      throw new ClienteDesinstalacionDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 
@@ -990,7 +913,9 @@ export class ClienteDesinstalacionEntity {
 
   private ensureValidDate(value: Date, field: string): void {
     if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
-      throw new Error(`${field} debe ser una fecha válida.`);
+      throw new ClienteDesinstalacionDatosInvalidosError(
+        `${field} debe ser una fecha válida.`,
+      );
     }
   }
 

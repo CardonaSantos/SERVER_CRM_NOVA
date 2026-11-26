@@ -1,62 +1,54 @@
+import { Inject, Injectable } from '@nestjs/common';
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
+import { MotivoDesinstalacionCliente } from '../../domain/enums/motivo-desinstalacion-cliente.enum';
+import { ClienteDesinstalacionNoEncontradaError } from '../../domain/errors/cliente-desinstalacion.errors';
 import {
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+  CLIENTE_DESINSTALACION_REPOSITORY,
+  ClienteDesinstalacionRepositoryPort,
+} from '../../domain/ports/cliente-desinstalacion-repository.port';
+import {
+  ClienteDesinstalacionResumen,
+  resumirDesinstalacion,
+} from '../../domain/read-models/cliente-desinstalacion-resumen.read-model';
 
-import { dayjs } from 'src/Utils/dayjs.config';
-
-import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entity';
-
-import { ClienteDesInstalacionRepositoryPort, CLIENTE_DESINSTALACION_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-repository.port';
-
-
-import { MarcarFallidaClienteDesinstalacionDto } from '../../presentation/dto/marcar-fallida-cliente-desinstalacion.dto';
-
-export type MarcarFallidaClienteDesinstalacionCommand =
-  MarcarFallidaClienteDesinstalacionDto & {
-    id: number;
-  };
+export type MarcarFallidaClienteDesinstalacionInput = {
+  id: number;
+  motivo?: MotivoDesinstalacionCliente | null;
+  resultado?: string | null;
+  observaciones?: string | null;
+  fechaFinalizacion?: string;
+};
 
 @Injectable()
 export class MarcarFallidaClienteDesinstalacionUseCase {
   constructor(
     @Inject(CLIENTE_DESINSTALACION_REPOSITORY)
-    private readonly clienteDesinstalacionRepository: ClienteDesInstalacionRepositoryPort,
+    private readonly desinstalaciones: ClienteDesinstalacionRepositoryPort,
+
+    @Inject(RELOJ)
+    private readonly reloj: RelojPort,
   ) {}
 
   async execute(
-    command: MarcarFallidaClienteDesinstalacionCommand,
-  ): Promise<ClienteDesinstalacionEntity> {
-    const desinstalacion = await this.clienteDesinstalacionRepository.findById(
-      command.id,
-    );
+    input: MarcarFallidaClienteDesinstalacionInput,
+  ): Promise<ClienteDesinstalacionResumen> {
+    const desinstalacion = await this.desinstalaciones.findById(input.id);
 
     if (!desinstalacion) {
-      throw new NotFoundException('Desinstalación no encontrada.');
+      throw new ClienteDesinstalacionNoEncontradaError();
     }
 
-    try {
-      desinstalacion.marcarFallida({
-        motivo: command.motivo ?? null,
+    desinstalacion.marcarFallida({
+      motivo: input.motivo ?? null,
+      resultado: input.resultado ?? null,
+      observaciones: input.observaciones ?? null,
+      fechaFinalizacion: input.fechaFinalizacion
+        ? new Date(input.fechaFinalizacion)
+        : this.reloj.ahora(),
+    });
 
-        resultado: command.resultado ?? null,
-
-        observaciones: command.observaciones ?? null,
-
-        fechaFinalizacion: command.fechaFinalizacion
-          ? dayjs(command.fechaFinalizacion).toDate()
-          : undefined,
-      });
-    } catch (error) {
-      throw new ConflictException(
-        error instanceof Error
-          ? error.message
-          : 'No se pudo marcar la desinstalación como fallida.',
-      );
-    }
-
-    return this.clienteDesinstalacionRepository.save(desinstalacion);
+    return resumirDesinstalacion(
+      await this.desinstalaciones.save(desinstalacion),
+    );
   }
 }

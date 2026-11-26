@@ -1,73 +1,58 @@
+import { Inject, Injectable } from '@nestjs/common';
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
+import { ClienteDesinstalacionNoEncontradaError } from '../../domain/errors/cliente-desinstalacion.errors';
 import {
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-
-import { dayjs } from 'src/Utils/dayjs.config';
-
-import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entity';
-
-import { ClienteDesInstalacionRepositoryPort, CLIENTE_DESINSTALACION_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-repository.port';
-
-
-import { IniciarClienteDesinstalacionDto } from '../../presentation/dto/iniciar-cliente-desinstalacion.dto';
-
+  CLIENTE_DESINSTALACION_REPOSITORY,
+  ClienteDesinstalacionRepositoryPort,
+} from '../../domain/ports/cliente-desinstalacion-repository.port';
+import {
+  ClienteDesinstalacionResumen,
+  resumirDesinstalacion,
+} from '../../domain/read-models/cliente-desinstalacion-resumen.read-model';
 import { ValidarAutorizacionDesinstalacionService } from '../services/validar-autorizacion-desinstalacion.service';
 
-export type IniciarClienteDesinstalacionCommand =
-  IniciarClienteDesinstalacionDto & {
-    id: number;
+export type IniciarClienteDesinstalacionInput = {
+  id: number;
+  ejecutadoPorId: number;
+  fechaInicio?: string;
+};
 
-    ejecutadoPorId: number;
-  };
-
+/**
+ * El trabajo físico solo empieza con una autorización aprobada; la baja PPPoE
+ * ya ocurrió al aprobarla.
+ */
 @Injectable()
 export class IniciarClienteDesinstalacionUseCase {
   constructor(
     @Inject(CLIENTE_DESINSTALACION_REPOSITORY)
-    private readonly clienteDesinstalacionRepository: ClienteDesInstalacionRepositoryPort,
+    private readonly desinstalaciones: ClienteDesinstalacionRepositoryPort,
 
-    private readonly validarAutorizacionDesinstalacionService: ValidarAutorizacionDesinstalacionService,
+    @Inject(RELOJ)
+    private readonly reloj: RelojPort,
+
+    private readonly autorizacion: ValidarAutorizacionDesinstalacionService,
   ) {}
 
   async execute(
-    command: IniciarClienteDesinstalacionCommand,
-  ): Promise<ClienteDesinstalacionEntity> {
-    const desinstalacion = await this.clienteDesinstalacionRepository.findById(
-      command.id,
-    );
+    input: IniciarClienteDesinstalacionInput,
+  ): Promise<ClienteDesinstalacionResumen> {
+    const desinstalacion = await this.desinstalaciones.findById(input.id);
 
     if (!desinstalacion) {
-      throw new NotFoundException('Desinstalación no encontrada.');
+      throw new ClienteDesinstalacionNoEncontradaError();
     }
 
-    if (!desinstalacion.isProgramada) {
-      throw new ConflictException(
-        `La desinstalación no puede iniciarse desde el estado ${desinstalacion.estado}.`,
-      );
-    }
-
-    /**
-     * El trabajo físico solamente puede comenzar
-     * después de haber sido autorizado.
-     *
-     * La eliminación PPPoE ya ocurrió durante
-     * la aprobación administrativa.
-     */
-    await this.validarAutorizacionDesinstalacionService.exigirAprobada(
-      command.id,
-    );
+    await this.autorizacion.exigirAprobada(input.id);
 
     desinstalacion.iniciar({
-      ejecutadoPorId: command.ejecutadoPorId,
-
-      fechaInicio: command.fechaInicio
-        ? dayjs(command.fechaInicio).toDate()
-        : undefined,
+      ejecutadoPorId: input.ejecutadoPorId,
+      fechaInicio: input.fechaInicio
+        ? new Date(input.fechaInicio)
+        : this.reloj.ahora(),
     });
 
-    return this.clienteDesinstalacionRepository.save(desinstalacion);
+    return resumirDesinstalacion(
+      await this.desinstalaciones.save(desinstalacion),
+    );
   }
 }

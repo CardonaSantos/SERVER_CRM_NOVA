@@ -1,29 +1,27 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-
-import { ClienteDesInstalacionRepositoryPort, CLIENTE_DESINSTALACION_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-repository.port';
-
+import { Inject, Injectable } from '@nestjs/common';
+import { ClienteDesinstalacionNoEncontradaError } from '../../domain/errors/cliente-desinstalacion.errors';
+import {
+  CLIENTE_DESINSTALACION_QUERY,
+  ClienteDesinstalacionQueryPort,
+} from '../../domain/ports/cliente-desinstalacion-query.port';
 import { ClienteDesinstalacionDetalle } from '../../domain/read-models/cliente-desinstalacion.read-model';
 
-export type ObtenerClienteDesinstalacionCommand = {
-  id: number;
-};
+export type ObtenerClienteDesinstalacionInput = { id: number };
 
 @Injectable()
 export class ObtenerClienteDesinstalacionUseCase {
   constructor(
-    @Inject(CLIENTE_DESINSTALACION_REPOSITORY)
-    private readonly clienteDesinstalacionRepository: ClienteDesInstalacionRepositoryPort,
+    @Inject(CLIENTE_DESINSTALACION_QUERY)
+    private readonly consultas: ClienteDesinstalacionQueryPort,
   ) {}
 
   async execute(
-    command: ObtenerClienteDesinstalacionCommand,
+    input: ObtenerClienteDesinstalacionInput,
   ): Promise<ClienteDesinstalacionDetalle> {
-    const detalle = await this.clienteDesinstalacionRepository.findDetalleById(
-      command.id,
-    );
+    const detalle = await this.consultas.findDetalleById(input.id);
 
     if (!detalle) {
-      throw new NotFoundException('Desinstalación no encontrada.');
+      throw new ClienteDesinstalacionNoEncontradaError();
     }
 
     return detalle;

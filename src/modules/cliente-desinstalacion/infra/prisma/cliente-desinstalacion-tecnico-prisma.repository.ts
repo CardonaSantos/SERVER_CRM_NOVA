@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaTransaccional } from 'src/common/transaccion/prisma-transaccional.service';
 import { ClienteDesinstalacionTecnicoEntity } from '../../domain/entities/cliente-desinstalacion-tecnico.entity';
 import { ClienteDesinstalacionTecnicoRepositoryPort } from '../../domain/ports/cliente-desinstalacion-tecnico-repository.port';
 import { ClienteDesinstalacionTecnicoPrismaMapper } from './cliente-desinstalacion-tecnico-prisma.mapper';
@@ -8,12 +8,17 @@ import { ClienteDesinstalacionTecnicoPrismaMapper } from './cliente-desinstalaci
 export class ClienteDesinstalacionTecnicoPrismaRepository
   implements ClienteDesinstalacionTecnicoRepositoryPort
 {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly transaccional: PrismaTransaccional) {}
+
+  /** La transacción abierta por una unidad de trabajo, o el cliente normal. */
+  private get db() {
+    return this.transaccional.cliente;
+  }
 
   async create(
     entity: ClienteDesinstalacionTecnicoEntity,
   ): Promise<ClienteDesinstalacionTecnicoEntity> {
-    const record = await this.prisma.clienteDesinstalacionTecnico.create({
+    const record = await this.db.clienteDesinstalacionTecnico.create({
       data: ClienteDesinstalacionTecnicoPrismaMapper.toCreatePersistence(
         entity,
       ),
@@ -22,20 +27,18 @@ export class ClienteDesinstalacionTecnicoPrismaRepository
     return ClienteDesinstalacionTecnicoPrismaMapper.toDomain(record);
   }
 
+  /** Una sola sentencia: se guardan todos o ninguno. */
   async createMany(
     entities: ClienteDesinstalacionTecnicoEntity[],
   ): Promise<ClienteDesinstalacionTecnicoEntity[]> {
     if (entities.length === 0) return [];
 
-    const records = await this.prisma.$transaction(
-      entities.map((entity) =>
-        this.prisma.clienteDesinstalacionTecnico.create({
-          data: ClienteDesinstalacionTecnicoPrismaMapper.toCreatePersistence(
-            entity,
-          ),
-        }),
-      ),
-    );
+    const records =
+      await this.db.clienteDesinstalacionTecnico.createManyAndReturn({
+        data: entities.map((entity) =>
+          ClienteDesinstalacionTecnicoPrismaMapper.toCreatePersistence(entity),
+        ),
+      });
 
     return records.map(ClienteDesinstalacionTecnicoPrismaMapper.toDomain);
   }
@@ -43,10 +46,8 @@ export class ClienteDesinstalacionTecnicoPrismaRepository
   async findByDesinstalacionId(
     desinstalacionId: number,
   ): Promise<ClienteDesinstalacionTecnicoEntity[]> {
-    const records = await this.prisma.clienteDesinstalacionTecnico.findMany({
-      where: {
-        desinstalacionId,
-      },
+    const records = await this.db.clienteDesinstalacionTecnico.findMany({
+      where: { desinstalacionId },
       orderBy: [{ esResponsable: 'desc' }, { creadoEn: 'asc' }],
     });
 
@@ -57,7 +58,7 @@ export class ClienteDesinstalacionTecnicoPrismaRepository
     desinstalacionId: number;
     tecnicoOperacionId: number;
   }): Promise<void> {
-    await this.prisma.clienteDesinstalacionTecnico.deleteMany({
+    await this.db.clienteDesinstalacionTecnico.deleteMany({
       where: {
         id: params.tecnicoOperacionId,
         desinstalacionId: params.desinstalacionId,

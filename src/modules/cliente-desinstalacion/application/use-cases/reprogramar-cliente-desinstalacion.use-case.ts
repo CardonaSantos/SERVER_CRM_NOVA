@@ -1,38 +1,46 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { dayjs } from 'src/Utils/dayjs.config';
-import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entity';
-import { ClienteDesInstalacionRepositoryPort, CLIENTE_DESINSTALACION_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-repository.port';
-import { ReprogramarClienteDesinstalacionDto } from '../../presentation/dto/reprogramar-cliente-desinstalacion.dto';
+import { Inject, Injectable } from '@nestjs/common';
+import { MotivoDesinstalacionCliente } from '../../domain/enums/motivo-desinstalacion-cliente.enum';
+import { ClienteDesinstalacionNoEncontradaError } from '../../domain/errors/cliente-desinstalacion.errors';
+import {
+  CLIENTE_DESINSTALACION_REPOSITORY,
+  ClienteDesinstalacionRepositoryPort,
+} from '../../domain/ports/cliente-desinstalacion-repository.port';
+import {
+  ClienteDesinstalacionResumen,
+  resumirDesinstalacion,
+} from '../../domain/read-models/cliente-desinstalacion-resumen.read-model';
 
-export type ReprogramarClienteDesinstalacionCommand =
-  ReprogramarClienteDesinstalacionDto & {
-    id: number;
-  };
+export type ReprogramarClienteDesinstalacionInput = {
+  id: number;
+  fechaProgramada: string;
+  motivo?: MotivoDesinstalacionCliente | null;
+  observaciones?: string | null;
+};
 
 @Injectable()
 export class ReprogramarClienteDesinstalacionUseCase {
   constructor(
     @Inject(CLIENTE_DESINSTALACION_REPOSITORY)
-    private readonly clienteDesinstalacionRepository: ClienteDesInstalacionRepositoryPort,
+    private readonly desinstalaciones: ClienteDesinstalacionRepositoryPort,
   ) {}
 
   async execute(
-    command: ReprogramarClienteDesinstalacionCommand,
-  ): Promise<ClienteDesinstalacionEntity> {
-    const desinstalacion = await this.clienteDesinstalacionRepository.findById(
-      command.id,
-    );
+    input: ReprogramarClienteDesinstalacionInput,
+  ): Promise<ClienteDesinstalacionResumen> {
+    const desinstalacion = await this.desinstalaciones.findById(input.id);
 
     if (!desinstalacion) {
-      throw new NotFoundException('Desinstalación no encontrada.');
+      throw new ClienteDesinstalacionNoEncontradaError();
     }
 
     desinstalacion.reprogramar({
-      fechaProgramada: dayjs(command.fechaProgramada).toDate(),
-      motivo: command.motivo ?? null,
-      observaciones: command.observaciones ?? null,
+      fechaProgramada: new Date(input.fechaProgramada),
+      motivo: input.motivo ?? null,
+      observaciones: input.observaciones ?? null,
     });
 
-    return this.clienteDesinstalacionRepository.save(desinstalacion);
+    return resumirDesinstalacion(
+      await this.desinstalaciones.save(desinstalacion),
+    );
   }
 }

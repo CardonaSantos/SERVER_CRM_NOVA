@@ -1,14 +1,17 @@
 import { CrearClienteDesinstalacionResult } from '../../application/use-cases/crear-cliente-desinstalacion.use-case';
 
-import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entity';
-
-import { ClienteDesInstalacionPaginatedResult } from '../../domain/ports/cliente-desinstalacion-repository.port';
-
+import {
+  presentarPaginado,
+  ResultadoPaginado,
+} from 'src/common/hexagonal/paginacion';
+import { ClienteDesinstalacionResumen } from '../../domain/read-models/cliente-desinstalacion-resumen.read-model';
 import {
   ClienteDesinstalacionDetalle,
   ClienteDesinstalacionListadoItem,
 } from '../../domain/read-models/cliente-desinstalacion.read-model';
 
+import { SubirEvidenciaDesinstalacionResult } from '../../application/use-cases/subir-evidencia-desinstalacion.use-case';
+import { ContextoCreacionDesinstalacion } from '../../domain/read-models/contexto-creacion-desinstalacion.read-model';
 import { ClienteDesinstalacionTecnicoPresenter } from './tecnico-desinstalacion.presenter';
 
 export class ClienteDesinstalacionPresenter {
@@ -23,9 +26,7 @@ export class ClienteDesinstalacionPresenter {
    * - costos;
    * - transiciones operativas.
    */
-  static toHttp(entity: ClienteDesinstalacionEntity) {
-    const props = entity.toPrimitives();
-
+  static toHttp(props: ClienteDesinstalacionResumen) {
     return {
       id: props.id,
 
@@ -66,15 +67,15 @@ export class ClienteDesinstalacionPresenter {
       equipoRecuperado: props.equipoRecuperado,
 
       costos: {
-        saldoClienteAlMomento: props.saldoClienteAlMomento.toNumber(),
+        saldoClienteAlMomento: props.saldoClienteAlMomento,
 
-        costoDesinstalacion: props.costoDesinstalacion.toNumber(),
+        costoDesinstalacion: props.costoDesinstalacion,
 
-        costoTransporte: props.costoTransporte.toNumber(),
+        costoTransporte: props.costoTransporte,
 
-        costoManoObra: props.costoManoObra.toNumber(),
+        costoManoObra: props.costoManoObra,
 
-        costoOtros: props.costoOtros.toNumber(),
+        costoOtros: props.costoOtros,
       },
 
       direccionServicio: props.direccionServicio ?? null,
@@ -271,20 +272,10 @@ export class ClienteDesinstalacionPresenter {
    * Presenta el listado paginado mediante el contrato
    * uniforme de la API.
    */
-  static paginatedToHttp(result: ClienteDesInstalacionPaginatedResult) {
-    return {
-      data: result.data.map((item) => this.listadoItemToHttp(item)),
-
-      meta: {
-        total: result.meta.total,
-
-        page: result.meta.page,
-
-        limit: result.meta.limit,
-
-        totalPages: result.meta.totalPages,
-      },
-    };
+  static listado(
+    resultado: ResultadoPaginado<ClienteDesinstalacionListadoItem>,
+  ) {
+    return presentarPaginado(resultado, (item) => this.listadoItemToHttp(item));
   }
 
   /**
@@ -450,6 +441,71 @@ export class ClienteDesinstalacionPresenter {
       aprobadoPor: gasto.aprobadoPor,
 
       evidencia: gasto.evidencia,
+    };
+  }
+
+  /** Accesos, servicios y tickets del cliente para armar la desinstalación. */
+  static contextoCreacion(contexto: ContextoCreacionDesinstalacion) {
+    return {
+      cliente: {
+        id: contexto.cliente.id,
+        nombre: contexto.cliente.nombre,
+        apellidos: contexto.cliente.apellidos,
+        telefono: contexto.cliente.telefono,
+        dpi: contexto.cliente.dpi,
+        direccion: contexto.cliente.direccion,
+      },
+      accesos: contexto.accesos.map((acceso) => ({
+        id: acceso.id,
+        servicioInternetId: acceso.servicioInternetId,
+        tecnologia: acceso.tecnologia,
+        metodoAutenticacion: acceso.metodoAutenticacion,
+        estado: acceso.estado,
+        activadoEn: acceso.activadoEn,
+        suspendidoEn: acceso.suspendidoEn,
+        dadoDeBajaEn: acceso.dadoDeBajaEn,
+        servicioInternet: acceso.servicioInternet && {
+          id: acceso.servicioInternet.id,
+          nombre: acceso.servicioInternet.nombre,
+          velocidad: acceso.servicioInternet.velocidad,
+          precio: acceso.servicioInternet.precio,
+        },
+        cuentaPppoe: acceso.cuentaPppoe && {
+          id: acceso.cuentaPppoe.id,
+          usuario: acceso.cuentaPppoe.usuario,
+          estado: acceso.cuentaPppoe.estado,
+          perfilHomologacionId: acceso.cuentaPppoe.perfilHomologacionId,
+        },
+      })),
+      tickets: contexto.tickets.map((ticket) => ({
+        id: ticket.id,
+        titulo: ticket.titulo,
+        descripcion: ticket.descripcion,
+        estado: ticket.estado,
+        prioridad: ticket.prioridad,
+        fechaApertura: ticket.fechaApertura,
+        fechaCierre: ticket.fechaCierre,
+      })),
+    };
+  }
+
+  static evidenciaSubida(resultado: SubirEvidenciaDesinstalacionResult) {
+    return {
+      evidencia: {
+        id: resultado.evidencia.id,
+        desinstalacionId: resultado.evidencia.desinstalacionId,
+        mediaId: resultado.evidencia.mediaId,
+        tipo: resultado.evidencia.tipo,
+        descripcion: resultado.evidencia.descripcion,
+        orden: resultado.evidencia.orden,
+        creadoEn: resultado.evidencia.creadoEn,
+      },
+      media: {
+        id: resultado.media.id,
+        cdnUrl: resultado.media.cdnUrl,
+        key: resultado.media.key,
+        tipo: resultado.media.tipo,
+      },
     };
   }
 }

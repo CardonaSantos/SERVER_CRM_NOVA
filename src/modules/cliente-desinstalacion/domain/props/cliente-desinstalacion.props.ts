@@ -116,7 +116,7 @@ export type CrearClienteDesinstalacionProps = {
 
   motivo?: MotivoDesinstalacionCliente | null;
 
-  fechaSolicitud?: Date | null;
+  fechaSolicitud: Date;
 
   fechaProgramada?: Date | null;
 
@@ -189,7 +189,7 @@ export type ReprogramarClienteDesinstalacionParams = {
  * Inicia la ejecución física de la desinstalación.
  */
 export type IniciarClienteDesinstalacionParams = {
-  fechaInicio?: Date;
+  fechaInicio: Date;
 
   ejecutadoPorId?: number | null;
 };
@@ -204,7 +204,7 @@ export type CompletarClienteDesinstalacionParams = {
 
   observaciones?: string | null;
 
-  fechaFinalizacion?: Date;
+  fechaFinalizacion: Date;
 
   equipoRecuperado?: boolean;
 
@@ -220,7 +220,7 @@ export type CancelarClienteDesinstalacionParams = {
 
   observaciones?: string | null;
 
-  fechaCancelacion?: Date | null;
+  fechaCancelacion: Date;
 };
 
 /**
@@ -237,7 +237,7 @@ export type MarcarFallidaClienteDesinstalacionParams = {
 
   observaciones?: string | null;
 
-  fechaFinalizacion?: Date;
+  fechaFinalizacion: Date;
 };
 
 /**

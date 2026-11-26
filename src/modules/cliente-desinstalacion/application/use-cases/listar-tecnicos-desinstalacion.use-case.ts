@@ -1,28 +1,37 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { ClienteDesinstalacionTecnicoEntity } from '../../domain/entities/cliente-desinstalacion-tecnico.entity';
-import { ClienteDesinstalacionTecnicoRepositoryPort, CLIENTE_DESINSTALACION_TECNICO_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-tecnico-repository.port';
-import { ClienteDesInstalacionRepositoryPort, CLIENTE_DESINSTALACION_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-repository.port';
+import { Inject, Injectable } from '@nestjs/common';
+import { ClienteDesinstalacionNoEncontradaError } from '../../domain/errors/cliente-desinstalacion.errors';
+import {
+  CLIENTE_DESINSTALACION_REPOSITORY,
+  ClienteDesinstalacionRepositoryPort,
+} from '../../domain/ports/cliente-desinstalacion-repository.port';
+import {
+  CLIENTE_DESINSTALACION_TECNICO_REPOSITORY,
+  ClienteDesinstalacionTecnicoRepositoryPort,
+} from '../../domain/ports/cliente-desinstalacion-tecnico-repository.port';
+import {
+  resumirTecnico,
+  TecnicoDesinstalacionResumen,
+} from '../../domain/read-models/cliente-desinstalacion-resumen.read-model';
 
 @Injectable()
 export class ListarTecnicosDesinstalacionUseCase {
   constructor(
     @Inject(CLIENTE_DESINSTALACION_REPOSITORY)
-    private readonly desinstalacionRepository: ClienteDesInstalacionRepositoryPort,
+    private readonly desinstalaciones: ClienteDesinstalacionRepositoryPort,
 
     @Inject(CLIENTE_DESINSTALACION_TECNICO_REPOSITORY)
-    private readonly tecnicoRepository: ClienteDesinstalacionTecnicoRepositoryPort,
+    private readonly tecnicos: ClienteDesinstalacionTecnicoRepositoryPort,
   ) {}
 
   async execute(
     desinstalacionId: number,
-  ): Promise<ClienteDesinstalacionTecnicoEntity[]> {
-    const desinstalacion =
-      await this.desinstalacionRepository.findById(desinstalacionId);
-
-    if (!desinstalacion) {
-      throw new NotFoundException('Desinstalación no encontrada.');
+  ): Promise<TecnicoDesinstalacionResumen[]> {
+    if (!(await this.desinstalaciones.findById(desinstalacionId))) {
+      throw new ClienteDesinstalacionNoEncontradaError();
     }
 
-    return this.tecnicoRepository.findByDesinstalacionId(desinstalacionId);
+    const lista = await this.tecnicos.findByDesinstalacionId(desinstalacionId);
+
+    return lista.map(resumirTecnico);
   }
 }

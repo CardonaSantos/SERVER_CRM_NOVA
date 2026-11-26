@@ -1,59 +1,53 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Money } from 'src/common/hexagonal/money.vo';
-import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entity';
-import { ClienteDesInstalacionRepositoryPort, CLIENTE_DESINSTALACION_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-repository.port';
-import { ActualizarCostosDesinstalacionDto } from '../../presentation/dto/actualizar-costos-desinstalacion.dto';
+import { ClienteDesinstalacionNoEncontradaError } from '../../domain/errors/cliente-desinstalacion.errors';
+import {
+  CLIENTE_DESINSTALACION_REPOSITORY,
+  ClienteDesinstalacionRepositoryPort,
+} from '../../domain/ports/cliente-desinstalacion-repository.port';
+import {
+  ClienteDesinstalacionResumen,
+  resumirDesinstalacion,
+} from '../../domain/read-models/cliente-desinstalacion-resumen.read-model';
 
-export type ActualizarCostosDesinstalacionCommand =
-  ActualizarCostosDesinstalacionDto & {
-    id: number;
-  };
+export type ActualizarCostosDesinstalacionInput = {
+  id: number;
+  saldoClienteAlMomento?: number;
+  costoDesinstalacion?: number;
+  costoTransporte?: number;
+  costoManoObra?: number;
+  costoOtros?: number;
+};
 
 @Injectable()
 export class ActualizarCostosDesinstalacionUseCase {
   constructor(
     @Inject(CLIENTE_DESINSTALACION_REPOSITORY)
-    private readonly clienteDesinstalacionRepository: ClienteDesInstalacionRepositoryPort,
+    private readonly desinstalaciones: ClienteDesinstalacionRepositoryPort,
   ) {}
 
   async execute(
-    command: ActualizarCostosDesinstalacionCommand,
-  ): Promise<ClienteDesinstalacionEntity> {
-    const desinstalacion = await this.clienteDesinstalacionRepository.findById(
-      command.id,
-    );
+    input: ActualizarCostosDesinstalacionInput,
+  ): Promise<ClienteDesinstalacionResumen> {
+    const desinstalacion = await this.desinstalaciones.findById(input.id);
 
     if (!desinstalacion) {
-      throw new NotFoundException('Desinstalación no encontrada.');
+      throw new ClienteDesinstalacionNoEncontradaError();
     }
 
+    const dinero = (valor?: number) =>
+      valor === undefined ? undefined : Money.fromNumber(valor);
+
     desinstalacion.actualizarCostos({
-      saldoClienteAlMomento:
-        command.saldoClienteAlMomento !== undefined
-          ? Money.fromNumber(command.saldoClienteAlMomento)
-          : undefined,
-
-      costoDesinstalacion:
-        command.costoDesinstalacion !== undefined
-          ? Money.fromNumber(command.costoDesinstalacion)
-          : undefined,
-
-      costoTransporte:
-        command.costoTransporte !== undefined
-          ? Money.fromNumber(command.costoTransporte)
-          : undefined,
-
-      costoManoObra:
-        command.costoManoObra !== undefined
-          ? Money.fromNumber(command.costoManoObra)
-          : undefined,
-
-      costoOtros:
-        command.costoOtros !== undefined
-          ? Money.fromNumber(command.costoOtros)
-          : undefined,
+      saldoClienteAlMomento: dinero(input.saldoClienteAlMomento),
+      costoDesinstalacion: dinero(input.costoDesinstalacion),
+      costoTransporte: dinero(input.costoTransporte),
+      costoManoObra: dinero(input.costoManoObra),
+      costoOtros: dinero(input.costoOtros),
     });
 
-    return this.clienteDesinstalacionRepository.save(desinstalacion);
+    return resumirDesinstalacion(
+      await this.desinstalaciones.save(desinstalacion),
+    );
   }
 }

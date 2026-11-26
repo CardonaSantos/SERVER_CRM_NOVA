@@ -1,12 +1,3 @@
-import {
-  EstadoAccesoInternet,
-  EstadoCuentaPppoe,
-  EstadoTicketSoporte,
-  MetodoAutenticacionInternet,
-  PrioridadTicketSoporte,
-  TecnologiaAccesoInternet,
-} from '@prisma/client';
-
 export type ContextoDesinstalacionClienteResumen = {
   id: number;
   nombre: string;
@@ -26,7 +17,7 @@ export type ContextoDesinstalacionServicioResumen = {
 export type ContextoDesinstalacionCuentaPppoeResumen = {
   id: number;
   usuario: string;
-  estado: EstadoCuentaPppoe;
+  estado: string;
   perfilHomologacionId: number;
 };
 
@@ -34,9 +25,9 @@ export type ContextoDesinstalacionAccesoResumen = {
   id: number;
   servicioInternetId: number | null;
 
-  tecnologia: TecnologiaAccesoInternet;
-  metodoAutenticacion: MetodoAutenticacionInternet;
-  estado: EstadoAccesoInternet;
+  tecnologia: string;
+  metodoAutenticacion: string;
+  estado: string;
 
   activadoEn: Date | null;
   suspendidoEn: Date | null;
@@ -53,8 +44,8 @@ export type ContextoDesinstalacionTicketResumen = {
   titulo: string | null;
   descripcion: string | null;
 
-  estado: EstadoTicketSoporte;
-  prioridad: PrioridadTicketSoporte;
+  estado: string;
+  prioridad: string;
 
   fechaApertura: Date;
   fechaCierre: Date | null;

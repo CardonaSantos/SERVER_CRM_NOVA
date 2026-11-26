@@ -1,79 +1,98 @@
+import { Inject, Injectable } from '@nestjs/common';
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
 import {
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entity';
-import { ClienteDesinstalacionAutorizacionEntity } from '../../domain/entities/cliente-desinstalacion-autorizacion.entity';
-import { ClienteDesinstalacionAutorizacionRepositoryPort, CLIENTE_DESINSTALACION_AUTORIZACION_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-autorizacion-repository.port';
-import { ClienteDesInstalacionRepositoryPort, CLIENTE_DESINSTALACION_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-repository.port';
-import { RechazarDesinstalacionAutorizacionDto } from '../../presentation/dto/autorizacion-desinstalacion.dto';
+  UNIDAD_DE_TRABAJO,
+  UnidadDeTrabajoPort,
+} from 'src/common/transaccion/unidad-de-trabajo.port';
+import {
+  AutorizacionDesinstalacionConflictoError,
+  AutorizacionDesinstalacionNoEncontradaError,
+  ClienteDesinstalacionNoEncontradaError,
+} from '../../domain/errors/cliente-desinstalacion.errors';
+import {
+  CLIENTE_DESINSTALACION_AUTORIZACION_REPOSITORY,
+  ClienteDesinstalacionAutorizacionRepositoryPort,
+} from '../../domain/ports/cliente-desinstalacion-autorizacion-repository.port';
+import {
+  CLIENTE_DESINSTALACION_REPOSITORY,
+  ClienteDesinstalacionRepositoryPort,
+} from '../../domain/ports/cliente-desinstalacion-repository.port';
+import {
+  AutorizacionDesinstalacionResumen,
+  ClienteDesinstalacionResumen,
+  resumirAutorizacion,
+  resumirDesinstalacion,
+} from '../../domain/read-models/cliente-desinstalacion-resumen.read-model';
 
-export type RechazarAutorizacionDesinstalacionCommand =
-  RechazarDesinstalacionAutorizacionDto & {
-    id: number;
-    autorizadoPorId: number;
-  };
+export type RechazarAutorizacionDesinstalacionInput = {
+  id: number;
+  autorizadoPorId: number;
+  comentarioAutorizador?: string | null;
+};
 
+export type RechazarAutorizacionDesinstalacionResult = {
+  autorizacion: AutorizacionDesinstalacionResumen;
+  desinstalacion: ClienteDesinstalacionResumen;
+};
+
+/** Rechazar la solicitud cancela la desinstalación programada; las dos cosas van juntas. */
 @Injectable()
 export class RechazarAutorizacionDesinstalacionUseCase {
   constructor(
     @Inject(CLIENTE_DESINSTALACION_AUTORIZACION_REPOSITORY)
-    private readonly autorizacionRepository: ClienteDesinstalacionAutorizacionRepositoryPort,
+    private readonly autorizaciones: ClienteDesinstalacionAutorizacionRepositoryPort,
 
     @Inject(CLIENTE_DESINSTALACION_REPOSITORY)
-    private readonly desinstalacionRepository: ClienteDesInstalacionRepositoryPort,
+    private readonly desinstalaciones: ClienteDesinstalacionRepositoryPort,
+
+    @Inject(UNIDAD_DE_TRABAJO)
+    private readonly unidad: UnidadDeTrabajoPort,
+
+    @Inject(RELOJ)
+    private readonly reloj: RelojPort,
   ) {}
 
-  async execute(command: RechazarAutorizacionDesinstalacionCommand): Promise<{
-    autorizacion: ClienteDesinstalacionAutorizacionEntity;
-    desinstalacion: ClienteDesinstalacionEntity;
-  }> {
-    const autorizacion = await this.autorizacionRepository.findById(command.id);
+  async execute(
+    input: RechazarAutorizacionDesinstalacionInput,
+  ): Promise<RechazarAutorizacionDesinstalacionResult> {
+    const autorizacion = await this.autorizaciones.findById(input.id);
 
     if (!autorizacion) {
-      throw new NotFoundException('Autorización no encontrada.');
+      throw new AutorizacionDesinstalacionNoEncontradaError();
     }
 
-    const desinstalacion = await this.desinstalacionRepository.findById(
+    const desinstalacion = await this.desinstalaciones.findById(
       autorizacion.desinstalacionId,
     );
 
     if (!desinstalacion) {
-      throw new NotFoundException('Desinstalación no encontrada.');
+      throw new ClienteDesinstalacionNoEncontradaError();
     }
 
     if (desinstalacion.isFinalizada) {
-      throw new ConflictException(
+      throw new AutorizacionDesinstalacionConflictoError(
         'No se puede rechazar una autorización de una desinstalación finalizada.',
       );
     }
 
-    try {
-      autorizacion.rechazar({
-        autorizadoPorId: command.autorizadoPorId,
-        comentarioAutorizador: command.comentarioAutorizador ?? null,
-      });
+    const ahora = this.reloj.ahora();
 
-      desinstalacion.rechazarAutorizacion();
-    } catch (error) {
-      throw new ConflictException(
-        error instanceof Error
-          ? error.message
-          : 'No se pudo rechazar la autorización.',
-      );
-    }
+    autorizacion.rechazar({
+      autorizadoPorId: input.autorizadoPorId,
+      comentarioAutorizador: input.comentarioAutorizador ?? null,
+      fechaRespuesta: ahora,
+    });
+    desinstalacion.rechazarAutorizacion(ahora);
 
-    const savedAutorizacion =
-      await this.autorizacionRepository.save(autorizacion);
-
-    const savedDesinstalacion =
-      await this.desinstalacionRepository.save(desinstalacion);
+    const [autorizacionGuardada, desinstalacionGuardada] =
+      await this.unidad.ejecutar(async () => [
+        await this.autorizaciones.save(autorizacion),
+        await this.desinstalaciones.save(desinstalacion),
+      ]);
 
     return {
-      autorizacion: savedAutorizacion,
-      desinstalacion: savedDesinstalacion,
+      autorizacion: resumirAutorizacion(autorizacionGuardada),
+      desinstalacion: resumirDesinstalacion(desinstalacionGuardada),
     };
   }
 }

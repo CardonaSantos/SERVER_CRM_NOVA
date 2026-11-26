@@ -1,344 +1,209 @@
+import { Inject, Injectable } from '@nestjs/common';
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
 import {
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { AuthService } from 'src/auth/auth.service';
-import {
-  PPPOE_CLIENTE_CUENTA,
-  PppoeClienteCuentaFacadePort,
-} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
-
+  UNIDAD_DE_TRABAJO,
+  UnidadDeTrabajoPort,
+} from 'src/common/transaccion/unidad-de-trabajo.port';
+import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
 import {
   PPPOE_PROVISIONAMIENTO,
   PppoeProvisionamientoPort,
 } from 'src/modules/pppoe-automatizacion/public/pppoe-provisionamiento.port';
-import { OrigenOperacionPppoe } from 'src/modules/pppoe-auditoria/public/pppoe-auditoria.types';
-import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entity';
-import { ClienteDesinstalacionAutorizacionEntity } from '../../domain/entities/cliente-desinstalacion-autorizacion.entity';
-import { ClienteDesinstalacionAutorizacionRepositoryPort, CLIENTE_DESINSTALACION_AUTORIZACION_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-autorizacion-repository.port';
-import { ClienteDesInstalacionRepositoryPort, CLIENTE_DESINSTALACION_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-repository.port';
-import { AprobarDesinstalacionAutorizacionDto } from '../../presentation/dto/autorizacion-desinstalacion.dto';
-import { ValidarAccesoDesinstalacionService } from '../services/validar-acceso-desinstalacion.service';
+import {
+  PPPOE_CLIENTE_CUENTA,
+  PppoeClienteCuentaFacadePort,
+} from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.facade.port';
 import { EstadoCuentaPppoe } from 'src/modules/pppoe-cliente-cuenta/public/pppoe-cliente-cuenta.types';
+import {
+  AutorizacionDesinstalacionConflictoError,
+  AutorizacionDesinstalacionNoEncontradaError,
+  ClienteDesinstalacionNoEncontradaError,
+  ClienteDesinstalacionPppoeConflictoError,
+} from '../../domain/errors/cliente-desinstalacion.errors';
+import {
+  CLIENTE_DESINSTALACION_AUTORIZACION_REPOSITORY,
+  ClienteDesinstalacionAutorizacionRepositoryPort,
+} from '../../domain/ports/cliente-desinstalacion-autorizacion-repository.port';
+import {
+  CLIENTE_DESINSTALACION_REPOSITORY,
+  ClienteDesinstalacionRepositoryPort,
+} from '../../domain/ports/cliente-desinstalacion-repository.port';
+import {
+  AutorizacionDesinstalacionResumen,
+  ClienteDesinstalacionResumen,
+  resumirAutorizacion,
+  resumirDesinstalacion,
+} from '../../domain/read-models/cliente-desinstalacion-resumen.read-model';
+import {
+  REAUTENTICACION_OPERADOR,
+  ReautenticacionOperadorPort,
+} from '../ports/reautenticacion-operador.port';
+import { ValidarAccesoDesinstalacionService } from '../services/validar-acceso-desinstalacion.service';
 
-export type AprobarAutorizacionDesinstalacionCommand =
-  AprobarDesinstalacionAutorizacionDto & {
-    id: number;
-
-    autorizadoPorId: number;
-  };
-
-export type AprobarAutorizacionDesinstalacionResult = {
-  autorizacion: ClienteDesinstalacionAutorizacionEntity;
-
-  desinstalacion: ClienteDesinstalacionEntity;
+export type AprobarAutorizacionDesinstalacionInput = {
+  id: number;
+  autorizadoPorId: number;
+  /** Solo sirve para reautenticar a quien autoriza la baja definitiva; no se guarda. */
+  contrasenaActual: string;
+  comentarioAutorizador?: string | null;
 };
 
+export type AprobarAutorizacionDesinstalacionResult = {
+  autorizacion: AutorizacionDesinstalacionResumen;
+  desinstalacion: ClienteDesinstalacionResumen;
+};
+
+/**
+ * Aprueba la baja: reautentica, deja la autorización APROBADA y la
+ * desinstalación EN_PROCESO (juntas, en una transacción), elimina el secret
+ * PPPoE en el router y, si la cuenta quedó ELIMINADA, completa la
+ * desinstalación. Si el router falla, queda EN_PROCESO y la operación PPPoE se
+ * recupera desde su propio flujo; nunca se completa de más.
+ */
 @Injectable()
 export class AprobarAutorizacionDesinstalacionUseCase {
   constructor(
     @Inject(CLIENTE_DESINSTALACION_AUTORIZACION_REPOSITORY)
-    private readonly autorizacionRepository: ClienteDesinstalacionAutorizacionRepositoryPort,
+    private readonly autorizaciones: ClienteDesinstalacionAutorizacionRepositoryPort,
 
     @Inject(CLIENTE_DESINSTALACION_REPOSITORY)
-    private readonly desinstalacionRepository: ClienteDesInstalacionRepositoryPort,
+    private readonly desinstalaciones: ClienteDesinstalacionRepositoryPort,
 
-    private readonly validarAccesoDesinstalacionService: ValidarAccesoDesinstalacionService,
+    private readonly validarAcceso: ValidarAccesoDesinstalacionService,
 
-    private readonly authService: AuthService,
+    @Inject(REAUTENTICACION_OPERADOR)
+    private readonly reautenticacion: ReautenticacionOperadorPort,
 
     @Inject(PPPOE_CLIENTE_CUENTA)
     private readonly cuentasPppoe: PppoeClienteCuentaFacadePort,
 
     @Inject(PPPOE_PROVISIONAMIENTO)
-    private readonly pppoeProvisionamiento: PppoeProvisionamientoPort,
+    private readonly pppoe: PppoeProvisionamientoPort,
+
+    @Inject(UNIDAD_DE_TRABAJO)
+    private readonly unidad: UnidadDeTrabajoPort,
+
+    @Inject(RELOJ)
+    private readonly reloj: RelojPort,
   ) {}
 
   async execute(
-    command: AprobarAutorizacionDesinstalacionCommand,
+    input: AprobarAutorizacionDesinstalacionInput,
   ): Promise<AprobarAutorizacionDesinstalacionResult> {
-    /**
-     * ========================================================
-     * 1. AUTORIZACIÓN
-     * ========================================================
-     */
-
-    const autorizacion = await this.autorizacionRepository.findById(command.id);
+    const autorizacion = await this.autorizaciones.findById(input.id);
 
     if (!autorizacion) {
-      throw new NotFoundException('Autorización no encontrada.');
+      throw new AutorizacionDesinstalacionNoEncontradaError();
     }
 
     if (!autorizacion.isPendiente) {
-      throw new ConflictException('La autorización ya fue respondida.');
+      throw new AutorizacionDesinstalacionConflictoError(
+        'La autorización ya fue respondida.',
+      );
     }
 
-    /**
-     * ========================================================
-     * 2. DESINSTALACIÓN
-     * ========================================================
-     */
-
-    const desinstalacion = await this.desinstalacionRepository.findById(
+    const desinstalacion = await this.desinstalaciones.findById(
       autorizacion.desinstalacionId,
     );
 
     if (!desinstalacion) {
-      throw new NotFoundException('Desinstalación no encontrada.');
+      throw new ClienteDesinstalacionNoEncontradaError();
     }
 
     if (desinstalacion.isFinalizada) {
-      throw new ConflictException(
+      throw new AutorizacionDesinstalacionConflictoError(
         'No se puede aprobar una autorización de una desinstalación finalizada.',
-      );
-    }
-
-    if (!desinstalacion.isProgramada) {
-      throw new ConflictException(
-        `Solo una desinstalación PROGRAMADA puede autorizarse. Estado actual: ${desinstalacion.estado}.`,
       );
     }
 
     const props = desinstalacion.toPrimitives();
 
-    /**
-     * ========================================================
-     * 3. ACCESO A DESINSTALAR
-     * ========================================================
-     *
-     * Estado 5 requiere conocer exactamente el acceso
-     * relacionado para resolver su cuenta PPPoE.
-     */
-
     if (
       props.accesoInternetId === null ||
       props.accesoInternetId === undefined
     ) {
-      throw new ConflictException(
+      throw new ClienteDesinstalacionPppoeConflictoError(
         'La desinstalación no tiene un acceso de internet asociado.',
       );
     }
 
-    const acceso = await this.validarAccesoDesinstalacionService.validar({
+    await this.validarAcceso.validar({
       clienteId: props.clienteId,
-
       accesoInternetId: props.accesoInternetId,
     });
-
-    /**
-     * Defensa adicional para registros históricos o
-     * inconsistentes.
-     */
-    if (props.empresaId !== acceso.empresaId) {
-      throw new ConflictException(
-        'El acceso seleccionado no pertenece a la empresa de la desinstalación.',
-      );
-    }
-
-    /**
-     * ========================================================
-     * 4. CUENTA PPPoE
-     * ========================================================
-     */
 
     const cuentaPppoe = await this.cuentasPppoe.buscarPorAccesoInternet(
       props.accesoInternetId,
     );
 
-    if (!cuentaPppoe) {
-      throw new ConflictException(
-        `El acceso de internet ${props.accesoInternetId} no tiene una cuenta PPPoE asociada.`,
+    if (!cuentaPppoe || cuentaPppoe.id === null) {
+      throw new ClienteDesinstalacionPppoeConflictoError(
+        'El acceso de internet no tiene una cuenta PPPoE asociada.',
       );
     }
 
-    if (cuentaPppoe.id === null) {
-      throw new ConflictException(
-        'La cuenta PPPoE asociada no contiene un identificador persistido.',
-      );
-    }
-
-    if (cuentaPppoe.empresaId !== acceso.empresaId) {
-      throw new ConflictException(
-        'La cuenta PPPoE no pertenece a la empresa del acceso seleccionado.',
-      );
-    }
-
-    /**
-     * ========================================================
-     * 5. VALIDACIÓN DE SEGURIDAD
-     * ========================================================
-     *
-     * Estado 5 - Paso A.
-     *
-     * La contraseña nunca se almacena. Únicamente se utiliza
-     * para confirmar que el operador autenticado autoriza
-     * personalmente la baja definitiva.
-     */
-
-    await this.authService.reautenticarUsuarioPorId(
-      command.autorizadoPorId,
-
-      command.contrasenaActual,
+    // La contraseña solo confirma que quien autoriza es quien dice ser.
+    await this.reautenticacion.confirmar(
+      input.autorizadoPorId,
+      input.contrasenaActual,
     );
-    /**
-     * ========================================================
-     * 6. APROBACIÓN ADMINISTRATIVA
-     * ========================================================
-     */
 
-    try {
+    const ahora = this.reloj.ahora();
+
+    // Aprobar e iniciar van juntos; antes de tocar el router.
+    await this.unidad.ejecutar(async () => {
       autorizacion.aprobar({
-        autorizadoPorId: command.autorizadoPorId,
-
-        comentarioAutorizador: command.comentarioAutorizador ?? null,
+        autorizadoPorId: input.autorizadoPorId,
+        comentarioAutorizador: input.comentarioAutorizador ?? null,
+        fechaRespuesta: ahora,
       });
-
-      /**
-       * Valida que la desinstalación pueda
-       * ser autorizada.
-       *
-       * No cambia todavía su estado.
-       */
       desinstalacion.autorizar();
-    } catch (error) {
-      throw new ConflictException(
-        error instanceof Error
-          ? error.message
-          : 'No se pudo aprobar la autorización.',
-      );
-    }
-
-    const savedAutorizacion =
-      await this.autorizacionRepository.save(autorizacion);
-
-    /**
-     * No guardamos nuevamente la desinstalación porque
-     * autorizar() actualmente no modifica sus propiedades.
-     *
-     * La evidencia administrativa de la aprobación queda
-     * en ClienteDesinstalacionAutorizacion:
-     *
-     * - estado APROBADA
-     * - autorizadoPorId
-     * - fechaRespuesta
-     * - comentarioAutorizador
-     */
-
-    /**
-     * ========================================================
-     * 7. INICIO DE LA DESINSTALACIÓN
-     * ========================================================
-     *
-     * La autorización aprobada comienza la ejecución
-     * efectiva de la baja.
-     *
-     * Si la operación PPPoE falla posteriormente,
-     * la desinstalación permanece EN_PROCESO y nunca
-     * se registra como completada incorrectamente.
-     */
-
-    try {
       desinstalacion.iniciar({
-        ejecutadoPorId: command.autorizadoPorId,
-
-        fechaInicio: new Date(),
+        ejecutadoPorId: input.autorizadoPorId,
+        fechaInicio: ahora,
       });
-    } catch (error) {
-      throw new ConflictException(
-        error instanceof Error
-          ? error.message
-          : 'No se pudo iniciar la desinstalación.',
-      );
-    }
 
-    await this.desinstalacionRepository.save(desinstalacion);
+      await this.autorizaciones.save(autorizacion);
+      await this.desinstalaciones.save(desinstalacion);
+    });
 
-    /**
-     * ========================================================
-     * 8. BAJA DEFINITIVA PPPoE
-     * ========================================================
-     */
-
-    const resultadoPppoe = await this.pppoeProvisionamiento.eliminarSecret({
-      empresaId: acceso.empresaId,
-
+    const baja = await this.pppoe.eliminarSecret({
+      empresaId: props.empresaId,
       cuentaPppoeId: cuentaPppoe.id,
-
       desinstalacionId: autorizacion.desinstalacionId,
-
       instalacionId: null,
-
       claveIdempotencia: `desinstalacion:${autorizacion.desinstalacionId}:eliminar-secret:v1`,
-
       motivo:
-        props.motivo !== null
+        props.motivo !== null && props.motivo !== undefined
           ? `Desinstalación ${autorizacion.desinstalacionId} autorizada por motivo ${props.motivo}.`
           : `Eliminación definitiva del acceso PPPoE durante la desinstalación ${autorizacion.desinstalacionId}.`,
-
       actor: {
         origen: OrigenOperacionPppoe.OPERADOR,
-
-        iniciadoPorId: command.autorizadoPorId,
+        iniciadoPorId: input.autorizadoPorId,
       },
     });
 
-    /**
-     * ========================================================
-     * 9. CONFIRMACIÓN DEL RESULTADO PPPoE
-     * ========================================================
-     *
-     * No se completa la desinstalación si la cuenta
-     * no terminó efectivamente en ELIMINADA.
-     */
-
-    if (resultadoPppoe.estadoCuenta !== EstadoCuentaPppoe.ELIMINADA) {
-      throw new ConflictException(
-        `La baja PPPoE no terminó con la cuenta ELIMINADA. Estado resultante: ${resultadoPppoe.estadoCuenta}.`,
+    // No se completa si la cuenta no terminó efectivamente ELIMINADA.
+    if (baja.estadoCuenta !== EstadoCuentaPppoe.ELIMINADA) {
+      throw new ClienteDesinstalacionPppoeConflictoError(
+        'La baja PPPoE no terminó con la cuenta eliminada.',
       );
     }
 
-    /**
-     * ========================================================
-     * 10. COMPLETAR DESINSTALACIÓN
-     * ========================================================
-     *
-     * La baja PPPoE ya fue confirmada.
-     */
+    desinstalacion.completar({
+      ejecutadoPorId: input.autorizadoPorId,
+      fechaFinalizacion: this.reloj.ahora(),
+      resultado: `Baja PPPoE confirmada. Operación PPPoE ${baja.operacionId}.`,
+      // Eliminar el acceso PPPoE no prueba que el equipo se haya recuperado.
+      equipoRecuperado: false,
+      conforme: null,
+    });
 
-    try {
-      desinstalacion.completar({
-        ejecutadoPorId: command.autorizadoPorId,
-
-        fechaFinalizacion: new Date(),
-
-        resultado: `Baja PPPoE confirmada. Operación PPPoE ${resultadoPppoe.operacionId}.`,
-
-        /**
-         * No afirmamos recuperación física
-         * de equipo solamente por haber eliminado
-         * el acceso PPPoE.
-         */
-        equipoRecuperado: false,
-
-        conforme: null,
-      });
-    } catch (error) {
-      throw new ConflictException(
-        error instanceof Error
-          ? error.message
-          : 'La baja PPPoE fue realizada, pero no pudo completarse la desinstalación.',
-      );
-    }
-
-    const savedDesinstalacion =
-      await this.desinstalacionRepository.save(desinstalacion);
+    const completada = await this.desinstalaciones.save(desinstalacion);
 
     return {
-      autorizacion: savedAutorizacion,
-
-      desinstalacion: savedDesinstalacion,
+      autorizacion: resumirAutorizacion(autorizacion),
+      desinstalacion: resumirDesinstalacion(completada),
     };
   }
 }

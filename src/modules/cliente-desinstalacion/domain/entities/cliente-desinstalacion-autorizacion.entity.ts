@@ -1,28 +1,13 @@
 import { EstadoAutorizacionDesinstalacion } from '../enums/estado-autorizacion-desinstalacion.enum';
-import { EstadoDesinstalacionCliente } from '../enums/estado-desinstalacion-cliente.enum';
-
-export type ClienteDesinstalacionAutorizacionProps = {
-  id?: number;
-
-  desinstalacionId: number;
-
-  solicitadoPorId?: number | null;
-  autorizadoPorId?: number | null;
-
-  estado: EstadoAutorizacionDesinstalacion;
-
-  motivoSolicitud?: string | null;
-  comentarioAutorizador?: string | null;
-
-  fechaSolicitud?: Date;
-  fechaRespuesta?: Date | null;
-};
-
-export type CrearClienteDesinstalacionAutorizacionProps = {
-  desinstalacionId: number;
-  solicitadoPorId?: number | null;
-  motivoSolicitud?: string | null;
-};
+import {
+  ClienteDesinstalacionDatosInvalidosError,
+  ClienteDesinstalacionEstadoInvalidoError,
+  AutorizacionDesinstalacionConflictoError,
+} from '../errors/cliente-desinstalacion.errors';
+import {
+  ClienteDesinstalacionAutorizacionProps,
+  CrearClienteDesinstalacionAutorizacionProps,
+} from '../props/cliente-desinstalacion-autorizacion.props';
 
 export class ClienteDesinstalacionAutorizacionEntity {
   private constructor(
@@ -31,6 +16,7 @@ export class ClienteDesinstalacionAutorizacionEntity {
 
   static create(
     props: CrearClienteDesinstalacionAutorizacionProps,
+    ahora: Date,
   ): ClienteDesinstalacionAutorizacionEntity {
     const entity = new ClienteDesinstalacionAutorizacionEntity({
       desinstalacionId: props.desinstalacionId,
@@ -39,7 +25,7 @@ export class ClienteDesinstalacionAutorizacionEntity {
       estado: EstadoAutorizacionDesinstalacion.PENDIENTE,
       motivoSolicitud: props.motivoSolicitud?.trim() || null,
       comentarioAutorizador: null,
-      fechaSolicitud: new Date(),
+      fechaSolicitud: new Date(ahora),
       fechaRespuesta: null,
     });
 
@@ -59,7 +45,7 @@ export class ClienteDesinstalacionAutorizacionEntity {
   rechazar(params: {
     autorizadoPorId: number;
     comentarioAutorizador?: string | null;
-    fechaRespuesta?: Date;
+    fechaRespuesta: Date;
   }): void {
     this.ensurePendiente();
 
@@ -69,7 +55,7 @@ export class ClienteDesinstalacionAutorizacionEntity {
     this.props.autorizadoPorId = params.autorizadoPorId;
     this.props.comentarioAutorizador =
       params.comentarioAutorizador?.trim() || null;
-    this.props.fechaRespuesta = params.fechaRespuesta ?? new Date();
+    this.props.fechaRespuesta = new Date(params.fechaRespuesta);
 
     this.ensureValidBaseProps();
   }
@@ -77,7 +63,7 @@ export class ClienteDesinstalacionAutorizacionEntity {
   aprobar(params: {
     autorizadoPorId: number;
     comentarioAutorizador?: string | null;
-    fechaRespuesta?: Date;
+    fechaRespuesta: Date;
   }): void {
     this.ensurePendiente();
 
@@ -87,14 +73,14 @@ export class ClienteDesinstalacionAutorizacionEntity {
     this.props.autorizadoPorId = params.autorizadoPorId;
     this.props.comentarioAutorizador =
       params.comentarioAutorizador?.trim() || null;
-    this.props.fechaRespuesta = params.fechaRespuesta ?? new Date();
+    this.props.fechaRespuesta = new Date(params.fechaRespuesta);
 
     this.ensureValidBaseProps();
   }
 
   private ensurePersisted(action: string): void {
     if (!this.isPersisted) {
-      throw new Error(
+      throw new ClienteDesinstalacionEstadoInvalidoError(
         `No se puede ${action} una instalación que aún no ha sido guardada.`,
       );
     }
@@ -126,7 +112,9 @@ export class ClienteDesinstalacionAutorizacionEntity {
 
   private ensurePendiente(): void {
     if (!this.isPendiente) {
-      throw new Error('La autorización ya fue respondida.');
+      throw new AutorizacionDesinstalacionConflictoError(
+        'La autorización ya fue respondida.',
+      );
     }
   }
 
@@ -148,7 +136,9 @@ export class ClienteDesinstalacionAutorizacionEntity {
 
   private ensurePositiveId(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new Error(`${field} debe ser un entero positivo.`);
+      throw new ClienteDesinstalacionDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 }

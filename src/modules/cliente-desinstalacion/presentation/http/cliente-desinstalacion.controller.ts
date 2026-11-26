@@ -3,20 +3,41 @@ import {
   Controller,
   Delete,
   Get,
-  Logger,
   Param,
   ParseIntPipe,
   Patch,
   Post,
   Query,
-  Req,
-  UnauthorizedException,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
-
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Actor, ActorHttp } from 'src/auth/decoradores/actor.decorator';
+import { Roles } from 'src/auth/decoradores/roles.decorator';
+import { ROLES_OFICINA, ROLES_TECNICO } from 'src/auth/roles/grupos-roles';
+import { OperacionSensible } from 'src/auth/step-up/operacion-sensible.decorator';
+import { ActualizarClienteDesinstalacionUseCase } from '../../application/use-cases/actualizar-cliente-desinstalacion.use-case';
+import { ActualizarCostosDesinstalacionUseCase } from '../../application/use-cases/actualizar-costos-desinstalacion.use-case';
+import { AprobarAutorizacionDesinstalacionUseCase } from '../../application/use-cases/aprobar-autorizacion-cliente-desinstalacion.use-case';
+import { AsignarTecnicoDesinstalacionUseCase } from '../../application/use-cases/asignar-tecnico-desinstalacion.use-case';
+import { CancelarClienteDesinstalacionUseCase } from '../../application/use-cases/cancelar-cliente-desinstalacion.use-case';
+import { CompletarClienteDesinstalacionUseCase } from '../../application/use-cases/completar-cliente-desinstalacion.use-case';
+import { CrearAutorizacionDesinstalacionUseCase } from '../../application/use-cases/crear-autorizacion-cliente-desinstalacion.use-case';
+import { CrearClienteDesinstalacionUseCase } from '../../application/use-cases/crear-cliente-desinstalacion.use-case';
+import { EliminarTecnicoDesinstalacionUseCase } from '../../application/use-cases/eliminar-tecnico-desinstalacion.use-case';
+import { IniciarClienteDesinstalacionUseCase } from '../../application/use-cases/iniciar-cliente-desinstalacion.use-case';
+import { ListarAutorizacionesPendientesUseCase } from '../../application/use-cases/listar-autorizaciones-pendientes-desinstalacion.use-case';
+import { ListarClienteDesinstalacionesUseCase } from '../../application/use-cases/listar-cliente-desinstalaciones.use-case';
+import { ListarTecnicosDesinstalacionUseCase } from '../../application/use-cases/listar-tecnicos-desinstalacion.use-case';
+import { MarcarFallidaClienteDesinstalacionUseCase } from '../../application/use-cases/marcar-fallida-cliente-desinstalacion.use-case';
+import { ObtenerClienteDesinstalacionUseCase } from '../../application/use-cases/obtener-cliente-desinstalacion.use-case';
+import { ObtenerContextoCreacionDesinstalacionUseCase } from '../../application/use-cases/obtener-contexto-creacion-desinstalacion.use-case';
+import { RechazarAutorizacionDesinstalacionUseCase } from '../../application/use-cases/rechazar-autorizacion-cliente-desinstalacion.use-case';
+import { ReprogramarClienteDesinstalacionUseCase } from '../../application/use-cases/reprogramar-cliente-desinstalacion.use-case';
+import { SubirEvidenciaDesinstalacionUseCase } from '../../application/use-cases/subir-evidencia-desinstalacion.use-case';
 import { ActualizarClienteDesinstalacionDto } from '../dto/actualizar-cliente-desinstalacion.dto';
 import { ActualizarCostosDesinstalacionDto } from '../dto/actualizar-costos-desinstalacion.dto';
+import { AsignarTecnicoDesinstalacionDto } from '../dto/asignar-tecnico-desinstalacion.dto';
 import {
   AprobarDesinstalacionAutorizacionDto,
   RechazarDesinstalacionAutorizacionDto,
@@ -25,111 +46,125 @@ import {
 import { CancelarClienteDesinstalacionDto } from '../dto/cancelar-cliente-desinstalacion.dto';
 import { CompletarClienteDesinstalacionDto } from '../dto/completar-cliente-desinstalacion.dto';
 import { CrearClienteDesinstalacionDto } from '../dto/crear-cliente-desinstalacion.dto';
-import { FiltrarClienteDesinstalacionesDto } from '../dto/listar-cliente-desinstalaciones-query.dto';
 import { IniciarClienteDesinstalacionDto } from '../dto/iniciar-cliente-desinstalacion.dto';
+import { FiltrarAutorizacionesPendientesDto } from '../dto/listar-autorizaciones-pendientes-query.dto';
+import { FiltrarClienteDesinstalacionesDto } from '../dto/listar-cliente-desinstalaciones-query.dto';
+import { MarcarFallidaClienteDesinstalacionDto } from '../dto/marcar-fallida-cliente-desinstalacion.dto';
 import { ReprogramarClienteDesinstalacionDto } from '../dto/reprogramar-cliente-desinstalacion.dto';
-import { AsignarTecnicoDesinstalacionDto } from '../dto/asignar-tecnico-desinstalacion.dto';
-
-import { ClienteDesInstalacionApplicationService } from '../../application/services/cliente-desinstalacion.service';
-
+import { SubirEvidenciaDesinstalacionDto } from '../dto/subir-evidencia-desinstalacion.dto';
 import { ClienteDesinstalacionAutorizacionPresenter } from '../presenters/autorizacion-desinstalacion.presenter';
 import { ClienteDesinstalacionPresenter } from '../presenters/cliente-desinstalacion.presenter';
 import { ClienteDesinstalacionTecnicoPresenter } from '../presenters/tecnico-desinstalacion.presenter';
-import { MarcarFallidaClienteDesinstalacionDto } from '../dto/marcar-fallida-cliente-desinstalacion.dto';
-import { OperacionSensible } from 'src/auth/step-up/operacion-sensible.decorator';
-import { SubirEvidenciaDesinstalacionDto } from '../dto/subir-evidencia-desinstalacion.dto';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { FiltrarAutorizacionesPendientesDto } from '../dto/listar-autorizaciones-pendientes-query.dto';
 
 @Controller('cliente-desinstalaciones')
 export class ClienteDesinstalacionController {
-  private readonly logger = new Logger(ClienteDesinstalacionController.name);
   constructor(
-    private readonly clienteDesinstalacionService: ClienteDesInstalacionApplicationService,
+    private readonly crearDesinstalacion: CrearClienteDesinstalacionUseCase,
+    private readonly listarDesinstalaciones: ListarClienteDesinstalacionesUseCase,
+    private readonly obtenerDesinstalacion: ObtenerClienteDesinstalacionUseCase,
+    private readonly obtenerContexto: ObtenerContextoCreacionDesinstalacionUseCase,
+    private readonly actualizarDesinstalacion: ActualizarClienteDesinstalacionUseCase,
+    private readonly reprogramarDesinstalacion: ReprogramarClienteDesinstalacionUseCase,
+    private readonly actualizarCostos: ActualizarCostosDesinstalacionUseCase,
+    private readonly iniciarDesinstalacion: IniciarClienteDesinstalacionUseCase,
+    private readonly completarDesinstalacion: CompletarClienteDesinstalacionUseCase,
+    private readonly cancelarDesinstalacion: CancelarClienteDesinstalacionUseCase,
+    private readonly marcarFallida: MarcarFallidaClienteDesinstalacionUseCase,
+    private readonly subirEvidencia: SubirEvidenciaDesinstalacionUseCase,
+    private readonly crearAutorizacion: CrearAutorizacionDesinstalacionUseCase,
+    private readonly listarPendientes: ListarAutorizacionesPendientesUseCase,
+    private readonly aprobarAutorizacion: AprobarAutorizacionDesinstalacionUseCase,
+    private readonly rechazarAutorizacion: RechazarAutorizacionDesinstalacionUseCase,
+    private readonly asignarTecnico: AsignarTecnicoDesinstalacionUseCase,
+    private readonly listarTecnicos: ListarTecnicosDesinstalacionUseCase,
+    private readonly eliminarTecnico: EliminarTecnicoDesinstalacionUseCase,
   ) {}
 
   // AUTORIZACIONES
 
   @Get('autorizaciones/pendientes')
-  async listarAutorizacionesPendientes(
-    @Query()
-    query: FiltrarAutorizacionesPendientesDto,
+  async autorizacionesPendientes(
+    @Query() query: FiltrarAutorizacionesPendientesDto,
   ) {
-    const result =
-      await this.clienteDesinstalacionService.listarAutorizacionesPendientes(
-        query,
-      );
+    const resultado = await this.listarPendientes.execute(query);
 
-    return ClienteDesinstalacionAutorizacionPresenter.pendientesToHttp(result);
+    return ClienteDesinstalacionAutorizacionPresenter.pendientes(resultado);
   }
 
+  /** Aprobar elimina el acceso PPPoE del cliente en el router: pide contraseña. */
   @Patch('autorizaciones/:id/aprobar')
+  @Roles(...ROLES_OFICINA)
   @OperacionSensible()
-  async aprobarAutorizacion(
+  async aprobar(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AprobarDesinstalacionAutorizacionDto,
-    @Req() req: any,
+    @Actor() actor: ActorHttp,
   ) {
-    const autorizadoPorId = this.obtenerUsuarioId(req);
-    const result = await this.clienteDesinstalacionService.aprobarAutorizacion(
+    const resultado = await this.aprobarAutorizacion.execute({
       id,
-      dto,
-      autorizadoPorId,
-    );
+      autorizadoPorId: actor.usuarioId,
+      contrasenaActual: dto.contrasenaActual,
+      comentarioAutorizador: dto.comentarioAutorizador,
+    });
 
-    return ClienteDesinstalacionAutorizacionPresenter.respuestaToHttp(result);
+    return ClienteDesinstalacionAutorizacionPresenter.respuestaToHttp(
+      resultado,
+    );
   }
 
   @Patch('autorizaciones/:id/rechazar')
-  async rechazarAutorizacion(
+  @Roles(...ROLES_OFICINA)
+  async rechazar(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: RechazarDesinstalacionAutorizacionDto,
-    @Req() req: any,
+    @Actor() actor: ActorHttp,
   ) {
-    const autorizadoPorId = this.obtenerUsuarioId(req);
-
-    const result = await this.clienteDesinstalacionService.rechazarAutorizacion(
+    const resultado = await this.rechazarAutorizacion.execute({
       id,
-      dto,
-      autorizadoPorId,
-    );
+      autorizadoPorId: actor.usuarioId,
+      comentarioAutorizador: dto.comentarioAutorizador,
+    });
 
-    return ClienteDesinstalacionAutorizacionPresenter.respuestaToHttp(result);
+    return ClienteDesinstalacionAutorizacionPresenter.respuestaToHttp(
+      resultado,
+    );
   }
 
   // LISTADO Y CREACIÓN
 
   @Post()
-  async crear(@Body() dto: CrearClienteDesinstalacionDto, @Req() req: any) {
-    const creadoPorId = this.obtenerUsuarioId(req);
+  @Roles(...ROLES_OFICINA)
+  async crear(
+    @Body() dto: CrearClienteDesinstalacionDto,
+    @Actor() actor: ActorHttp,
+  ) {
+    const resultado = await this.crearDesinstalacion.execute({
+      ...dto,
+      creadoPorId: actor.usuarioId,
+    });
 
-    const result = await this.clienteDesinstalacionService.crear(
-      dto,
-      creadoPorId,
-    );
-
-    return ClienteDesinstalacionPresenter.crearToHttp(result);
+    return ClienteDesinstalacionPresenter.crearToHttp(resultado);
   }
 
   @Get()
   async listar(@Query() query: FiltrarClienteDesinstalacionesDto) {
-    const result = await this.clienteDesinstalacionService.listar(query);
+    const resultado = await this.listarDesinstalaciones.execute(query);
 
-    return ClienteDesinstalacionPresenter.paginatedToHttp(result);
+    return ClienteDesinstalacionPresenter.listado(resultado);
   }
 
   @Get('contexto-creacion/:clienteId')
-  async obtenerContextoCreacion(
-    @Param('clienteId', ParseIntPipe) clienteId: number,
-  ) {
-    return this.clienteDesinstalacionService.obtenerContextoCreacion(clienteId);
+  async contextoCreacion(@Param('clienteId', ParseIntPipe) clienteId: number) {
+    const contexto = await this.obtenerContexto.execute(clienteId);
+
+    return ClienteDesinstalacionPresenter.contextoCreacion(contexto);
   }
 
   // DETALLE
 
   @Get(':id')
   async obtener(@Param('id', ParseIntPipe) id: number) {
-    const detalle = await this.clienteDesinstalacionService.obtener(id);
+    const detalle = await this.obtenerDesinstalacion.execute({ id });
 
     return ClienteDesinstalacionPresenter.detalleToHttp(detalle);
   }
@@ -137,38 +172,40 @@ export class ClienteDesinstalacionController {
   // DATOS GENERALES
 
   @Patch(':id')
+  @Roles(...ROLES_OFICINA)
   async actualizar(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: ActualizarClienteDesinstalacionDto,
   ) {
-    const desinstalacion = await this.clienteDesinstalacionService.actualizar(
+    const desinstalacion = await this.actualizarDesinstalacion.execute({
+      ...dto,
       id,
-      dto,
-    );
+    });
 
     return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
   }
 
   @Patch(':id/reprogramar')
+  @Roles(...ROLES_OFICINA, ...ROLES_TECNICO)
   async reprogramar(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: ReprogramarClienteDesinstalacionDto,
   ) {
-    const desinstalacion = await this.clienteDesinstalacionService.reprogramar(
+    const desinstalacion = await this.reprogramarDesinstalacion.execute({
+      ...dto,
       id,
-      dto,
-    );
+    });
 
     return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
   }
 
   @Patch(':id/costos')
-  async actualizarCostos(
+  @Roles(...ROLES_OFICINA)
+  async costos(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: ActualizarCostosDesinstalacionDto,
   ) {
-    const desinstalacion =
-      await this.clienteDesinstalacionService.actualizarCostos(id, dto);
+    const desinstalacion = await this.actualizarCostos.execute({ ...dto, id });
 
     return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
   }
@@ -176,109 +213,95 @@ export class ClienteDesinstalacionController {
   // FLUJO OPERATIVO
 
   @Patch(':id/iniciar')
+  @Roles(...ROLES_OFICINA, ...ROLES_TECNICO)
   async iniciar(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: IniciarClienteDesinstalacionDto,
-    @Req() req: any,
+    @Actor() actor: ActorHttp,
   ) {
-    const ejecutadoPorId = this.obtenerUsuarioId(req);
-
-    const desinstalacion = await this.clienteDesinstalacionService.iniciar(
+    const desinstalacion = await this.iniciarDesinstalacion.execute({
       id,
-      dto,
-      ejecutadoPorId,
-    );
+      fechaInicio: dto.fechaInicio,
+      ejecutadoPorId: actor.usuarioId,
+    });
 
     return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
   }
 
   @Patch(':id/completar')
+  @Roles(...ROLES_OFICINA, ...ROLES_TECNICO)
   async completar(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: CompletarClienteDesinstalacionDto,
   ) {
-    const desinstalacion = await this.clienteDesinstalacionService.completar(
+    const desinstalacion = await this.completarDesinstalacion.execute({
+      ...dto,
       id,
-      dto,
-    );
+    });
 
     return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
   }
 
   @Patch(':id/cancelar')
+  @Roles(...ROLES_OFICINA, ...ROLES_TECNICO)
   async cancelar(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: CancelarClienteDesinstalacionDto,
   ) {
-    const desinstalacion = await this.clienteDesinstalacionService.cancelar(
+    const desinstalacion = await this.cancelarDesinstalacion.execute({
+      ...dto,
       id,
-      dto,
-    );
+    });
 
     return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
   }
 
   @Patch(':id/fallar')
-  async marcarFallida(
+  @Roles(...ROLES_OFICINA, ...ROLES_TECNICO)
+  async fallar(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: MarcarFallidaClienteDesinstalacionDto,
   ) {
-    const desinstalacion =
-      await this.clienteDesinstalacionService.marcarFallida(id, dto);
+    const desinstalacion = await this.marcarFallida.execute({ ...dto, id });
 
     return ClienteDesinstalacionPresenter.toHttp(desinstalacion);
   }
 
-  // AUTORIZACIÓN POR DESINSTALACIÓN
-
   // EVIDENCIAS
 
   @Post(':id/evidencias/upload')
+  @Roles(...ROLES_OFICINA, ...ROLES_TECNICO)
   @UseInterceptors(FileInterceptor('file'))
-  async subirEvidencia(
-    @Param('id', ParseIntPipe)
-    id: number,
-
-    @UploadedFile()
-    file: Express.Multer.File,
-
-    @Body()
-    dto: SubirEvidenciaDesinstalacionDto,
-
-    @Req()
-    req: any,
+  async subirEvidenciaDesinstalacion(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Body() dto: SubirEvidenciaDesinstalacionDto,
+    @Actor() actor: ActorHttp,
   ) {
-    const subidoPorId = this.obtenerUsuarioId(req);
-
-    return this.clienteDesinstalacionService.cargarEvidencia({
+    const resultado = await this.subirEvidencia.execute({
       desinstalacionId: id,
-
-      subidoPorId,
-
+      subidoPorId: actor.usuarioId,
       file,
-
       tipo: dto.tipo,
-
       descripcion: dto.descripcion ?? null,
-
       orden: dto.orden ?? 0,
     });
+
+    return ClienteDesinstalacionPresenter.evidenciaSubida(resultado);
   }
 
   @Post(':id/autorizaciones')
-  async crearAutorizacion(
+  @Roles(...ROLES_OFICINA)
+  async solicitarAutorizacion(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: SolicitarDesinstalacionAutorizacionDto,
-    @Req() req: any,
+    @Actor() actor: ActorHttp,
   ) {
-    const solicitadoPorId = this.obtenerUsuarioId(req);
-
-    const autorizacion =
-      await this.clienteDesinstalacionService.crearAutorizacion(
-        id,
-        dto,
-        solicitadoPorId,
-      );
+    const autorizacion = await this.crearAutorizacion.execute({
+      desinstalacionId: id,
+      solicitadoPorId: actor.usuarioId,
+      motivoSolicitud: dto.motivoSolicitud,
+    });
 
     return ClienteDesinstalacionAutorizacionPresenter.toHttp(autorizacion);
   }
@@ -286,49 +309,37 @@ export class ClienteDesinstalacionController {
   // TÉCNICOS
 
   @Post(':id/tecnicos')
-  async asignarTecnico(
+  @Roles(...ROLES_OFICINA)
+  async asignar(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AsignarTecnicoDesinstalacionDto,
   ) {
-    const tecnico = await this.clienteDesinstalacionService.asignarTecnico(
-      id,
-      dto,
-    );
+    const tecnico = await this.asignarTecnico.execute({
+      ...dto,
+      desinstalacionId: id,
+    });
 
     return ClienteDesinstalacionTecnicoPresenter.toHttp(tecnico);
   }
 
   @Get(':id/tecnicos')
-  async listarTecnicos(@Param('id', ParseIntPipe) id: number) {
-    const tecnicos = await this.clienteDesinstalacionService.listarTecnicos(id);
+  async tecnicos(@Param('id', ParseIntPipe) id: number) {
+    const lista = await this.listarTecnicos.execute(id);
 
-    return ClienteDesinstalacionTecnicoPresenter.listToHttp(tecnicos);
+    return ClienteDesinstalacionTecnicoPresenter.lista(lista);
   }
 
   @Delete(':id/tecnicos/:tecnicoOperacionId')
-  async eliminarTecnico(
+  @Roles(...ROLES_OFICINA)
+  async quitarTecnico(
     @Param('id', ParseIntPipe) id: number,
     @Param('tecnicoOperacionId', ParseIntPipe) tecnicoOperacionId: number,
   ) {
-    await this.clienteDesinstalacionService.eliminarTecnico(
-      id,
+    await this.eliminarTecnico.execute({
+      desinstalacionId: id,
       tecnicoOperacionId,
-    );
+    });
 
-    return {
-      ok: true,
-    };
-  }
-
-  private obtenerUsuarioId(req: any): number {
-    const usuarioId = Number(req.user?.id);
-
-    if (!Number.isInteger(usuarioId) || usuarioId <= 0) {
-      throw new UnauthorizedException(
-        'No se pudo identificar al usuario autenticado.',
-      );
-    }
-
-    return usuarioId;
+    return { ok: true };
   }
 }

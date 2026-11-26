@@ -1,33 +1,9 @@
 import { RolTecnicoOperacionCliente } from 'src/modules/cliente-instalacion/public/cliente-instalacion.types';
-
-export type ClienteDesinstalacionTecnicoProps = {
-  id?: number;
-
-  desinstalacionId: number;
-  tecnicoId?: number | null;
-
-  rol: RolTecnicoOperacionCliente;
-  esResponsable: boolean;
-
-  tiempoMinutos?: number | null;
-  observaciones?: string | null;
-  tecnicoNombreSnapshot?: string | null;
-
-  creadoEn?: Date;
-  actualizadoEn?: Date;
-};
-
-export type CrearClienteDesinstalacionTecnicoProps = {
-  desinstalacionId: number;
-  tecnicoId?: number | null;
-
-  rol?: RolTecnicoOperacionCliente;
-  esResponsable?: boolean;
-
-  tiempoMinutos?: number | null;
-  observaciones?: string | null;
-  tecnicoNombreSnapshot?: string | null;
-};
+import { ClienteDesinstalacionDatosInvalidosError } from '../errors/cliente-desinstalacion.errors';
+import {
+  ClienteDesinstalacionTecnicoProps,
+  CrearClienteDesinstalacionTecnicoProps,
+} from '../props/cliente-desinstalacion-tecnico.props';
 
 export class ClienteDesinstalacionTecnicoEntity {
   private constructor(
@@ -40,14 +16,11 @@ export class ClienteDesinstalacionTecnicoEntity {
     const entity = new ClienteDesinstalacionTecnicoEntity({
       desinstalacionId: props.desinstalacionId,
       tecnicoId: props.tecnicoId ?? null,
-
       rol: props.rol ?? RolTecnicoOperacionCliente.APOYO,
       esResponsable: props.esResponsable ?? false,
-
       tiempoMinutos: props.tiempoMinutos ?? null,
       observaciones: props.observaciones?.trim() || null,
       tecnicoNombreSnapshot: props.tecnicoNombreSnapshot?.trim() || null,
-
       creadoEn: undefined,
       actualizadoEn: undefined,
     });
@@ -100,7 +73,7 @@ export class ClienteDesinstalacionTecnicoEntity {
       this.props.tecnicoId == null &&
       !this.props.tecnicoNombreSnapshot?.trim()
     ) {
-      throw new Error(
+      throw new ClienteDesinstalacionDatosInvalidosError(
         'Debe indicar tecnicoId o tecnicoNombreSnapshot para asignar un técnico.',
       );
     }
@@ -110,13 +83,17 @@ export class ClienteDesinstalacionTecnicoEntity {
       (!Number.isInteger(this.props.tiempoMinutos) ||
         this.props.tiempoMinutos < 0)
     ) {
-      throw new Error('tiempoMinutos debe ser un entero mayor o igual a 0.');
+      throw new ClienteDesinstalacionDatosInvalidosError(
+        'tiempoMinutos debe ser un entero mayor o igual a 0.',
+      );
     }
   }
 
   private ensurePositiveId(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
-      throw new Error(`${field} debe ser un entero positivo.`);
+      throw new ClienteDesinstalacionDatosInvalidosError(
+        `${field} debe ser un entero positivo.`,
+      );
     }
   }
 }

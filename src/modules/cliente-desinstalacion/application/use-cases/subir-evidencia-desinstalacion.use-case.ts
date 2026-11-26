@@ -1,180 +1,130 @@
-import {
-  BadRequestException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-
-import {
-  CategoriaMedia,
-  TipoMedia,
-} from 'src/modules/almacenamiento-media/public/almacenamiento-media.types';
-
+import { Inject, Injectable } from '@nestjs/common';
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
 import {
   ALMACENAMIENTO_MEDIA,
   AlmacenamientoMediaFacadePort,
 } from 'src/modules/almacenamiento-media/public/almacenamiento-media.facade.port';
-
+import {
+  CategoriaMedia,
+  TipoMedia,
+} from 'src/modules/almacenamiento-media/public/almacenamiento-media.types';
 import { TipoEvidenciaClienteOperacion } from 'src/modules/cliente-instalacion/public/cliente-instalacion.types';
-
 import { ClienteDesinstalacionMediaEntity } from '../../domain/entities/cliente-desinstalacion-media.entity';
+import {
+  ClienteDesinstalacionNoEncontradaError,
+  EvidenciaDesinstalacionRequeridaError,
+} from '../../domain/errors/cliente-desinstalacion.errors';
+import {
+  CLIENTE_DESINSTALACION_MEDIA_REPOSITORY,
+  ClienteDesinstalacionMediaRepositoryPort,
+} from '../../domain/ports/cliente-desinstalacion-media-repository.port';
+import {
+  CLIENTE_DESINSTALACION_REPOSITORY,
+  ClienteDesinstalacionRepositoryPort,
+} from '../../domain/ports/cliente-desinstalacion-repository.port';
+import {
+  EvidenciaDesinstalacionResumen,
+  resumirEvidencia,
+} from '../../domain/read-models/cliente-desinstalacion-resumen.read-model';
 
-import { ClienteDesinstalacionMediaRepositoryPort, CLIENTE_DESINSTALACION_MEDIA_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-media-repository.port';
+export type ArchivoEvidenciaDesinstalacion = {
+  buffer: Buffer;
+  mimetype: string;
+  originalname: string;
+};
 
-import { ClienteDesInstalacionRepositoryPort, CLIENTE_DESINSTALACION_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-repository.port';
-
-
-export type SubirEvidenciaDesinstalacionCommand = {
+export type SubirEvidenciaDesinstalacionInput = {
   desinstalacionId: number;
-
   subidoPorId: number;
-
-  file: Express.Multer.File;
-
+  file: ArchivoEvidenciaDesinstalacion | undefined;
   tipo?: TipoEvidenciaClienteOperacion | null;
-
   descripcion?: string | null;
-
   orden?: number | null;
+};
+
+export type SubirEvidenciaDesinstalacionResult = {
+  evidencia: EvidenciaDesinstalacionResumen;
+  media: { id: number; cdnUrl: string | null; key: string; tipo: TipoMedia };
 };
 
 @Injectable()
 export class SubirEvidenciaDesinstalacionUseCase {
   constructor(
     @Inject(CLIENTE_DESINSTALACION_REPOSITORY)
-    private readonly desinstalacionRepository: ClienteDesInstalacionRepositoryPort,
+    private readonly desinstalaciones: ClienteDesinstalacionRepositoryPort,
 
     @Inject(CLIENTE_DESINSTALACION_MEDIA_REPOSITORY)
-    private readonly evidenciaRepository: ClienteDesinstalacionMediaRepositoryPort,
+    private readonly evidencias: ClienteDesinstalacionMediaRepositoryPort,
 
     @Inject(ALMACENAMIENTO_MEDIA)
     private readonly almacenamiento: AlmacenamientoMediaFacadePort,
+
+    @Inject(RELOJ)
+    private readonly reloj: RelojPort,
   ) {}
 
-  async execute(command: SubirEvidenciaDesinstalacionCommand) {
-    this.validateCommand(command);
+  async execute(
+    input: SubirEvidenciaDesinstalacionInput,
+  ): Promise<SubirEvidenciaDesinstalacionResult> {
+    if (!input.file?.buffer?.length || !input.file.mimetype?.trim()) {
+      throw new EvidenciaDesinstalacionRequeridaError();
+    }
 
-    const desinstalacion = await this.desinstalacionRepository.findById(
-      command.desinstalacionId,
+    const desinstalacion = await this.desinstalaciones.findById(
+      input.desinstalacionId,
     );
 
     if (!desinstalacion) {
-      throw new NotFoundException('Desinstalación no encontrada.');
+      throw new ClienteDesinstalacionNoEncontradaError();
     }
 
-    const props = desinstalacion.toPrimitives();
-
     const media = await this.almacenamiento.subirMedia({
-      empresaId: props.empresaId,
-
-      clienteId: props.clienteId,
-
-      subidoPorId: command.subidoPorId,
-
-      buffer: command.file.buffer,
-
-      /**
-       * Enviamos el MIME declarado por Multer.
-       * almacenamiento-media comprobará después la firma
-       * binaria real y lo corregirá cuando sea necesario.
-       */
-      mime: command.file.mimetype,
-
-      fileName: command.file.originalname,
-
+      empresaId: desinstalacion.empresaId,
+      clienteId: desinstalacion.clienteId,
+      subidoPorId: input.subidoPorId,
+      buffer: input.file.buffer,
+      mime: input.file.mimetype,
+      fileName: input.file.originalname,
       categoria: CategoriaMedia.CLIENTE_DESINSTALACION,
-
-      tipo: this.mapTipoMedia(command.file.mimetype),
-
+      tipo: this.tipoMedia(input.file.mimetype),
       publico: true,
-
-      descripcion: command.descripcion ?? undefined,
-
+      descripcion: input.descripcion ?? undefined,
       etiqueta: 'DESINSTALACION',
-
       basePrefix: 'crm/desinstalaciones',
     });
 
-    const evidencia = ClienteDesinstalacionMediaEntity.create({
-      desinstalacionId: command.desinstalacionId,
-
-      mediaId: media.id,
-
-      tipo: command.tipo,
-
-      descripcion: command.descripcion ?? null,
-
-      orden: command.orden ?? 0,
-    });
-
-    const evidenciaCreada = await this.evidenciaRepository.create(evidencia);
+    const guardada = await this.evidencias.create(
+      ClienteDesinstalacionMediaEntity.create(
+        {
+          desinstalacionId: input.desinstalacionId,
+          mediaId: media.id,
+          tipo: input.tipo ?? TipoEvidenciaClienteOperacion.OTRO,
+          descripcion: input.descripcion ?? null,
+          orden: input.orden ?? 0,
+        },
+        this.reloj.ahora(),
+      ),
+    );
 
     return {
-      evidencia: evidenciaCreada.toPrimitives(),
-
+      evidencia: resumirEvidencia(guardada),
       media: {
         id: media.id,
-
         cdnUrl: media.cdnUrl ?? null,
-
         key: media.key,
-
         tipo: media.tipo,
       },
     };
   }
 
-  private mapTipoMedia(mime: string): TipoMedia {
-    const mimeNormalizado = mime.trim().toLowerCase();
+  private tipoMedia(mime: string): TipoMedia {
+    const normalizado = mime.trim().toLowerCase();
 
-    if (mimeNormalizado.startsWith('image/')) {
-      return TipoMedia.IMAGEN;
-    }
-
-    if (mimeNormalizado.startsWith('video/')) {
-      return TipoMedia.VIDEO;
-    }
-
-    if (mimeNormalizado.startsWith('audio/')) {
-      return TipoMedia.AUDIO;
-    }
-
-    if (
-      mimeNormalizado === 'application/pdf' ||
-      mimeNormalizado.startsWith('application/')
-    ) {
-      return TipoMedia.DOCUMENTO;
-    }
+    if (normalizado.startsWith('image/')) return TipoMedia.IMAGEN;
+    if (normalizado.startsWith('video/')) return TipoMedia.VIDEO;
+    if (normalizado.startsWith('audio/')) return TipoMedia.AUDIO;
+    if (normalizado.startsWith('application/')) return TipoMedia.DOCUMENTO;
 
     return TipoMedia.OTRO;
-  }
-
-  private validateCommand(command: SubirEvidenciaDesinstalacionCommand): void {
-    if (
-      !Number.isInteger(command.desinstalacionId) ||
-      command.desinstalacionId <= 0
-    ) {
-      throw new BadRequestException(
-        'desinstalacionId debe ser un entero positivo.',
-      );
-    }
-
-    if (!Number.isInteger(command.subidoPorId) || command.subidoPorId <= 0) {
-      throw new BadRequestException('subidoPorId debe ser un entero positivo.');
-    }
-
-    if (!command.file) {
-      throw new BadRequestException('El archivo es obligatorio.');
-    }
-
-    if (!command.file.buffer?.length) {
-      throw new BadRequestException('El archivo recibido está vacío.');
-    }
-
-    if (!command.file.mimetype?.trim()) {
-      throw new BadRequestException(
-        'No fue posible determinar el tipo MIME del archivo.',
-      );
-    }
   }
 }

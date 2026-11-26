@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { EstadoAccesoInternet, Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ClienteDesinstalacionContextoRepositoryPort } from '../../domain/ports/cliente-desinstalacion-contexto-query.port';
+import { ClienteDesinstalacionContextoQueryPort } from '../../domain/ports/cliente-desinstalacion-contexto-query.port';
 import { ContextoCreacionDesinstalacion } from '../../domain/read-models/contexto-creacion-desinstalacion.read-model';
 
 const contextoCreacionSelect = {
@@ -79,8 +79,8 @@ type ContextoCreacionRecord = Prisma.ClienteInternetGetPayload<{
 }>;
 
 @Injectable()
-export class ClienteDesinstalacionContextoPrismaRepository
-  implements ClienteDesinstalacionContextoRepositoryPort
+export class ClienteDesinstalacionContextoPrismaQuery
+  implements ClienteDesinstalacionContextoQueryPort
 {
   constructor(private readonly prisma: PrismaService) {}
 

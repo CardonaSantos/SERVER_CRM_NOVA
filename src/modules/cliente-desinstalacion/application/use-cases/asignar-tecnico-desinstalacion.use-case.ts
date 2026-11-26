@@ -1,70 +1,79 @@
-import {
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { RolTecnicoOperacionCliente } from 'src/modules/cliente-instalacion/public/cliente-instalacion.types';
 import { ClienteDesinstalacionTecnicoEntity } from '../../domain/entities/cliente-desinstalacion-tecnico.entity';
-import { ClienteDesinstalacionTecnicoRepositoryPort, CLIENTE_DESINSTALACION_TECNICO_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-tecnico-repository.port';
-import { ClienteDesInstalacionRepositoryPort, CLIENTE_DESINSTALACION_REPOSITORY } from '../../domain/ports/cliente-desinstalacion-repository.port';
-import { AsignarTecnicoDesinstalacionDto } from '../../presentation/dto/asignar-tecnico-desinstalacion.dto';
+import {
+  ClienteDesinstalacionNoEncontradaError,
+  TecnicoDesinstalacionConflictoError,
+} from '../../domain/errors/cliente-desinstalacion.errors';
+import { exigirSinResponsableActual } from '../../domain/policies/tecnicos-desinstalacion.policy';
+import {
+  CLIENTE_DESINSTALACION_REPOSITORY,
+  ClienteDesinstalacionRepositoryPort,
+} from '../../domain/ports/cliente-desinstalacion-repository.port';
+import {
+  CLIENTE_DESINSTALACION_TECNICO_REPOSITORY,
+  ClienteDesinstalacionTecnicoRepositoryPort,
+} from '../../domain/ports/cliente-desinstalacion-tecnico-repository.port';
+import {
+  resumirTecnico,
+  TecnicoDesinstalacionResumen,
+} from '../../domain/read-models/cliente-desinstalacion-resumen.read-model';
 
-export type AsignarTecnicoDesinstalacionCommand =
-  AsignarTecnicoDesinstalacionDto & {
-    desinstalacionId: number;
-  };
+export type AsignarTecnicoDesinstalacionInput = {
+  desinstalacionId: number;
+  tecnicoId?: number | null;
+  rol?: RolTecnicoOperacionCliente;
+  esResponsable?: boolean;
+  tiempoMinutos?: number | null;
+  observaciones?: string | null;
+  tecnicoNombreSnapshot?: string | null;
+};
 
 @Injectable()
 export class AsignarTecnicoDesinstalacionUseCase {
   constructor(
     @Inject(CLIENTE_DESINSTALACION_REPOSITORY)
-    private readonly desinstalacionRepository: ClienteDesInstalacionRepositoryPort,
+    private readonly desinstalaciones: ClienteDesinstalacionRepositoryPort,
 
     @Inject(CLIENTE_DESINSTALACION_TECNICO_REPOSITORY)
-    private readonly tecnicoRepository: ClienteDesinstalacionTecnicoRepositoryPort,
+    private readonly tecnicos: ClienteDesinstalacionTecnicoRepositoryPort,
   ) {}
 
-  async execute(command: AsignarTecnicoDesinstalacionCommand) {
-    const desinstalacion = await this.desinstalacionRepository.findById(
-      command.desinstalacionId,
+  async execute(
+    input: AsignarTecnicoDesinstalacionInput,
+  ): Promise<TecnicoDesinstalacionResumen> {
+    const desinstalacion = await this.desinstalaciones.findById(
+      input.desinstalacionId,
     );
 
     if (!desinstalacion) {
-      throw new NotFoundException('Desinstalación no encontrada.');
+      throw new ClienteDesinstalacionNoEncontradaError();
     }
 
     if (desinstalacion.isFinalizada) {
-      throw new ConflictException(
+      throw new TecnicoDesinstalacionConflictoError(
         'No se pueden asignar técnicos a una desinstalación finalizada.',
       );
     }
 
-    if (command.esResponsable) {
-      const actuales = await this.tecnicoRepository.findByDesinstalacionId(
-        command.desinstalacionId,
+    if (input.esResponsable) {
+      exigirSinResponsableActual(
+        await this.tecnicos.findByDesinstalacionId(input.desinstalacionId),
       );
-
-      const yaTieneResponsable = actuales.some(
-        (tecnico) => tecnico.esResponsable,
-      );
-
-      if (yaTieneResponsable) {
-        throw new ConflictException(
-          'La desinstalación ya tiene un técnico responsable.',
-        );
-      }
     }
 
-    const tecnico = ClienteDesinstalacionTecnicoEntity.create({
-      desinstalacionId: command.desinstalacionId,
-      tecnicoId: command.tecnicoId ?? null,
-      rol: command.rol,
-      esResponsable: command.esResponsable ?? false,
-      tiempoMinutos: command.tiempoMinutos ?? null,
-      observaciones: command.observaciones ?? null,
-      tecnicoNombreSnapshot: command.tecnicoNombreSnapshot ?? null,
-    });
+    const creado = await this.tecnicos.create(
+      ClienteDesinstalacionTecnicoEntity.create({
+        desinstalacionId: input.desinstalacionId,
+        tecnicoId: input.tecnicoId ?? null,
+        rol: input.rol,
+        esResponsable: input.esResponsable ?? false,
+        tiempoMinutos: input.tiempoMinutos ?? null,
+        observaciones: input.observaciones ?? null,
+        tecnicoNombreSnapshot: input.tecnicoNombreSnapshot ?? null,
+      }),
+    );
 
-    return this.tecnicoRepository.create(tecnico);
+    return resumirTecnico(creado);
   }
 }

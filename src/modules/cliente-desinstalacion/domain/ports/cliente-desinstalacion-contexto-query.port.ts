@@ -1,6 +1,6 @@
 import { ContextoCreacionDesinstalacion } from '../read-models/contexto-creacion-desinstalacion.read-model';
 
-export interface ClienteDesinstalacionContextoRepositoryPort {
+export interface ClienteDesinstalacionContextoQueryPort {
   findContextoCreacionByClienteId(
     clienteId: number,
   ): Promise<ContextoCreacionDesinstalacion | null>;

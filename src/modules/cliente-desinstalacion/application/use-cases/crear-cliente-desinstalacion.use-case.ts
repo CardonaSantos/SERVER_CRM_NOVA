@@ -1,198 +1,151 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
-
-import { dayjs } from 'src/Utils/dayjs.config';
+import { Inject, Injectable } from '@nestjs/common';
 import { Money } from 'src/common/hexagonal/money.vo';
-
-import { CLIENTE_DESINSTALACION_CONTEXTO_QUERY, ClienteDesinstalacionContextoRepositoryPort } from '../../domain/ports/cliente-desinstalacion-contexto-query.port';
-import { CLIENTE_DESINSTALACION_REPOSITORY, ClienteDesInstalacionRepositoryPort } from '../../domain/ports/cliente-desinstalacion-repository.port';
-import { CLIENTE_DESINSTALACION_TECNICO_REPOSITORY, ClienteDesinstalacionTecnicoRepositoryPort } from '../../domain/ports/cliente-desinstalacion-tecnico-repository.port';
-
-
-
-
-import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entity';
-
+import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
+import {
+  UNIDAD_DE_TRABAJO,
+  UnidadDeTrabajoPort,
+} from 'src/common/transaccion/unidad-de-trabajo.port';
+import { RolTecnicoOperacionCliente } from 'src/modules/cliente-instalacion/public/cliente-instalacion.types';
 import { ClienteDesinstalacionTecnicoEntity } from '../../domain/entities/cliente-desinstalacion-tecnico.entity';
-
-import { CrearClienteDesinstalacionDto } from '../../presentation/dto/crear-cliente-desinstalacion.dto';
-
+import { ClienteDesinstalacionEntity } from '../../domain/entities/cliente-desinstalacion.entity';
+import { MotivoDesinstalacionCliente } from '../../domain/enums/motivo-desinstalacion-cliente.enum';
+import { TipoDesinstalacionCliente } from '../../domain/enums/tipo-desinstalacion-cliente.enum';
+import { ClienteDesinstalacionAccesoInvalidoError } from '../../domain/errors/cliente-desinstalacion.errors';
+import { exigirUnSoloResponsable } from '../../domain/policies/tecnicos-desinstalacion.policy';
+import {
+  CLIENTE_DESINSTALACION_CONTEXTO_QUERY,
+  ClienteDesinstalacionContextoQueryPort,
+} from '../../domain/ports/cliente-desinstalacion-contexto-query.port';
+import {
+  CLIENTE_DESINSTALACION_REPOSITORY,
+  ClienteDesinstalacionRepositoryPort,
+} from '../../domain/ports/cliente-desinstalacion-repository.port';
+import {
+  CLIENTE_DESINSTALACION_TECNICO_REPOSITORY,
+  ClienteDesinstalacionTecnicoRepositoryPort,
+} from '../../domain/ports/cliente-desinstalacion-tecnico-repository.port';
+import {
+  ClienteDesinstalacionResumen,
+  resumirDesinstalacion,
+  resumirTecnico,
+  TecnicoDesinstalacionResumen,
+} from '../../domain/read-models/cliente-desinstalacion-resumen.read-model';
 import { ValidarAccesoDesinstalacionService } from '../services/validar-acceso-desinstalacion.service';
 
-export type CrearClienteDesInstalacionCommand =
-  CrearClienteDesinstalacionDto & {
-    creadoPorId: number;
-  };
-
-export type CrearClienteDesinstalacionResult = {
-  desinstalacion: ClienteDesinstalacionEntity;
-
-  tecnicos: ClienteDesinstalacionTecnicoEntity[];
+export type CrearClienteDesinstalacionInput = {
+  creadoPorId: number;
+  clienteId: number;
+  accesoInternetId: number;
+  ticketId?: number | null;
+  tipo: TipoDesinstalacionCliente;
+  motivo: MotivoDesinstalacionCliente;
+  fechaProgramada: string;
+  requiereRetiroEquipo?: boolean;
+  observaciones?: string | null;
+  tecnicos?: {
+    tecnicoId?: number | null;
+    rol?: RolTecnicoOperacionCliente;
+    esResponsable?: boolean;
+    tiempoMinutos?: number | null;
+    observaciones?: string | null;
+    tecnicoNombreSnapshot?: string | null;
+  }[];
 };
 
+export type CrearClienteDesinstalacionResult = {
+  desinstalacion: ClienteDesinstalacionResumen;
+  tecnicos: TecnicoDesinstalacionResumen[];
+};
+
+/**
+ * Registra la solicitud de desinstalación con sus técnicos, en una sola
+ * transacción. La empresa y el servicio salen del acceso, no de la petición.
+ */
 @Injectable()
-export class CrearDesinstalacionUseCase {
+export class CrearClienteDesinstalacionUseCase {
   constructor(
     @Inject(CLIENTE_DESINSTALACION_CONTEXTO_QUERY)
-    private readonly contextoRepository: ClienteDesinstalacionContextoRepositoryPort,
-
-    private readonly validarAccesoDesinstalacionService: ValidarAccesoDesinstalacionService,
+    private readonly contexto: ClienteDesinstalacionContextoQueryPort,
 
     @Inject(CLIENTE_DESINSTALACION_REPOSITORY)
-    private readonly clienteDesinstalacionRepository: ClienteDesInstalacionRepositoryPort,
+    private readonly desinstalaciones: ClienteDesinstalacionRepositoryPort,
 
     @Inject(CLIENTE_DESINSTALACION_TECNICO_REPOSITORY)
-    private readonly tecnicoRepository: ClienteDesinstalacionTecnicoRepositoryPort,
+    private readonly tecnicos: ClienteDesinstalacionTecnicoRepositoryPort,
+
+    @Inject(UNIDAD_DE_TRABAJO)
+    private readonly unidad: UnidadDeTrabajoPort,
+
+    @Inject(RELOJ)
+    private readonly reloj: RelojPort,
+
+    private readonly validarAcceso: ValidarAccesoDesinstalacionService,
   ) {}
 
   async execute(
-    command: CrearClienteDesInstalacionCommand,
+    input: CrearClienteDesinstalacionInput,
   ): Promise<CrearClienteDesinstalacionResult> {
-    this.validarTecnicoResponsable(command);
+    exigirUnSoloResponsable(input.tecnicos ?? []);
 
-    /**
-     * El frontend únicamente indica:
-     *
-     * clienteId + accesoInternetId
-     *
-     * La empresa y el servicio asociados al acceso son datos
-     * canónicos del backend y no deben confiarse al cliente HTTP.
-     */
-    const acceso = await this.validarAccesoDesinstalacionService.validar({
-      clienteId: command.clienteId,
-
-      accesoInternetId: command.accesoInternetId,
+    const acceso = await this.validarAcceso.validar({
+      clienteId: input.clienteId,
+      accesoInternetId: input.accesoInternetId,
     });
 
-    const empresaId = acceso.empresaId;
+    await this.exigirTicketDelCliente(input.ticketId, input.clienteId);
 
-    const servicioInternetId = acceso.servicioInternetId;
-
-    /**
-     * Aunque ValidarAccesoDesinstalacionService también protege esta
-     * condición, aquí necesitamos estrechar el tipo a number para crear
-     * correctamente la desinstalación.
-     */
-    if (servicioInternetId === null) {
-      throw new ConflictException(
-        'El acceso seleccionado no tiene un servicio de internet asociado.',
-      );
-    }
-
-    await this.validarTicket(command.ticketId, command.clienteId);
-
-    const desinstalacion = ClienteDesinstalacionEntity.create({
-      /**
-       * Relaciones principales.
-       */
-      empresaId,
-
-      clienteId: command.clienteId,
-
-      servicioInternetId,
-
-      accesoInternetId: command.accesoInternetId,
-
-      ticketId: command.ticketId ?? null,
-
-      /**
-       * Auditoría.
-       *
-       * Al crear la solicitud, quien la registra también queda como
-       * solicitante. El ejecutor se conocerá únicamente al iniciar.
-       */
-      solicitadoPorId: command.creadoPorId,
-
-      creadoPorId: command.creadoPorId,
-
+    const entidad = ClienteDesinstalacionEntity.create({
+      empresaId: acceso.empresaId,
+      clienteId: input.clienteId,
+      servicioInternetId: acceso.servicioInternetId as number,
+      accesoInternetId: input.accesoInternetId,
+      ticketId: input.ticketId ?? null,
+      // Quien registra la solicitud queda como solicitante; el ejecutor se
+      // conoce hasta que se inicia.
+      solicitadoPorId: input.creadoPorId,
+      creadoPorId: input.creadoPorId,
       ejecutadoPorId: null,
-
-      /**
-       * Datos administrativos.
-       */
-      tipo: command.tipo,
-
-      motivo: command.motivo,
-
-      fechaSolicitud: new Date(),
-
-      fechaProgramada: dayjs(command.fechaProgramada).toDate(),
-
-      requiereRetiroEquipo: command.requiereRetiroEquipo ?? true,
-
-      observaciones: command.observaciones ?? null,
-
-      /**
-       * No se capturan nuevamente desde el formulario.
-       *
-       * La ubicación pertenece al servicio/instalación existente.
-       */
+      tipo: input.tipo,
+      motivo: input.motivo,
+      fechaSolicitud: this.reloj.ahora(),
+      fechaProgramada: new Date(input.fechaProgramada),
+      requiereRetiroEquipo: input.requiereRetiroEquipo ?? true,
+      observaciones: input.observaciones ?? null,
+      // La ubicación pertenece al servicio ya instalado y no se captura de nuevo.
       direccionServicio: null,
-
       referenciaUbicacion: null,
-
       latitud: null,
-
       longitud: null,
-
-      /**
-       * No confiamos en un saldo proporcionado por el frontend.
-       *
-       * Si posteriormente necesitamos un snapshot financiero real,
-       * deberá calcularse desde el backend.
-       */
+      // No se confía en un saldo enviado por la pantalla.
       saldoClienteAlMomento: Money.zero(),
     });
 
-    const savedDesinstalacion =
-      await this.clienteDesinstalacionRepository.create(desinstalacion);
+    return this.unidad.ejecutar(async () => {
+      const guardada = await this.desinstalaciones.create(entidad);
+      const desinstalacionId = guardada.id as number;
 
-    const savedProps = savedDesinstalacion.toPrimitives();
-
-    let savedTecnicos: ClienteDesinstalacionTecnicoEntity[] = [];
-
-    if (command.tecnicos?.length) {
-      const tecnicos = command.tecnicos.map((tecnico) =>
-        ClienteDesinstalacionTecnicoEntity.create({
-          desinstalacionId: savedProps.id!,
-
-          tecnicoId: tecnico.tecnicoId ?? null,
-
-          rol: tecnico.rol,
-
-          esResponsable: tecnico.esResponsable ?? false,
-
-          tiempoMinutos: tecnico.tiempoMinutos ?? null,
-
-          observaciones: tecnico.observaciones ?? null,
-
-          tecnicoNombreSnapshot: tecnico.tecnicoNombreSnapshot ?? null,
-        }),
+      const guardados = await this.tecnicos.createMany(
+        (input.tecnicos ?? []).map((tecnico) =>
+          ClienteDesinstalacionTecnicoEntity.create({
+            desinstalacionId,
+            tecnicoId: tecnico.tecnicoId ?? null,
+            rol: tecnico.rol,
+            esResponsable: tecnico.esResponsable ?? false,
+            tiempoMinutos: tecnico.tiempoMinutos ?? null,
+            observaciones: tecnico.observaciones ?? null,
+            tecnicoNombreSnapshot: tecnico.tecnicoNombreSnapshot ?? null,
+          }),
+        ),
       );
 
-      savedTecnicos = await this.tecnicoRepository.createMany(tecnicos);
-    }
-
-    return {
-      desinstalacion: savedDesinstalacion,
-
-      tecnicos: savedTecnicos,
-    };
+      return {
+        desinstalacion: resumirDesinstalacion(guardada),
+        tecnicos: guardados.map(resumirTecnico),
+      };
+    });
   }
 
-  private validarTecnicoResponsable(
-    command: CrearClienteDesInstalacionCommand,
-  ): void {
-    const responsableCount =
-      command.tecnicos?.filter((tecnico) => tecnico.esResponsable).length ?? 0;
-
-    if (responsableCount > 1) {
-      throw new ConflictException(
-        'Solo puede haber un técnico responsable por desinstalación.',
-      );
-    }
-  }
-
-  private async validarTicket(
+  private async exigirTicketDelCliente(
     ticketId: number | null | undefined,
     clienteId: number,
   ): Promise<void> {
@@ -200,12 +153,9 @@ export class CrearDesinstalacionUseCase {
       return;
     }
 
-    const perteneceAlCliente =
-      await this.contextoRepository.existsTicketForClient(ticketId, clienteId);
-
-    if (!perteneceAlCliente) {
-      throw new ConflictException(
-        `El ticket ${ticketId} no pertenece al cliente ${clienteId}.`,
+    if (!(await this.contexto.existsTicketForClient(ticketId, clienteId))) {
+      throw new ClienteDesinstalacionAccesoInvalidoError(
+        'El ticket indicado no pertenece al cliente.',
       );
     }
   }
