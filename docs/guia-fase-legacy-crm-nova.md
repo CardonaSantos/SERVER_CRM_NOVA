@@ -102,7 +102,7 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 
 - `npm run build`: verde.
 - `npm run lint:check`: **106** errores tras el paso 11 (no subir; los archivos que toques quedan sin errores nuevos).
-- Jest: 1090/1090; todas las suites en verde.
+- Jest: 1105/1105; todas las suites en verde.
 - Correr un spec: `npm test -- src/modules/<modulo>` (1–2 min). Con la caché fría la suite completa
   puede pasar de 5 minutos: córrela en segundo plano.
 
@@ -146,11 +146,11 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 | Datos de la copia local por revisar: 4 clientes con un sector de otro municipio, un sector sin nombre y sin clientes, y 11 de 160 coordenadas de clientes fuera de Guatemala | El dueño |
 | La app Android (`checkpoint-android-studio`) no guarda el `refresh_token` ni renueva la sesión: con esta rama el access token dura 20 min | **Antes del deploy**: el dueño ajusta la app (§4.1 de la guía post-auth) |
 | La app Android no puede cobrar contra esta rama: envía `cobradorId` y `observaciones` al pagar en ruta (400), exige `saldo.saldoFavor` y la forma vieja de las rutas, y el comprobante exige `empresa.id` y `servicios` (pasos 6 y 8) | El dueño la actualizará en su momento (decisión del 26-nov-2026): el servidor no conserva compatibilidad. Desplegar sin la app nueva deja a los cobradores sin cobrar |
-| Migración `20261128000000_ticket_soporte_cancelacion_comentarios` (solo aditiva), aplicada solo en local | **En el deploy**: `prisma migrate deploy` |
+| Migraciones `20261128000000_ticket_soporte_cancelacion_comentarios` y `20261128010000_ticket_comentario_edicion` (solo aditivas), aplicadas solo en local | **En el deploy**: `prisma migrate deploy` |
 | `ticket-soporte` avisa por `WebSocketServices`, `FirebasePushService` y `NotificacionesService`, y suma metas con `MetasTicketsService`, por adaptadores en su `infra/` | `common/tiempo-real`, `notificacion` y `ticket-soporte-metrica` |
 | Metas: cada primer cierre suma a la última meta abierta del técnico aunque esté fuera de sus fechas (reabrir ya no suma) | `ticket-soporte-metrica` |
 | **El cliente no tiene cómo firmar** la conformidad: el enlace público se retiró y la app aún lo llama | Paso aparte, el siguiente de tickets (decisión del dueño, 27-nov-2026) |
-| Las imágenes de un comentario eliminado se ocultan pero siguen en el almacenamiento, visibles por enlace | Si el dueño pide destruirlas |
+| Las imágenes quitadas, o de un comentario eliminado, se ocultan pero siguen en el almacenamiento, visibles por enlace | Si el dueño pide destruirlas |
 | `dashboard` sigue leyendo tickets directamente (panel del técnico, actividad, en proceso) | `dashboard` |
 | En producción (`main`) y sin sesión: `DELETE /tickets-soporte/delete-all` borra todos los tickets, `DELETE /ticket-soluciones` todo el catálogo, y "eliminar etiqueta" cancela el ticket con ese número | Se cierra con el deploy. Mientras tanto, bloquear en el proxy y no eliminar etiquetas |
 | La app Android y el React usan las rutas viejas de tickets (incluidas las dos de `dashboard`) | La UI nueva (ver `cambios-contrato-ui.md`, filas de `ticket-soporte`) |
@@ -229,11 +229,12 @@ Decisiones del dueño del **26-nov-2026**. Los nombres nuevos siguen §15 del es
 - **Reportes** no se migra hasta nuevo aviso.
 - **Tickets** (27-nov-2026): estados Abierta → En proceso → En revisión → Resuelta, y Cancelada;
   sin pausar ni archivar (los antiguos se ven en la fase equivalente, sin modificarse). Un ticket
-  nunca se borra: se cancela con motivo. La oficina cambia cualquier estado, edita, asigna y fija;
-  el técnico ve y comenta solo los suyos y solo los inicia y envía a revisión; cualquiera con sesión
-  crea. El reloj corre solo en proceso y sin registro no es cero; reabrir no suma a metas. El autor
+  nunca se borra: se cancela con motivo. La oficina cambia cualquier estado y edita; asignar y fijar
+  lo puede cualquier rol menos el técnico; el técnico ve y comenta solo los suyos y solo los inicia y
+  envía a revisión; cualquiera con sesión crea. El reloj corre solo en proceso y sin registro no es cero; reabrir no suma a metas. El autor
   borra sus comentarios y la oficina cualquiera (borrado lógico); hasta 5 imágenes de 8 MB visibles
-  por enlace. Etiquetas y soluciones se ocultan. La lista usa bandejas, búsqueda en todos los
+  por enlace. Solo el autor edita su texto (queda "editado", sin guardar el anterior); una imagen la
+  quita el autor o la oficina. Etiquetas y soluciones se ocultan. La lista usa bandejas, búsqueda en todos los
   estados y activos del más antiguo al más nuevo, con el formato `{ data, meta }`. La solución al
   resolver es opcional. La firma del cliente es un paso aparte.
 
