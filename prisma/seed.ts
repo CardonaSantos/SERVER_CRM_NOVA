@@ -7,17 +7,13 @@ async function main() {
 
   // Crear una empresa
   const empresa = await prisma.empresa.create({
+    // Datos de ejemplo: los reales se cargan con PATCH /empresa.
     data: {
-      nombre: 'Asociación ADIPY',
-      direccion: 'Cantón Pozo, Concepción Huista 01322-Concepción, Guatemala',
-      telefono: '4045 0131',
-      pbx: '4045 0131',
-      correo: 'yamanonhadipy@hotmail.com',
-      sitioWeb: '',
-      nit: '',
-      logo1: 'https://mi-servidor.com/logos/logo1.png',
-      logo2: 'https://mi-servidor.com/logos/logo2.png',
-      logo3: 'https://mi-servidor.com/logos/logo3.png',
+      nombre: 'Empresa Demo',
+      direccion: 'Dirección de ejemplo',
+      telefono: '0000 0000',
+      correo: 'contacto@example.com',
+      nit: 'CF',
     },
   });
 
