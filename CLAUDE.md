@@ -30,9 +30,9 @@ La etapa de auth y NestJS 12 está terminada en código (aún no desplegada). Ah
 8. **En curso**: fase legacy, en el orden de `docs/guia-fase-legacy-crm-nova.md` §3.2: ✅ limpieza de
    lo que no se usa, ✅ **H1** (saneamiento de estados, §6.1), ✅ paso 3 (ubicación de técnicos en
    `real-time-location`), ✅ paso 4 (`cliente`), ✅ paso 5 (`zona-facturacion`), ✅ paso 6
-   (`facturacion`), ✅ paso 7 (`mensajeria-cliente`), ✅ paso 8 (`ruta-cobro`) y ✅ paso 16
-   (`servicio`); H2 (roles) queda en espera del dueño; `credito` (paso 9) queda aplazado; sigue el
-   paso 17 (`ubicacion`). **Los crons van al final**; reportes queda aplazado.
+   (`facturacion`), ✅ paso 7 (`mensajeria-cliente`), ✅ paso 8 (`ruta-cobro`), ✅ paso 16
+   (`servicio`) y ✅ paso 17 (`ubicacion`); H2 (roles) queda en espera del dueño; `credito`
+   (paso 9) queda aplazado; el dueño elige el siguiente paso. **Los crons van al final**; reportes queda aplazado.
 
 **No empieces un paso hasta que el dueño diga que se empieza.**
 
@@ -78,9 +78,8 @@ npm run start:dev
 npx prisma migrate status
 ```
 
-Node 24 (`.nvmrc`). Línea base: lint ≤ 150 errores (tras el paso 16; sin errores nuevos en
-archivos tocados); Jest: las suites de `src/common`, `src/auth/decoradores` y de `src/modules` en
-verde; 2 suites boilerplate de `location` siguen rotas.
+Node 24 (`.nvmrc`). Línea base: lint ≤ 148 errores (tras el paso 17; sin errores nuevos en
+archivos tocados); Jest: todas las suites en verde.
 
 ## Seguridad que ya existe (no la rehagas ni la rodees)
 

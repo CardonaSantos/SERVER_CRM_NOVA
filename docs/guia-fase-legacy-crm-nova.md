@@ -73,6 +73,7 @@ Módulos hexagonales conformes en `src/modules/` (usa estos como **plantilla**):
 | `mensajeria-cliente` | Proveedor externo como adaptador (errores: rechazado, no disponible, sin confirmar), trabajo en segundo plano con registro por destino y reanudación, candado para "uno a la vez" |
 | `ruta-cobro` | Totales calculados desde los pagos, bloqueo compartido para cobrar y exclusivo para modificar, fachada que valida dentro de la transacción de otro módulo, exportación a Excel como adaptador |
 | `servicio` | Catálogo que nunca se borra físicamente: eliminar solo lo nunca usado, bloqueo de fila entre asignar y eliminar, fachada consumida por cinco módulos y cambio de precio con contraseña |
+| `ubicacion` | Catálogo de solo lectura con carga repetible por SQL, y comprobación de coherencia entre referencias que solo mira lo que cambia |
 | `real-time-location` | Puerto de transacción de intención (`application/ports/<modulo>-transaction.port.ts`), cron delgado con `RELOJ`, policies de métricas |
 | `ticket-soporte-historial` | Fachada consumida por un módulo **legacy** (`tickets-soporte`) dentro de su transacción (`PrismaTransaccional.unirseA`, transitorio) |
 | `ticket-soporte-conformidad` | Compensación de efectos (subida de archivo + rollback), traducción de `P2002` a `CONFLICTO` |
@@ -99,9 +100,8 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 ### 2.3 Línea base medida
 
 - `npm run build`: verde.
-- `npm run lint:check`: **150** errores tras el paso 16 (no subir; los archivos que toques quedan sin errores nuevos).
-- Jest: 979/981; las suites de `src/common`, `src/auth/decoradores` y de todos los `src/modules/*`
-  en verde. Fallan 2 suites boilerplate de `location`.
+- `npm run lint:check`: **148** errores tras el paso 17 (no subir; los archivos que toques quedan sin errores nuevos).
+- Jest: 1018/1018; todas las suites en verde.
 - Correr un spec: `npm test -- src/modules/<modulo>` (1–2 min). Con la caché fría la suite completa
   puede pasar de 5 minutos: córrela en segundo plano.
 
@@ -141,6 +141,10 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 | Los crons y `contrato-cliente` leen los planes directamente de la tabla | `ciclo-facturacion` y `contrato-cliente` |
 | Reemplazar los servicios de un cliente borra sus filas de `ClienteServicio` y las vuelve a crear: no queda historial y se pierde `fechaInicio` original | Cuando se rediseñen los servicios adicionales |
 | El React envía `empresaId` y `estado` al crear planes, servicios y tipos: ahora responden 400 | La UI nueva (ver `cambios-contrato-ui.md`) |
+| Migraciones `20261127010000_municipio_nombre_por_departamento` (cambia la unicidad del nombre e inserta 6 municipios; el `DROP INDEX` lo autorizó el dueño) y `20261127020000_sector_borrado_logico`, aplicadas solo en local | **En el deploy**: `prisma migrate deploy` |
+| En producción (`main`) `GET /location/delete-all` borra departamentos, municipios y sectores sin sesión, y borrar sectores tampoco la pide. El dueño decidió no tocar `main` | Se cierra con el deploy. Mientras tanto, bloquear la ruta en el proxy y tener respaldo |
+| La base conserva el borrado en cascada de departamentos, municipios y sectores: por SQL todavía se pierde la ubicación de los clientes | Solo con autorización del dueño |
+| Datos de la copia local por revisar: 4 clientes con un sector de otro municipio, un sector sin nombre y sin clientes, y 11 de 160 coordenadas de clientes fuera de Guatemala | El dueño |
 | La app Android (`checkpoint-android-studio`) no guarda el `refresh_token` ni renueva la sesión: con esta rama el access token dura 20 min | **Antes del deploy**: el dueño ajusta la app (§4.1 de la guía post-auth) |
 | La app Android no puede cobrar contra esta rama: envía `cobradorId` y `observaciones` al pagar en ruta (400), exige `saldo.saldoFavor` y la forma vieja de las rutas, y el comprobante exige `empresa.id` y `servicios` (pasos 6 y 8) | El dueño la actualizará en su momento (decisión del 26-nov-2026): el servidor no conserva compatibilidad. Desplegar sin la app nueva deja a los cobradores sin cobrar |
 
@@ -197,6 +201,11 @@ Decisiones del dueño del **26-nov-2026**. Los nombres nuevos siguen §15 del es
   plan se cambia en su propia operación, con contraseña, e informa a cuántos clientes afecta. Los
   servicios adicionales conservan su catálogo con las mismas protecciones. Quien anote un plan o un
   servicio en sus tablas pasa por la fachada `SERVICIO` dentro de su unidad de trabajo.
+- **Ubicación:** departamentos y municipios son de solo lectura (se cargan con
+  `prisma/departamentos-municipios.sql`). Eliminar un sector es borrado lógico y solo sin clientes
+  (también eliminados); con clientes no cambia de municipio. Lo que se asigne o cambie debe cuadrar
+  (sector del municipio, municipio del departamento); lo antiguo no se toca. Quien asigne ubicación
+  pasa por la fachada `UBICACION` dentro de su unidad de trabajo.
 - **Mensajería:** las campañas se registran y se envían en segundo plano, una a la vez; reciben ids
   de clientes (el servidor busca los teléfonos), omiten con motivo a eliminados, con WhatsApp
   desactivado, sin teléfono válido o con número repetido, y no admiten plantillas con variables.
@@ -236,7 +245,7 @@ En nombres, fusiones y alcance esta tabla manda sobre la propuesta de §15.1 del
 | 14 | `usuario` | `user`, `perfil` | Pendiente | Sin tocar `auth`; solo SUPER_ADMIN edita a otros |
 | 15 | `contrato-cliente` | `contrato-cliente`, `id-contrato` | Pendiente | |
 | 16 | `servicio` | `servicio`, `servicio-internet`, `tipo-servicio` | ✅ Hecho | `servicio #1–#3`: fachada `SERVICIO`, borrado lógico solo sin uso, precio con contraseña, rutas renombradas |
-| 17 | `ubicacion` | `location`, `sector` | **Siguiente** | |
+| 17 | `ubicacion` | `location`, `sector` | ✅ Hecho | `ubicacion #1–#3`: fachada `UBICACION`, borrado lógico de sectores, municipios completos y rutas destructivas retiradas |
 | 18 | `empresa` | `empresa` | Pendiente | |
 | 19 | `ticket-soporte-metrica` | `metas-tickets` | Pendiente | |
 | 20 | `dashboard` | `dashboard` | Pendiente | Solo lectura: puertos de consulta y read models |
