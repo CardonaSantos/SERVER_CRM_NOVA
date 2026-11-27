@@ -16,6 +16,11 @@ export const ROLES_OFICINA: RolUsuario[] = [
 /** Técnicos de campo. */
 export const ROLES_TECNICO: RolUsuario[] = [RolUsuario.TECNICO];
 
+/** Todos menos el técnico: asignan y fijan tickets de soporte. */
+export const ROLES_SIN_TECNICO: RolUsuario[] = Object.values(RolUsuario).filter(
+  (rol) => rol !== RolUsuario.TECNICO,
+);
+
 /** Si un rol (tal como llega en el actor) pertenece a un grupo. */
 export function perteneceA(grupo: RolUsuario[], rol: string): boolean {
   return grupo.some((permitido) => permitido === rol);
