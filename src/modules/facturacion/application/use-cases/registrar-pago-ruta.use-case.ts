@@ -18,7 +18,7 @@ export type RegistrarPagoRutaInput = {
   numeroBoleta?: string | null;
 };
 
-/** Cobro en ruta: además suma lo cobrado de la ruta. */
+/** Cobro en calle: la ruta debe estar abierta y tener a ese cliente. */
 @Injectable()
 export class RegistrarPagoRutaUseCase {
   constructor(

@@ -61,15 +61,10 @@ describe('PagoEntity', () => {
     );
   });
 
-  it('en ruta solo admite quetzales enteros', () => {
+  it('en ruta admite centavos', () => {
     const enRuta = { ...base, origen: OrigenPago.RUTA, montoPagado: 10.5 };
 
-    expect(() => PagoEntity.registrar(enRuta, AHORA)).toThrow(
-      PagoInvalidoError,
-    );
-    expect(() =>
-      PagoEntity.registrar({ ...base, montoPagado: 10.5 }, AHORA),
-    ).not.toThrow();
+    expect(PagoEntity.registrar(enRuta, AHORA).montoPagado).toBe(10.5);
   });
 
   it('el mismo número con otros espacios o mayúsculas es el mismo', () => {

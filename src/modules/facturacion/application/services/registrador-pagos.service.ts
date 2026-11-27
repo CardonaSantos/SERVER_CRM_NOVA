@@ -5,6 +5,10 @@ import {
   UnidadDeTrabajoPort,
 } from 'src/common/transaccion/unidad-de-trabajo.port';
 import { EstadoCobranzaCliente } from '../../../cliente-cobranza/public/cliente-cobranza.facade.port';
+import {
+  RUTA_COBRO,
+  RutaCobroFacadePort,
+} from '../../../ruta-cobro/public/ruta-cobro.facade.port';
 import { PagoEntity } from '../../domain/entities/pago.entity';
 import { EstadoFactura } from '../../domain/enums/estado-factura.enum';
 import {
@@ -27,7 +31,6 @@ import {
   FACTURACION_EVENTOS,
   FacturacionEventosPort,
 } from '../ports/facturacion-eventos.port';
-import { RUTA_COBRADO, RutaCobradoPort } from '../ports/ruta-cobrado.port';
 import { CobranzaDelClienteService } from './cobranza-del-cliente.service';
 
 export type PagoRegistrado = {
@@ -38,7 +41,7 @@ export type PagoRegistrado = {
   estadoCobranza: EstadoCobranzaCliente;
 };
 
-/** El pago, la factura, la cobranza y lo cobrado de la ruta: todo o nada. */
+/** El pago, la factura y la cobranza: todo o nada. */
 @Injectable()
 export class RegistradorPagosService {
   private readonly logger = new Logger(RegistradorPagosService.name);
@@ -47,7 +50,7 @@ export class RegistradorPagosService {
     @Inject(FACTURA_REPOSITORY)
     private readonly facturas: FacturaRepositoryPort,
     @Inject(PAGO_REPOSITORY) private readonly pagos: PagoRepositoryPort,
-    @Inject(RUTA_COBRADO) private readonly rutas: RutaCobradoPort,
+    @Inject(RUTA_COBRO) private readonly rutas: RutaCobroFacadePort,
     @Inject(FACTURACION_EVENTOS)
     private readonly eventos: FacturacionEventosPort,
     private readonly cobranza: CobranzaDelClienteService,
@@ -63,6 +66,16 @@ export class RegistradorPagosService {
       if (!factura) throw new FacturaNoEncontradaError();
       if (factura.clienteId !== input.clienteId) {
         throw new FacturaDeOtroClienteError();
+      }
+      // La ruta queda bloqueada: no puede cerrarse mientras se cobra.
+      if (
+        input.rutaId != null &&
+        !(await this.rutas.verificarCobro({
+          rutaId: input.rutaId,
+          clienteId: input.clienteId,
+        }))
+      ) {
+        throw new FacturacionRutaNoEncontradaError();
       }
 
       const ahora = this.reloj.ahora();
@@ -80,13 +93,6 @@ export class RegistradorPagosService {
 
       const guardado = await this.pagos.create(pago);
       await this.facturas.update(factura);
-
-      if (
-        pago.rutaId !== null &&
-        !(await this.rutas.ajustar(pago.rutaId, pago.montoPagado))
-      ) {
-        throw new FacturacionRutaNoEncontradaError();
-      }
 
       return {
         empresaId: factura.empresaId,

@@ -22,7 +22,6 @@ import {
   FACTURACION_EVENTOS,
   FacturacionEventosPort,
 } from '../ports/facturacion-eventos.port';
-import { RUTA_COBRADO, RutaCobradoPort } from '../ports/ruta-cobrado.port';
 import { CobranzaDelClienteService } from '../services/cobranza-del-cliente.service';
 
 export type EliminarPagoInput = {
@@ -51,7 +50,6 @@ export class EliminarPagoUseCase {
     @Inject(FACTURA_REPOSITORY)
     private readonly facturas: FacturaRepositoryPort,
     @Inject(PAGO_REPOSITORY) private readonly pagos: PagoRepositoryPort,
-    @Inject(RUTA_COBRADO) private readonly rutas: RutaCobradoPort,
     @Inject(FACTURACION_EVENTOS)
     private readonly eventos: FacturacionEventosPort,
     private readonly cobranza: CobranzaDelClienteService,
@@ -82,9 +80,6 @@ export class EliminarPagoUseCase {
       });
       await this.pagos.eliminar(input.pagoId);
       await this.facturas.update(factura);
-      if (pago.rutaId !== null) {
-        await this.rutas.ajustar(pago.rutaId, -pago.montoPagado);
-      }
 
       return {
         empresaId: factura.empresaId,

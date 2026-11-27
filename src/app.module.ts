@@ -27,7 +27,7 @@ import { RelojModule } from './common/reloj/reloj.module';
 import { TransaccionModule } from './common/transaccion/transaccion.module';
 import { ZonaFacturacionCronModule } from './zona-facturacion-cron/zona-facturacion-cron.module';
 import { IdContratoModule } from './id-contrato/id-contrato.module';
-import { RutaCobroModule } from './ruta-cobro/ruta-cobro.module';
+import { RutaCobroModule } from './modules/ruta-cobro/ruta-cobro.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { SectorModule } from './sector/sector.module';
 import { ContratoClienteModule } from './contrato-cliente/contrato-cliente.module';

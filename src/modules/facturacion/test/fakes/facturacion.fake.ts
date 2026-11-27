@@ -1,7 +1,10 @@
 import { ClienteCobranzaFacadePort } from '../../../cliente-cobranza/public/cliente-cobranza.facade.port';
 import { EstadoCobranzaCliente } from '../../../cliente/public/cliente.types';
+import {
+  RutaCobroFacadePort,
+  VerificarCobroRutaInput,
+} from '../../../ruta-cobro/public/ruta-cobro.facade.port';
 import { FacturacionEventosPort } from '../../application/ports/facturacion-eventos.port';
-import { RutaCobradoPort } from '../../application/ports/ruta-cobrado.port';
 import { FacturaEntity } from '../../domain/entities/factura.entity';
 import { PagoEntity } from '../../domain/entities/pago.entity';
 import {
@@ -191,14 +194,16 @@ export class CobranzaFake implements ClienteCobranzaFacadePort {
   }
 }
 
-export class RutaCobradoFake implements RutaCobradoPort {
-  readonly cobrado = new Map<number, number>([[3, 0]]);
+export class RutaCobroFake implements RutaCobroFacadePort {
+  readonly verificados: VerificarCobroRutaInput[] = [];
+  readonly existentes = new Set([3]);
+  /** Si se define, la ruta rechaza el cobro con este error. */
+  rechazo: Error | null = null;
 
-  ajustar(rutaId: number, monto: number): Promise<boolean> {
-    const actual = this.cobrado.get(rutaId);
-    if (actual === undefined) return Promise.resolve(false);
-    this.cobrado.set(rutaId, actual + monto);
-    return Promise.resolve(true);
+  verificarCobro(input: VerificarCobroRutaInput): Promise<boolean> {
+    if (this.rechazo) return Promise.reject(this.rechazo);
+    this.verificados.push(input);
+    return Promise.resolve(this.existentes.has(input.rutaId));
   }
 }
 

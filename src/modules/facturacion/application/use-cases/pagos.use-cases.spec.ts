@@ -15,7 +15,7 @@ import {
   BaseFacturacionFake,
   CobranzaFake,
   FacturacionEventosFake,
-  RutaCobradoFake,
+  RutaCobroFake,
 } from '../../test/fakes/facturacion.fake';
 import { CobranzaDelClienteService } from '../services/cobranza-del-cliente.service';
 import { RegistradorPagosService } from '../services/registrador-pagos.service';
@@ -28,7 +28,7 @@ const AHORA = new Date('2026-11-26T18:00:00.000Z');
 describe('pagos', () => {
   let base: BaseFacturacionFake;
   let cobranza: CobranzaFake;
-  let rutas: RutaCobradoFake;
+  let rutas: RutaCobroFake;
   let eventos: FacturacionEventosFake;
   let unidad: UnidadDeTrabajoEnMemoria;
   const reloj = new RelojFijo(AHORA);
@@ -36,7 +36,7 @@ describe('pagos', () => {
   beforeEach(() => {
     base = new BaseFacturacionFake();
     cobranza = new CobranzaFake();
-    rutas = new RutaCobradoFake();
+    rutas = new RutaCobroFake();
     eventos = new FacturacionEventosFake();
     unidad = new UnidadDeTrabajoEnMemoria();
   });
@@ -59,7 +59,6 @@ describe('pagos', () => {
     new EliminarPagoUseCase(
       base.repositorioFacturas,
       base.repositorioPagos,
-      rutas,
       eventos,
       servicio(),
       unidad,
@@ -99,12 +98,12 @@ describe('pagos', () => {
       expect(eventos.empresas).toEqual([1]);
     });
 
-    it('en ruta suma lo cobrado de la ruta', async () => {
+    it('en ruta comprueba la ruta y la guarda en el pago', async () => {
       const id = base.sembrarFactura();
 
       const { pagoId } = await enRuta().execute({ ...pago(id), rutaId: 3 });
 
-      expect(rutas.cobrado.get(3)).toBe(200);
+      expect(rutas.verificados).toEqual([{ rutaId: 3, clienteId: 7 }]);
       expect(base.pagos.get(pagoId)).toMatchObject({
         origen: OrigenPago.RUTA,
         rutaId: 3,
@@ -117,7 +116,25 @@ describe('pagos', () => {
       await expect(
         enRuta().execute({ ...pago(id), rutaId: 99 }),
       ).rejects.toThrow(FacturacionRutaNoEncontradaError);
+      expect(base.pagos.size).toBe(0);
       expect(eventos.empresas).toHaveLength(0);
+    });
+
+    it('si la ruta rechaza el cobro no se guarda nada', async () => {
+      const id = base.sembrarFactura();
+      rutas.rechazo = new Error('ruta cerrada');
+
+      await expect(
+        enRuta().execute({ ...pago(id), rutaId: 3 }),
+      ).rejects.toThrow('ruta cerrada');
+      expect(base.pagos.size).toBe(0);
+      expect(base.facturas.get(id)!.estado).toBe(EstadoFactura.PENDIENTE);
+    });
+
+    it('en oficina no consulta ninguna ruta', async () => {
+      await enOficina().execute(pago(base.sembrarFactura()));
+
+      expect(rutas.verificados).toHaveLength(0);
     });
 
     it('cobrar dos veces la misma factura se rechaza', async () => {
@@ -191,7 +208,6 @@ describe('pagos', () => {
         }),
       ]);
       expect(base.pagosEliminados[0].pago.numeroBoleta).toBe('TR-9');
-      expect(rutas.cobrado.get(3)).toBe(0);
 
       await expect(
         enOficina().execute({

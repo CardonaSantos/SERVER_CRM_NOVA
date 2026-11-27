@@ -1981,6 +1981,7 @@ export class DashboardService {
 
       const rutasActualesAbiertas = await this.prisma.ruta.findMany({
         where: {
+          eliminadoEn: null,
           estadoRuta: {
             in: ['ACTIVO', 'ASIGNADA', 'EN_CURSO'],
           },

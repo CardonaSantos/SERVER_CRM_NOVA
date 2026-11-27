@@ -2,9 +2,9 @@ import { Module } from '@nestjs/common';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { GatewayModule } from 'src/web-sockets/websocket.module';
 import { ClienteCobranzaModule } from '../cliente-cobranza/cliente-cobranza.module';
+import { RutaCobroModule } from '../ruta-cobro/ruta-cobro.module';
 import { FacturacionFacade } from './application/facade/facturacion.facade';
 import { FACTURACION_EVENTOS } from './application/ports/facturacion-eventos.port';
-import { RUTA_COBRADO } from './application/ports/ruta-cobrado.port';
 import { CobranzaDelClienteService } from './application/services/cobranza-del-cliente.service';
 import { EmisorFacturasService } from './application/services/emisor-facturas.service';
 import { RegistradorPagosService } from './application/services/registrador-pagos.service';
@@ -29,7 +29,6 @@ import { ClienteFacturablePrismaQuery } from './infra/prisma/cliente-facturable-
 import { FacturaPrismaQuery } from './infra/prisma/factura-prisma.query';
 import { FacturaPrismaRepository } from './infra/prisma/factura-prisma.repository';
 import { PagoPrismaRepository } from './infra/prisma/pago-prisma.repository';
-import { RutaCobradoPrismaAdapter } from './infra/prisma/ruta-cobrado-prisma.adapter';
 import { FacturacionEventosWebsocketAdapter } from './infra/websocket/facturacion-eventos-websocket.adapter';
 import { FacturaEliminacionController } from './presentation/http/factura-eliminacion.controller';
 import { FacturacionController } from './presentation/http/facturacion.controller';
@@ -41,7 +40,12 @@ import { FACTURACION } from './public/facturacion.facade.port';
  * API pública (`public/`): la fachada `FACTURACION`.
  */
 @Module({
-  imports: [PrismaModule, GatewayModule, ClienteCobranzaModule],
+  imports: [
+    PrismaModule,
+    GatewayModule,
+    ClienteCobranzaModule,
+    RutaCobroModule,
+  ],
   controllers: [FacturacionController, FacturaEliminacionController],
   providers: [
     // Casos de uso
@@ -73,7 +77,6 @@ import { FACTURACION } from './public/facturacion.facade.port';
       provide: CLIENTE_FACTURABLE_QUERY,
       useClass: ClienteFacturablePrismaQuery,
     },
-    { provide: RUTA_COBRADO, useClass: RutaCobradoPrismaAdapter },
     {
       provide: FACTURACION_EVENTOS,
       useClass: FacturacionEventosWebsocketAdapter,

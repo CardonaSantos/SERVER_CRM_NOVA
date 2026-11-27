@@ -1,5 +1,4 @@
 import { MetodoPago } from '../enums/metodo-pago.enum';
-import { OrigenPago } from '../enums/origen-pago.enum';
 import {
   PagoBoletaRequeridaError,
   PagoInvalidoError,
@@ -13,15 +12,6 @@ export class PagoEntity {
   static registrar(input: RegistrarPagoProps, ahora: Date): PagoEntity {
     if (!esMonto(input.montoPagado) || input.montoPagado <= 0) {
       throw new PagoInvalidoError('El monto pagado debe ser mayor que cero.');
-    }
-    // Lo cobrado de una ruta se guarda en quetzales enteros.
-    if (
-      input.origen === OrigenPago.RUTA &&
-      !Number.isInteger(input.montoPagado)
-    ) {
-      throw new PagoInvalidoError(
-        'En ruta el monto debe ser en quetzales enteros.',
-      );
     }
 
     // Solo el depósito o transferencia guarda número.
