@@ -69,6 +69,7 @@ Módulos hexagonales conformes en `src/modules/` (usa estos como **plantilla**):
 | `pppoe-automatizacion` | Efectos remotos (step runner §5.6), fachadas de otros módulos, recuperación |
 | `pppoe-cliente-cuenta` | Entidad con transiciones de estado |
 | `cliente` | Fachada de escritura para otros módulos, borrado lógico, listas con filtros, saldo calculado en una policy y puertos transitorios hacia módulos legacy |
+| `facturacion` | Dinero: bloqueo del cliente por operación, entidad que deriva saldo y estado de los pagos, bitácoras de lo eliminado y fachada consumida por `cliente` sin ciclos (`cliente-cobranza`) |
 | `real-time-location` | Puerto de transacción de intención (`application/ports/<modulo>-transaction.port.ts`), cron delgado con `RELOJ`, policies de métricas |
 | `ticket-soporte-historial` | Fachada consumida por un módulo **legacy** (`tickets-soporte`) dentro de su transacción (`PrismaTransaccional.unirseA`, transitorio) |
 | `ticket-soporte-conformidad` | Compensación de efectos (subida de archivo + rollback), traducción de `P2002` a `CONFLICTO` |
@@ -95,8 +96,8 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 ### 2.3 Línea base medida
 
 - `npm run build`: verde.
-- `npm run lint:check`: **195** errores tras el paso 5 (no subir; los archivos que toques quedan sin errores nuevos).
-- Jest: 737/741; las suites de `src/common`, `src/auth/decoradores` y de todos los `src/modules/*`
+- `npm run lint:check`: **175** errores tras el paso 6 (no subir; los archivos que toques quedan sin errores nuevos).
+- Jest: 801/805; las suites de `src/common`, `src/auth/decoradores` y de todos los `src/modules/*`
   en verde. Fallan 4 suites boilerplate de `cloud-api-meta` y `location`.
 - Correr un spec: `npm test -- src/modules/<modulo>` (1–2 min). Con la caché fría la suite completa
   puede pasar de 5 minutos: córrela en segundo plano.
@@ -108,9 +109,13 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 | `PrismaTransaccional.unirseA(tx, …)` (puente para que `tickets-soporte` legacy use la fachada del historial dentro de su `$transaction`) | Refactor de `ticket-soporte`: se borra `unirseA` y su spec |
 | `real-time-location` y otros emiten por `WebSocketServices` legacy (`src/web-sockets`) | Paso `common/tiempo-real` |
 | `pppoe-automatizacion` lee el router con puertos internos de `src/mikro-tik` | `mikrotik-router` |
-| `cliente` escribe la primera factura (`PRIMERA_FACTURA`, con el registro de `SaldoCliente`) y el contrato (`CONTRATO_FISICO`) por adaptadores propios, y usa el servicio de `credito` (`CLASIFICACION_CREDITO`) | `facturacion`, `contrato-cliente` y `credito`: pasan a sus fachadas |
-| `SaldoCliente`: `cliente` ya no la lee; la escriben `facturacion` y el alta, y la lee `ruta-cobro` | `facturacion` y `ruta-cobro`: calcular al leer (`modules/cliente/domain/policies/saldo.policy.ts` es la referencia) y dejar de escribirla |
+| `cliente` escribe el contrato (`CONTRATO_FISICO`) por un adaptador propio y usa el servicio de `credito` (`CLASIFICACION_CREDITO`) | `contrato-cliente` y `credito`: pasan a sus fachadas |
+| `facturacion` suma y descuenta `Ruta.montoCobrado` por un adaptador propio (`RUTA_COBRADO`) | `ruta-cobro`: pasa a su fachada. La columna es entera: el cobro en ruta es en quetzales enteros |
+| Tabla `SaldoCliente` sin uso desde el paso 6 (nadie la escribe ni la lee) | Se queda en la base |
 | Migración `20261126180000_zona_facturacion_borrado_logico` (dos columnas opcionales en `FacturacionZona`), aplicada solo en local | **En el deploy**: `prisma migrate deploy` antes de arrancar esta versión |
+| Migración `20261126200000_facturacion_pagos_eliminados` (tabla `PagoEliminado` y dos columnas opcionales), aplicada solo en local | **En el deploy**: `prisma migrate deploy` |
+| Los crons crean facturas y escriben `estadoCobranza` directamente en las tablas | `ciclo-facturacion`: por las fachadas de `facturacion` y `cliente-cobranza` |
+| Los reportes deducen la ruta de un pago por `facturaRutaId`; los pagos nuevos la guardan en `rutaId` | `reporte` |
 | Los crons leen `FacturacionZona` directamente (solo se les agregó `eliminadoEn: null`) | `ciclo-facturacion`: por la fachada de `zona-facturacion` |
 | Los `Input` públicos de prealta/provisionamiento PPPoE aún llevan `empresaId` | Cuando se toquen; `empresaId` no es filtro (una empresa por BD) |
 | `ClienteDesinstalacionEntity` ~950 líneas; varios use cases de C3 > 300 líneas | Opcional, cuando se toquen |
@@ -156,6 +161,12 @@ Decisiones del dueño del **26-nov-2026**. Los nombres nuevos siguen §15 del es
   tienen clientes (también eliminados) ni facturas. Los canales (`whatsapp`, `email`, `sms`,
   `llamada`, `telegram`) y `horaRecordatorio` salieron de la API; sus columnas se quedan.
   `modoCorte` se diseña con la cobranza. `diaCorte` y `suspenderTrasFacturas` se conservan para ella.
+- **Facturas y pagos:** el saldo, el estado y la fecha pagada salen de los pagos; a mano solo se
+  anula o reactiva. Una factura con pagos no se elimina ni se anula; la eliminada queda en la
+  bitácora. Eliminar un pago exige motivo, guarda su copia y libera su número. En depósito (así se
+  registran las transferencias) el número es obligatorio e irrepetible. Cobra el usuario de la
+  sesión. No hay saldo a favor. Los servicios adicionales se descartan hasta rediseñar sus tablas
+  y crear su facturación. El cálculo de montos y fechas no cambió.
 - **Una empresa por base de datos, siempre:** ninguna ruta refactorizada pide `empresaId`; si una
   tabla lo necesita, sale de la sesión (`actor.empresaId`). No se agrega a DTO, rutas ni filtros
   nuevos.
@@ -179,8 +190,8 @@ En nombres, fusiones y alcance esta tabla manda sobre la propuesta de §15.1 del
 | 3 | Ubicación de técnicos → `real-time-location` | `real-time-location` legacy | ✅ Hecho | `real-time-location #3–#5`: rutas abiertas a cualquier sesión, `last-locations` en el módulo (misma ruta), retiro de `update-location` y de la carpeta legacy |
 | 4 | `cliente` (H3) | `cliente-internet`, `customer-network-config` | ✅ Hecho | `cliente #1–#4`: fachada `CLIENTE`, borrado lógico, saldo calculado, rutas sin uso retiradas |
 | 5 | `zona-facturacion` (H5) | `facturacion-zona` | ✅ Hecho | `zona-facturacion #1–#2`: borrado lógico, fachada `ZONA_FACTURACION`, una sola ruta de opciones |
-| 6 | `facturacion` | `facturacion`, `factura-eliminacion` | **Siguiente** | Incluye los pagos |
-| 7 | `mensajeria-cliente` (H6) | `whatsapp-template`, `cloud-api-meta`, `whatsapp-api-meta`, `whatsapp-campaigns` | Pendiente | Meta como adaptador. **Nunca** enviar mensajes en pruebas |
+| 6 | `facturacion` | `facturacion`, `factura-eliminacion` | ✅ Hecho | `facturacion #1–#2`: incluye los pagos; módulo `cliente-cobranza` para la cobranza |
+| 7 | `mensajeria-cliente` (H6) | `whatsapp-template`, `cloud-api-meta`, `whatsapp-api-meta`, `whatsapp-campaigns` | **Siguiente** | Meta como adaptador. **Nunca** enviar mensajes en pruebas |
 | 8 | `ruta-cobro` | `ruta-cobro` | Pendiente | Registra pagos por la fachada de `facturacion` |
 | 9 | `credito` | `credito` | Pendiente | Ya parcialmente hexagonal. Su cron no cambia de comportamiento |
 | 10 | `mikrotik-router` | `mikro-tik` | Pendiente | Quita la deuda de `pppoe-automatizacion` |
@@ -384,10 +395,10 @@ H1 es saneamiento en sitio: commits `refactorizacion facturacion #N`, `refactori
 | Toda la API legacy | Sin `@Roles` (G1): cualquier usuario autenticado, técnico incluido, borra pagos, edita facturas y zonas | H2 |
 | Sesiones, refresh e intentos de auth | Nadie los limpia (G6) | `tareas-programadas` |
 | `src/real-time-location` legacy | **Corregido** (paso 3): su `POST update-location` permitía escribir la ubicación de otro usuario y registraba datos personales en los logs | Hecho |
-| `SaldoCliente` | El saldo guardado está atrasado (los crons no lo actualizan): en la copia local difería en 299 de 573 clientes. `cliente` ya lo calcula al leer | `facturacion` y `ruta-cobro` |
+| `SaldoCliente` | **Corregido** (pasos 4 y 6): el saldo se calcula al leer; el "saldo a favor" guardado era el total pagado y dejó de mostrarse | Hecho |
 | `zona-facturacion-cron` día de pago | El interruptor `enviarAvisoPago` no se lee: avisa si el general está encendido aunque el aviso esté apagado | Crons |
 | Zonas con días 29–31 | `shouldSkipZoneToday` las salta en meses cortos (en la copia local, una zona con generación el 30) | Crons |
-| `facturacion` `delete-one-factura` | El usuario que elimina llega en el body (`userId`) en vez de salir de la sesión | Módulo `facturacion` |
+| `facturacion` `delete-one-factura` | **Corregido** (paso 6): el usuario sale de la sesión | Hecho |
 | `generate-reports` `QueryCobranzaReport` | Fechas con `@IsDate` sin conversión: probable 400 con el pipe estricto (sin probar) | Antes del deploy |
 | Legacy en general | `throw new BadRequestException(...)` en services, `console.log` con datos, `new Date()` en UTC para fechas de negocio, métodos con `tx?: Prisma.TransactionClient` opcional (escrituras que a veces son atómicas y a veces no), `findMany` sin `count` en la misma transacción | Cada módulo al refactorizarse |
 | Cálculo de fechas | `dayjs().tz(...)` disperso y constantes `TZ` locales | Usar `RELOJ` |
@@ -432,6 +443,10 @@ a la UI (fugas de campos), y `catch` que tragan errores y devuelven `200`.
   `MIKROTIK_SECRET_KEY`). Sin `init()`: no arrancan crons ni conexiones.
 - **Hay DTO legacy que el pipe estricto rechaza.** Al tocar un módulo, pasa por `ValidacionGlobalPipe`
   el cuerpo que envía su cliente y deja un spec (ver `cliente-internet/dto`).
+- **Movimientos de dinero:** primero `CLIENTE_COBRANZA.bloquear` dentro de la unidad de trabajo y
+  después se lee la factura; así dos cobros no se pisan.
+- **Antes de permitir decimales o cambiar un formato,** mira el tipo de cada columna que lo recibe
+  (`Ruta.montoCobrado` es entero y truncaba centavos). La prueba contra la base local lo detectó.
 - **"Solo si no tiene uso" necesita bloqueo:** una llave foránea no ve el borrado lógico. Quien
   asigna toma la fila `FOR SHARE` dentro de su unidad de trabajo y quien elimina `FOR UPDATE`
   antes de comprobar (ver `zona-facturacion`).
