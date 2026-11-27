@@ -1897,6 +1897,7 @@ model SeguimientoTicket {
   creadoEn      DateTime @default(now())
   actualizadoEn DateTime @default(now()) @updatedAt
 
+  editadoEn      DateTime?
   eliminadoEn    DateTime?
   eliminadoPorId Int?
   medios         SeguimientoTicketMedia[]
@@ -1906,13 +1907,15 @@ model SeguimientoTicket {
 
 /// Imágenes adjuntas a un comentario de ticket.
 model SeguimientoTicketMedia {
-  id            Int               @id @default(autoincrement())
-  seguimientoId Int
-  mediaId       Int               @unique
-  orden         Int               @default(0)
-  creadoEn      DateTime          @default(now())
-  seguimiento   SeguimientoTicket @relation(fields: [seguimientoId], references: [id], onDelete: Cascade)
-  media         Media             @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  id             Int               @id @default(autoincrement())
+  seguimientoId  Int
+  mediaId        Int               @unique
+  orden          Int               @default(0)
+  creadoEn       DateTime          @default(now())
+  eliminadoEn    DateTime?
+  eliminadoPorId Int?
+  seguimiento    SeguimientoTicket @relation(fields: [seguimientoId], references: [id], onDelete: Cascade)
+  media          Media             @relation(fields: [mediaId], references: [id], onDelete: Cascade)
 
   @@index([seguimientoId])
 }

@@ -46,4 +46,13 @@ describe('ComentarioTicketEntity', () => {
       ComentarioNoEncontradoError,
     );
   });
+
+  it('un comentario eliminado no se edita', () => {
+    const comentario = crear('hola');
+    comentario.eliminar(1, false, AHORA);
+
+    expect(() => comentario.editar('otro', 1, AHORA)).toThrow(
+      ComentarioNoEncontradoError,
+    );
+  });
 });

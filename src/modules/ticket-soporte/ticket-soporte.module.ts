@@ -24,6 +24,7 @@ import { CrearSolucionTicketUseCase } from './application/use-cases/crear-soluci
 import { CrearTicketBotUseCase } from './application/use-cases/crear-ticket-bot.use-case';
 import { CrearTicketUseCase } from './application/use-cases/crear-ticket.use-case';
 import { DevolverTicketUseCase } from './application/use-cases/devolver-ticket.use-case';
+import { EditarComentarioTicketUseCase } from './application/use-cases/editar-comentario-ticket.use-case';
 import { EliminarComentarioTicketUseCase } from './application/use-cases/eliminar-comentario-ticket.use-case';
 import { EliminarEtiquetaTicketUseCase } from './application/use-cases/eliminar-etiqueta-ticket.use-case';
 import { EliminarSolucionTicketUseCase } from './application/use-cases/eliminar-solucion-ticket.use-case';
@@ -36,6 +37,7 @@ import { ListarSolucionesTicketUseCase } from './application/use-cases/listar-so
 import { ListarTicketsUseCase } from './application/use-cases/listar-tickets.use-case';
 import { ObtenerBoletaTicketUseCase } from './application/use-cases/obtener-boleta-ticket.use-case';
 import { ObtenerTicketUseCase } from './application/use-cases/obtener-ticket.use-case';
+import { QuitarImagenComentarioTicketUseCase } from './application/use-cases/quitar-imagen-comentario-ticket.use-case';
 import { ReabrirTicketUseCase } from './application/use-cases/reabrir-ticket.use-case';
 import { ResolverTicketUseCase } from './application/use-cases/resolver-ticket.use-case';
 import { CATALOGO_TICKET_QUERY } from './domain/ports/catalogo-ticket-query.port';
@@ -102,6 +104,8 @@ import { TicketSoporteController } from './presentation/http/ticket-soporte.cont
     ObtenerBoletaTicketUseCase,
     ListarOpcionesTicketUseCase,
     ComentarTicketUseCase,
+    EditarComentarioTicketUseCase,
+    QuitarImagenComentarioTicketUseCase,
     EliminarComentarioTicketUseCase,
     ListarEtiquetasTicketUseCase,
     CrearEtiquetaTicketUseCase,

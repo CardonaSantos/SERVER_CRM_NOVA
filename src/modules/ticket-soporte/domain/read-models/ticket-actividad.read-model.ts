@@ -10,6 +10,7 @@ export type ComentarioActividad = {
   fecha: Date;
   autor: AutorActividad;
   texto: string;
+  editadoEn: Date | null;
   imagenes: Array<{ id: number; url: string }>;
   eliminado: { fecha: Date; por: string | null } | null;
 };

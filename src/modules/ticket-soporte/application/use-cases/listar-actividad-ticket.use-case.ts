@@ -22,6 +22,9 @@ export type ListarActividadTicketInput = {
 };
 
 export type ActividadTicketVisible = ActividadTicket & {
+  /** Solo el autor edita su comentario. */
+  puedeEditar: boolean;
+  /** Vale para el comentario y para cada una de sus imágenes. */
   puedeEliminar: boolean;
 };
 
@@ -45,13 +48,16 @@ export class ListarActividadTicketUseCase {
 
     return {
       ...resultado,
-      items: resultado.items.map((item) => ({
-        ...item,
-        puedeEliminar:
-          item.tipo === 'COMENTARIO' &&
-          item.eliminado === null &&
-          (input.gestiona || item.autor.id === input.usuarioId),
-      })),
+      items: resultado.items.map((item) => {
+        const vigente = item.tipo === 'COMENTARIO' && item.eliminado === null;
+        const propio = item.autor.id === input.usuarioId;
+
+        return {
+          ...item,
+          puedeEditar: vigente && propio,
+          puedeEliminar: vigente && (input.gestiona || propio),
+        };
+      }),
     };
   }
 }

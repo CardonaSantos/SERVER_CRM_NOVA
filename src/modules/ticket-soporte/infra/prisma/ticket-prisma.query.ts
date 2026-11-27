@@ -65,7 +65,9 @@ const SELECCION_LISTA = {
   // Solo para contar comentarios e imágenes vigentes.
   SeguimientoTicket: {
     where: { eliminadoEn: null },
-    select: { _count: { select: { medios: true } } },
+    select: {
+      _count: { select: { medios: { where: { eliminadoEn: null } } } },
+    },
   },
 } satisfies Prisma.TicketSoporteSelect;
 
@@ -468,10 +470,12 @@ export class TicketPrismaQuery implements TicketQueryPort {
           id: true,
           descripcion: true,
           fechaRegistro: true,
+          editadoEn: true,
           eliminadoEn: true,
           eliminadoPorId: true,
           usuario: AUTOR,
           medios: {
+            where: { eliminadoEn: null },
             select: { media: { select: { id: true, cdnUrl: true } } },
             orderBy: { orden: 'asc' },
           },
@@ -515,6 +519,7 @@ export class TicketPrismaQuery implements TicketQueryPort {
           },
           // Lo eliminado no sale de la base.
           texto: eliminado ? '' : comentario.descripcion,
+          editadoEn: comentario.editadoEn,
           imagenes: eliminado
             ? []
             : comentario.medios.flatMap(({ media }) =>

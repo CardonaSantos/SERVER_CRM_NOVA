@@ -1,17 +1,34 @@
 import { Injectable } from '@nestjs/common';
-import { SeguimientoTicket } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaTransaccional } from 'src/common/transaccion/prisma-transaccional.service';
 import { ComentarioTicketEntity } from '../../domain/entities/comentario-ticket.entity';
-import { ComentarioNoEncontradoError } from '../../domain/errors/ticket-soporte.errors';
+import {
+  ComentarioImagenNoEncontradaError,
+  ComentarioNoEncontradoError,
+} from '../../domain/errors/ticket-soporte.errors';
 import { ComentarioTicketRepositoryPort } from '../../domain/ports/comentario-ticket-repository.port';
 
-function aDominio(record: SeguimientoTicket): ComentarioTicketEntity {
+const CON_IMAGENES = {
+  medios: {
+    where: { eliminadoEn: null },
+    select: { mediaId: true },
+    orderBy: { orden: 'asc' },
+  },
+} satisfies Prisma.SeguimientoTicketInclude;
+
+type Registro = Prisma.SeguimientoTicketGetPayload<{
+  include: typeof CON_IMAGENES;
+}>;
+
+function aDominio(record: Registro): ComentarioTicketEntity {
   return ComentarioTicketEntity.hydrate({
     id: record.id,
     ticketId: record.ticketId,
     usuarioId: record.usuarioId,
     texto: record.descripcion,
     fechaRegistro: record.fechaRegistro,
+    editadoEn: record.editadoEn,
+    imagenIds: record.medios.map((medio) => medio.mediaId),
     eliminadoEn: record.eliminadoEn,
     eliminadoPorId: record.eliminadoPorId,
   });
@@ -43,6 +60,7 @@ export class ComentarioTicketPrismaRepository
           create: mediaIds.map((mediaId, orden) => ({ mediaId, orden })),
         },
       },
+      include: CON_IMAGENES,
     });
     await this.db.ticketSoporte.update({
       where: { id: datos.ticketId },
@@ -55,9 +73,47 @@ export class ComentarioTicketPrismaRepository
   async findById(id: number): Promise<ComentarioTicketEntity | null> {
     const record = await this.db.seguimientoTicket.findUnique({
       where: { id },
+      include: CON_IMAGENES,
     });
 
     return record ? aDominio(record) : null;
+  }
+
+  async bloquear(id: number): Promise<ComentarioTicketEntity | null> {
+    await this.db
+      .$queryRaw`SELECT id FROM "SeguimientoTicket" WHERE id = ${id} FOR UPDATE`;
+
+    return this.findById(id);
+  }
+
+  async guardarTexto(comentario: ComentarioTicketEntity): Promise<void> {
+    const { texto, editadoEn, ticketId } = comentario.toPrimitives();
+
+    await this.db.seguimientoTicket.update({
+      where: { id: comentario.id! },
+      data: { descripcion: texto, editadoEn },
+    });
+    await this.db.ticketSoporte.update({
+      where: { id: ticketId },
+      data: { actualizadoEn: editadoEn! },
+    });
+  }
+
+  async quitarImagen(
+    comentarioId: number,
+    imagenId: number,
+    usuarioId: number,
+    fecha: Date,
+  ): Promise<void> {
+    const { count } = await this.db.seguimientoTicketMedia.updateMany({
+      where: {
+        seguimientoId: comentarioId,
+        mediaId: imagenId,
+        eliminadoEn: null,
+      },
+      data: { eliminadoEn: fecha, eliminadoPorId: usuarioId },
+    });
+    if (count === 0) throw new ComentarioImagenNoEncontradaError();
   }
 
   async marcarEliminado(comentario: ComentarioTicketEntity): Promise<void> {

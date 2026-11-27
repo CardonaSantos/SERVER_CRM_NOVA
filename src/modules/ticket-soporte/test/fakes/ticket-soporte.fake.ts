@@ -150,6 +150,7 @@ export class ComentarioTicketRepositoryFake
     const guardado = ComentarioTicketEntity.hydrate({
       ...comentario.toPrimitives(),
       id: this.siguiente++,
+      imagenIds: mediaIds,
     });
     this.guardados.set(guardado.id!, { comentario: guardado, mediaIds });
 
@@ -162,6 +163,24 @@ export class ComentarioTicketRepositoryFake
     return registro
       ? ComentarioTicketEntity.hydrate(registro.comentario.toPrimitives())
       : null;
+  }
+
+  bloquear(id: number) {
+    return this.findById(id);
+  }
+
+  async guardarTexto(comentario: ComentarioTicketEntity) {
+    this.guardados.get(comentario.id!)!.comentario = comentario;
+  }
+
+  async quitarImagen(comentarioId: number, imagenId: number) {
+    const registro = this.guardados.get(comentarioId)!;
+    const datos = registro.comentario.toPrimitives();
+
+    registro.comentario = ComentarioTicketEntity.hydrate({
+      ...datos,
+      imagenIds: datos.imagenIds.filter((id) => id !== imagenId),
+    });
   }
 
   async marcarEliminado(comentario: ComentarioTicketEntity) {

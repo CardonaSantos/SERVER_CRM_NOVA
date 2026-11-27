@@ -14,6 +14,7 @@ export class TicketActividadPresenter {
         nombre: a.autor.nombre,
         avatarUrl: a.autor.avatarUrl,
       },
+      puedeEditar: a.puedeEditar,
       puedeEliminar: a.puedeEliminar,
     };
 
@@ -25,6 +26,7 @@ export class TicketActividadPresenter {
       tipo: a.tipo,
       ...base,
       texto: a.texto,
+      editadoEn: a.editadoEn?.toISOString() ?? null,
       imagenes: a.imagenes.map((imagen) => ({
         id: imagen.id,
         url: imagen.url,

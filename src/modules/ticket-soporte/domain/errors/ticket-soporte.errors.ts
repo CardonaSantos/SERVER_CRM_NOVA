@@ -115,8 +115,16 @@ export class ComentarioNoEncontradoError extends DomainError {
 export class ComentarioAjenoError extends DomainError {
   readonly codigo = 'COMENTARIO_AJENO';
   readonly tipo = 'PROHIBIDO';
+  constructor(mensaje = 'Solo puedes eliminar tus propios comentarios.') {
+    super(mensaje);
+  }
+}
+
+export class ComentarioImagenNoEncontradaError extends DomainError {
+  readonly codigo = 'COMENTARIO_IMAGEN_NO_ENCONTRADA';
+  readonly tipo = 'NO_ENCONTRADO';
   constructor() {
-    super('Solo puedes eliminar tus propios comentarios.');
+    super('La imagen no existe o ya fue eliminada.');
   }
 }
 

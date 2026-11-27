@@ -1,6 +1,9 @@
 import { PrioridadTicket } from '../../domain/enums/prioridad-ticket.enum';
 import {
+  ComentarioAjenoError,
   ComentarioImagenInvalidaError,
+  ComentarioImagenNoEncontradaError,
+  ComentarioInvalidoError,
   ComentarioNoEncontradoError,
   TicketAccionDeOficinaError,
   TicketClienteNoEncontradoError,
@@ -18,7 +21,9 @@ import { ActualizarTicketUseCase } from './actualizar-ticket.use-case';
 import { ComentarTicketUseCase } from './comentar-ticket.use-case';
 import { CrearTicketBotUseCase } from './crear-ticket-bot.use-case';
 import { CrearTicketUseCase } from './crear-ticket.use-case';
+import { EditarComentarioTicketUseCase } from './editar-comentario-ticket.use-case';
 import { EliminarComentarioTicketUseCase } from './eliminar-comentario-ticket.use-case';
+import { QuitarImagenComentarioTicketUseCase } from './quitar-imagen-comentario-ticket.use-case';
 
 const JPG = {
   bytes: Buffer.from([0xff, 0xd8, 0xff, 0xe0]),
@@ -66,6 +71,18 @@ function armar() {
       base.acceso,
       comentarios,
       almacen,
+      base.unidad,
+      base.reloj,
+    ),
+    editar: new EditarComentarioTicketUseCase(
+      base.acceso,
+      comentarios,
+      base.unidad,
+      base.reloj,
+    ),
+    quitar: new QuitarImagenComentarioTicketUseCase(
+      base.acceso,
+      comentarios,
       base.unidad,
       base.reloj,
     ),
@@ -344,5 +361,84 @@ describe('comentarios', () => {
         gestiona: false,
       }),
     ).resolves.toEqual({ comentarioId });
+  });
+
+  async function comentado(texto: string | undefined, imagenes = 0) {
+    const t = armar();
+    const ticketId = await t.sembrar({ tecnicoId: 1 });
+    const { comentarioId } = await t.comentar.execute({
+      ...datos,
+      ticketId,
+      texto,
+      imagenes: Array(imagenes).fill(JPG),
+    });
+    const leer = async () =>
+      (await t.comentarios.findById(comentarioId))!.toPrimitives();
+
+    return { t, ids: { ticketId, comentarioId }, leer };
+  }
+
+  it('el autor edita su texto y queda marcado', async () => {
+    const { t, ids, leer } = await comentado('hola');
+
+    await t.editar.execute({ ...ids, usuarioId: 1, texto: ' hola de nuevo ' });
+
+    expect(await leer()).toMatchObject({ texto: 'hola de nuevo' });
+    expect((await leer()).editadoEn).not.toBeNull();
+  });
+
+  it('reenviar el mismo texto no lo marca como editado', async () => {
+    const { t, ids, leer } = await comentado('hola');
+
+    await t.editar.execute({ ...ids, usuarioId: 1, texto: 'hola' });
+
+    expect((await leer()).editadoEn).toBeNull();
+  });
+
+  it('nadie edita lo que escribió otro, ni la oficina', async () => {
+    const { t, ids } = await comentado('hola');
+
+    await expect(
+      t.editar.execute({ ...ids, usuarioId: 9, texto: 'otro' }),
+    ).rejects.toThrow(ComentarioAjenoError);
+  });
+
+  it('el texto se puede vaciar solo si quedan imágenes', async () => {
+    const solo = await comentado('hola');
+    const conFoto = await comentado('hola', 1);
+
+    await expect(
+      solo.t.editar.execute({ ...solo.ids, usuarioId: 1, texto: '' }),
+    ).rejects.toThrow(ComentarioInvalidoError);
+    await expect(
+      conFoto.t.editar.execute({ ...conFoto.ids, usuarioId: 1, texto: '' }),
+    ).resolves.toBeDefined();
+  });
+
+  it('quita una imagen, y no la última de un comentario sin texto', async () => {
+    const { t, ids, leer } = await comentado(undefined, 2);
+    const actor = { ...ids, usuarioId: 1, gestiona: false };
+
+    await t.quitar.execute({ ...actor, imagenId: 501 });
+
+    expect((await leer()).imagenIds).toEqual([502]);
+    await expect(t.quitar.execute({ ...actor, imagenId: 501 })).rejects.toThrow(
+      ComentarioImagenNoEncontradaError,
+    );
+    await expect(t.quitar.execute({ ...actor, imagenId: 502 })).rejects.toThrow(
+      ComentarioInvalidoError,
+    );
+  });
+
+  it('la imagen de otro solo la quita la oficina', async () => {
+    const { t, ids } = await comentado('hola', 1);
+    const otro = { ...ids, usuarioId: 9, imagenId: 501 };
+
+    await expect(
+      t.quitar.execute({ ...otro, gestiona: false }),
+    ).rejects.toThrow(ComentarioAjenoError);
+    await expect(
+      t.quitar.execute({ ...otro, gestiona: true }),
+    ).resolves.toBeDefined();
   });
 });
