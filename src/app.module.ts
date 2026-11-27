@@ -5,7 +5,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { PrismaModule } from './prisma/prisma.module';
-import { EmpresaModule } from './empresa/empresa.module';
+import { EmpresaModule } from './modules/empresa/empresa.module';
 import { ClienteModule } from './modules/cliente/cliente.module';
 import { ServicioModule } from './modules/servicio/servicio.module';
 import { ZonaFacturacionModule } from './modules/zona-facturacion/zona-facturacion.module';
