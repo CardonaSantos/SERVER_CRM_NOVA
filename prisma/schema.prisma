@@ -456,22 +456,27 @@ model Departamento {
 
 model Municipio {
   id             Int               @id @default(autoincrement())
-  nombre         String            @unique
+  nombre         String
   departamentoId Int
   clientes       ClienteInternet[]
   departamento   Departamento      @relation(fields: [departamentoId], references: [id], onDelete: Cascade)
   Sector         Sector[]
+
+  @@unique([nombre, departamentoId])
 }
 
 model Sector {
-  id            Int               @id @default(autoincrement())
-  nombre        String
-  descripcion   String?
-  municipioId   Int
-  creadoEn      DateTime          @default(now())
-  actualizadoEn DateTime          @updatedAt
-  clientes      ClienteInternet[]
-  municipio     Municipio         @relation(fields: [municipioId], references: [id], onDelete: Cascade)
+  id             Int               @id @default(autoincrement())
+  nombre         String
+  descripcion    String?
+  municipioId    Int
+  creadoEn       DateTime          @default(now())
+  actualizadoEn  DateTime          @updatedAt
+  /// Borrado lógico: la fila nunca se borra.
+  eliminadoEn    DateTime?
+  eliminadoPorId Int?
+  clientes       ClienteInternet[]
+  municipio      Municipio         @relation(fields: [municipioId], references: [id], onDelete: Cascade)
 }
 
 model Ubicacion {
