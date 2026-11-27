@@ -4,6 +4,9 @@ API de un ISP **en producción**: facturación, cobranza, clientes y corte de se
 por PPPoE sobre routers MikroTik. Lo que se rompe aquí deja gente sin internet o
 altera facturas reales. Trabaja en consecuencia.
 
+**Sesión nueva:** el estado del refactor, lo que falta y el despliegue están en
+`docs/guia-fase-legacy-crm-nova.md` (documento de traspaso). Actualízalo al cerrar cada paso.
+
 Lee antes de escribir código:
 - @docs/estandar-hexagonal-crm-nova.md — **el formato obligatorio** de todo módulo hexagonal
 - @docs/guia-fase-legacy-crm-nova.md — **estado actual, siguiente paso y cómo refactorizar el legacy** (léela completa)
@@ -95,6 +98,8 @@ archivos tocados); Jest: todas las suites en verde.
 
 ## Reglas que no se negocian
 
+- **El repositorio es público** (27-nov-2026): nunca escribas secretos, datos personales ni detalles
+  de fallos explotables de producción en el código, los documentos o los commits.
 - **No instales dependencias sin preguntar.** Ninguna.
 - **Migraciones solo aditivas:** `CREATE TABLE`, `CREATE INDEX`, `ADD COLUMN` (nullable o con
   `DEFAULT`). Prohibido `DROP`, `RENAME`, cambiar tipos o quitar valores de enums. Nunca

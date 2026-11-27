@@ -1,16 +1,38 @@
-# CRM NOVA (servidor) — Guía de la fase legacy (H1–H12 y resto de `src/`)
+# CRM NOVA (servidor) — Guía de la fase legacy y traspaso del refactor
 
-> **Para quién es:** para cada chat nuevo de Claude Code que siga el refactor, y para el dueño.
-> Este documento reemplaza el contexto de conversaciones anteriores: si lo lees completo junto con
-> `CLAUDE.md` y `docs/estandar-hexagonal-crm-nova.md`, tienes todo lo necesario para continuar.
+> ## ★ DOCUMENTO DE TRASPASO — fuente de verdad del estado del refactor
+>
+> Actualizado el **27-nov-2026**. Léelo completo junto con `CLAUDE.md` y
+> `docs/estandar-hexagonal-crm-nova.md`: con eso tienes todo lo necesario para continuar, sin
+> memoria de conversaciones anteriores. **Al cerrar cada paso se actualiza aquí.**
 >
 > | Dato | Valor |
 > |---|---|
-> | Fecha | 26-nov-2026 |
-> | Rama de trabajo | `refactorizaciones-hexagonales` (usa la punta; el estado de cada paso está en §3.2) |
-> | Punto de control | `checkpoints-refactorizaciones` en `ee2b197` |
-> | Producción (`main`) | `108c6ef`: **nada de este trabajo está desplegado** |
-> | Prioridad de documentos | 1) `estandar-hexagonal-crm-nova.md` (forma de todo módulo) · 2) esta guía (qué sigue y cómo) · 3) `guia-post-auth-refactor-hexagonal-crm-nova.md` (historia de auth, §8.4 orden original) |
+> | Rama de trabajo | `refactorizaciones-hexagonales` (usa la punta; último cambio de código `7df25a8`) |
+> | Punto de control | `checkpoints-refactorizaciones` en `ee2b197` (26-nov-2026; solo se mueve si el dueño lo pide) |
+> | Producción (`main`) | `108c6ef`: **nada de este trabajo está desplegado**. `main` es ancestro de la rama |
+> | Para desplegar | §10 |
+> | Prioridad de documentos | 1) `estandar-hexagonal-crm-nova.md` (forma de todo módulo) · 2) esta guía (estado, orden y cómo) · 3) `cambios-contrato-ui.md` (todo cambio visible) · 4) las guías de auth (historia) |
+>
+> **El repositorio es público** (comprobado el 27-nov-2026). No escribas aquí, en el código ni en
+> los commits secretos, datos personales o detalles de fallos explotables de producción. Las notas
+> de seguridad las guarda el dueño fuera del repositorio (`NOTAS-SEGURIDAD-CRM.md`, junto a la
+> carpeta del proyecto en su máquina principal).
+
+## Resumen: dónde estamos
+
+| Medida | Valor |
+|---|---|
+| Módulos en `src/modules` | 26: **24 hechos** y 2 pendientes de `reporte` (`excel-reports`, `reports`) |
+| Pasos de la fase legacy (§3.2) hechos | 0, 1, 3, 4, 5, 6, 7, 8, 11, 16 y 17 |
+| Pasos por hacer | 12, 13, 14, 15, 18, 19, 20 y el bloque final (crons y cobranza) |
+| En espera, aplazados o fuera | 2 (roles), 9 (`credito`), 10 (`mikrotik-router`, fuera), `reporte` |
+| Pendiente propio de tickets | Firma del cliente en el teléfono del técnico (§7) |
+| Verificación | build verde · lint 106 (partió de 429) · Jest 1105/1105 en 136 suites |
+| Migraciones por aplicar en producción | **10** (§10.2) |
+| Commits sobre `main` | Más de 200 |
+
+**Siguiente paso:** lo elige el dueño. No empieces ninguno hasta que lo diga.
 
 ---
 
@@ -18,15 +40,18 @@
 
 1. `git fetch origin && git checkout refactorizaciones-hexagonales && git pull --ff-only`
    (el dueño trabaja desde dos máquinas).
-2. Lee `CLAUDE.md`, `docs/estandar-hexagonal-crm-nova.md` y **esta guía**. No hace falta leer la
-   guía post-auth completa salvo que necesites detalles de auth.
-3. Mira §3.2 (orden de trabajo) para saber cuál es el **siguiente paso pendiente**. La columna Estado se
-   actualiza al cerrar cada paso.
+2. Lee `CLAUDE.md`, `docs/estandar-hexagonal-crm-nova.md` y **esta guía**, incluidas §11 (cómo
+   trabaja el dueño) y §12 (entorno local). No hace falta leer la guía post-auth completa salvo que
+   necesites detalles de auth.
+3. Mira §3.2 (orden de trabajo) para saber qué está hecho. El dueño elige el siguiente paso.
 4. **No empieces a cambiar código hasta que el dueño diga que se empieza ese paso.** Primero
    presenta: inventario del módulo (rutas, crons, consumidores), propuesta de nombres y rutas,
    bugs detectados, y las preguntas abiertas del paso (§7). Espera su respuesta.
-5. Línea base antes de tocar nada: `npm run build` (verde) y `npm run lint:check` (no más errores que la línea base de §2.3).
-   No corras `npm ci` salvo que falten dependencias; nunca `npm install`.
+5. En una máquina que no tenga lo último: `npm ci` (solo si faltan dependencias; nunca
+   `npm install`), `npx prisma generate` y, tras comprobar que la base es local (§12),
+   `npx prisma migrate deploy`.
+6. Línea base antes de tocar nada: `npm run build` (verde) y `npm run lint:check` (no más errores
+   que la línea base de §2.3).
 
 ---
 
@@ -40,8 +65,8 @@ de punta a punta**:
 - **Contrato mejorado** hacia la UI: presenters con lista blanca, listados `{ data, meta }`,
   errores con `codigo` estable (§7.5), fechas ISO, sin campos internos ni datos personales que la
   pantalla no use. Cada cambio visible se anota en `docs/cambios-contrato-ui.md` en el mismo commit.
-- **Autorización real**: `@Roles(...ROLES_OFICINA)` / `ROLES_TECNICO` en cada ruta (hoy el legacy
-  casi no tiene roles: cualquier usuario autenticado puede borrar pagos o editar facturas).
+- **Autorización real**: `@Roles(...ROLES_OFICINA)` / `ROLES_TECNICO` en cada ruta (los
+  permisos los define el dueño: §3.1).
 - **Bugs reales corregidos**: estados que se pisan, fechas en UTC en vez de Guatemala, escrituras
   no atómicas, `count` y `findMany` desalineados, N+1, errores 500 que deberían ser 400/404/409.
   La refactorización es la oportunidad de arreglarlos (§6), pero **un cambio de comportamiento que
@@ -59,7 +84,8 @@ de punta a punta**:
 |---|---|---|
 | Auth + majors | NestJS 12, TS 6, Node 24, ESLint 10, Jest 30; guard JWT global estricto, sesiones en BD, refresh rotativo, `@Roles`, `@OperacionSensible`, pipe global estricto, filtro global | `src/auth` **no se toca** |
 | H0 | Piezas comunes: `DomainError`, contrato de error §7.5, paginación común, `RELOJ`, `@Actor()`, unidad de trabajo | `src/common/*`, `src/auth/decoradores` |
-| C0–C5 | Todos los módulos de `src/modules` conformes al estándar | 17 módulos, ver abajo |
+| C0–C5 | Los módulos que ya existían en `src/modules`, llevados al estándar | Inventario completo en §2.5 |
+| Fase legacy | Pasos de §3.2 marcados como hechos | Historial en §2.6 |
 
 Módulos hexagonales conformes en `src/modules/` (usa estos como **plantilla**):
 
@@ -102,7 +128,7 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 
 - `npm run build`: verde.
 - `npm run lint:check`: **106** errores tras el paso 11 (no subir; los archivos que toques quedan sin errores nuevos).
-- Jest: 1105/1105; todas las suites en verde.
+- Jest: 1105/1105 en 136 suites; todas en verde.
 - Correr un spec: `npm test -- src/modules/<modulo>` (1–2 min). Con la caché fría la suite completa
   puede pasar de 5 minutos: córrela en segundo plano.
 
@@ -114,47 +140,94 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 | `pppoe-automatizacion` lee el router con puertos internos de `src/mikro-tik` | `mikrotik-router` |
 | `cliente` escribe el contrato (`CONTRATO_FISICO`) por un adaptador propio y usa el servicio de `credito` (`CLASIFICACION_CREDITO`) | `contrato-cliente` y `credito`: pasan a sus fachadas |
 | Columnas `Ruta.montoCobrado` y tablas `CobroRuta`, `RutaTurno`, `FacturaRuta` sin escritura desde el paso 8 | Se quedan en la base |
-| Migración `20261126230000_ruta_cobro_borrado_logico` (dos columnas opcionales en `Ruta` e índice en `PagoFacturaInternet.rutaId`), aplicada solo en local | **En el deploy**: `prisma migrate deploy` |
 | `GET /user/get-users-to-rutas` devuelve todos los usuarios (también inactivos) y `apellidos` repite el nombre. El servidor ya rechaza asignar uno inactivo | `usuario` |
 | `dashboard` lee las rutas abiertas directamente de la tabla (solo se le agregó `eliminadoEn: null`) | `dashboard` |
 | Tabla `SaldoCliente` sin uso desde el paso 6 (nadie la escribe ni la lee) | Se queda en la base |
-| Migración `20261126180000_zona_facturacion_borrado_logico` (dos columnas opcionales en `FacturacionZona`), aplicada solo en local | **En el deploy**: `prisma migrate deploy` antes de arrancar esta versión |
-| Migración `20261126200000_facturacion_pagos_eliminados` (tabla `PagoEliminado` y dos columnas opcionales), aplicada solo en local | **En el deploy**: `prisma migrate deploy` |
 | Los crons crean facturas y escriben `estadoCobranza` directamente en las tablas | `ciclo-facturacion`: por las fachadas de `facturacion` y `cliente-cobranza` |
 | Los reportes deducen la ruta de un pago por `facturaRutaId`; los pagos nuevos la guardan en `rutaId` | `reporte` |
-| Migración `20261126220000_campanias_mensaje` (tablas `CampaniaMensaje` y `EnvioCampaniaMensaje`), aplicada solo en local | **En el deploy**: `prisma migrate deploy` |
 | Mensajería sin probar por HTTP ni contra Meta (solo proveedor falso y base local) | Antes del deploy: una campaña a un número propio |
 | El webhook de Meta descarta los estados de entrega: `ENVIADO` es "aceptado por WhatsApp" | Si el dueño pide confirmar entregas |
 | Crons y tickets envían uno por uno por `MENSAJERIA_CLIENTE` sin registrar el envío; `RecordatorioPago` no se escribe | `ciclo-facturacion` |
-| En producción (`main`) plantillas y campañas no piden sesión; el React no envía token en esas pantallas y crea plantillas contra la URL del POS | Se cierra con el deploy; la UI nueva envía el token a la URL del CRM |
+| El React no envía token en plantillas y campañas, y crea plantillas contra la URL del POS | La UI nueva envía el token a la URL del CRM |
 | Los crons leen `FacturacionZona` directamente (solo se les agregó `eliminadoEn: null`) | `ciclo-facturacion`: por la fachada de `zona-facturacion` |
 | Los `Input` públicos de prealta/provisionamiento PPPoE aún llevan `empresaId` | Cuando se toquen; `empresaId` no es filtro (una empresa por BD) |
 | `ClienteDesinstalacionEntity` ~950 líneas; varios use cases de C3 > 300 líneas | Opcional, cuando se toquen |
 | Enum viejo comentado en `pppoe-cliente-cuenta/domain/enums/estado-cuenta-pppoe.enum.ts` | Cualquier commit de limpieza |
 | Tabla `TicketConformidadEnlace` sin uso (flujo de enlace público retirado); env `TICKET_CONFORMIDAD_LINK_TTL_MINUTES` ya no se lee | Flujo nuevo de firma en el teléfono del técnico (lo define el dueño). **No** se borra la tabla (migraciones solo aditivas) |
 | Socket `emit:location:real-time` (compatibilidad): `real-time-location` lo emite para el mapa del dashboard React | Se retira cuando la UI nueva use `tracking:location-updated` |
-| Migración `20261127000000_servicio_borrado_logico` (dos columnas opcionales en `ServicioInternet` y en `Servicio`), aplicada solo en local | **En el deploy**: `prisma migrate deploy` |
 | La base conserva las reglas antiguas: borrar un plan por SQL (o con `main`) deja clientes, accesos e instalaciones **sin plan**, y borrar un servicio adicional arrastra asignaciones y líneas de factura. La protección es de la aplicación; cambiar las llaves exige `DROP CONSTRAINT` | Solo con autorización del dueño |
-| En producción (`main`) planes y servicios no piden sesión y `GET /servicio-internet` expone los clientes completos. El dueño decidió (26-nov-2026) no tocar `main` | Se cierra con el deploy. Hasta entonces no borrar planes |
 | Revisar en producción: clientes activos sin plan (en la copia local 170, que no se facturan) y accesos PPPoE con un plan distinto al de su cliente (33 de 68) | El dueño, antes del deploy |
 | Los crons y `contrato-cliente` leen los planes directamente de la tabla | `ciclo-facturacion` y `contrato-cliente` |
 | Reemplazar los servicios de un cliente borra sus filas de `ClienteServicio` y las vuelve a crear: no queda historial y se pierde `fechaInicio` original | Cuando se rediseñen los servicios adicionales |
 | El React envía `empresaId` y `estado` al crear planes, servicios y tipos: ahora responden 400 | La UI nueva (ver `cambios-contrato-ui.md`) |
-| Migraciones `20261127010000_municipio_nombre_por_departamento` (cambia la unicidad del nombre e inserta 6 municipios; el `DROP INDEX` lo autorizó el dueño) y `20261127020000_sector_borrado_logico`, aplicadas solo en local | **En el deploy**: `prisma migrate deploy` |
-| En producción (`main`) `GET /location/delete-all` borra departamentos, municipios y sectores sin sesión, y borrar sectores tampoco la pide. El dueño decidió no tocar `main` | Se cierra con el deploy. Mientras tanto, bloquear la ruta en el proxy y tener respaldo |
 | La base conserva el borrado en cascada de departamentos, municipios y sectores: por SQL todavía se pierde la ubicación de los clientes | Solo con autorización del dueño |
 | Datos de la copia local por revisar: 4 clientes con un sector de otro municipio, un sector sin nombre y sin clientes, y 11 de 160 coordenadas de clientes fuera de Guatemala | El dueño |
 | La app Android (`checkpoint-android-studio`) no guarda el `refresh_token` ni renueva la sesión: con esta rama el access token dura 20 min | **Antes del deploy**: el dueño ajusta la app (§4.1 de la guía post-auth) |
 | La app Android no puede cobrar contra esta rama: envía `cobradorId` y `observaciones` al pagar en ruta (400), exige `saldo.saldoFavor` y la forma vieja de las rutas, y el comprobante exige `empresa.id` y `servicios` (pasos 6 y 8) | El dueño la actualizará en su momento (decisión del 26-nov-2026): el servidor no conserva compatibilidad. Desplegar sin la app nueva deja a los cobradores sin cobrar |
-| Migraciones `20261128000000_ticket_soporte_cancelacion_comentarios` y `20261128010000_ticket_comentario_edicion` (solo aditivas), aplicadas solo en local | **En el deploy**: `prisma migrate deploy` |
 | `ticket-soporte` avisa por `WebSocketServices`, `FirebasePushService` y `NotificacionesService`, y suma metas con `MetasTicketsService`, por adaptadores en su `infra/` | `common/tiempo-real`, `notificacion` y `ticket-soporte-metrica` |
 | Metas: cada primer cierre suma a la última meta abierta del técnico aunque esté fuera de sus fechas (reabrir ya no suma) | `ticket-soporte-metrica` |
 | **El cliente no tiene cómo firmar** la conformidad: el enlace público se retiró y la app aún lo llama | Paso aparte, el siguiente de tickets (decisión del dueño, 27-nov-2026) |
 | Las imágenes quitadas, o de un comentario eliminado, se ocultan pero siguen en el almacenamiento, visibles por enlace | Si el dueño pide destruirlas |
 | `dashboard` sigue leyendo tickets directamente (panel del técnico, actividad, en proceso) | `dashboard` |
-| En producción (`main`) y sin sesión: `DELETE /tickets-soporte/delete-all` borra todos los tickets, `DELETE /ticket-soluciones` todo el catálogo, y "eliminar etiqueta" cancela el ticket con ese número | Se cierra con el deploy. Mientras tanto, bloquear en el proxy y no eliminar etiquetas |
+| Producción (`main`) tiene problemas de protección que se cierran al desplegar. El detalle y las mitigaciones están en las notas de seguridad del dueño, fuera del repositorio | Despliegue (§10) |
 | La app Android y el React usan las rutas viejas de tickets (incluidas las dos de `dashboard`) | La UI nueva (ver `cambios-contrato-ui.md`, filas de `ticket-soporte`) |
 | La copia local tiene 61 tickets y producción más de 5,400: las listas no se han medido con volumen real | Probar con una copia reciente antes del deploy |
+| `start:prod` es `node dist/main` y la compilación genera `dist/src/main.js` (ya era así antes) | Revisar el comando de arranque en Railway antes del deploy |
+| Los scripts sueltos de `scripts/` (saldos, estado de cobranza, humo PPPoE y SSH) escriben datos o tocan routers: no correrlos | Limpieza futura |
+
+### 2.5 Inventario de módulos
+
+Conformidad medida el 27-nov-2026 con `scripts/conformidad-hexagonal.sh`.
+
+| Módulo en `src/modules` | Conformidad |
+|---|---|
+| `almacenamiento-media`, `cliente`, `cliente-cobranza`, `mensajeria-cliente`, `mikrotik-router-credentials`, `pppoe-credentials`, `real-time-location`, `ruta-cobro`, `servicio`, `ticket-soporte`, `ticket-soporte-historial`, `ubicacion`, `zona-facturacion` | Sin hallazgos |
+| `facturacion`, `ticket-soporte-conformidad` | Solo el falso positivo del check 13 (un enum con un valor igual a un rol) |
+| `cliente-instalacion`, `cliente-desinstalacion`, `mikrotik-ssh`, `pppoe-acceso-internet`, `pppoe-auditoria`, `pppoe-automatizacion`, `pppoe-cliente-cuenta`, `pppoe-operacion`, `pppoe-perfil-homologacion` | Marcan líneas en el check 6 (`throw new Error`), que el estándar admite solo para errores de programación: revisar a mano cuando se toquen |
+| `excel-reports`, `reports` | No conformes: se resuelven en `reporte` |
+
+**Legacy que queda en `src/`** (líneas de TypeScript y rutas al 27-nov-2026):
+
+| Carpeta | Líneas | Rutas | Paso |
+|---|---|---|---|
+| `credito` | 4856 | 26 | 9 (aplazado) |
+| `dashboard` | 2867 | 9 | 20 |
+| `generate-reports` | 2071 + helper de fechas | 4 | `reporte` (aplazado) |
+| `mikro-tik` | 1816 | 7 | 10 (fuera; PPPoE lo importa) |
+| `user`, `perfil` | 1602 + 619 | 16 | 14 |
+| `zona-facturacion-cron` | 1241 | crons | Final |
+| `web-sockets` | 850 | 1 | 13 |
+| `contrato-cliente`, `id-contrato` | 729 + 106 | 15 | 15 |
+| `notificaciones`, `push-notifications`, `push-dispositivos` | 535 + 370 + 694 | 3 | 12 |
+| `metas-tickets` | 688 | 7 | 19 |
+| `empresa` | 217 | 4 | 18 |
+| `Utils`, `shared`, `CustomDecoratorAuthToken`, `migrate.*`, `app.controller/service` | pocas | — | Transversal (§3.2) |
+
+### 2.6 Historial por paso
+
+| Fecha (2026) | Commits (`refactorizacion …`) | Qué quedó |
+|---|---|---|
+| 23–24 nov | `tooling #1–#5`, `auth #1–#28`, `upgrade #1–#6`, `swagger #1–#2` | Auth completo y NestJS 12 |
+| 24 nov | `comun #1–#5`, `conformidad #1–#5` | H0 y C0 |
+| 24 nov | `mikrotik-router-credentials`, `pppoe-credentials`, `mikrotik-ssh`, `almacenamiento-media` | C1 |
+| 24–25 nov | `pppoe-auditoria`, `-acceso-internet`, `-perfil-homologacion`, `-cliente-cuenta`, `-operacion` | C2 |
+| 25 nov | `pppoe-automatizacion #1–#15` | C3 |
+| 25 nov | `cliente-instalacion`, `cliente-desinstalacion` | C4 |
+| 25 nov | `ticket-soporte-historial`, `ticket-soporte-conformidad`, `real-time-location #1–#2` | C5 |
+| 26 nov | `limpieza #1–#7`, `dependencias #1` | Paso 0: se borró lo que no se usa |
+| 26 nov | `facturacion`, `cliente-internet`, `dashboard` | H1: facturas y pagos ya no cambian el estado del cliente |
+| 26 nov | `real-time-location #3–#5` | Paso 3 |
+| 26 nov | `cliente #1–#5` | Paso 4 |
+| 26 nov | `zona-facturacion #1–#3` | Paso 5 |
+| 26 nov | `facturacion` | Paso 6 |
+| 26 nov | `mensajeria-cliente #1–#2` | Paso 7 |
+| 26 nov | `ruta-cobro #1–#2` | Paso 8 |
+| 26 nov | `servicio #1–#3` | Paso 16 |
+| 27 nov | `ubicacion #1–#3` | Paso 17 |
+| 27 nov | `comun #10–#11`, `ticket-soporte #1–#5` | Paso 11 |
+
+El detalle de cada cambio visible está en `docs/cambios-contrato-ui.md`; el de cada commit, en su
+mensaje (`git log`).
 
 ---
 
@@ -255,7 +328,7 @@ En nombres, fusiones y alcance esta tabla manda sobre la propuesta de §15.1 del
 | 8 | `ruta-cobro` | `ruta-cobro` | ✅ Hecho | `ruta-cobro #1–#2`: fachada `RUTA_COBRO`, borrado lógico, totales calculados, rutas web renombradas |
 | 9 | `credito` | `credito` | Aplazado | Decisión del dueño (26-nov-2026): no urge. Ya parcialmente hexagonal. Su cron no cambia de comportamiento |
 | 10 | `mikrotik-router` | `mikro-tik` | Fuera hasta nuevo aviso | Era para clientes por IP y ya usan PPPoE (dueño, 27-nov-2026). **No borrar** `src/mikro-tik`: PPPoE lo importa |
-| 11 | `ticket-soporte` | `tickets-soporte`, `ticket-resumen`, `ticket-seguimiento`, `ticket-soluciones`, `tags-ticket`, `bot-functions` | ✅ Hecho | `ticket-soporte #1–#3`: bandejas, acciones de estado, comentarios con imágenes, reporte diario en hora de Guatemala; `unirseA` retirado |
+| 11 | `ticket-soporte` | `tickets-soporte`, `ticket-resumen`, `ticket-seguimiento`, `ticket-soluciones`, `tags-ticket`, `bot-functions` | ✅ Hecho | `ticket-soporte #1–#5`: bandejas, acciones de estado, comentarios editables con imágenes, reporte diario en hora de Guatemala; `unirseA` retirado. Falta la firma del cliente (§7) |
 | 12 | `notificacion` | `notificaciones`, `push-notifications`, `push-dispositivos` | Pendiente | Migrar y mejorar. Push = efecto real |
 | 13 | `common/tiempo-real` | `web-sockets` | Pendiente | Incluye `POST /internal/server/broadcast` |
 | 14 | `usuario` | `user`, `perfil` | Pendiente | Sin tocar `auth`; solo SUPER_ADMIN edita a otros |
@@ -370,9 +443,9 @@ Para corregir formato **solo** en archivos tocados: `npx eslint --fix <archivos>
 - Hora de Guatemala primero: `node -e "console.log(new Date().toLocaleString('es-GT',{timeZone:'America/Guatemala'}))"`
   (Git Bash da UTC). **No** arrancar cerca de las horas pares (`0 */2 * * *`), 01:00 ni 10:00 GT: hay
   crons reales que generan facturas y mandan WhatsApp.
-- `.env` local apunta a **producción**: nunca leas su contenido, nunca ejecutes rutas que escriban,
-  manden mensajes o toquen MikroTik. El humo típico es: rutas sin token → 401, rutas retiradas → 404,
-  y GETs de lectura.
+- La base de `.env` es una copia **local y desechable**: se puede leer y escribir en ella. Las
+  **integraciones son reales** (routers, WhatsApp, Firebase, almacenamiento): nunca ejecutes rutas
+  que las alcancen. Prefiere el `TestingModule` con dobles (§8) a arrancar la aplicación.
 - Al terminar, matar node por PID (PowerShell `Get-CimInstance Win32_Process` filtrando
   `SERVER_CRM_NOVA|dist.src.main`) y verificar que queden 0 procesos. `TaskStop` deja node vivo.
 
@@ -452,7 +525,7 @@ H1 es saneamiento en sitio: commits `refactorizacion facturacion #N`, `refactori
 | Dónde | Problema | Paso |
 |---|---|---|
 | `modules/cliente-desinstalacion` | **Corregido** (paso 4): completar una desinstalación no marcaba al cliente `DESINSTALADO` | Hecho |
-| Toda la API legacy | Sin `@Roles` (G1): cualquier usuario autenticado, técnico incluido, borra pagos, edita facturas y zonas | H2 |
+| Gran parte de la API | Falta definir `@Roles` (G1) | H2 |
 | Sesiones, refresh e intentos de auth | Nadie los limpia (G6) | `tareas-programadas` |
 | `src/real-time-location` legacy | **Corregido** (paso 3): su `POST update-location` permitía escribir la ubicación de otro usuario y registraba datos personales en los logs | Hecho |
 | `SaldoCliente` | **Corregido** (pasos 4 y 6): el saldo se calcula al leer; el "saldo a favor" guardado era el total pagado y dejó de mostrarse | Hecho |
@@ -477,8 +550,12 @@ a la UI (fugas de campos), y `catch` que tragan errores y devuelven `200`.
 | 2 | **Resuelta**: se aprovechó, en `src/modules/cliente/domain/` | `cliente` | — |
 | 3 | **Resuelta**: la app Android usa solo `real-time-location/*` (verificado en su repo) | Paso 3 | — |
 | 4 | Nombres finales de cada módulo (§3.2) | Cada paso | Los de §3.2 |
-| 5 | ¿La etapa auth ya se desplegó? Si no, cada paso se acumula sobre un deploy grande | Siempre que aplique | |
+| 5 | **Resuelta**: nada está desplegado; todo sale junto (§10) | — | — |
 | 6 | **Resuelta**: cada módulo deja de usarla al refactorizarse, calculando al leer | `cliente`, `facturacion`, `ruta-cobro` | — |
+| 7 | Firma del cliente en el teléfono del técnico: ¿obligatoria antes de enviar a revisión?, ¿qué datos se piden a quien firma?, ¿qué pasa si no está? | Siguiente paso de tickets | Preguntar antes de diseñar |
+| 8 | ¿Quién administra etiquetas y soluciones de tickets? Hoy cualquier sesión | Con H2 | — |
+| 9 | ¿Destruir del almacenamiento las imágenes quitadas de un comentario? | Si lo pide | Hoy solo se ocultan |
+| 10 | ¿Tienda y cobrador editan los datos de un ticket? Hoy solo asignan y fijan | Si lo pide | — |
 
 ---
 
@@ -534,6 +611,32 @@ a la UI (fugas de campos), y `catch` que tragan errores y devuelven `200`.
 - Pruebas HTTP con `TestingModule`: activa `app.getHttpAdapter().getInstance().set('query parser',
   'extended')` como `main.ts` (sin eso `ids[]=1` no se lee) y agrega `RolesGuard` a mano si
   sustituyes `AuthModule`.
+- **Resolver `AppModule` sin `.env`:** guarda este script en una carpeta temporal y ejecútalo con la
+  ruta del repo (`node resolver.js C:/ruta/del/repo`, con compilación hecha):
+  ```js
+  const path = require('path'); const raiz = process.argv[2];
+  process.env.DATABASE_URL_CRM = 'postgresql://nadie:nada@127.0.0.1:1/ficticia';
+  process.env.JWT_SECRET = 'ficticio-ficticio-ficticio-ficticio-123456';
+  process.env.MIKROTIK_SECRET_KEY = Buffer.alloc(32, 1).toString('base64');
+  const req = require('module').createRequire(path.join(raiz, 'package.json'));
+  req('reflect-metadata');
+  const M = require('module'); const resolver = M._resolveFilename;
+  M._resolveFilename = function (id, ...r) {
+    return resolver.call(this, id.startsWith('src/') ? path.join(raiz, 'dist', id) : id, ...r);
+  };
+  const { Test } = req('@nestjs/testing');
+  const { AppModule } = require(path.join(raiz, 'dist/src/app.module'));
+  Test.createTestingModule({ imports: [AppModule] }).compile()
+    .then(() => { console.log('OK'); process.exit(0); })
+    .catch((e) => { console.log('FALLA', e.message); process.exit(1); });
+  ```
+- En una prueba con `TestingModule`, sustituye con dobles todo efecto real (`overrideProvider` de
+  avisos, mensajería, almacenamiento; `overrideModule` de sockets, auth y push), anota qué creas y
+  bórralo al terminar comparando conteos antes y después.
+- `node` en Git Bash no entiende rutas `/c/…`: usa `C:/…`.
+- Para generar una migración: edita el esquema y usa `prisma migrate diff
+  --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --script`
+  contra la base local, revisa que solo agregue, y aplícala con `migrate deploy`.
 - Entidades: validaciones que antes eran `Error` genérico daban 500; como `DomainError` `INVALIDO`
   dan 400. Es un cambio de contrato y se anota.
 - Si un script de `scripts/` deja de compilar porque arma el módulo a mano, se borra (queda en git)
@@ -543,13 +646,127 @@ a la UI (fugas de campos), y `catch` que tragan errores y devuelven `200`.
 
 ## 9. Prompt para el siguiente chat
 
-Copia esto como primer mensaje de un chat nuevo de Claude Code en este proyecto:
+Copia esto como primer mensaje de una sesión nueva de Claude Code en este proyecto:
 
 ```
 Continuamos el refactor hexagonal de CRM NOVA. Haz `git fetch origin && git pull --ff-only` en
-refactorizaciones-hexagonales y lee CLAUDE.md, docs/estandar-hexagonal-crm-nova.md y
-docs/guia-fase-legacy-crm-nova.md completos. Mide la línea base (build y lint:check). Luego toma el
-siguiente paso pendiente de la tabla §3.2 de la guía y preséntame su inventario (§4.1), los bugs que
-encontraste, la propuesta de nombres/rutas/roles y las preguntas abiertas de §7. No cambies código
-hasta que yo confirme.
+refactorizaciones-hexagonales y lee completos CLAUDE.md, docs/estandar-hexagonal-crm-nova.md y
+docs/guia-fase-legacy-crm-nova.md (es el documento de traspaso). Mide la línea base (build y
+lint:check). Dime en pocas líneas dónde estamos y qué queda, y espera a que yo elija el paso.
+Cuando lo elija, preséntame su inventario (§4.1), los bugs, la propuesta y las preguntas.
+No cambies código hasta que yo confirme.
 ```
+
+---
+
+## 10. Despliegue: lo pendiente antes de cargar a producción
+
+Decisión del dueño (26-nov-2026): **nada va a `main`**, ni arreglos urgentes; todo se revisa al
+final y se carga junto, con la interfaz nueva. `main` solo se toca con su autorización en ese
+momento.
+
+### 10.1 Orden
+
+1. Leer las notas de seguridad del dueño (fuera del repositorio).
+2. Interfaz y app Android listas (§10.4).
+3. Respaldo de la base y prueba de restauración.
+4. Variables de entorno (§10.3), Node 24, `npm ci`, `npx prisma generate`, `npm run build`.
+5. `npx prisma migrate deploy` **antes** de arrancar esta versión.
+6. Revisar el comando de arranque: la compilación genera `dist/src/main.js`.
+7. Arrancar, comprobar el log del guard y del pipe en modo estricto y que los crons se registran.
+8. Todos los usuarios vuelven a iniciar sesión.
+
+El detalle de la etapa auth está en §6 de `guia-post-auth-refactor-hexagonal-crm-nova.md`.
+
+### 10.2 Migraciones pendientes (10)
+
+Aplicadas solo en la base local. Todas aditivas, salvo el cambio de índice indicado.
+
+| Migración | Qué hace |
+|---|---|
+| `20261123201951_auth_sesiones_refresh_intentos` | Tablas de sesiones, refresh e intentos de autenticación |
+| `20261126180000_zona_facturacion_borrado_logico` | Dos columnas opcionales en `FacturacionZona` |
+| `20261126200000_facturacion_pagos_eliminados` | Tabla `PagoEliminado` y dos columnas opcionales |
+| `20261126220000_campanias_mensaje` | Tablas `CampaniaMensaje` y `EnvioCampaniaMensaje` |
+| `20261126230000_ruta_cobro_borrado_logico` | Dos columnas en `Ruta` e índice en `PagoFacturaInternet.rutaId` |
+| `20261127000000_servicio_borrado_logico` | Borrado lógico en planes y servicios adicionales |
+| `20261127010000_municipio_nombre_por_departamento` | Nombre de municipio único por departamento (**`DROP INDEX`** autorizado solo para esto) e inserta 6 municipios |
+| `20261127020000_sector_borrado_logico` | Borrado lógico en sectores |
+| `20261128000000_ticket_soporte_cancelacion_comentarios` | Motivo de cancelación, borrado lógico de comentarios y etiquetas, imágenes de comentario e índices |
+| `20261128010000_ticket_comentario_edicion` | Fecha de edición del comentario y borrado lógico de sus imágenes |
+
+`prisma/departamentos-municipios.sql` es solo para instalaciones nuevas.
+
+### 10.3 Variables de entorno (solo nombres)
+
+| Variable | Nota |
+|---|---|
+| `META_APP_SECRET` | **Nueva y obligatoria**: sin ella el webhook de WhatsApp deja de recibir |
+| `MY_SECRET_TOKEN_KEY_CRM`, `INTERNAL_SECRET`, `WHATSAPP_VERIFY_TOKEN` | Ya existían; obligatorias. El bot y el broadcast deben enviar `x-internal-secret` |
+| `AUTH_GUARD_MODO`, `VALIDACION_MODO` | Opcionales; sin ellas, estricto. `observacion` es la salida de emergencia |
+| `SWAGGER_HABILITADO` | Opcional; sin ella `/docs` está apagado |
+| `EXPONER_DETALLE_ERRORES` | Nunca `true` en producción |
+| `TWILIO_*`, `OPENAI_API_KEY`, `FIREWORKS_*`, `LISTA_INTERNET_OK`, `SUSPENDED_LIST`, `WHATSAPP_API_BASE_URL`, `TICKET_CONFORMIDAD_LINK_TTL_MINUTES` | Ya no se leen |
+
+El resto (WhatsApp, Meta, almacenamiento, Firebase, MikroTik, plantillas) no cambió.
+
+### 10.4 Clientes que dejan de funcionar
+
+| Cliente | Qué se rompe |
+|---|---|
+| React actual | Sesión con refresh, bodies estrictos, errores nuevos, y las pantallas de clientes, zonas, facturas y pagos, mensajería, rutas de cobro, planes y servicios, sectores y ubicación, y tickets |
+| App Android | Refresh de sesión, cobros en ruta y comprobante, y todas las pantallas de tickets (incluidas las dos rutas que estaban en `dashboard` y la firma del cliente) |
+| Angular | Es la interfaz nueva: se construye con `cambios-contrato-ui.md` |
+| Bot y Banrural | El bot envía solo `titulo` y `descripcion` con su secreto. Banrural nunca se implementó y se retiró |
+
+### 10.5 Sin probar (probar antes o justo después)
+
+- Envíos reales: una campaña y un ticket a un número propio; push; eventos en tiempo real.
+- Subida real de imágenes al almacenamiento (comentarios de tickets).
+- Rutas de los pasos 4 a 7 por HTTP; cambio de precio de un plan con contraseña; instalación por
+  HTTP; reporte de cobranza (posible 400, §6.2).
+- Listas con volumen real (más de 5,400 tickets).
+
+### 10.6 Datos de producción por revisar
+
+- Clientes activos sin plan (no se facturan) y accesos PPPoE con un plan distinto al del cliente.
+- Clientes que dejaron de facturarse por el error de estados ya corregido (§6.1).
+- Clientes con sector de otro municipio, sectores sin nombre y coordenadas fuera de Guatemala.
+- Zonas con generación en los días 29 a 31 (los crons las saltan en meses cortos).
+
+---
+
+## 11. Cómo trabaja el dueño (acuerdos de trabajo)
+
+- Escribe en español y espera respuestas en español, cortas y claras.
+- Un paso a la vez: inventario, fallos, propuesta y **preguntas numeradas con una recomendación**;
+  contesta por número. Se codifica cuando dice que se empiece.
+- Lo que se decida sin preguntar se le cuenta en el informe final, junto con lo que no se probó.
+- Si una cifra sale de la copia local, dilo: es pequeña y no representa a producción.
+- El servidor manda en el contrato: puede romper el React y la app Android (los ajusta después).
+  No se modifican los repositorios del front ni de la app; solo se leen para saber qué usan.
+- Todo listado responde `{ data, meta }`; si una pantalla necesita otra cosa (contadores,
+  bandejas), va en una ruta aparte.
+- Funciones nuevas: solo las que pida (como en tickets).
+- Facturación y cobranza no cambian `estadoCliente`. La contraseña PPPoE es una convención suya:
+  no se cambia su formato.
+- `credito` aplazado; `mikrotik-router` fuera hasta nuevo aviso; los crons al final; reportes
+  aplazado (se arregló solo el diario de tickets).
+
+---
+
+## 12. Entorno local
+
+- Windows, PowerShell y Git Bash. Node 24.
+- Repositorios junto a este, en la misma carpeta `CRM`: `POS-UI` (React; `VITE_CRM_API_URL` es
+  este servidor, `VITE_API_URL` es otro) y `CRM-UI-ANGULAR`. La app Android está en su repositorio
+  (§8). Los clones locales pueden estar atrasados.
+- **Nunca leas el contenido de `.env`** (ni `cat`, `grep` o `sed`). Los nombres de variables se
+  sacan del código.
+- La base de `DATABASE_URL_CRM` local es una copia pequeña y desechable de producción: el dueño
+  autoriza usarla libremente. **Antes de escribir o migrar comprueba desde código que el host es
+  `localhost`.** Nunca `migrate dev`, `migrate reset` ni `db push`.
+- Los routers de esa base son **reales**: ninguna operación PPPoE o SSH. Mensajes, push y subidas
+  de archivos también son reales: sustitúyelos por dobles.
+- No dejes la aplicación corriendo: hay crons reales a las 01:00 y 10:00 de Guatemala y cada dos
+  horas. Git Bash informa la hora en UTC. Al detenerla, comprueba que no queden procesos `node`.
