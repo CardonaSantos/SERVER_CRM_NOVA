@@ -1,0 +1,6 @@
+export enum OrigenPago {
+  RUTA = 'RUTA',
+  OFICINA = 'OFICINA',
+  TRANSFERENCIA = 'TRANSFERENCIA',
+  EN_LINEA = 'EN_LINEA',
+}
