@@ -6,7 +6,6 @@ import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { EmpresaModule } from './empresa/empresa.module';
-import { LocationModule } from './location/location.module';
 import { ClienteModule } from './modules/cliente/cliente.module';
 import { ServicioModule } from './modules/servicio/servicio.module';
 import { ZonaFacturacionModule } from './modules/zona-facturacion/zona-facturacion.module';
@@ -27,7 +26,7 @@ import { ZonaFacturacionCronModule } from './zona-facturacion-cron/zona-facturac
 import { IdContratoModule } from './id-contrato/id-contrato.module';
 import { RutaCobroModule } from './modules/ruta-cobro/ruta-cobro.module';
 import { DashboardModule } from './dashboard/dashboard.module';
-import { SectorModule } from './sector/sector.module';
+import { UbicacionModule } from './modules/ubicacion/ubicacion.module';
 import { ContratoClienteModule } from './contrato-cliente/contrato-cliente.module';
 import { MikroTikModule } from './mikro-tik/mikro-tik.module';
 import { MetasTicketsModule } from './metas-tickets/metas-tickets.module';
@@ -68,7 +67,6 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     UserModule,
     PrismaModule,
     EmpresaModule,
-    LocationModule,
     ClienteModule,
     ServicioModule,
     ZonaFacturacionModule,
@@ -96,7 +94,7 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     IdContratoModule,
     RutaCobroModule,
     DashboardModule,
-    SectorModule,
+    UbicacionModule,
     ContratoClienteModule,
     MikroTikModule,
     MetasTicketsModule,
