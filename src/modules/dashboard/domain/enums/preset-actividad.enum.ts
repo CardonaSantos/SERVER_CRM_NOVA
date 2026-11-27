@@ -1,0 +1,7 @@
+export enum PresetActividad {
+  ULTIMOS_7_DIAS = '7D',
+  ULTIMOS_30_DIAS = '30D',
+  ULTIMOS_12_MESES = '12M',
+  HISTORICO = 'HISTORICO',
+  PERSONALIZADO = 'CUSTOM',
+}

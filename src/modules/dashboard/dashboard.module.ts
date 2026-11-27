@@ -1,0 +1,41 @@
+import { Module } from '@nestjs/common';
+import { PrismaModule } from 'src/prisma/prisma.module';
+import { ObtenerActividadTicketsUseCase } from './application/use-cases/obtener-actividad-tickets.use-case';
+import { ObtenerCobrosUseCase } from './application/use-cases/obtener-cobros.use-case';
+import { ObtenerInstalacionesHistoricasUseCase } from './application/use-cases/obtener-instalaciones-historicas.use-case';
+import { ObtenerInstalacionesMesUseCase } from './application/use-cases/obtener-instalaciones-mes.use-case';
+import { ObtenerPanelTecnicoUseCase } from './application/use-cases/obtener-panel-tecnico.use-case';
+import { ObtenerResumenUseCase } from './application/use-cases/obtener-resumen.use-case';
+import { ACTIVIDAD_TICKETS_QUERY } from './domain/ports/actividad-tickets-query.port';
+import { COBROS_QUERY } from './domain/ports/cobros-query.port';
+import { INSTALACIONES_QUERY } from './domain/ports/instalaciones-query.port';
+import { PANEL_TECNICO_QUERY } from './domain/ports/panel-tecnico-query.port';
+import { RESUMEN_QUERY } from './domain/ports/resumen-query.port';
+import { ActividadTicketsPrismaQuery } from './infra/prisma/actividad-tickets-prisma.query';
+import { CobrosPrismaQuery } from './infra/prisma/cobros-prisma.query';
+import { InstalacionesPrismaQuery } from './infra/prisma/instalaciones-prisma.query';
+import { PanelTecnicoPrismaQuery } from './infra/prisma/panel-tecnico-prisma.query';
+import { ResumenPrismaQuery } from './infra/prisma/resumen-prisma.query';
+import { DashboardController } from './presentation/http/dashboard.controller';
+
+/** Paneles de solo lectura: no escribe en ninguna tabla ni publica fachada. */
+@Module({
+  imports: [PrismaModule],
+  controllers: [DashboardController],
+  providers: [
+    // Casos de uso
+    ObtenerResumenUseCase,
+    ObtenerInstalacionesMesUseCase,
+    ObtenerInstalacionesHistoricasUseCase,
+    ObtenerActividadTicketsUseCase,
+    ObtenerCobrosUseCase,
+    ObtenerPanelTecnicoUseCase,
+    // Adaptadores
+    { provide: RESUMEN_QUERY, useClass: ResumenPrismaQuery },
+    { provide: INSTALACIONES_QUERY, useClass: InstalacionesPrismaQuery },
+    { provide: ACTIVIDAD_TICKETS_QUERY, useClass: ActividadTicketsPrismaQuery },
+    { provide: COBROS_QUERY, useClass: CobrosPrismaQuery },
+    { provide: PANEL_TECNICO_QUERY, useClass: PanelTecnicoPrismaQuery },
+  ],
+})
+export class DashboardModule {}

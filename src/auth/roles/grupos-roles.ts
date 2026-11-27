@@ -25,7 +25,7 @@ export const ROLES_SUPER_ADMIN: RolUsuario[] = [RolUsuario.SUPER_ADMIN];
 /** Técnicos de campo. */
 export const ROLES_TECNICO: RolUsuario[] = [RolUsuario.TECNICO];
 
-/** Todos menos el técnico: asignan y fijan tickets de soporte. */
+/** Todos menos el técnico: asignan y fijan tickets de soporte y ven el panel general. */
 export const ROLES_SIN_TECNICO: RolUsuario[] = Object.values(RolUsuario).filter(
   (rol) => rol !== RolUsuario.TECNICO,
 );
