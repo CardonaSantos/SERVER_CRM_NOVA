@@ -94,6 +94,8 @@ const FRASES_GENERICAS = new Set([
   'Conflict',
   'Gone',
   'Payload Too Large',
+  // Multer, al superar el tamaño de un archivo.
+  'File too large',
   'Unsupported Media Type',
   'Unprocessable Entity',
   'Too Many Requests',

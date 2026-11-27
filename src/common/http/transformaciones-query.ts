@@ -55,3 +55,21 @@ export const Recortar = () =>
 
     return texto === '' ? undefined : texto;
   });
+
+/**
+ * Como `ComoArreglo`, para ids: `?ids=1,2` → [1, 2]. Lo que no sea número
+ * queda como NaN para que `@IsInt({ each: true })` lo rechace.
+ */
+export const ComoArregloDeNumeros = () =>
+  Transform(({ value }: { value: unknown }) => {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+
+    const lista = Array.isArray(value) ? value : [value];
+
+    return lista
+      .flatMap((v) => (typeof v === 'string' ? v.split(',') : [v]))
+      .filter((v) => v !== '')
+      .map((v) => Number(v));
+  });

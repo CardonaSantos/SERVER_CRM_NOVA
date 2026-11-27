@@ -6,6 +6,7 @@ import {
   HttpException,
   InternalServerErrorException,
   NotFoundException,
+  PayloadTooLargeException,
   ServiceUnavailableException,
   UnauthorizedException,
   ValidationPipe,
@@ -333,6 +334,17 @@ describe('construirRespuestaError — contrato único de error', () => {
 
     expect(r.status).toBe(413);
     expect(r.cuerpo.codigo).toBe('CARGA_DEMASIADO_GRANDE');
+  });
+
+  it('un archivo demasiado grande se explica en español', () => {
+    const r = construirRespuestaError(
+      new PayloadTooLargeException('File too large'),
+      ID,
+    );
+
+    expect(r.cuerpo.message).toBe(
+      'El archivo o la solicitud es demasiado grande.',
+    );
   });
 
   it('camposDesdeMensajes agrupa por campo', () => {
