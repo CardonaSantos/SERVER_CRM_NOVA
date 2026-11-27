@@ -75,7 +75,8 @@ Módulos hexagonales conformes en `src/modules/` (usa estos como **plantilla**):
 | `servicio` | Catálogo que nunca se borra físicamente: eliminar solo lo nunca usado, bloqueo de fila entre asignar y eliminar, fachada consumida por cinco módulos y cambio de precio con contraseña |
 | `ubicacion` | Catálogo de solo lectura con carga repetible por SQL, y comprobación de coherencia entre referencias que solo mira lo que cambia |
 | `real-time-location` | Puerto de transacción de intención (`application/ports/<modulo>-transaction.port.ts`), cron delgado con `RELOJ`, policies de métricas |
-| `ticket-soporte-historial` | Fachada consumida por un módulo **legacy** (`tickets-soporte`) dentro de su transacción (`PrismaTransaccional.unirseA`, transitorio) |
+| `ticket-soporte` | Módulo grande de punta a punta: máquina de estados con acciones según quién actúa, lista por bandejas con contadores, línea de tiempo, adjuntos con compensación y adaptadores transitorios sobre servicios legacy |
+| `ticket-soporte-historial` | Bitácora publicada como fachada que otro módulo llama dentro de su unidad de trabajo |
 | `ticket-soporte-conformidad` | Compensación de efectos (subida de archivo + rollback), traducción de `P2002` a `CONFLICTO` |
 | `almacenamiento-media`, `mikrotik-ssh`, `pppoe-credentials`, `mikrotik-router-credentials` | Capacidades técnicas publicadas como puerto en `public/` |
 
@@ -100,8 +101,8 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 ### 2.3 Línea base medida
 
 - `npm run build`: verde.
-- `npm run lint:check`: **148** errores tras el paso 17 (no subir; los archivos que toques quedan sin errores nuevos).
-- Jest: 1018/1018; todas las suites en verde.
+- `npm run lint:check`: **106** errores tras el paso 11 (no subir; los archivos que toques quedan sin errores nuevos).
+- Jest: 1090/1090; todas las suites en verde.
 - Correr un spec: `npm test -- src/modules/<modulo>` (1–2 min). Con la caché fría la suite completa
   puede pasar de 5 minutos: córrela en segundo plano.
 
@@ -109,7 +110,6 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 
 | Deuda | Se resuelve en |
 |---|---|
-| `PrismaTransaccional.unirseA(tx, …)` (puente para que `tickets-soporte` legacy use la fachada del historial dentro de su `$transaction`) | Refactor de `ticket-soporte`: se borra `unirseA` y su spec |
 | `real-time-location` y otros emiten por `WebSocketServices` legacy (`src/web-sockets`) | Paso `common/tiempo-real` |
 | `pppoe-automatizacion` lee el router con puertos internos de `src/mikro-tik` | `mikrotik-router` |
 | `cliente` escribe el contrato (`CONTRATO_FISICO`) por un adaptador propio y usa el servicio de `credito` (`CLASIFICACION_CREDITO`) | `contrato-cliente` y `credito`: pasan a sus fachadas |
@@ -126,7 +126,6 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 | Mensajería sin probar por HTTP ni contra Meta (solo proveedor falso y base local) | Antes del deploy: una campaña a un número propio |
 | El webhook de Meta descarta los estados de entrega: `ENVIADO` es "aceptado por WhatsApp" | Si el dueño pide confirmar entregas |
 | Crons y tickets envían uno por uno por `MENSAJERIA_CLIENTE` sin registrar el envío; `RecordatorioPago` no se escribe | `ciclo-facturacion` |
-| La creación de tickets registra el DTO completo (incluye teléfono) y espera a WhatsApp antes de responder | `ticket-soporte` |
 | En producción (`main`) plantillas y campañas no piden sesión; el React no envía token en esas pantallas y crea plantillas contra la URL del POS | Se cierra con el deploy; la UI nueva envía el token a la URL del CRM |
 | Los crons leen `FacturacionZona` directamente (solo se les agregó `eliminadoEn: null`) | `ciclo-facturacion`: por la fachada de `zona-facturacion` |
 | Los `Input` públicos de prealta/provisionamiento PPPoE aún llevan `empresaId` | Cuando se toquen; `empresaId` no es filtro (una empresa por BD) |
@@ -147,6 +146,15 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 | Datos de la copia local por revisar: 4 clientes con un sector de otro municipio, un sector sin nombre y sin clientes, y 11 de 160 coordenadas de clientes fuera de Guatemala | El dueño |
 | La app Android (`checkpoint-android-studio`) no guarda el `refresh_token` ni renueva la sesión: con esta rama el access token dura 20 min | **Antes del deploy**: el dueño ajusta la app (§4.1 de la guía post-auth) |
 | La app Android no puede cobrar contra esta rama: envía `cobradorId` y `observaciones` al pagar en ruta (400), exige `saldo.saldoFavor` y la forma vieja de las rutas, y el comprobante exige `empresa.id` y `servicios` (pasos 6 y 8) | El dueño la actualizará en su momento (decisión del 26-nov-2026): el servidor no conserva compatibilidad. Desplegar sin la app nueva deja a los cobradores sin cobrar |
+| Migración `20261128000000_ticket_soporte_cancelacion_comentarios` (solo aditiva), aplicada solo en local | **En el deploy**: `prisma migrate deploy` |
+| `ticket-soporte` avisa por `WebSocketServices`, `FirebasePushService` y `NotificacionesService`, y suma metas con `MetasTicketsService`, por adaptadores en su `infra/` | `common/tiempo-real`, `notificacion` y `ticket-soporte-metrica` |
+| Metas: cada primer cierre suma a la última meta abierta del técnico aunque esté fuera de sus fechas (reabrir ya no suma) | `ticket-soporte-metrica` |
+| **El cliente no tiene cómo firmar** la conformidad: el enlace público se retiró y la app aún lo llama | Paso aparte, el siguiente de tickets (decisión del dueño, 27-nov-2026) |
+| Las imágenes de un comentario eliminado se ocultan pero siguen en el almacenamiento, visibles por enlace | Si el dueño pide destruirlas |
+| `dashboard` sigue leyendo tickets directamente (panel del técnico, actividad, en proceso) | `dashboard` |
+| En producción (`main`) y sin sesión: `DELETE /tickets-soporte/delete-all` borra todos los tickets, `DELETE /ticket-soluciones` todo el catálogo, y "eliminar etiqueta" cancela el ticket con ese número | Se cierra con el deploy. Mientras tanto, bloquear en el proxy y no eliminar etiquetas |
+| La app Android y el React usan las rutas viejas de tickets (incluidas las dos de `dashboard`) | La UI nueva (ver `cambios-contrato-ui.md`, filas de `ticket-soporte`) |
+| La copia local tiene 61 tickets y producción más de 5,400: las listas no se han medido con volumen real | Probar con una copia reciente antes del deploy |
 
 ---
 
@@ -219,8 +227,15 @@ Decisiones del dueño del **26-nov-2026**. Los nombres nuevos siguen §15 del es
 - **Los crons van al final** y tendrán un tratamiento especial que definirá el dueño. Hasta entonces
   no se toca su comportamiento (tampoco el de `credito`).
 - **Reportes** no se migra hasta nuevo aviso.
-- **Tickets:** a futuro habrá comentarios con imágenes, borrado de comentarios, etc.; el comentario
-  se modela como pieza propia de `ticket-soporte`.
+- **Tickets** (27-nov-2026): estados Abierta → En proceso → En revisión → Resuelta, y Cancelada;
+  sin pausar ni archivar (los antiguos se ven en la fase equivalente, sin modificarse). Un ticket
+  nunca se borra: se cancela con motivo. La oficina cambia cualquier estado, edita, asigna y fija;
+  el técnico ve y comenta solo los suyos y solo los inicia y envía a revisión; cualquiera con sesión
+  crea. El reloj corre solo en proceso y sin registro no es cero; reabrir no suma a metas. El autor
+  borra sus comentarios y la oficina cualquiera (borrado lógico); hasta 5 imágenes de 8 MB visibles
+  por enlace. Etiquetas y soluciones se ocultan. La lista usa bandejas, búsqueda en todos los
+  estados y activos del más antiguo al más nuevo, con el formato `{ data, meta }`. La solución al
+  resolver es opcional. La firma del cliente es un paso aparte.
 
 ### 3.2 Orden de trabajo
 
@@ -238,8 +253,8 @@ En nombres, fusiones y alcance esta tabla manda sobre la propuesta de §15.1 del
 | 7 | `mensajeria-cliente` (H6) | `whatsapp-template`, `cloud-api-meta`, `whatsapp-api-meta`, `whatsapp-campaigns` | ✅ Hecho | `mensajeria-cliente #1–#2`: campañas con historial, fachada `MENSAJERIA_CLIENTE`. **Nunca** enviar mensajes en pruebas |
 | 8 | `ruta-cobro` | `ruta-cobro` | ✅ Hecho | `ruta-cobro #1–#2`: fachada `RUTA_COBRO`, borrado lógico, totales calculados, rutas web renombradas |
 | 9 | `credito` | `credito` | Aplazado | Decisión del dueño (26-nov-2026): no urge. Ya parcialmente hexagonal. Su cron no cambia de comportamiento |
-| 10 | `mikrotik-router` | `mikro-tik` | Pendiente | Quita la deuda de `pppoe-automatizacion` |
-| 11 | `ticket-soporte` | `tickets-soporte`, `ticket-resumen`, `ticket-seguimiento`, `ticket-soluciones`, `tags-ticket`, `bot-functions` | Pendiente | Al terminar se borra `unirseA`. Conservar `@RequiereSecretoInterno()` |
+| 10 | `mikrotik-router` | `mikro-tik` | Fuera hasta nuevo aviso | Era para clientes por IP y ya usan PPPoE (dueño, 27-nov-2026). **No borrar** `src/mikro-tik`: PPPoE lo importa |
+| 11 | `ticket-soporte` | `tickets-soporte`, `ticket-resumen`, `ticket-seguimiento`, `ticket-soluciones`, `tags-ticket`, `bot-functions` | ✅ Hecho | `ticket-soporte #1–#3`: bandejas, acciones de estado, comentarios con imágenes, reporte diario en hora de Guatemala; `unirseA` retirado |
 | 12 | `notificacion` | `notificaciones`, `push-notifications`, `push-dispositivos` | Pendiente | Migrar y mejorar. Push = efecto real |
 | 13 | `common/tiempo-real` | `web-sockets` | Pendiente | Incluye `POST /internal/server/broadcast` |
 | 14 | `usuario` | `user`, `perfil` | Pendiente | Sin tocar `auth`; solo SUPER_ADMIN edita a otros |
@@ -515,9 +530,9 @@ a la UI (fugas de campos), y `catch` que tragan errores y devuelven `200`.
   `find src/modules/<m> -type d -empty -delete`.
 - El script de conformidad marca como falso positivo un enum con el valor `'TECNICO'` (check 13); se
   acepta y se menciona en el commit.
-- Un módulo legacy que consume una fachada dentro de su propio `prisma.$transaction` usa
-  `PrismaTransaccional.unirseA(tx, () => fachada.metodo(...))` (transitorio; no lo uses en código
-  hexagonal nuevo).
+- Pruebas HTTP con `TestingModule`: activa `app.getHttpAdapter().getInstance().set('query parser',
+  'extended')` como `main.ts` (sin eso `ids[]=1` no se lee) y agrega `RolesGuard` a mano si
+  sustituyes `AuthModule`.
 - Entidades: validaciones que antes eran `Error` genérico daban 500; como `DomainError` `INVALIDO`
   dan 400. Es un cambio de contrato y se anota.
 - Si un script de `scripts/` deja de compilar porque arma el módulo a mano, se borra (queda en git)
