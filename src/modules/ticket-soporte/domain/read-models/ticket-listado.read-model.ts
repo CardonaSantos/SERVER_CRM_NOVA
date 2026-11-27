@@ -43,6 +43,7 @@ export type ClienteDeTicket = {
 export type TicketListItem = {
   id: number;
   titulo: string | null;
+  descripcion: string | null;
   estado: EstadoTicket;
   prioridad: PrioridadTicket;
   fijado: boolean;

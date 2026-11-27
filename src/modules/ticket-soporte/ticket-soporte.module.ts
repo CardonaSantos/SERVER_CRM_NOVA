@@ -1,11 +1,9 @@
 import { Module } from '@nestjs/common';
-import { MetasTicketsModule } from 'src/metas-tickets/metas-tickets.module';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { AlmacenamientoMediaModule } from '../almacenamiento-media/almacenamiento-media.module';
 import { MensajeriaClienteModule } from '../mensajeria-cliente/mensajeria-cliente.module';
 import { NotificacionModule } from '../notificacion/notificacion.module';
 import { TicketSoporteHistorialModule } from '../ticket-soporte-historial/ticket-soporte-historial.module';
-import { METAS_TICKET } from './application/ports/metas-ticket.port';
 import { IMAGEN_COMENTARIO } from './application/ports/imagen-comentario.port';
 import { TICKET_AVISOS } from './application/ports/ticket-avisos.port';
 import { AccesoTicketService } from './application/services/acceso-ticket.service';
@@ -46,7 +44,6 @@ import { TICKET_QUERY } from './domain/ports/ticket-query.port';
 import { TICKET_REFERENCIA_QUERY } from './domain/ports/ticket-referencia-query.port';
 import { TICKET_REPOSITORY } from './domain/ports/ticket-repository.port';
 import { ImagenComentarioAlmacenamientoAdapter } from './infra/almacenamiento/imagen-comentario-almacenamiento.adapter';
-import { MetasTicketLegacyAdapter } from './infra/metas/metas-ticket-legacy.adapter';
 import { TicketAvisosNotificacionAdapter } from './infra/notificacion/ticket-avisos-notificacion.adapter';
 import { CatalogoTicketPrismaQuery } from './infra/prisma/catalogo-ticket-prisma.query';
 import { ComentarioTicketPrismaRepository } from './infra/prisma/comentario-ticket-prisma.repository';
@@ -72,8 +69,6 @@ import { TicketSoporteController } from './presentation/http/ticket-soporte.cont
     MensajeriaClienteModule,
     AlmacenamientoMediaModule,
     NotificacionModule,
-    // Legacy: se reemplaza al refactorizar metas.
-    MetasTicketsModule,
   ],
   controllers: [
     TicketSoporteController,
@@ -135,7 +130,6 @@ import { TicketSoporteController } from './presentation/http/ticket-soporte.cont
     },
     { provide: CATALOGO_TICKET_QUERY, useClass: CatalogoTicketPrismaQuery },
     { provide: TICKET_AVISOS, useClass: TicketAvisosNotificacionAdapter },
-    { provide: METAS_TICKET, useClass: MetasTicketLegacyAdapter },
     {
       provide: IMAGEN_COMENTARIO,
       useClass: ImagenComentarioAlmacenamientoAdapter,

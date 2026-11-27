@@ -30,7 +30,6 @@ function armar() {
       base.transicion,
       base.tickets,
       base.consultas,
-      base.metas,
     ),
   };
 }
@@ -55,7 +54,6 @@ describe('ciclo de un ticket', () => {
     });
     expect(t.historial.registrarEvento).toHaveBeenCalledTimes(3);
     expect(t.avisos.cambioEstado).toHaveBeenCalledTimes(3);
-    expect(t.metas.sumarResuelto.mock.calls).toEqual([[1], [2]]);
   });
 
   it('el reloj queda a nombre del asignado que inició', async () => {
@@ -127,17 +125,15 @@ describe('ciclo de un ticket', () => {
     );
   });
 
-  it('reabrir cuenta la reapertura y el nuevo cierre no suma a metas', async () => {
+  it('reabrir cuenta la reapertura', async () => {
     const t = armar();
     const ticketId = await t.sembrar({ tecnicoId: 1 });
     await t.resolver.execute({ ticketId, ...OFICINA });
     await t.reabrir.execute({ ticketId, ...OFICINA });
-    t.metas.sumarResuelto.mockClear();
 
     await t.resolver.execute({ ticketId, ...OFICINA });
 
     expect(await t.tickets.reaperturas(ticketId)).toBe(1);
-    expect(t.metas.sumarResuelto).not.toHaveBeenCalled();
   });
 
   it('un ticket resuelto no se vuelve a resolver ni se cancela', async () => {
@@ -160,15 +156,5 @@ describe('ciclo de un ticket', () => {
     await expect(
       t.resolver.execute({ ticketId, ...OFICINA, solucionId: 99 }),
     ).rejects.toThrow(TicketSolucionNoDisponibleError);
-  });
-
-  it('una meta que falla no deshace el cierre', async () => {
-    const t = armar();
-    const ticketId = await t.sembrar({ tecnicoId: 1 });
-    t.metas.sumarResuelto.mockRejectedValueOnce(new Error('falla'));
-
-    await expect(
-      t.resolver.execute({ ticketId, ...OFICINA }),
-    ).resolves.toMatchObject({ estado: FaseTicket.RESUELTA });
   });
 });

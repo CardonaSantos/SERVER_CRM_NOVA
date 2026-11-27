@@ -19,6 +19,7 @@ export class ClienteTicketResponseDto {
 export class TicketResponseDto {
   id: number;
   titulo: string | null;
+  descripcion: string | null;
   estado: FaseTicket;
   prioridad: PrioridadTicket;
   fijado: boolean;

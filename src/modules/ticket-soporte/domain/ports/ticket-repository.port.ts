@@ -33,9 +33,6 @@ export interface TicketRepositoryPort {
 
   cerrarCiclo(cicloId: number, fin: Date, minutos: number): Promise<void>;
 
-  /** Cuántas veces se reabrió. */
-  reaperturas(ticketId: number): Promise<number>;
-
   /** Crea o actualiza el resumen del cierre; conserva las reaperturas. */
   cerrarResumen(params: CerrarResumenParams): Promise<void>;
 

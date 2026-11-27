@@ -27,7 +27,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { UbicacionModule } from './modules/ubicacion/ubicacion.module';
 import { ContratoClienteModule } from './contrato-cliente/contrato-cliente.module';
 import { MikroTikModule } from './mikro-tik/mikro-tik.module';
-import { MetasTicketsModule } from './metas-tickets/metas-tickets.module';
+import { TicketSoporteMetricaModule } from './modules/ticket-soporte-metrica/ticket-soporte-metrica.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { AlmacenamientoMediaModule } from './modules/almacenamiento-media/almacenamiento-media.module';
 import { NotificacionModule } from './modules/notificacion/notificacion.module';
@@ -91,7 +91,7 @@ import { RealTimeLocationModule } from './modules/real-time-location/real-time-l
     UbicacionModule,
     ContratoClienteModule,
     MikroTikModule,
-    MetasTicketsModule,
+    TicketSoporteMetricaModule,
     ReportsModule,
     AlmacenamientoMediaModule,
     NotificacionModule,

@@ -209,7 +209,6 @@ export function armarTickets() {
     clienteTicketCreado: jest.fn(async () => undefined),
     ticketDelBot: jest.fn(async () => undefined),
   };
-  const metas = { sumarResuelto: jest.fn(async () => undefined) };
   const unidad = { ejecutar: <T>(trabajo: () => Promise<T>) => trabajo() };
   const referencias = new ReferenciasTicketService(consultas);
   const acceso = new AccesoTicketService(tickets);
@@ -228,7 +227,6 @@ export function armarTickets() {
     consultas,
     historial,
     avisos,
-    metas,
     unidad,
     referencias,
     acceso,

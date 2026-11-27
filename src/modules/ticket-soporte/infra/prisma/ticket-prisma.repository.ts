@@ -113,15 +113,6 @@ export class TicketPrismaRepository implements TicketRepositoryPort {
     });
   }
 
-  async reaperturas(ticketId: number): Promise<number> {
-    const resumen = await this.db.ticketResumen.findUnique({
-      where: { ticketId },
-      select: { numeroReaperturas: true },
-    });
-
-    return resumen?.numeroReaperturas ?? 0;
-  }
-
   async cerrarResumen({
     ticketId,
     ...datos

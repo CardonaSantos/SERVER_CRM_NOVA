@@ -51,6 +51,7 @@ const SELECCION_CLIENTE = {
 const SELECCION_LISTA = {
   id: true,
   titulo: true,
+  descripcion: true,
   estado: true,
   prioridad: true,
   fijado: true,
@@ -73,7 +74,6 @@ const SELECCION_LISTA = {
 
 const SELECCION_DETALLE = {
   ...SELECCION_LISTA,
-  descripcion: true,
   fechaAsignacion: true,
   fechaInicioAtencion: true,
   fechaResolucionTecnico: true,
@@ -160,6 +160,7 @@ function aListItem(record: RegistroLista): TicketListItem {
   return {
     id: record.id,
     titulo: record.titulo,
+    descripcion: record.descripcion,
     estado: record.estado as EstadoTicket,
     prioridad: record.prioridad as PrioridadTicket,
     fijado: record.fijado,

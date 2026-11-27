@@ -38,6 +38,7 @@ export class TicketPresenter {
     return {
       id: m.id,
       titulo: m.titulo,
+      descripcion: m.descripcion,
       estado: faseDe(m.estado),
       prioridad: m.prioridad,
       fijado: m.fijado,
