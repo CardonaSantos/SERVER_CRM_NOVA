@@ -9,7 +9,7 @@
 > | Dato | Valor |
 > |---|---|
 > | Rama de trabajo | `refactorizaciones-hexagonales` (usa la punta; último cambio de código `e69886e`) |
-> | Punto de control | `checkpoints-refactorizaciones` en `ee2b197` (26-nov-2026; solo se mueve si el dueño lo pide) |
+> | Punto de control | `checkpoints-refactorizaciones` = la rama de trabajo en `refactorizacion docs #41` (27-nov-2026): última versión antes del bloque final. Solo se mueve si el dueño lo pide |
 > | Producción (`main`) | `108c6ef`: **nada de este trabajo está desplegado**. `main` es ancestro de la rama |
 > | Para desplegar | §10 |
 > | Prioridad de documentos | 1) `estandar-hexagonal-crm-nova.md` (forma de todo módulo) · 2) esta guía (estado, orden y cómo) · 3) `cambios-contrato-ui.md` (todo cambio visible) y `eventos-tiempo-real.md` (sockets) · 4) las guías de auth (historia) |
@@ -33,7 +33,10 @@
 | Migraciones por aplicar en producción | **12** (§10.2) |
 | Commits sobre `main` | Más de 200 |
 
-**Siguiente paso:** lo elige el dueño. No empieces ninguno hasta que lo diga.
+**Siguiente paso:** el bloque final, en este orden: 1) `tareas-programadas`, 2) `cobranza`,
+3) `ciclo-facturacion`. Empieza por presentar el inventario de `tareas-programadas` (§4.1) y espera a
+que el dueño diga que se empieza. Pendiente suelto y autorizado: comprobar el reporte de cobranza de
+`generate-reports` con el pipe estricto y, si falla, el cambio mínimo en un commit aparte (§6.2).
 
 **Modelo acordado por paso** (27-nov-2026): `tareas-programadas`, `cobranza` y
 `ciclo-facturacion` → Opus 5.5 high o superior.
@@ -722,6 +725,16 @@ docs/guia-fase-legacy-crm-nova.md (es el documento de traspaso). Mide la línea 
 lint:check). Dime en pocas líneas dónde estamos y qué queda, y espera a que yo elija el paso.
 Cuando lo elija, preséntame su inventario (§4.1), los bugs, la propuesta y las preguntas.
 No cambies código hasta que yo confirme.
+```
+
+Para el bloque final (desde el 27-nov-2026), agrega al prompt:
+
+```
+Toca el bloque final: tareas-programadas, luego cobranza y de último ciclo-facturacion
+(zona-facturacion-cron). Empieza por el inventario de tareas-programadas: qué crons existen, cuándo
+corren, qué escriben y qué efectos reales tienen, más la propuesta de candado, registro de
+ejecución y reintento con su migración aditiva. Si existe ../NOTAS-SEGURIDAD-CRM.md, léelo y
+recuérdame lo pendiente. Nunca ejecutes un cron ni nada que envíe mensajes o toque routers.
 ```
 
 ---
