@@ -6,7 +6,6 @@ import {
   TrackingSesionNoEncontradaError,
 } from '../../domain/errors/real-time-location.errors';
 import { TecnicoTrackingRealtimeView } from '../../domain/read-models/tecnico-tracking.read-model';
-import { UltimaUbicacionReadModel } from '../../domain/read-models/ultima-ubicacion.read-model';
 import { RealTimeLocationTransactionFake } from '../../test/fakes/real-time-location-transaction.fake';
 import { TecnicoTrackingQueryFake } from '../../test/fakes/tecnico-tracking-query.fake';
 import { TecnicoTrackingRealtimeFake } from '../../test/fakes/tecnico-tracking-realtime.fake';
@@ -14,7 +13,6 @@ import {
   INICIO,
   TecnicoTrackingRepositoryFake,
 } from '../../test/fakes/tecnico-tracking-repository.fake';
-import { UltimaUbicacionQueryFake } from '../../test/fakes/ultima-ubicacion-query.fake';
 import {
   RegistrarUbicacionTecnicoInput,
   RegistrarUbicacionTecnicoUseCase,
@@ -39,7 +37,6 @@ describe('RegistrarUbicacionTecnicoUseCase', () => {
   let transaccion: RealTimeLocationTransactionFake;
   let consulta: TecnicoTrackingQueryFake;
   let realtime: TecnicoTrackingRealtimeFake;
-  let ultimas: UltimaUbicacionQueryFake;
   let useCase: RegistrarUbicacionTecnicoUseCase;
 
   beforeEach(() => {
@@ -47,13 +44,11 @@ describe('RegistrarUbicacionTecnicoUseCase', () => {
     transaccion = new RealTimeLocationTransactionFake(sesiones);
     consulta = new TecnicoTrackingQueryFake();
     realtime = new TecnicoTrackingRealtimeFake();
-    ultimas = new UltimaUbicacionQueryFake();
     useCase = new RegistrarUbicacionTecnicoUseCase(
       sesiones,
       transaccion,
       consulta,
       realtime,
-      ultimas,
       new RelojFijo(AHORA),
     );
   });
@@ -135,40 +130,6 @@ describe('RegistrarUbicacionTecnicoUseCase', () => {
     });
     expect(transaccion.ubicaciones).toHaveLength(1);
     expect(realtime.ubicaciones).toHaveLength(0);
-  });
-
-  it('emite la posición actual para el mapa del dashboard', async () => {
-    sesiones.sembrar();
-    const actual = { usuarioId: 7 } as UltimaUbicacionReadModel;
-    ultimas.ubicaciones = [actual];
-
-    await useCase.execute(INPUT);
-
-    expect(realtime.ultimas).toEqual([actual]);
-  });
-
-  it('si falla la vista de la sesión igual emite la posición actual', async () => {
-    sesiones.sembrar();
-    consulta.fallaVistaRealtime = new Error('consulta caída');
-    ultimas.ubicaciones = [{ usuarioId: 7 } as UltimaUbicacionReadModel];
-
-    await useCase.execute(INPUT);
-
-    expect(realtime.ultimas).toHaveLength(1);
-  });
-
-  it('si falla la posición actual el punto se guarda y la vista se emite', async () => {
-    sesiones.sembrar();
-    consulta.vistaRealtime = {
-      tecnico: { id: 7 },
-    } as TecnicoTrackingRealtimeView;
-    ultimas.fallaPorUsuario = new Error('consulta caída');
-
-    await expect(useCase.execute(INPUT)).resolves.toMatchObject({
-      ubicacionId: 1,
-    });
-    expect(realtime.ubicaciones).toHaveLength(1);
-    expect(realtime.ultimas).toHaveLength(0);
   });
 
   it('si ya no hay sesión activa para la vista (un OFF ganó) no emite nada', async () => {

@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from 'src/prisma/prisma.module';
-import { GatewayModule } from 'src/web-sockets/websocket.module';
 import { ClienteCobranzaModule } from '../cliente-cobranza/cliente-cobranza.module';
 import { RutaCobroModule } from '../ruta-cobro/ruta-cobro.module';
 import { FacturacionFacade } from './application/facade/facturacion.facade';
@@ -40,12 +39,7 @@ import { FACTURACION } from './public/facturacion.facade.port';
  * API pública (`public/`): la fachada `FACTURACION`.
  */
 @Module({
-  imports: [
-    PrismaModule,
-    GatewayModule,
-    ClienteCobranzaModule,
-    RutaCobroModule,
-  ],
+  imports: [PrismaModule, ClienteCobranzaModule, RutaCobroModule],
   controllers: [FacturacionController, FacturaEliminacionController],
   providers: [
     // Casos de uso

@@ -4,10 +4,9 @@ import { NotificacionesController } from './presentation/notificaciones.controll
 import { NOTIFICATION_REPOSITORY } from './domain/notification-repository';
 import { PrismaNotificationRepository } from './infraestructure/prisma-notification-respository';
 import { PrismaModule } from 'src/prisma/prisma.module';
-import { GatewayModule } from 'src/web-sockets/websocket.module';
 
 @Module({
-  imports: [PrismaModule, GatewayModule],
+  imports: [PrismaModule],
   controllers: [NotificacionesController],
   providers: [
     NotificacionesService,

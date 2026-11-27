@@ -3,7 +3,6 @@ import { MetasTicketsModule } from 'src/metas-tickets/metas-tickets.module';
 import { NotificacionesModule } from 'src/notificaciones/notificaciones.module';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { PushNotificationsModule } from 'src/push-notifications/push-notifications.module';
-import { GatewayModule } from 'src/web-sockets/websocket.module';
 import { AlmacenamientoMediaModule } from '../almacenamiento-media/almacenamiento-media.module';
 import { MensajeriaClienteModule } from '../mensajeria-cliente/mensajeria-cliente.module';
 import { TicketSoporteHistorialModule } from '../ticket-soporte-historial/ticket-soporte-historial.module';
@@ -73,8 +72,7 @@ import { TicketSoporteController } from './presentation/http/ticket-soporte.cont
     TicketSoporteHistorialModule,
     MensajeriaClienteModule,
     AlmacenamientoMediaModule,
-    // Legacy: se reemplazan al refactorizar tiempo real, notificación y metas.
-    GatewayModule,
+    // Legacy: se reemplazan al refactorizar notificación y metas.
     PushNotificationsModule,
     NotificacionesModule,
     MetasTicketsModule,

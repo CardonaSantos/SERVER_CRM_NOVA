@@ -46,17 +46,6 @@ export class UltimaUbicacionPrismaQuery implements UltimaUbicacionQueryPort {
     return records.map((record) => this.toReadModel(record));
   }
 
-  async findByUsuario(
-    usuarioId: number,
-  ): Promise<UltimaUbicacionReadModel | null> {
-    const record = await this.prisma.ubicacionActual.findUnique({
-      where: { usuarioId },
-      select: SELECT_ULTIMA_UBICACION,
-    });
-
-    return record ? this.toReadModel(record) : null;
-  }
-
   private toReadModel(record: UltimaUbicacionRecord): UltimaUbicacionReadModel {
     return {
       usuarioId: record.usuarioId,

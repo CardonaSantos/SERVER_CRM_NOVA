@@ -32,7 +32,7 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { AlmacenamientoMediaModule } from './modules/almacenamiento-media/almacenamiento-media.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { MensajeriaClienteModule } from './modules/mensajeria-cliente/mensajeria-cliente.module';
-import { GatewayModule } from './web-sockets/websocket.module';
+import { TiempoRealModule } from './common/tiempo-real/tiempo-real.module';
 import { CreditoModule } from './credito/credito.module';
 import { CuotasPagoModule } from './credito/cuotas-pago/cuotas-pago.module';
 import { GenerateReportsModule } from './generate-reports/generate-reports.module';
@@ -82,6 +82,8 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     // Global: puerto RELOJ (hora y fecha de negocio en America/Guatemala).
     RelojModule,
     TransaccionModule,
+    // Global: puerto TIEMPO_REAL (Socket.IO en /ws).
+    TiempoRealModule,
     // TerminusModule,
     ZonaFacturacionCronModule,
     IdContratoModule,
@@ -95,7 +97,6 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     AlmacenamientoMediaModule,
     NotificacionesModule,
     MensajeriaClienteModule,
-    GatewayModule,
     CreditoModule,
     CuotasPagoModule,
     GenerateReportsModule,

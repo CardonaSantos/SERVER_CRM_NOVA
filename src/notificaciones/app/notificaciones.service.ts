@@ -1,19 +1,25 @@
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Notificacion } from '../entities/notificacione.entity';
 import { UpdateNotificacioneDto } from '../dto/update-notificacione.dto';
 import {
   NOTIFICATION_REPOSITORY,
   NotificationRepository,
 } from '../domain/notification-repository';
-import { WebSocketServices } from 'src/web-sockets/websocket.service';
+import {
+  TIEMPO_REAL,
+  TiempoRealPort,
+} from 'src/common/tiempo-real/tiempo-real.port';
 import { CategoriaNotificacion } from '@prisma/client';
+
+/** Legacy: los datos y la audiencia se definen en el módulo `notificacion`. */
+export const EVENTO_NOTIFICACION_CREADA = 'notificacion:creada';
 
 @Injectable()
 export class NotificacionesService {
   constructor(
     @Inject(NOTIFICATION_REPOSITORY)
     private readonly notificationRepo: NotificationRepository,
-    private readonly wb: WebSocketServices,
+    @Inject(TIEMPO_REAL) private readonly tiempoReal: TiempoRealPort,
   ) {}
 
   async create(
@@ -21,10 +27,9 @@ export class NotificacionesService {
   ): Promise<Notificacion> {
     const notificacion = Notificacion.create(params);
     const recordNotification = await this.notificationRepo.save(notificacion);
-    await this.wb.emitSystemNotification(
-      notificacion.empresaId,
-      recordNotification,
-    );
+    this.tiempoReal.emitir(EVENTO_NOTIFICACION_CREADA, recordNotification, {
+      todos: true,
+    });
     return recordNotification;
   }
 

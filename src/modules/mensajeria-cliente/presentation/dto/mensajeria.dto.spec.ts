@@ -1,5 +1,6 @@
 import { Type } from '@nestjs/common';
 import { ValidacionGlobalPipe } from 'src/common/validacion/validacion-global.pipe';
+import { AvisarMensajeBotDto } from './avisar-mensaje-bot.dto';
 import { CrearPlantillaImagenDto } from './crear-plantilla-imagen.dto';
 import { CrearPlantillaDto } from './crear-plantilla.dto';
 import { EnviarCampaniaDto } from './enviar-campania.dto';
@@ -64,6 +65,16 @@ describe('DTO de mensajería', () => {
   ])('la campaña no admite %p', async (cambio) => {
     await expect(
       validar(EnviarCampaniaDto, { ...campania, ...cambio }),
+    ).rejects.toThrow();
+  });
+
+  it('el aviso del bot exige el wamid y nada más', async () => {
+    await expect(
+      validar(AvisarMensajeBotDto, { wamid: 'wamid.ABC' }),
+    ).resolves.toBeTruthy();
+    await expect(validar(AvisarMensajeBotDto, {})).rejects.toThrow();
+    await expect(
+      validar(AvisarMensajeBotDto, { event: 'x', data: { wamid: 'w' } }),
     ).rejects.toThrow();
   });
 });

@@ -2,9 +2,11 @@ import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { MensajeriaClienteFacade } from './application/facade/mensajeria-cliente.facade';
+import { MENSAJERIA_CLIENTE_EVENTOS } from './application/ports/mensajeria-cliente-eventos.port';
 import { PROVEEDOR_MENSAJES } from './application/ports/proveedor-mensajes.port';
 import { PROVEEDOR_PLANTILLAS } from './application/ports/proveedor-plantillas.port';
 import { DespachadorCampaniasService } from './application/services/despachador-campanias.service';
+import { AvisarMensajeBotUseCase } from './application/use-cases/avisar-mensaje-bot.use-case';
 import { CrearCampaniaUseCase } from './application/use-cases/crear-campania.use-case';
 import { CrearPlantillaImagenUseCase } from './application/use-cases/crear-plantilla-imagen.use-case';
 import { CrearPlantillaUseCase } from './application/use-cases/crear-plantilla.use-case';
@@ -26,7 +28,9 @@ import { ProveedorPlantillasMetaAdapter } from './infra/meta/proveedor-plantilla
 import { CampaniaPrismaQuery } from './infra/prisma/campania-prisma.query';
 import { CampaniaPrismaRepository } from './infra/prisma/campania-prisma.repository';
 import { DestinatarioPrismaQuery } from './infra/prisma/destinatario-prisma.query';
+import { MensajeriaClienteEventosWebsocketAdapter } from './infra/websocket/mensajeria-cliente-eventos-websocket.adapter';
 import { CampaniaWhatsappController } from './presentation/http/campania-whatsapp.controller';
+import { MensajeBotController } from './presentation/http/mensaje-bot.controller';
 import { PlantillaWhatsappController } from './presentation/http/plantilla-whatsapp.controller';
 import { WebhookMetaController } from './presentation/http/webhook-meta.controller';
 import { MENSAJERIA_CLIENTE } from './public/mensajeria-cliente.facade.port';
@@ -43,6 +47,7 @@ import { MENSAJERIA_CLIENTE } from './public/mensajeria-cliente.facade.port';
     PlantillaWhatsappController,
     CampaniaWhatsappController,
     WebhookMetaController,
+    MensajeBotController,
   ],
   providers: [
     // Casos de uso
@@ -58,6 +63,7 @@ import { MENSAJERIA_CLIENTE } from './public/mensajeria-cliente.facade.port';
     ListarCampaniasUseCase,
     ObtenerCampaniaUseCase,
     ListarEnviosCampaniaUseCase,
+    AvisarMensajeBotUseCase,
     // Services
     DespachadorCampaniasService,
     // Fachada
@@ -70,6 +76,10 @@ import { MENSAJERIA_CLIENTE } from './public/mensajeria-cliente.facade.port';
     { provide: CAMPANIA_REPOSITORY, useClass: CampaniaPrismaRepository },
     { provide: CAMPANIA_QUERY, useClass: CampaniaPrismaQuery },
     { provide: DESTINATARIO_QUERY, useClass: DestinatarioPrismaQuery },
+    {
+      provide: MENSAJERIA_CLIENTE_EVENTOS,
+      useClass: MensajeriaClienteEventosWebsocketAdapter,
+    },
   ],
   exports: [MENSAJERIA_CLIENTE],
 })

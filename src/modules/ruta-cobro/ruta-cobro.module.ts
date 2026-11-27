@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from 'src/prisma/prisma.module';
-import { GatewayModule } from 'src/web-sockets/websocket.module';
 import { RutaCobroFacade } from './application/facade/ruta-cobro.facade';
 import { RUTA_COBRO_EVENTOS } from './application/ports/ruta-cobro-eventos.port';
 import { RUTA_COBRO_HOJA } from './application/ports/ruta-cobro-hoja.port';
@@ -32,7 +31,7 @@ import { RUTA_COBRO } from './public/ruta-cobro.facade.port';
  * API pública (`public/`): la fachada `RUTA_COBRO`.
  */
 @Module({
-  imports: [PrismaModule, GatewayModule],
+  imports: [PrismaModule],
   controllers: [RutaCobroController],
   providers: [
     // Casos de uso

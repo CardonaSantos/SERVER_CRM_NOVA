@@ -1,7 +1,6 @@
 import { EstadoTrackingTecnico } from '../../domain/enums/estado-tracking-tecnico.enum';
 
 import { TecnicoTrackingRealtimeView } from '../../domain/read-models/tecnico-tracking.read-model';
-import { UltimaUbicacionReadModel } from '../../domain/read-models/ultima-ubicacion.read-model';
 
 export type TecnicoTrackingStateChangedPayload = {
   tecnicoId: number;
@@ -25,9 +24,6 @@ export interface TecnicoTrackingRealtimePort {
    * Actualización enriquecida del mapa.
    */
   emitLocationUpdated(payload: TecnicoTrackingRealtimeView): Promise<void>;
-
-  /** Posición actual de un usuario, para el mapa del dashboard. */
-  emitUltimaUbicacion(payload: UltimaUbicacionReadModel): Promise<void>;
 
   /**
    * Cambio de ciclo de vida:

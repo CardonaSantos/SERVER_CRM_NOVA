@@ -1,13 +1,18 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ROLES_OFICINA } from 'src/auth/roles/grupos-roles';
 import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
+import {
+  DestinoTiempoReal,
+  TIEMPO_REAL,
+  TiempoRealPort,
+} from 'src/common/tiempo-real/tiempo-real.port';
 import {
   MENSAJERIA_CLIENTE,
   MensajeriaClienteFacadePort,
 } from 'src/modules/mensajeria-cliente/public/mensajeria-cliente.facade.port';
 import { NotificacionesService } from 'src/notificaciones/app/notificaciones.service';
 import { FirebasePushService } from 'src/push-notifications/infra/firebase-push.service';
-import { WebSocketServices } from 'src/web-sockets/websocket.service';
 import {
   AvisoAsignacion,
   AvisoClienteTicketCreado,
@@ -20,17 +25,23 @@ const VIGENCIA_PUSH_MS = 6 * 60 * 60 * 1000;
 
 type Cambio = 'ASSIGNED' | 'UNASSIGNED';
 
+/** Solo a los usuarios que entran o salen del ticket. */
+export const EVENTO_TICKET_ASIGNACION_CAMBIADA =
+  'ticket-soporte:asignacion-cambiada';
+/** A la oficina: el panel vuelve a pedir el ticket. */
+export const EVENTO_TICKET_ESTADO_CAMBIADO = 'ticket-soporte:estado-cambiado';
+
 /**
- * Adaptador transitorio sobre los servicios legacy de tiempo real, push y
- * notificaciones. Los nombres de eventos y sus datos son los que ya escucha la
- * app. Ningún método lanza.
+ * Tiempo real por `TIEMPO_REAL`; push y notificaciones siguen sobre los
+ * servicios legacy (se reemplazan en el módulo `notificacion`). Los datos del
+ * push son los que ya escucha la app. Ningún método lanza.
  */
 @Injectable()
 export class TicketAvisosNotificacionAdapter implements TicketAvisosPort {
   private readonly logger = new Logger(TicketAvisosNotificacionAdapter.name);
 
   constructor(
-    private readonly tiempoReal: WebSocketServices,
+    @Inject(TIEMPO_REAL) private readonly tiempoReal: TiempoRealPort,
     private readonly push: FirebasePushService,
     private readonly notificaciones: NotificacionesService,
     @Inject(MENSAJERIA_CLIENTE)
@@ -47,34 +58,26 @@ export class TicketAvisosNotificacionAdapter implements TicketAvisosPort {
     ];
 
     if (!grupos.some(([, usuarios]) => usuarios.length)) return;
-    if (!ticket.empresaId) {
-      this.logger.warn(
-        `Ticket ${ticket.id} sin empresa: asignación sin aviso.`,
-      );
-      return;
-    }
 
-    const empresaId = ticket.empresaId;
-    const ocurrido = this.reloj.ahora().toISOString();
+    const ocurridoEn = this.reloj.ahora().toISOString();
 
     await this.sinLanzar(
       `asignación del ticket ${ticket.id}`,
       grupos.flatMap(([cambio, usuarios]) => [
         () =>
-          this.tiempoReal.emitTicketAssignmentChanged({
-            userIds: usuarios,
-            payload: {
-              version: 1,
+          this.emitir(
+            EVENTO_TICKET_ASIGNACION_CAMBIADA,
+            {
               ticketId: ticket.id,
-              empresaId,
-              change: cambio,
-              reason: motivo,
-              title: ticket.titulo ?? '',
-              status: ticket.estado,
-              priority: ticket.prioridad,
-              occurredAt: ocurrido,
+              cambio: cambio === 'ASSIGNED' ? 'ASIGNADO' : 'RETIRADO',
+              motivo: motivo === 'CREATED' ? 'CREACION' : 'REASIGNACION',
+              titulo: ticket.titulo,
+              estado: ticket.estado,
+              prioridad: ticket.prioridad,
+              ocurridoEn,
             },
-          }),
+            { usuarioIds: usuarios },
+          ),
         ...usuarios.map(
           (usuarioId) => () => this.enviarPush(usuarioId, cambio, aviso),
         ),
@@ -86,18 +89,18 @@ export class TicketAvisosNotificacionAdapter implements TicketAvisosPort {
     ticket: TicketParaAviso,
     nombreTecnico: string | null,
   ): Promise<void> {
-    const { empresaId } = ticket;
-    if (!empresaId) return;
-
     await this.sinLanzar(`estado del ticket ${ticket.id}`, [
       () =>
-        this.tiempoReal.sendTicketSuportChangeStatus({
-          empresaId,
-          ticketId: ticket.id,
-          nuevoEstado: ticket.estado,
-          titulo: ticket.titulo ?? '',
-          tecnico: nombreTecnico ?? '',
-        }),
+        this.emitir(
+          EVENTO_TICKET_ESTADO_CAMBIADO,
+          {
+            ticketId: ticket.id,
+            estado: ticket.estado,
+            titulo: ticket.titulo,
+            tecnico: nombreTecnico,
+          },
+          { roles: ROLES_OFICINA },
+        ),
     ]);
   }
 
@@ -165,6 +168,15 @@ export class TicketAvisosNotificacionAdapter implements TicketAvisosPort {
       collapseKey: `ticket-assignment-${ticket.id}`,
       ttlMs: VIGENCIA_PUSH_MS,
     });
+  }
+
+  private emitir(
+    evento: string,
+    datos: object,
+    destino: DestinoTiempoReal,
+  ): Promise<void> {
+    this.tiempoReal.emitir(evento, datos, destino);
+    return Promise.resolve();
   }
 
   /** Un aviso fallido se registra y no deshace el cambio del ticket. */
