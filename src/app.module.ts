@@ -10,9 +10,7 @@ import { ClienteModule } from './modules/cliente/cliente.module';
 import { ServicioModule } from './modules/servicio/servicio.module';
 import { ZonaFacturacionModule } from './modules/zona-facturacion/zona-facturacion.module';
 import { FacturacionModule } from './modules/facturacion/facturacion.module';
-import { TagsTicketModule } from './tags-ticket/tags-ticket.module';
-import { TicketsSoporteModule } from './tickets-soporte/tickets-soporte.module';
-import { TicketSeguimientoModule } from './ticket-seguimiento/ticket-seguimiento.module';
+import { TicketSoporteModule } from './modules/ticket-soporte/ticket-soporte.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { authThrottlerOptions } from './auth/throttling/auth-throttling';
@@ -33,11 +31,8 @@ import { MetasTicketsModule } from './metas-tickets/metas-tickets.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { AlmacenamientoMediaModule } from './modules/almacenamiento-media/almacenamiento-media.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
-import { TicketSolucionesModule } from './ticket-soluciones/ticket-soluciones.module';
 import { MensajeriaClienteModule } from './modules/mensajeria-cliente/mensajeria-cliente.module';
 import { GatewayModule } from './web-sockets/websocket.module';
-import { TicketResumenModule } from './ticket-resumen/ticket-resumen.module';
-import { BotFunctionsModule } from './bot-functions/bot-functions.module';
 import { CreditoModule } from './credito/credito.module';
 import { CuotasPagoModule } from './credito/cuotas-pago/cuotas-pago.module';
 import { GenerateReportsModule } from './generate-reports/generate-reports.module';
@@ -71,9 +66,7 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     ServicioModule,
     ZonaFacturacionModule,
     FacturacionModule,
-    TagsTicketModule,
-    TicketsSoporteModule,
-    TicketSeguimientoModule,
+    TicketSoporteModule,
     //PARA EL CRON
     ScheduleModule.forRoot(),
     // Solo se aplica donde se usa LimitarIntentos*; no es un guard global.
@@ -101,11 +94,8 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     ReportsModule,
     AlmacenamientoMediaModule,
     NotificacionesModule,
-    TicketSolucionesModule,
     MensajeriaClienteModule,
     GatewayModule,
-    TicketResumenModule,
-    BotFunctionsModule,
     CreditoModule,
     CuotasPagoModule,
     GenerateReportsModule,

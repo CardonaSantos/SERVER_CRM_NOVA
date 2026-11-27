@@ -2,10 +2,8 @@ import {
   Controller,
   Get,
   Param,
-  Delete,
   ParseIntPipe,
   Req,
-  BadRequestException,
   UseGuards,
   UsePipes,
   ValidationPipe,
@@ -35,16 +33,6 @@ export class DashboardController {
   @Get('/get-dashboard-info/:id')
   findAll(@Param('id', ParseIntPipe) id: number) {
     return this.dashboardService.findAll(id);
-  }
-
-  @Get('/get-tickets-asignados/:id')
-  findTicketsAsignados(@Param('id', ParseIntPipe) id: number) {
-    return this.dashboardService.findTicketsAsignados(id);
-  }
-
-  @Get('/get-ticket-asignado-details/:id')
-  ticketDetailsAsignado(@Param('id', ParseIntPipe) id: number) {
-    return this.dashboardService.ticketDetailsAsignado(id);
   }
 
   /**

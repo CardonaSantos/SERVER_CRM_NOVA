@@ -30,18 +30,6 @@ export class PrismaTransaccional implements UnidadDeTrabajoPort {
     return transaccionActiva.getStore() !== undefined;
   }
 
-  /**
-   * TRANSITORIO. Une `trabajo` a una transacción que abrió código legacy con
-   * `prisma.$transaction`, para que las fachadas de los módulos nuevos
-   * escriban dentro de ella. Se retira cuando ese código use `ejecutar`.
-   */
-  unirseA<T>(
-    tx: Prisma.TransactionClient,
-    trabajo: () => Promise<T>,
-  ): Promise<T> {
-    return transaccionActiva.run(tx, trabajo);
-  }
-
   ejecutar<T>(
     trabajo: () => Promise<T>,
     opciones: OpcionesUnidadDeTrabajo = {},

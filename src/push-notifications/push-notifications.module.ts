@@ -14,7 +14,7 @@ import { FirebasePushService } from './infra/firebase-push.service';
   providers: [FirebasePushService],
 
   /*
-   * TicketsSoporteModule importará este módulo y podrá
+   * TicketSoporteModule importará este módulo y podrá
    * inyectar FirebasePushService.
    */
   exports: [FirebasePushService],
