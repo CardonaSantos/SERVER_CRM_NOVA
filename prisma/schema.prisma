@@ -94,6 +94,10 @@ model Usuario {
   creadoEn                                 DateTime               @default(now())
   actualizadoEn                            DateTime               @updatedAt
   contrasena                               String
+  /// Borrado lógico: el correo pasa a `correoEliminado` y `correo` queda libre para reusarlo.
+  eliminadoEn                              DateTime?
+  eliminadoPorId                           Int?
+  correoEliminado                          String?
   perfil                                   PerfilUsuario?
   asistencias                              Asistencia[]           @relation("UsuarioAsistencias")
   BoletaSoporte                            BoletaSoporte[]
