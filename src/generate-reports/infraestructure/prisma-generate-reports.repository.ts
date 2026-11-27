@@ -19,6 +19,10 @@ import { formattShortFecha } from 'src/Utils/formattFecha.utils';
 import { formattMonedaGT } from 'src/Utils/formatt-moneda';
 import { formattDateForFilter } from 'src/Utils/formattDateForFilter';
 import { QueryTicketsDailyReportDto } from '../dto/ticket-metricas.dto';
+import {
+  fechaParaExcel,
+  rangoDeReporte,
+} from '../helper/fechas-reporte-tickets';
 
 @Injectable()
 export class PrismaGenerateReports implements GenerateReportsRepository {
@@ -230,7 +234,7 @@ export class PrismaGenerateReports implements GenerateReportsRepository {
 
           _count: {
             select: {
-              SeguimientoTicket: true,
+              SeguimientoTicket: { where: { eliminadoEn: null } },
             },
           },
         },
@@ -794,36 +798,19 @@ export class PrismaGenerateReports implements GenerateReportsRepository {
 
   // METRICAS DE TICKETS
   private resolveTicketReportDateRange(dto: QueryTicketsDailyReportDto) {
-    const fechaUnica = dto.fecha;
+    const rango = rangoDeReporte(dto, new Date());
 
-    const startInput =
-      fechaUnica ?? dto.fechaInicio ?? this.formatDateInput(new Date());
-
-    const endInput =
-      fechaUnica ??
-      dto.fechaFin ??
-      dto.fechaInicio ??
-      this.formatDateInput(new Date());
-
-    const start = this.dateFromYmd(startInput, 0, 0, 0, 0);
-    const end = this.dateFromYmd(endInput, 23, 59, 59, 999);
-
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    if (!rango) {
       throw new BadRequestException('Fecha inválida para reporte de tickets');
     }
 
-    if (end < start) {
+    if (rango.end < rango.start) {
       throw new BadRequestException(
         'La fecha final no puede ser menor que la fecha inicial',
       );
     }
 
-    return {
-      start,
-      end,
-      label:
-        startInput === endInput ? startInput : `${startInput} al ${endInput}`,
-    };
+    return rango;
   }
 
   private buildTicketDateWhere(
@@ -864,6 +851,7 @@ export class PrismaGenerateReports implements GenerateReportsRepository {
               SeguimientoTicket: {
                 some: {
                   fechaRegistro: range,
+                  eliminadoEn: null,
                 },
               },
             },
@@ -879,39 +867,11 @@ export class PrismaGenerateReports implements GenerateReportsRepository {
     }
   }
 
-  private dateFromYmd(
-    value: string,
-    hours: number,
-    minutes: number,
-    seconds: number,
-    milliseconds: number,
-  ) {
-    const onlyDate = value.split('T')[0];
-    const [year, month, day] = onlyDate.split('-').map(Number);
-
-    return new Date(
-      year,
-      month - 1,
-      day,
-      hours,
-      minutes,
-      seconds,
-      milliseconds,
-    );
-  }
-
-  private formatDateInput(date: Date) {
-    const year = date.getFullYear();
-    const month = `${date.getMonth() + 1}`.padStart(2, '0');
-    const day = `${date.getDate()}`.padStart(2, '0');
-
-    return `${year}-${month}-${day}`;
-  }
-
   private formatDateTime(date?: Date | null) {
     if (!date) return 'N/A';
 
     return new Intl.DateTimeFormat('es-GT', {
+      timeZone: 'America/Guatemala',
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -1495,11 +1455,11 @@ export class PrismaGenerateReports implements GenerateReportsRepository {
         tecnicoPrincipal: ticket.tecnico?.nombre ?? 'Sin asignar',
         tecnicosAsignados,
         creadoPor: ticket.creadoPor?.nombre ?? 'N/A',
-        fechaApertura: ticket.fechaApertura,
-        fechaAsignacion: ticket.fechaAsignacion,
-        fechaInicioAtencion: ticket.fechaInicioAtencion,
-        fechaResolucionTecnico: ticket.fechaResolucionTecnico,
-        fechaCierre: ticket.fechaCierre,
+        fechaApertura: fechaParaExcel(ticket.fechaApertura),
+        fechaAsignacion: fechaParaExcel(ticket.fechaAsignacion),
+        fechaInicioAtencion: fechaParaExcel(ticket.fechaInicioAtencion),
+        fechaResolucionTecnico: fechaParaExcel(ticket.fechaResolucionTecnico),
+        fechaCierre: fechaParaExcel(ticket.fechaCierre),
         tiempoTotalHrs: this.minutesToHours(tiempoTotalMin) ?? '-',
         tiempoTecnicoHrs: this.minutesToHours(tiempoTecnicoMin) ?? '-',
         reabierto: ticket.resumen?.reabierto ? 'Sí' : 'No',

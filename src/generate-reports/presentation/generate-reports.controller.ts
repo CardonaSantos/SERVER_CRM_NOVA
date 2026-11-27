@@ -20,6 +20,7 @@ import {
 import { Response } from 'express';
 import { QueryCobranzaReport } from '../dto/cobranza-query-report';
 import { QueryTicketsDailyReportDto } from '../dto/ticket-metricas.dto';
+import { diaDeGuatemala } from '../helper/fechas-reporte-tickets';
 
 @UseGuards(JwtAuthGuard)
 @Controller('generate-reports')
@@ -82,7 +83,7 @@ export class GenerateReportsController {
     const buffer = await this.generateReportsService.ticketsDailyReport(dto);
 
     const dateLabel =
-      dto.fecha ?? dto.fechaInicio ?? new Date().toISOString().slice(0, 10);
+      dto.fecha ?? dto.fechaInicio ?? diaDeGuatemala(new Date());
 
     res.set({
       'Content-Type':
