@@ -6,6 +6,7 @@ import { ClienteModule } from '../cliente/cliente.module';
 import { PppoeAccesoInternetModule } from '../pppoe-acceso-internet/pppoe-acceso-internet.module';
 import { PppoeAutomatizacionModule } from '../pppoe-automatizacion/pppoe-automatizacion.module';
 import { PppoeClienteCuentaModule } from '../pppoe-cliente-cuenta/pppoe-cliente-cuenta.module';
+import { ServicioModule } from '../servicio/servicio.module';
 import { REAUTENTICACION_OPERADOR } from './application/ports/reautenticacion-operador.port';
 import { CerrarDesinstalacionService } from './application/services/cerrar-desinstalacion.service';
 import { ValidarAccesoDesinstalacionService } from './application/services/validar-acceso-desinstalacion.service';
@@ -55,6 +56,7 @@ import { ClienteDesinstalacionController } from './presentation/http/cliente-des
     PppoeAccesoInternetModule,
     PppoeAutomatizacionModule,
     PppoeClienteCuentaModule,
+    ServicioModule,
   ],
   controllers: [ClienteDesinstalacionController],
   providers: [

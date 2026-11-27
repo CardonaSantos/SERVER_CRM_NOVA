@@ -1,4 +1,6 @@
 import { RelojFijo } from 'src/common/reloj/reloj-fijo';
+import { UnidadDeTrabajoEnMemoria } from 'src/common/transaccion/unidad-de-trabajo-en-memoria';
+import { ServicioFacadePort } from '../../../servicio/public/servicio.facade.port';
 
 import {
   PerfilHomologacionCodigoDuplicadoError,
@@ -20,7 +22,17 @@ describe('Casos de uso de homologación PPPoE', () => {
     return {
       repo,
       reloj,
-      crear: new CrearPerfilHomologacionUseCase(repo, reloj),
+      crear: new CrearPerfilHomologacionUseCase(
+        repo,
+        new UnidadDeTrabajoEnMemoria(),
+        {
+          verificarPlanAsignable: ({ planId }: { planId: number }) =>
+            planId === 99
+              ? Promise.reject(new Error('plan inactivo'))
+              : Promise.resolve(),
+        } as unknown as ServicioFacadePort,
+        reloj,
+      ),
       actualizar: new ActualizarCodigoPerfilHomologacionUseCase(repo, reloj),
       desactivar: new DesactivarPerfilHomologacionUseCase(repo, reloj),
       fachada: new PppoePerfilHomologacionFacade(
@@ -36,6 +48,15 @@ describe('Casos de uso de homologación PPPoE', () => {
     servicioInternetId: 7,
     codigoPerfil: 'PLAN-20M',
   };
+
+  it('no homologa un plan que no admite asignaciones', async () => {
+    const { crear } = preparar();
+
+    await expect(
+      crear.execute({ ...alta, servicioInternetId: 99 }),
+    ).rejects.toThrow('plan inactivo');
+    await expect(crear.execute(alta)).resolves.toMatchObject({ id: 1 });
+  });
 
   it('crear con la hora del reloj; router + servicio o código repetidos → conflicto', async () => {
     const { crear } = preparar();

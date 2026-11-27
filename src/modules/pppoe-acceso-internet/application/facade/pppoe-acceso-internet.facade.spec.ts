@@ -1,4 +1,6 @@
 import { RelojFijo } from 'src/common/reloj/reloj-fijo';
+import { UnidadDeTrabajoEnMemoria } from 'src/common/transaccion/unidad-de-trabajo-en-memoria';
+import { ServicioFacadePort } from '../../../servicio/public/servicio.facade.port';
 
 import {
   EstadoAccesoInternet,
@@ -18,13 +20,24 @@ describe('PppoeAccesoInternetFacade', () => {
   function preparar() {
     const repo = new ClienteAccesoInternetRepositoryFake();
     const reloj = new RelojFijo('2026-11-24T16:00:00Z');
+    const unidad = new UnidadDeTrabajoEnMemoria();
+    const verificados: object[] = [];
+    // El plan 99 no admite asignaciones.
+    const servicios = {
+      verificarPlanAsignable: (input: { planId: number }) => {
+        verificados.push({ ...input, enUnidad: unidad.abierta });
+        return input.planId === 99
+          ? Promise.reject(new Error('plan inactivo'))
+          : Promise.resolve();
+      },
+    } as unknown as ServicioFacadePort;
     const fachada = new PppoeAccesoInternetFacade(
       new BuscarAccesoInternetUseCase(repo),
-      new CrearAccesoInternetUseCase(repo, reloj),
+      new CrearAccesoInternetUseCase(repo, unidad, servicios, reloj),
       new CambiarEstadoAccesoInternetUseCase(repo, reloj),
-      new RegistrarAccesoInternetAdoptadoUseCase(repo),
+      new RegistrarAccesoInternetAdoptadoUseCase(repo, unidad, servicios),
     );
-    return { fachada, reloj };
+    return { fachada, reloj, repo, verificados };
   }
 
   const pppoe = {
@@ -43,6 +56,22 @@ describe('PppoeAccesoInternetFacade', () => {
     expect(acceso.id).toBe(1);
     expect(acceso.estado).toBe(EstadoAccesoInternet.PENDIENTE);
     expect(acceso.creadoEn.toISOString()).toBe('2026-11-24T16:00:00.000Z');
+  });
+
+  it('verifica el plan antes de crear y no crea si se rechaza', async () => {
+    const { fachada, verificados } = preparar();
+
+    await fachada.crear(pppoe);
+    await expect(
+      fachada.crear({ ...pppoe, servicioInternetId: 99 }),
+    ).rejects.toThrow('plan inactivo');
+
+    expect(verificados[0]).toEqual({
+      planId: 3,
+      clienteId: 20,
+      enUnidad: true,
+    });
+    await expect(fachada.crear(pppoe)).resolves.toMatchObject({ id: 2 });
   });
 
   it('cambiarEstado usa la fecha recibida o, sin ella, la del reloj', async () => {

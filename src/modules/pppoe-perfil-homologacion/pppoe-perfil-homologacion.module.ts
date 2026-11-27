@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { PrismaModule } from 'src/prisma/prisma.module';
 
+import { ServicioModule } from '../servicio/servicio.module';
 import { PppoePerfilHomologacionFacade } from './application/facade/pppoe-perfil-homologacion.facade';
 import { ActivarPerfilHomologacionUseCase } from './application/use-cases/activar-perfil-homologacion.use-case';
 import { ActualizarCodigoPerfilHomologacionUseCase } from './application/use-cases/actualizar-codigo-perfil-homologacion.use-case';
@@ -25,7 +26,7 @@ import { PPPOE_PERFIL_HOMOLOGACION } from './public/pppoe-perfil-homologacion.fa
  * `pppoe-perfil-homologacion.types.ts`.
  */
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, ServicioModule],
   controllers: [PerfilHomologacionController],
   providers: [
     // Casos de uso

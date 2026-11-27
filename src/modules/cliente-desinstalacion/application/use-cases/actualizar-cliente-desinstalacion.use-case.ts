@@ -1,4 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
+import {
+  UNIDAD_DE_TRABAJO,
+  UnidadDeTrabajoPort,
+} from 'src/common/transaccion/unidad-de-trabajo.port';
+import {
+  SERVICIO,
+  ServicioFacadePort,
+} from '../../../servicio/public/servicio.facade.port';
 import { MotivoDesinstalacionCliente } from '../../domain/enums/motivo-desinstalacion-cliente.enum';
 import { TipoDesinstalacionCliente } from '../../domain/enums/tipo-desinstalacion-cliente.enum';
 import { ClienteDesinstalacionNoEncontradaError } from '../../domain/errors/cliente-desinstalacion.errors';
@@ -37,9 +45,21 @@ export class ActualizarClienteDesinstalacionUseCase {
     private readonly desinstalaciones: ClienteDesinstalacionRepositoryPort,
 
     private readonly validarAcceso: ValidarAccesoDesinstalacionService,
+
+    @Inject(UNIDAD_DE_TRABAJO)
+    private readonly unidad: UnidadDeTrabajoPort,
+
+    @Inject(SERVICIO)
+    private readonly servicios: ServicioFacadePort,
   ) {}
 
-  async execute(
+  execute(
+    input: ActualizarClienteDesinstalacionInput,
+  ): Promise<ClienteDesinstalacionResumen> {
+    return this.unidad.ejecutar(() => this.actualizar(input));
+  }
+
+  private async actualizar(
     input: ActualizarClienteDesinstalacionInput,
   ): Promise<ClienteDesinstalacionResumen> {
     const desinstalacion = await this.desinstalaciones.findById(input.id);
@@ -59,6 +79,14 @@ export class ActualizarClienteDesinstalacionUseCase {
         clienteId: actuales.clienteId,
         accesoInternetId: accesoFinal,
       });
+    }
+
+    // Es un dato histórico: vale un plan inactivo, no uno eliminado.
+    if (
+      typeof input.servicioInternetId === 'number' &&
+      input.servicioInternetId !== actuales.servicioInternetId
+    ) {
+      await this.servicios.verificarPlanVigente(input.servicioInternetId);
     }
 
     desinstalacion.actualizarDatosGenerales({

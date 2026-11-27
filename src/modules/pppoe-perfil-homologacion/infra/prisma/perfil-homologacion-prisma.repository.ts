@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaTransaccional } from 'src/common/transaccion/prisma-transaccional.service';
 import {
   BuscarPerfilPorRouterCodigoParams,
   BuscarPerfilPorRouterServicioParams,
@@ -18,12 +18,16 @@ import {
 export class PerfilHomologacionPrismaRepository
   implements PerfilHomologacionRepositoryPort
 {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly transaccional: PrismaTransaccional) {}
+
+  private get db() {
+    return this.transaccional.cliente;
+  }
 
   async create(
     entity: PerfilHomologacionEntity,
   ): Promise<PerfilHomologacionEntity> {
-    const record = await this.prisma.pppoePerfilHomologacion
+    const record = await this.db.pppoePerfilHomologacion
       .create({
         data: PerfilHomologacionPrismaMapper.toCreatePersistence(entity),
       })
@@ -43,7 +47,7 @@ export class PerfilHomologacionPrismaRepository
       );
     }
 
-    const record = await this.prisma.pppoePerfilHomologacion
+    const record = await this.db.pppoePerfilHomologacion
       .update({
         where: { id },
         data: PerfilHomologacionPrismaMapper.toUpdatePersistence(entity),
@@ -54,7 +58,7 @@ export class PerfilHomologacionPrismaRepository
   }
 
   async findById(id: number): Promise<PerfilHomologacionEntity | null> {
-    const record = await this.prisma.pppoePerfilHomologacion.findUnique({
+    const record = await this.db.pppoePerfilHomologacion.findUnique({
       where: {
         id,
       },
@@ -67,7 +71,7 @@ export class PerfilHomologacionPrismaRepository
     mikrotikRouterId,
     servicioInternetId,
   }: BuscarPerfilPorRouterServicioParams): Promise<PerfilHomologacionEntity | null> {
-    const record = await this.prisma.pppoePerfilHomologacion.findUnique({
+    const record = await this.db.pppoePerfilHomologacion.findUnique({
       where: {
         mikrotikRouterId_servicioInternetId: {
           mikrotikRouterId,
@@ -83,7 +87,7 @@ export class PerfilHomologacionPrismaRepository
     mikrotikRouterId,
     servicioInternetId,
   }: BuscarPerfilPorRouterServicioParams): Promise<PerfilHomologacionEntity | null> {
-    const record = await this.prisma.pppoePerfilHomologacion.findFirst({
+    const record = await this.db.pppoePerfilHomologacion.findFirst({
       where: {
         mikrotikRouterId,
         servicioInternetId,
@@ -98,7 +102,7 @@ export class PerfilHomologacionPrismaRepository
     mikrotikRouterId,
     codigoPerfil,
   }: BuscarPerfilPorRouterCodigoParams): Promise<PerfilHomologacionEntity | null> {
-    const record = await this.prisma.pppoePerfilHomologacion.findUnique({
+    const record = await this.db.pppoePerfilHomologacion.findUnique({
       where: {
         mikrotikRouterId_codigoPerfil: {
           mikrotikRouterId,

@@ -12,6 +12,10 @@ import {
   FACTURACION,
   FacturacionFacadePort,
 } from '../../../facturacion/public/facturacion.facade.port';
+import {
+  SERVICIO,
+  ServicioFacadePort,
+} from '../../../servicio/public/servicio.facade.port';
 import { ClienteEntity } from '../../domain/entities/cliente.entity';
 import { leerCoordenadas } from '../../domain/policies/coordenadas.policy';
 import {
@@ -56,6 +60,8 @@ export class CrearClienteUseCase {
     private readonly unidad: UnidadDeTrabajoPort,
     @Inject(ZONA_FACTURACION)
     private readonly zonas: ZonaFacturacionFacadePort,
+    @Inject(SERVICIO)
+    private readonly servicios: ServicioFacadePort,
     @Inject(RELOJ) private readonly reloj: RelojPort,
   ) {}
 
@@ -65,6 +71,12 @@ export class CrearClienteUseCase {
 
     return this.unidad.ejecutar(async () => {
       await this.zonas.verificarAsignable(input.cliente.facturacionZonaId);
+      await this.servicios.verificarPlanAsignable({
+        planId: input.cliente.servicioInternetId,
+      });
+      await this.servicios.verificarServiciosAsignables({
+        servicioIds: input.servicioIds,
+      });
 
       const cliente = await this.clientes.create(nuevo);
       const clienteId = cliente.id!;

@@ -2,6 +2,7 @@ import { RelojFijo } from 'src/common/reloj/reloj-fijo';
 import { UnidadDeTrabajoEnMemoria } from 'src/common/transaccion/unidad-de-trabajo-en-memoria';
 import { ZonaFacturacionFacadePort } from '../../../zona-facturacion/public/zona-facturacion.facade.port';
 import { FacturacionFacadePort } from '../../../facturacion/public/facturacion.facade.port';
+import { ServicioFacadePort } from '../../../servicio/public/servicio.facade.port';
 import { EstadoCobranzaCliente } from '../../domain/enums/estado-cobranza-cliente.enum';
 import { EstadoOperativoCliente } from '../../domain/enums/estado-operativo-cliente.enum';
 import { EstadoServicioMikrotik } from '../../domain/enums/estado-servicio-mikrotik.enum';
@@ -32,6 +33,8 @@ describe('alta y edición de clientes', () => {
   let unidad: UnidadDeTrabajoEnMemoria;
   let zonasVerificadas: number[];
   let zonas: ZonaFacturacionFacadePort;
+  let verificaciones: object[];
+  let servicios: ServicioFacadePort;
   const reloj = new RelojFijo(AHORA);
 
   beforeEach(() => {
@@ -52,6 +55,24 @@ describe('alta y edición de clientes', () => {
         return id === 99
           ? Promise.reject(new Error('zona eliminada'))
           : Promise.resolve();
+      },
+    };
+    verificaciones = [];
+    const anotar = (verificacion: object) => {
+      verificaciones.push({ ...verificacion, enUnidad: unidad.abierta });
+    };
+    // El plan 99 no admite asignaciones.
+    servicios = {
+      verificarPlanAsignable: (input) => {
+        anotar(input);
+        return input.planId === 99
+          ? Promise.reject(new Error('plan inactivo'))
+          : Promise.resolve();
+      },
+      verificarPlanVigente: () => Promise.resolve(),
+      verificarServiciosAsignables: (input) => {
+        anotar(input);
+        return Promise.resolve();
       },
     };
   });
@@ -84,6 +105,7 @@ describe('alta y edición de clientes', () => {
         contratos,
         unidad,
         zonas,
+        servicios,
         reloj,
       );
     }
@@ -131,6 +153,26 @@ describe('alta y edición de clientes', () => {
       expect(contratosGuardados).toHaveLength(0);
     });
 
+    it('verifica el plan y los servicios dentro de la unidad', async () => {
+      await crear().execute(input);
+
+      expect(verificaciones).toEqual([
+        { planId: 3, enUnidad: true },
+        { servicioIds: [8], enUnidad: true },
+      ]);
+    });
+
+    it('no guarda nada si el plan no admite asignaciones', async () => {
+      await expect(
+        crear().execute({
+          ...input,
+          cliente: { ...input.cliente, servicioInternetId: 99 },
+        }),
+      ).rejects.toThrow('plan inactivo');
+      expect(clientes.ips.size).toBe(0);
+      expect(contratosGuardados).toHaveLength(0);
+    });
+
     it('si la factura falla, el alta falla', async () => {
       const factura = {
         generarPrimeraFactura: () => Promise.reject(new Error('zona caída')),
@@ -150,7 +192,49 @@ describe('alta y edición de clientes', () => {
       asignaciones: {},
     };
     const actualizar = () =>
-      new ActualizarClienteUseCase(clientes, contratos, unidad, zonas, reloj);
+      new ActualizarClienteUseCase(
+        clientes,
+        contratos,
+        unidad,
+        zonas,
+        servicios,
+        reloj,
+      );
+
+    it('verifica el plan y los servicios que llegan, con el cliente', async () => {
+      clientes.sembrar();
+
+      await actualizar().execute({
+        ...base,
+        asignaciones: { servicioInternetId: 3 },
+        servicioIds: [8],
+      });
+
+      expect(verificaciones).toEqual([
+        { planId: 3, clienteId: 7, enUnidad: true },
+        { servicioIds: [8], clienteId: 7, enUnidad: true },
+      ]);
+    });
+
+    it('sin plan ni servicios no verifica nada', async () => {
+      clientes.sembrar();
+
+      await actualizar().execute(base);
+
+      expect(verificaciones).toEqual([]);
+    });
+
+    it('un plan rechazado no cambia al cliente', async () => {
+      clientes.sembrar({ servicioInternetId: 3 });
+
+      await expect(
+        actualizar().execute({
+          ...base,
+          asignaciones: { servicioInternetId: 99 },
+        }),
+      ).rejects.toThrow('plan inactivo');
+      expect(clientes.filas.get(7)?.servicioInternetId).toBe(3);
+    });
 
     it('lo que no llega no se toca', async () => {
       clientes.sembrar({

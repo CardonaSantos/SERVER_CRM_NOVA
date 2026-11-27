@@ -4,6 +4,7 @@ import { PrismaModule } from 'src/prisma/prisma.module';
 import { PppoeAccesoInternetModule } from '../pppoe-acceso-internet/pppoe-acceso-internet.module';
 import { FacturacionModule } from '../facturacion/facturacion.module';
 import { ZonaFacturacionModule } from '../zona-facturacion/zona-facturacion.module';
+import { ServicioModule } from '../servicio/servicio.module';
 import { ClienteFacade } from './application/facade/cliente.facade';
 import { CLASIFICACION_CREDITO } from './application/ports/clasificacion-credito.port';
 import { CONTRATO_FISICO } from './application/ports/contrato-fisico.port';
@@ -43,6 +44,7 @@ import { CLIENTE } from './public/cliente.facade.port';
     VerifyCustomerModule,
     ZonaFacturacionModule,
     FacturacionModule,
+    ServicioModule,
   ],
   controllers: [ClienteController, ClienteRedController],
   providers: [

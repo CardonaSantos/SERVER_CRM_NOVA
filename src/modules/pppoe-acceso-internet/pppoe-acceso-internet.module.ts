@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { PrismaModule } from 'src/prisma/prisma.module';
 
+import { ServicioModule } from '../servicio/servicio.module';
 import { PppoeAccesoInternetFacade } from './application/facade/pppoe-acceso-internet.facade';
 import { BuscarAccesoInternetUseCase } from './application/use-cases/buscar-acceso-internet.use-case';
 import { CambiarEstadoAccesoInternetUseCase } from './application/use-cases/cambiar-estado-acceso-internet.use-case';
@@ -18,7 +19,7 @@ import { PPPOE_ACCESO_INTERNET } from './public/pppoe-acceso-internet.facade.por
  * `pppoe-acceso-internet.types.ts`.
  */
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, ServicioModule],
   providers: [
     // Casos de uso
     BuscarAccesoInternetUseCase,

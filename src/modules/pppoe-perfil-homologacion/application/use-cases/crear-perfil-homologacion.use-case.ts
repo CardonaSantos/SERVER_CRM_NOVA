@@ -1,6 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
 
 import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
+import {
+  UNIDAD_DE_TRABAJO,
+  UnidadDeTrabajoPort,
+} from 'src/common/transaccion/unidad-de-trabajo.port';
+import {
+  SERVICIO,
+  ServicioFacadePort,
+} from '../../../servicio/public/servicio.facade.port';
 
 import { PerfilHomologacionEntity } from '../../domain/entities/perfil-homologacion.entity';
 import {
@@ -30,6 +38,10 @@ export class CrearPerfilHomologacionUseCase {
   constructor(
     @Inject(PERFIL_HOMOLOGACION_REPOSITORY)
     private readonly perfiles: PerfilHomologacionRepositoryPort,
+    @Inject(UNIDAD_DE_TRABAJO)
+    private readonly unidad: UnidadDeTrabajoPort,
+    @Inject(SERVICIO)
+    private readonly servicios: ServicioFacadePort,
     @Inject(RELOJ) private readonly reloj: RelojPort,
   ) {}
 
@@ -59,6 +71,12 @@ export class CrearPerfilHomologacionUseCase {
     });
     if (mismoCodigo) throw new PerfilHomologacionCodigoDuplicadoError();
 
-    return aPerfilHomologacionReadModel(await this.perfiles.create(perfil));
+    return this.unidad.ejecutar(async () => {
+      await this.servicios.verificarPlanAsignable({
+        planId: perfil.servicioInternetId,
+      });
+
+      return aPerfilHomologacionReadModel(await this.perfiles.create(perfil));
+    });
   }
 }

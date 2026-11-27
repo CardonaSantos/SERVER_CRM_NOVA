@@ -3,6 +3,10 @@ import {
   UNIDAD_DE_TRABAJO,
   UnidadDeTrabajoPort,
 } from 'src/common/transaccion/unidad-de-trabajo.port';
+import {
+  SERVICIO,
+  ServicioFacadePort,
+} from '../../../servicio/public/servicio.facade.port';
 import { ClienteInstalacionEntity } from '../../domain/entities/cliente-instalacion.entity';
 import { EstadoInstalacionCliente } from '../../domain/enums/estado-instalacion-cliente.enum';
 import { ModoAccesoInstalacion } from '../../domain/enums/modo-acceso-instalacion.enum';
@@ -96,6 +100,9 @@ export class CrearClienteInstalacionUseCase {
     private readonly unidad: UnidadDeTrabajoPort,
 
     private readonly accesos: ProvisionarAccesoInstalacionService,
+
+    @Inject(SERVICIO)
+    private readonly servicios: ServicioFacadePort,
   ) {}
 
   async execute(
@@ -142,6 +149,13 @@ export class CrearClienteInstalacionUseCase {
     });
 
     const { instalacionId, acceso } = await this.unidad.ejecutar(async () => {
+      if (servicioInternetId !== null) {
+        await this.servicios.verificarPlanAsignable({
+          planId: servicioInternetId,
+          clienteId: input.clienteId,
+        });
+      }
+
       const creada = await this.instalaciones.create(entidad, tecnicos);
       const id = creada.id as number;
 

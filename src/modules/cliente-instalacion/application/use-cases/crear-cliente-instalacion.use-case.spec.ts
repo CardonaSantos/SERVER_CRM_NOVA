@@ -26,6 +26,7 @@ import {
   CrearClienteInstalacionInput,
   CrearClienteInstalacionUseCase,
 } from './crear-cliente-instalacion.use-case';
+import { ServicioFacadePort } from '../../../servicio/public/servicio.facade.port';
 
 const gponPppoe = {
   modo: ModoAccesoInstalacion.NUEVO as const,
@@ -42,6 +43,18 @@ describe('CrearClienteInstalacionUseCase', () => {
   let prealta: PppoePrealtaFake;
   let unidad: UnidadDeTrabajoEnMemoria;
   let useCase: CrearClienteInstalacionUseCase;
+  let verificados: object[];
+  // El plan 99 no admite asignaciones.
+  const servicios: ServicioFacadePort = {
+    verificarPlanAsignable: (input) => {
+      verificados.push({ ...input, enUnidad: unidad.abierta });
+      return input.planId === 99
+        ? Promise.reject(new Error('plan inactivo'))
+        : Promise.resolve();
+    },
+    verificarPlanVigente: () => Promise.resolve(),
+    verificarServiciosAsignables: () => Promise.resolve(),
+  };
 
   const base = (
     extra: Partial<CrearClienteInstalacionInput> = {},
@@ -61,6 +74,7 @@ describe('CrearClienteInstalacionUseCase', () => {
     accesos = new PppoeAccesoInternetFacadeFake();
     prealta = new PppoePrealtaFake();
     unidad = new UnidadDeTrabajoEnMemoria();
+    verificados = [];
     consultas.detalles.set(100, {
       instalacion: { id: 100 },
     } as ClienteInstalacionDetalle);
@@ -77,7 +91,21 @@ describe('CrearClienteInstalacionUseCase', () => {
       consultas,
       unidad,
       servicio,
+      servicios,
     );
+  });
+
+  it('verifica el plan para el cliente dentro de la unidad', async () => {
+    await useCase.execute(base());
+
+    expect(verificados).toEqual([{ planId: 3, clienteId: 7, enUnidad: true }]);
+  });
+
+  it('un plan rechazado no crea la instalación', async () => {
+    await expect(
+      useCase.execute(base({ servicioInternetId: 99 })),
+    ).rejects.toThrow('plan inactivo');
+    expect(instalaciones.filas.size).toBe(0);
   });
 
   it('GPON/PPPoE nuevo: crea instalación y vínculo juntos y prepara la prealta después', async () => {
@@ -241,6 +269,7 @@ describe('CrearClienteInstalacionUseCase', () => {
         prealta,
         new RelojFijo(),
       ),
+      servicios,
     );
 
     await expect(

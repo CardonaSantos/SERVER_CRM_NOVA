@@ -5,6 +5,7 @@ import { AlmacenamientoMediaModule } from '../almacenamiento-media/almacenamient
 import { PppoeAccesoInternetModule } from '../pppoe-acceso-internet/pppoe-acceso-internet.module';
 import { PppoeAutomatizacionModule } from '../pppoe-automatizacion/pppoe-automatizacion.module';
 import { PppoeClienteCuentaModule } from '../pppoe-cliente-cuenta/pppoe-cliente-cuenta.module';
+import { ServicioModule } from '../servicio/servicio.module';
 import { REAUTENTICACION_OPERADOR } from './application/ports/reautenticacion-operador.port';
 import { ProvisionarAccesoInstalacionService } from './application/services/provisionar-acceso-instalacion.service';
 import { ResolverPppoeInstalacionService } from './application/services/resolver-pppoe-instalacion.service';
@@ -41,6 +42,7 @@ import { ClienteInstalacionController } from './presentation/http/cliente-instal
     PppoeAccesoInternetModule,
     PppoeAutomatizacionModule,
     PppoeClienteCuentaModule,
+    ServicioModule,
   ],
   controllers: [ClienteInstalacionController],
   providers: [

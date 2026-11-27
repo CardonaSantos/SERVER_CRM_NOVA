@@ -16,6 +16,8 @@ import { ClienteDesinstalacionRepositoryFake } from '../../test/fakes/cliente-de
 import { PppoeAccesoInternetFacadeFake } from '../../test/fakes/pppoe-acceso-internet-facade.fake';
 import { ValidarAccesoDesinstalacionService } from '../services/validar-acceso-desinstalacion.service';
 import { ActualizarClienteDesinstalacionUseCase } from './actualizar-cliente-desinstalacion.use-case';
+import { UnidadDeTrabajoEnMemoria } from 'src/common/transaccion/unidad-de-trabajo-en-memoria';
+import { ServicioFacadePort } from '../../../servicio/public/servicio.facade.port';
 import { ListarAutorizacionesPendientesUseCase } from './listar-autorizaciones-pendientes-desinstalacion.use-case';
 import { ListarClienteDesinstalacionesUseCase } from './listar-cliente-desinstalaciones.use-case';
 import { ObtenerClienteDesinstalacionUseCase } from './obtener-cliente-desinstalacion.use-case';
@@ -91,11 +93,21 @@ describe('ActualizarClienteDesinstalacionUseCase', () => {
       metodoAutenticacion: MetodoAutenticacionInternet.PPPOE,
     });
     repo.sembrar();
+    const planes: number[] = [];
     const useCase = new ActualizarClienteDesinstalacionUseCase(
       repo,
       new ValidarAccesoDesinstalacionService(
         accesos as unknown as PppoeAccesoInternetFacadePort,
       ),
+      new UnidadDeTrabajoEnMemoria(),
+      {
+        verificarPlanVigente: (planId: number) => {
+          planes.push(planId);
+          return planId === 99
+            ? Promise.reject(new Error('plan eliminado'))
+            : Promise.resolve();
+        },
+      } as unknown as ServicioFacadePort,
     );
 
     const r = await useCase.execute({
@@ -116,5 +128,13 @@ describe('ActualizarClienteDesinstalacionUseCase', () => {
     await expect(useCase.execute({ id: 9 })).rejects.toThrow(
       ClienteDesinstalacionNoEncontradaError,
     );
+
+    // El plan solo se verifica cuando cambia.
+    await useCase.execute({ id: 100, servicioInternetId: 5 });
+    await useCase.execute({ id: 100, servicioInternetId: 5 });
+    await expect(
+      useCase.execute({ id: 100, servicioInternetId: 99 }),
+    ).rejects.toThrow('plan eliminado');
+    expect(planes).toEqual([5, 99]);
   });
 });

@@ -8,6 +8,10 @@ import {
   ZONA_FACTURACION,
   ZonaFacturacionFacadePort,
 } from '../../../zona-facturacion/public/zona-facturacion.facade.port';
+import {
+  SERVICIO,
+  ServicioFacadePort,
+} from '../../../servicio/public/servicio.facade.port';
 import { ClienteEntity } from '../../domain/entities/cliente.entity';
 import {
   EstadoClientePersistido,
@@ -61,6 +65,8 @@ export class ActualizarClienteUseCase {
     private readonly unidad: UnidadDeTrabajoPort,
     @Inject(ZONA_FACTURACION)
     private readonly zonas: ZonaFacturacionFacadePort,
+    @Inject(SERVICIO)
+    private readonly servicios: ServicioFacadePort,
     @Inject(RELOJ) private readonly reloj: RelojPort,
   ) {}
 
@@ -73,6 +79,22 @@ export class ActualizarClienteUseCase {
       const { facturacionZonaId } = input.asignaciones;
       if (typeof facturacionZonaId === 'number') {
         await this.zonas.verificarAsignable(facturacionZonaId);
+      }
+
+      // Antes de escribir: lo que el cliente ya tiene se admite aunque esté
+      // inactivo.
+      const { servicioInternetId } = input.asignaciones;
+      if (typeof servicioInternetId === 'number') {
+        await this.servicios.verificarPlanAsignable({
+          planId: servicioInternetId,
+          clienteId: input.clienteId,
+        });
+      }
+      if (input.servicioIds !== undefined) {
+        await this.servicios.verificarServiciosAsignables({
+          servicioIds: input.servicioIds,
+          clienteId: input.clienteId,
+        });
       }
 
       const estadoAnterior = cliente.estadoCliente;
