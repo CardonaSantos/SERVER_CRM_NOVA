@@ -30,7 +30,7 @@ import { MikroTikModule } from './mikro-tik/mikro-tik.module';
 import { MetasTicketsModule } from './metas-tickets/metas-tickets.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { AlmacenamientoMediaModule } from './modules/almacenamiento-media/almacenamiento-media.module';
-import { NotificacionesModule } from './notificaciones/notificaciones.module';
+import { NotificacionModule } from './modules/notificacion/notificacion.module';
 import { MensajeriaClienteModule } from './modules/mensajeria-cliente/mensajeria-cliente.module';
 import { TiempoRealModule } from './common/tiempo-real/tiempo-real.module';
 import { CreditoModule } from './credito/credito.module';
@@ -51,7 +51,6 @@ import { MikrotikRouterCredentialsModule } from './modules/mikrotik-router-crede
 import { TicketSoporteConformidadModule } from './modules/ticket-soporte-conformidad/ticket-soporte-conformidad.module';
 import { ExcelReportsModule } from './modules/excel-reports/excel-reports.module';
 import { RealTimeLocationModule } from './modules/real-time-location/real-time-location.module';
-import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.module';
 
 @Module({
   imports: [
@@ -95,7 +94,7 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     MetasTicketsModule,
     ReportsModule,
     AlmacenamientoMediaModule,
-    NotificacionesModule,
+    NotificacionModule,
     MensajeriaClienteModule,
     CreditoModule,
     CuotasPagoModule,
@@ -116,7 +115,6 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     TicketSoporteConformidadModule,
     ExcelReportsModule,
     RealTimeLocationModule,
-    PushDispositivosModule,
   ],
   controllers: [AppController],
   providers: [AppService],

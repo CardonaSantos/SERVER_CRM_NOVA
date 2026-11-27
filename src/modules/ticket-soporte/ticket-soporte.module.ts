@@ -1,10 +1,9 @@
 import { Module } from '@nestjs/common';
 import { MetasTicketsModule } from 'src/metas-tickets/metas-tickets.module';
-import { NotificacionesModule } from 'src/notificaciones/notificaciones.module';
 import { PrismaModule } from 'src/prisma/prisma.module';
-import { PushNotificationsModule } from 'src/push-notifications/push-notifications.module';
 import { AlmacenamientoMediaModule } from '../almacenamiento-media/almacenamiento-media.module';
 import { MensajeriaClienteModule } from '../mensajeria-cliente/mensajeria-cliente.module';
+import { NotificacionModule } from '../notificacion/notificacion.module';
 import { TicketSoporteHistorialModule } from '../ticket-soporte-historial/ticket-soporte-historial.module';
 import { METAS_TICKET } from './application/ports/metas-ticket.port';
 import { IMAGEN_COMENTARIO } from './application/ports/imagen-comentario.port';
@@ -72,9 +71,8 @@ import { TicketSoporteController } from './presentation/http/ticket-soporte.cont
     TicketSoporteHistorialModule,
     MensajeriaClienteModule,
     AlmacenamientoMediaModule,
-    // Legacy: se reemplazan al refactorizar notificación y metas.
-    PushNotificationsModule,
-    NotificacionesModule,
+    NotificacionModule,
+    // Legacy: se reemplaza al refactorizar metas.
     MetasTicketsModule,
   ],
   controllers: [

@@ -159,13 +159,43 @@ para el estado completo la pantalla vuelve a pedir el recurso por HTTP.
 - **Datos:** `{ wamid: string; recibidoEn: string }`.
 - **UI:** volver a pedir la lista de chats y el chat abierto.
 
-### `notificacion:creada` (provisional)
-- **Para:** todos.
-- **Cuándo:** se crea una notificación del sistema.
-- **Datos:** hoy, el registro de la notificación tal como lo guarda el módulo legacy. Su forma y
-  su audiencia se definen al refactorizar `notificacion` (paso 12): no construir sobre sus campos.
+### `notificacion:creada`
+- **Para:** solo los destinatarios de la notificación (los mismos que la tienen en su bandeja).
+  Los resúmenes de los crons y el aviso de ticket del bot van a todos menos los técnicos.
+- **Cuándo:** el servidor crea una notificación interna.
+- **Datos:** la misma forma que un elemento de `GET /notificaciones`:
+  ```ts
+  {
+    id: number;
+    titulo: string | null;
+    mensaje: string;
+    categoria: 'SISTEMA' | 'FACTURACION' | 'COBRANZA' | 'SOPORTE' | 'RUTA_COBRO' | 'CLIENTE' | 'BOT' | 'OTROS';
+    severidad: 'INFO' | 'EXITO' | 'ALERTA' | 'ERROR' | 'CRITICA';
+    referencia: { tipo: string; id: number } | null;   // p. ej. FACTURACION_ZONA, TICKET_SOPORTE
+    ruta: string | null;
+    etiquetaAccion: string | null;
+    creadaEn: string;
+    leida: false;
+    leidaEn: null;
+  }
+  ```
+- **UI:** agregarla arriba de la bandeja y sumar 1 al contador de no leídas.
 
-## 5. Integración del bot (servidor a servidor)
+## 5. Push al teléfono (app Android)
+
+No es Socket.IO, pero lo recibe la misma app. Registro del teléfono:
+`PUT /push-dispositivos/:instalacionId` (UUID v4 estable de la instalación) con
+`{ token, nombreDispositivo?, modeloDispositivo?, versionApp? }`; queda ligado a la sesión que lo
+registra y se apaga solo cuando esa sesión se revoca (logout, otra sesión la cerró, usuario
+desactivado). `DELETE /push-dispositivos/:instalacionId` lo apaga a mano (idempotente).
+
+| `datos.tipo` | Cuándo | Demás `datos` (todo texto) |
+|---|---|---|
+| `ticket-soporte.asignacion` | Al entrar o salir de un ticket | `ticketId`, `cambio` (`ASIGNADO` \| `RETIRADO`), `motivo` (`CREACION` \| `REASIGNACION`), `estado`, `prioridad` |
+
+Canal de Android: `tickets`. Los push de un mismo ticket se reemplazan en el teléfono.
+
+## 6. Integración del bot (servidor a servidor)
 
 `POST /mensajeria-cliente/bot/mensajes` con la cabecera `x-internal-secret` y el cuerpo
 `{ "wamid": "<id del mensaje>" }` (solo ese campo). Responde `204`. Sin secreto válido → `401`;

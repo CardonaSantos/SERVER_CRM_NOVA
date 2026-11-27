@@ -9,10 +9,10 @@ import { RecordatorioDiaPagoService } from './4_recordatorio-dia-pago/recordator
 import { FacturacionUtilitiesService } from './utilities/factura-manager.service';
 import { MensajeriaClienteModule } from 'src/modules/mensajeria-cliente/mensajeria-cliente.module';
 import { ConfigModule } from '@nestjs/config';
-import { NotificacionesModule } from 'src/notificaciones/notificaciones.module';
+import { NotificacionModule } from 'src/modules/notificacion/notificacion.module';
 
 @Module({
-  imports: [ConfigModule, NotificacionesModule, MensajeriaClienteModule],
+  imports: [ConfigModule, NotificacionModule, MensajeriaClienteModule],
   controllers: [ZonaFacturacionCronController],
   providers: [
     ZonaFacturacionCronService,

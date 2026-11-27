@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ROLES_OFICINA } from 'src/auth/roles/grupos-roles';
+import { ROLES_OFICINA, ROLES_SIN_TECNICO } from 'src/auth/roles/grupos-roles';
 import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
 import {
   DestinoTiempoReal,
@@ -11,8 +11,14 @@ import {
   MENSAJERIA_CLIENTE,
   MensajeriaClienteFacadePort,
 } from 'src/modules/mensajeria-cliente/public/mensajeria-cliente.facade.port';
-import { NotificacionesService } from 'src/notificaciones/app/notificaciones.service';
-import { FirebasePushService } from 'src/push-notifications/infra/firebase-push.service';
+import {
+  NOTIFICACION,
+  NotificacionFacadePort,
+} from 'src/modules/notificacion/public/notificacion.facade.port';
+import {
+  CategoriaNotificacion,
+  SeveridadNotificacion,
+} from 'src/modules/notificacion/public/notificacion.types';
 import {
   AvisoAsignacion,
   AvisoClienteTicketCreado,
@@ -31,10 +37,12 @@ export const EVENTO_TICKET_ASIGNACION_CAMBIADA =
 /** A la oficina: el panel vuelve a pedir el ticket. */
 export const EVENTO_TICKET_ESTADO_CAMBIADO = 'ticket-soporte:estado-cambiado';
 
+/** `tipo` de los datos del push de asignación: la app navega con él. */
+export const PUSH_TICKET_ASIGNACION = 'ticket-soporte.asignacion';
+
 /**
- * Tiempo real por `TIEMPO_REAL`; push y notificaciones siguen sobre los
- * servicios legacy (se reemplazan en el módulo `notificacion`). Los datos del
- * push son los que ya escucha la app. Ningún método lanza.
+ * Avisos de un ticket: tiempo real (`TIEMPO_REAL`), push y bandeja
+ * (`NOTIFICACION`) y WhatsApp (`MENSAJERIA_CLIENTE`). Ningún método lanza.
  */
 @Injectable()
 export class TicketAvisosNotificacionAdapter implements TicketAvisosPort {
@@ -42,8 +50,8 @@ export class TicketAvisosNotificacionAdapter implements TicketAvisosPort {
 
   constructor(
     @Inject(TIEMPO_REAL) private readonly tiempoReal: TiempoRealPort,
-    private readonly push: FirebasePushService,
-    private readonly notificaciones: NotificacionesService,
+    @Inject(NOTIFICACION)
+    private readonly notificaciones: NotificacionFacadePort,
     @Inject(MENSAJERIA_CLIENTE)
     private readonly mensajeria: MensajeriaClienteFacadePort,
     private readonly config: ConfigService,
@@ -130,12 +138,13 @@ export class TicketAvisosNotificacionAdapter implements TicketAvisosPort {
   }): Promise<void> {
     await this.sinLanzar(`notificación del ticket ${ticket.id}`, [
       () =>
-        this.notificaciones.create({
+        this.notificaciones.notificar({
           titulo: `Nuevo ticket: ${ticket.titulo ?? ticket.id}`,
           mensaje: `Se ha generado un nuevo ticket: #${ticket.id} - ${ticket.descripcion ?? 'N/A'}`,
-          audiencia: 'EMPRESA',
-          severidad: 'INFO',
-          categoria: 'BOT',
+          categoria: CategoriaNotificacion.BOT,
+          severidad: SeveridadNotificacion.INFO,
+          referencia: { tipo: 'TICKET_SOPORTE', id: ticket.id },
+          destino: { roles: ROLES_SIN_TECNICO },
         }),
     ]);
   }
@@ -147,26 +156,26 @@ export class TicketAvisosNotificacionAdapter implements TicketAvisosPort {
   ) {
     const asignado = cambio === 'ASSIGNED';
 
-    return this.push.sendToUser({
+    return this.notificaciones.enviarPush({
       usuarioId,
-      title: asignado
+      titulo: asignado
         ? 'Nuevo ticket asignado'
         : 'Asignación de ticket retirada',
-      body: asignado
+      cuerpo: asignado
         ? `Ticket #${ticket.id} · ${ticket.titulo ?? 'Sin título'}`
         : `El ticket #${ticket.id} ya no está asignado a ti.`,
       // Todos los datos de FCM deben ser texto.
-      data: {
-        type: 'ticket.assignment',
+      datos: {
+        tipo: PUSH_TICKET_ASIGNACION,
         ticketId: String(ticket.id),
-        change: cambio,
-        reason: motivo,
-        status: ticket.estado,
-        priority: ticket.prioridad,
+        cambio: asignado ? 'ASIGNADO' : 'RETIRADO',
+        motivo: motivo === 'CREATED' ? 'CREACION' : 'REASIGNACION',
+        estado: ticket.estado,
+        prioridad: ticket.prioridad,
       },
-      channelId: 'tickets',
-      collapseKey: `ticket-assignment-${ticket.id}`,
-      ttlMs: VIGENCIA_PUSH_MS,
+      canal: 'tickets',
+      claveAgrupacion: `ticket-soporte-asignacion-${ticket.id}`,
+      vigenciaMs: VIGENCIA_PUSH_MS,
     });
   }
 

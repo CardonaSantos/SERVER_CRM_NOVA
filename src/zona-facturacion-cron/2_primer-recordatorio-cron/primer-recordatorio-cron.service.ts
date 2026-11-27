@@ -1,4 +1,5 @@
 import {
+  Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -8,7 +9,15 @@ import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 
 import { PrismaService } from 'src/prisma/prisma.service';
-import { NotificacionesService } from 'src/notificaciones/app/notificaciones.service';
+import { ROLES_SIN_TECNICO } from 'src/auth/roles/grupos-roles';
+import {
+  NOTIFICACION,
+  NotificacionFacadePort,
+} from 'src/modules/notificacion/public/notificacion.facade.port';
+import {
+  CategoriaNotificacion,
+  SeveridadNotificacion,
+} from 'src/modules/notificacion/public/notificacion.types';
 
 import {
   CLIENTE_FACTURABLE_WHERE,
@@ -25,7 +34,8 @@ export class PrimerRecordatorioCronService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly facturacionServices: FacturacionUtilitiesService,
-    private readonly notificationSystemService: NotificacionesService,
+    @Inject(NOTIFICACION)
+    private readonly notificaciones: NotificacionFacadePort,
   ) {}
 
   @Cron('0 10 * * *', { timeZone: 'America/Guatemala' })
@@ -138,20 +148,18 @@ export class PrimerRecordatorioCronService {
           `errores=${contador.erroresCriticos}`,
       );
 
-      await this.notificationSystemService.create({
+      await this.notificaciones.notificar({
         mensaje: `El servicio de recordatorios (Aviso 1) ha trabajado la zona: ${zona.nombre} y ha generado lo siguiente:
 Clientes operados: ${contador.clientesOperados}
 Recordatorios enviados: ${contador.clientesRecordados}
 Omitidos: ${contador.clientesOmitidos}
 Errores críticos: ${contador.erroresCriticos}`,
-        audiencia: 'GLOBAL',
-        categoria: 'COBRANZA',
+        destino: { roles: ROLES_SIN_TECNICO },
+        categoria: CategoriaNotificacion.COBRANZA,
         titulo: 'Primer Recordatorio de Pago',
         subtipo: 'CRON JOB',
-        referenciaTipo: 'FACTURACION_ZONA',
-        referenciaId: zona.id,
-        severidad: 'INFO',
-        empresaId: zona.empresaId,
+        referencia: { tipo: 'FACTURACION_ZONA', id: zona.id },
+        severidad: SeveridadNotificacion.INFO,
       });
     }
   }
