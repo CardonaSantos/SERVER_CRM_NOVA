@@ -1572,7 +1572,7 @@ model PagoFacturaInternet {
   codigoConfirmacion String?                   @unique
   facturaRutaId      Int?
   origen             OrigenPago                @default(RUTA)
-  /// Ruta de cobro en la que se registró, para descontarlo si se elimina.
+  /// Ruta de cobro en la que se registró; de aquí sale lo cobrado de la ruta.
   rutaId             Int?
   cliente            ClienteInternet           @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   cobrador           Usuario?                  @relation(fields: [cobradorId], references: [id])
@@ -1581,6 +1581,7 @@ model PagoFacturaInternet {
 
   @@index([facturaRutaId])
   @@index([facturaInternetId, fechaPago])
+  @@index([rutaId])
 }
 
 /// Copia de cada pago eliminado. Sin relaciones: debe sobrevivir a todo.
@@ -1662,6 +1663,9 @@ model Ruta {
   observaciones String?
   actualizadoEn DateTime          @updatedAt
   creadoEn      DateTime          @default(now())
+  /// Borrado lógico: la ruta eliminada conserva sus clientes y pagos.
+  eliminadoEn    DateTime?
+  eliminadoPorId Int?
   cobros        CobroRuta[]       @relation("RutaToCobros")
   facturas      FacturaRuta[]
   cobrador      Usuario?          @relation(fields: [cobradorId], references: [id], onDelete: Cascade)
