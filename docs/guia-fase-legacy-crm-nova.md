@@ -96,7 +96,7 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 
 - `npm run build`: verde.
 - `npm run lint:check`: **195** errores tras el paso 5 (no subir; los archivos que toques quedan sin errores nuevos).
-- Jest: 738/742; las suites de `src/common`, `src/auth/decoradores` y de todos los `src/modules/*`
+- Jest: 737/741; las suites de `src/common`, `src/auth/decoradores` y de todos los `src/modules/*`
   en verde. Fallan 4 suites boilerplate de `cloud-api-meta` y `location`.
 - Correr un spec: `npm test -- src/modules/<modulo>` (1–2 min). Con la caché fría la suite completa
   puede pasar de 5 minutos: córrela en segundo plano.
@@ -156,6 +156,9 @@ Decisiones del dueño del **26-nov-2026**. Los nombres nuevos siguen §15 del es
   tienen clientes (también eliminados) ni facturas. Los canales (`whatsapp`, `email`, `sms`,
   `llamada`, `telegram`) y `horaRecordatorio` salieron de la API; sus columnas se quedan.
   `modoCorte` se diseña con la cobranza. `diaCorte` y `suspenderTrasFacturas` se conservan para ella.
+- **Una empresa por base de datos, siempre:** ninguna ruta refactorizada pide `empresaId`; si una
+  tabla lo necesita, sale de la sesión (`actor.empresaId`). No se agrega a DTO, rutas ni filtros
+  nuevos.
 - **Despliegue:** el servidor sale junto con una interfaz refactorizada; no se crea interfaz ni
   funciones nuevas en esta fase.
 - **Los crons van al final** y tendrán un tratamiento especial que definirá el dueño. Hasta entonces
@@ -429,6 +432,9 @@ a la UI (fugas de campos), y `catch` que tragan errores y devuelven `200`.
   `MIKROTIK_SECRET_KEY`). Sin `init()`: no arrancan crons ni conexiones.
 - **Hay DTO legacy que el pipe estricto rechaza.** Al tocar un módulo, pasa por `ValidacionGlobalPipe`
   el cuerpo que envía su cliente y deja un spec (ver `cliente-internet/dto`).
+- **"Solo si no tiene uso" necesita bloqueo:** una llave foránea no ve el borrado lógico. Quien
+  asigna toma la fila `FOR SHARE` dentro de su unidad de trabajo y quien elimina `FOR UPDATE`
+  antes de comprobar (ver `zona-facturacion`).
 - **Fakes que devuelven copias**: un repositorio falso debe devolver `Entidad.hydrate(e.toPrimitives())`
   en cada lectura; si devuelve la misma instancia, los tests de concurrencia pasan en falso o fallan raro.
 - Use cases se instancian con `new` y `RelojFijo`; sin `TestingModule`.
