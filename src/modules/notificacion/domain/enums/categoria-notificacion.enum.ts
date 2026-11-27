@@ -1,0 +1,10 @@
+export enum CategoriaNotificacion {
+  SISTEMA = 'SISTEMA',
+  FACTURACION = 'FACTURACION',
+  COBRANZA = 'COBRANZA',
+  SOPORTE = 'SOPORTE',
+  RUTA_COBRO = 'RUTA_COBRO',
+  CLIENTE = 'CLIENTE',
+  BOT = 'BOT',
+  OTROS = 'OTROS',
+}

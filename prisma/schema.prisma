@@ -317,6 +317,10 @@ model UsuarioPushDispositivo {
 
   activo Boolean @default(true)
 
+  /// SesionUsuario.id que registró el dispositivo: al revocarse la sesión
+  /// el dispositivo se desactiva. Null en registros anteriores.
+  sesionId String?
+
   ultimoRegistroEn DateTime  @default(now())
   revocadoEn       DateTime?
 
@@ -327,6 +331,7 @@ model UsuarioPushDispositivo {
 
   @@index([usuarioId, activo])
   @@index([activo])
+  @@index([sesionId])
 }
 
 // model UbicacionTecnico {
