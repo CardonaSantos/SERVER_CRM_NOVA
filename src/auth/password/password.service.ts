@@ -3,8 +3,6 @@ import { randomBytes, scrypt as scryptCb, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import * as bcrypt from 'bcryptjs';
 
-import { PasswordHasherPort } from 'src/user/domain/ports/password-hasher.port';
-
 const scrypt = promisify(scryptCb) as (
   password: string,
   salt: Buffer,
@@ -42,7 +40,7 @@ interface HashScrypt {
  * con bcrypt y needsRehash() los marca para migrar a scrypt.
  */
 @Injectable()
-export class PasswordService implements PasswordHasherPort {
+export class PasswordService {
   async hash(contrasena: string): Promise<string> {
     const sal = randomBytes(LONGITUD_SAL);
     const clave = await scrypt(contrasena, sal, LONGITUD_CLAVE, {
@@ -54,11 +52,6 @@ export class PasswordService implements PasswordHasherPort {
       `${PREFIJO_SCRYPT}N=${PARAMS.N},r=${PARAMS.r},p=${PARAMS.p}` +
       `$${sal.toString('base64')}$${clave.toString('base64')}`
     );
-  }
-
-  /** Alias de verify() para cumplir PasswordHasherPort. */
-  compare(contrasena: string, hashGuardado: string): Promise<boolean> {
-    return this.verify(contrasena, hashGuardado);
   }
 
   /**

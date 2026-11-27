@@ -13,14 +13,11 @@ import {
   Param,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { RolUsuario } from '@prisma/client';
 import type { Request } from 'express';
 import { AuthService } from './auth.service';
-import { CreateAuthDto } from './dto/create-auth.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { Public } from './decoradores/public.decorator';
-import { Roles } from './decoradores/roles.decorator';
 import { JwtAuthGuard } from './JwtGuard/jwt-auth.guard';
 import { UsuarioAutenticado } from './JwtGuard/jwt-payload';
 import { ContextoCliente } from './sesiones/auditoria-auth.service';
@@ -65,18 +62,6 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly sesionesService: SesionesService,
   ) {}
-
-  /*
-   * Solo un SUPER_ADMIN autenticado puede crear usuarios.
-   * Antes era público: cualquiera podía crearse un SUPER_ADMIN.
-   */
-  @Post('/regist-user')
-  @UseGuards(JwtAuthGuard)
-  @Roles(RolUsuario.SUPER_ADMIN)
-  @HttpCode(HttpStatus.CREATED)
-  createUserWithAuth(@Body() createAuthDto: CreateAuthDto) {
-    return this.authService.register(createAuthDto);
-  }
 
   /**
    * Respuesta: { access_token, refresh_token, token_type, expires_in, user }.

@@ -11,7 +11,7 @@ import { GuardGlobalAuth } from './JwtGuard/guard-global-auth';
 import { RolesGuard } from './JwtGuard/roles.guard';
 import { ACCESS_TOKEN_TTL_SEGUNDOS } from './sesiones/sesion.constants';
 
-import { UserModule } from 'src/user/user.module';
+import { UsuarioModule } from 'src/modules/usuario/usuario.module';
 import { PrismaModule } from 'src/prisma/prisma.module';
 
 @Module({
@@ -27,7 +27,7 @@ import { PrismaModule } from 'src/prisma/prisma.module';
   ],
 
   imports: [
-    UserModule,
+    UsuarioModule,
 
     PrismaModule,
 

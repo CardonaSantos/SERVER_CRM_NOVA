@@ -3,9 +3,9 @@ import { Global, Module } from '@nestjs/common';
 import { PasswordService } from './password.service';
 
 /*
- * Global: lo usan UserModule (crear/actualizar/validar), AuthModule (login),
- * la reautenticación PPPoE y ssh-mikrotik. UserModule no puede importar
- * AuthModule (AuthModule ya importa UserModule).
+ * Global: lo usan UsuarioModule (crear, cambiar y verificar contraseñas),
+ * AuthModule (login) y la reautenticación PPPoE. UsuarioModule no puede
+ * importar AuthModule (AuthModule ya importa UsuarioModule).
  */
 @Global()
 @Module({

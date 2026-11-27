@@ -1,13 +1,15 @@
 import {
+  Inject,
   Injectable,
   Logger,
   UnauthorizedException,
   BadRequestException,
-  ConflictException,
 } from '@nestjs/common';
 import { PlataformaSesion } from '@prisma/client';
-import { CreateAuthDto } from './dto/create-auth.dto';
-import { UserService } from 'src/user/app/user.service';
+import {
+  USUARIO,
+  UsuarioFacadePort,
+} from 'src/modules/usuario/public/usuario.facade.port';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { PasswordService } from './password/password.service';
@@ -24,7 +26,7 @@ export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
   constructor(
-    private readonly userService: UserService,
+    @Inject(USUARIO) private readonly usuarios: UsuarioFacadePort,
     private readonly passwordService: PasswordService,
     private readonly prisma: PrismaService,
     private readonly sesionesService: SesionesService,
@@ -88,9 +90,14 @@ export class AuthService {
     }
 
     // Nunca registrar el correo: es dato personal y ayuda a enumerar cuentas.
-    const usuario = await this.userService.findByGmail(
+    const credenciales = await this.usuarios.buscarCredenciales(
       this.sanitizeEmail(correo),
     );
+    const usuario = credenciales && {
+      id: credenciales.usuarioId,
+      activo: credenciales.activo,
+      contrasena: credenciales.contrasenaHash,
+    };
 
     if (!usuario) {
       this.hashRelleno ??= this.passwordService.hash('relleno-sin-usuario');
@@ -152,7 +159,7 @@ export class AuthService {
       );
     }
 
-    const contrasenaValida = await this.userService.validarContrasenaActual(
+    const contrasenaValida = await this.usuarios.verificarContrasena(
       usuarioId,
       contrasenaActual,
     );
@@ -182,7 +189,7 @@ export class AuthService {
     const valida =
       typeof contrasena === 'string' &&
       contrasena.length > 0 &&
-      (await this.userService.validarContrasenaActual(usuario.id, contrasena));
+      (await this.usuarios.verificarContrasena(usuario.id, contrasena));
 
     this.auditoria.registrar({
       tipo: 'REAUTENTICACION',
@@ -356,7 +363,7 @@ export class AuthService {
       );
     }
 
-    const usuario = await this.userService.findUserInfo(usuarioId);
+    const usuario = await this.usuarios.obtenerPerfilSesion(usuarioId);
 
     if (!usuario) {
       throw new UnauthorizedException('El usuario autenticado ya no existe.');
@@ -387,50 +394,9 @@ export class AuthService {
 
       empresaId: usuario.empresaId,
 
-      avatarUrl: usuario.perfil?.avatar?.url ?? null,
+      avatarUrl: usuario.avatarUrl,
 
-      portadaUrl: usuario.perfil?.portada?.url ?? null,
+      portadaUrl: usuario.portadaUrl,
     };
-  }
-
-  async register(createAuthDto: CreateAuthDto) {
-    try {
-      const { nombre, rol, correo, empresaId, contrasena } = createAuthDto;
-      const cleanEmail = this.sanitizeEmail(correo);
-
-      // 1. Verificar si ya existe antes de intentar crear (Mejor UX)
-      const existe = await this.userService.findByGmail(cleanEmail);
-      if (existe) {
-        throw new ConflictException('El correo ya está registrado');
-      }
-
-      // 2. Hashear contraseña (scrypt)
-      const hashedPassword = await this.passwordService.hash(contrasena);
-
-      // 3. Crear usuario
-      const obj = {
-        nombre,
-        contrasena: hashedPassword,
-        rol,
-        correo: cleanEmail, // Guardamos el correo limpio
-        activo: true,
-        empresaId,
-      };
-
-      const nuevoUsuario = await this.userService.create(obj);
-
-      /*
-       * Ya no se emite un access_token para el usuario creado: quien llama
-       * es un SUPER_ADMIN y no debe recibir una sesión de otra persona.
-       * El usuario nuevo inicia sesión por su cuenta (el front no usaba
-       * este token).
-       */
-      return {
-        usuario: { ...nuevoUsuario, contrasena: undefined }, // No devolver pass
-      };
-    } catch (error) {
-      if (error instanceof ConflictException) throw error;
-      throwFatalError(error, this.logger, 'auth-register');
-    }
   }
 }

@@ -3,7 +3,6 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
-import { UserModule } from './user/user.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { EmpresaModule } from './modules/empresa/empresa.module';
 import { ClienteModule } from './modules/cliente/cliente.module';
@@ -35,7 +34,6 @@ import { TiempoRealModule } from './common/tiempo-real/tiempo-real.module';
 import { CreditoModule } from './credito/credito.module';
 import { CuotasPagoModule } from './credito/cuotas-pago/cuotas-pago.module';
 import { GenerateReportsModule } from './generate-reports/generate-reports.module';
-import { PerfilModule } from './perfil/perfil.module';
 import { ClienteInstalacionModule } from './modules/cliente-instalacion/cliente-instalacion.module';
 import { ClienteDesinstalacionModule } from './modules/cliente-desinstalacion/cliente-desinstalacion.module';
 import { PppoeAccesoInternetModule } from './modules/pppoe-acceso-internet/pppoe-acceso-internet.module';
@@ -58,7 +56,6 @@ import { UsuarioModule } from './modules/usuario/usuario.module';
       isGlobal: true, // Hace que ConfigService esté disponible en toda la aplicación
     }),
     AuthModule,
-    UserModule,
     PrismaModule,
     EmpresaModule,
     ClienteModule,
@@ -98,7 +95,6 @@ import { UsuarioModule } from './modules/usuario/usuario.module';
     CreditoModule,
     CuotasPagoModule,
     GenerateReportsModule,
-    PerfilModule,
 
     ClienteInstalacionModule,
     ClienteDesinstalacionModule,
