@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { configurarSwagger } from './swagger/configurar-swagger';
+import { validarOrigen } from './common/http/origenes-permitidos';
 
 const port = process.env.PORT || 3000;
 
@@ -34,21 +35,8 @@ async function bootstrap() {
    */
   app.set('query parser', 'extended');
 
-  const allowlist = new Set<string>([
-    'http://localhost:5173',
-    'http://localhost:8081',
-    'https://nova-crm-server-test-ui-production.up.railway.app',
-    'https://pos-crm-nova.up.railway.app',
-  ]);
-
   app.enableCors({
-    origin: (origin, cb) => {
-      if (!origin) {
-        return cb(null, true);
-      }
-
-      return cb(null, allowlist.has(origin));
-    },
+    origin: validarOrigen,
 
     credentials: true,
 
