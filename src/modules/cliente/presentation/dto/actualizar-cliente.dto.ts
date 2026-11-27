@@ -23,7 +23,6 @@ const ESTADOS = [
 export class ActualizarClienteDto extends PartialType(
   OmitType(CrearClienteDto, [
     'nombre',
-    'empresaId',
     'estado',
     'ip',
     'gateway',

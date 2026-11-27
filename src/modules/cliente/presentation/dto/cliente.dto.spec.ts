@@ -15,7 +15,6 @@ const alta = {
   telefono: '55555555',
   dpi: '',
   fechaInstalacion: '2026-11-01T06:00:00.000Z',
-  empresaId: 1,
   zonaFacturacionId: 2,
   servicioWifiId: 3,
   municipioId: 1,
@@ -39,7 +38,6 @@ describe('DTO de alta y edición de cliente', () => {
   it.each([
     'nombre',
     'ip',
-    'empresaId',
     'zonaFacturacionId',
     'servicioWifiId',
     'municipioId',

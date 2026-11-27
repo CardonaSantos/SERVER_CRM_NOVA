@@ -137,7 +137,7 @@ export class ClienteController {
 
   /** Alta con IP, ubicación, servicios, primera factura y contrato. */
   @Post('create-new-customer')
-  async crear(@Body() dto: CrearClienteDto) {
+  async crear(@Body() dto: CrearClienteDto, @Actor() actor: ActorHttp) {
     return ClientePresenter.guardado(
       await this.crearCliente.execute({
         cliente: {
@@ -153,7 +153,7 @@ export class ClienteController {
           contrasenaWifi: dto.contrasenaWifi,
           ssidRouter: dto.ssidRouter,
           fechaInstalacion: dto.fechaInstalacion,
-          empresaId: dto.empresaId,
+          empresaId: actor.empresaId,
           facturacionZonaId: dto.zonaFacturacionId,
           servicioInternetId: dto.servicioWifiId,
           municipioId: dto.municipioId,

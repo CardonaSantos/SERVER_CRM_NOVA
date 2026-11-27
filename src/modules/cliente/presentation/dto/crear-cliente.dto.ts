@@ -93,10 +93,6 @@ export class CrearClienteDto {
   @IsDate()
   fechaInstalacion?: Date | null;
 
-  /** Empresa */
-  @IsInt()
-  empresaId: number;
-
   /** Zona de facturación */
   @IsInt()
   zonaFacturacionId: number;
