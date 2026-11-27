@@ -8,7 +8,7 @@
 >
 > | Dato | Valor |
 > |---|---|
-> | Rama de trabajo | `refactorizaciones-hexagonales` (usa la punta; último cambio de código `0991e7c`) |
+> | Rama de trabajo | `refactorizaciones-hexagonales` (usa la punta; último cambio de código `d96e00a`) |
 > | Punto de control | `checkpoints-refactorizaciones` en `ee2b197` (26-nov-2026; solo se mueve si el dueño lo pide) |
 > | Producción (`main`) | `108c6ef`: **nada de este trabajo está desplegado**. `main` es ancestro de la rama |
 > | Para desplegar | §10 |
@@ -23,16 +23,19 @@
 
 | Medida | Valor |
 |---|---|
-| Módulos en `src/modules` | 27: **25 hechos** y 2 pendientes de `reporte` (`excel-reports`, `reports`) |
-| Pasos de la fase legacy (§3.2) hechos | 0, 1, 3, 4, 5, 6, 7, 8, 11, 12, 13, 16 y 17 |
-| Pasos por hacer | 14, 15, 18, 19, 20 y el bloque final (crons y cobranza) |
+| Módulos en `src/modules` | 28: **26 hechos** y 2 pendientes de `reporte` (`excel-reports`, `reports`) |
+| Pasos de la fase legacy (§3.2) hechos | 0, 1, 3, 4, 5, 6, 7, 8, 11, 12, 13, 16, 17 y 19 |
+| Pasos por hacer | 14, 15, 18, 20 y el bloque final (crons y cobranza) |
 | En espera, aplazados o fuera | 2 (roles), 9 (`credito`), 10 (`mikrotik-router`, fuera), `reporte` |
 | Pendiente propio de tickets | Firma del cliente en el teléfono del técnico (§7) |
-| Verificación | build verde · lint 98 (partió de 429) · Jest 1172/1172 en 147 suites |
+| Verificación | build verde · lint 90 (partió de 429) · Jest 1199/1199 en 150 suites |
 | Migraciones por aplicar en producción | **11** (§10.2) |
 | Commits sobre `main` | Más de 200 |
 
 **Siguiente paso:** lo elige el dueño. No empieces ninguno hasta que lo diga.
+
+**Modelo acordado por paso** (27-nov-2026): 18 → Sonnet 5.5 medium; 15 y 20 → Sonnet 5.5 high; 14, crons,
+cobranza y `credito` → Opus 5.5 high o superior.
 
 ---
 
@@ -106,6 +109,7 @@ Módulos hexagonales conformes en `src/modules/` (usa estos como **plantilla**):
 | `ticket-soporte-historial` | Bitácora publicada como fachada que otro módulo llama dentro de su unidad de trabajo |
 | `ticket-soporte-conformidad` | Compensación de efectos (subida de archivo + rollback), traducción de `P2002` a `CONFLICTO` |
 | `almacenamiento-media`, `mikrotik-ssh`, `pppoe-credentials`, `mikrotik-router-credentials` | Capacidades técnicas publicadas como puerto en `public/` |
+| `ticket-soporte-metrica` | Datos calculados al leer (avance y estado sin contador), reglas de fechas de negocio en `domain/` sin dayjs y candado por técnico contra solapes |
 
 Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el módulo `reporte`, §3).
 
@@ -131,8 +135,8 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 ### 2.3 Línea base medida
 
 - `npm run build`: verde.
-- `npm run lint:check`: **98** errores tras el paso 12 (no subir; los archivos que toques quedan sin errores nuevos).
-- Jest: 1172/1172 en 147 suites; todas en verde.
+- `npm run lint:check`: **90** errores tras el paso 19 (no subir; los archivos que toques quedan sin errores nuevos).
+- Jest: 1199/1199 en 150 suites; todas en verde.
 - Correr un spec: `npm test -- src/modules/<modulo>` (1–2 min). Con la caché fría la suite completa
   puede pasar de 5 minutos: córrela en segundo plano.
 
@@ -175,8 +179,9 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 | Datos de la copia local por revisar: 4 clientes con un sector de otro municipio, un sector sin nombre y sin clientes, y 11 de 160 coordenadas de clientes fuera de Guatemala | El dueño |
 | La app Android (`checkpoint-android-studio`) no guarda el `refresh_token` ni renueva la sesión: con esta rama el access token dura 20 min | **Antes del deploy**: el dueño ajusta la app (§4.1 de la guía post-auth) |
 | La app Android no puede cobrar contra esta rama: envía `cobradorId` y `observaciones` al pagar en ruta (400), exige `saldo.saldoFavor` y la forma vieja de las rutas, y el comprobante exige `empresa.id` y `servicios` (pasos 6 y 8) | El dueño la actualizará en su momento (decisión del 26-nov-2026): el servidor no conserva compatibilidad. Desplegar sin la app nueva deja a los cobradores sin cobrar |
-| `ticket-soporte` suma metas con `MetasTicketsService` por un adaptador en su `infra/` (tiempo real, push y bandeja ya van por `TIEMPO_REAL` y `NOTIFICACION`) | `ticket-soporte-metrica` |
-| Metas: cada primer cierre suma a la última meta abierta del técnico aunque esté fuera de sus fechas (reabrir ya no suma) | `ticket-soporte-metrica` |
+| Metas creadas desde el React antes del paso 19 quedaron con la fecha final un día después: la meta cuenta ese día de más y puede chocar con la siguiente. Se corrigen editándolas | El dueño, si le importa |
+| Columnas `ticketsResueltos`, `cumplida` y `fechaCumplida` de `MetaTecnicoTicket` y la tabla `MetaTickets` sin uso | Se quedan en la base |
+| El listado de metas calcula y pagina en memoria (son pocas filas) y no hay ruta de totales de metas | Si la UI nueva la pide |
 | **El cliente no tiene cómo firmar** la conformidad: el enlace público se retiró y la app aún lo llama | Paso aparte, el siguiente de tickets (decisión del dueño, 27-nov-2026) |
 | Las imágenes quitadas, o de un comentario eliminado, se ocultan pero siguen en el almacenamiento, visibles por enlace | Si el dueño pide destruirlas |
 | `dashboard` sigue leyendo tickets directamente (panel del técnico, actividad, en proceso) | `dashboard` |
@@ -192,7 +197,7 @@ Conformidad medida el 27-nov-2026 con `scripts/conformidad-hexagonal.sh`.
 
 | Módulo en `src/modules` | Conformidad |
 |---|---|
-| `almacenamiento-media`, `cliente`, `cliente-cobranza`, `mensajeria-cliente`, `mikrotik-router-credentials`, `notificacion`, `pppoe-credentials`, `real-time-location`, `ruta-cobro`, `servicio`, `ticket-soporte`, `ticket-soporte-historial`, `ubicacion`, `zona-facturacion` | Sin hallazgos |
+| `almacenamiento-media`, `cliente`, `cliente-cobranza`, `mensajeria-cliente`, `mikrotik-router-credentials`, `notificacion`, `pppoe-credentials`, `real-time-location`, `ruta-cobro`, `servicio`, `ticket-soporte`, `ticket-soporte-historial`, `ticket-soporte-metrica`, `ubicacion`, `zona-facturacion` | Sin hallazgos |
 | `facturacion`, `ticket-soporte-conformidad` | Solo el falso positivo del check 13 (un enum con un valor igual a un rol) |
 | `cliente-instalacion`, `cliente-desinstalacion`, `mikrotik-ssh`, `pppoe-acceso-internet`, `pppoe-auditoria`, `pppoe-automatizacion`, `pppoe-cliente-cuenta`, `pppoe-operacion`, `pppoe-perfil-homologacion` | Marcan líneas en el check 6 (`throw new Error`), que el estándar admite solo para errores de programación: revisar a mano cuando se toquen |
 | `excel-reports`, `reports` | No conformes: se resuelven en `reporte` |
@@ -208,7 +213,6 @@ Conformidad medida el 27-nov-2026 con `scripts/conformidad-hexagonal.sh`.
 | `user`, `perfil` | 1602 + 619 | 16 | 14 |
 | `zona-facturacion-cron` | 1241 | crons | Final |
 | `contrato-cliente`, `id-contrato` | 729 + 106 | 15 | 15 |
-| `metas-tickets` | 688 | 7 | 19 |
 | `empresa` | 217 | 4 | 18 |
 | `Utils`, `shared`, `CustomDecoratorAuthToken`, `migrate.*`, `app.controller/service` | pocas | — | Transversal (§3.2) |
 
@@ -236,6 +240,7 @@ Conformidad medida el 27-nov-2026 con `scripts/conformidad-hexagonal.sh`.
 | 27 nov | `comun #10–#11`, `ticket-soporte #1–#5` | Paso 11 |
 | 27 nov | `comun #12`, `tiempo-real #1` | Paso 13 |
 | 27 nov | `notificacion #1–#2` | Paso 12 |
+| 27 nov | `ticket-soporte-metrica #1–#2` | Paso 19 |
 
 El detalle de cada cambio visible está en `docs/cambios-contrato-ui.md`; el de cada commit, en su
 mensaje (`git log`).
@@ -322,6 +327,12 @@ Decisiones del dueño del **26-nov-2026**. Los nombres nuevos siguen §15 del es
   estados y activos del más antiguo al más nuevo, con el formato `{ data, meta }`. La solución al
   resolver es opcional. La firma del cliente es un paso aparte.
 
+- **Metas y métricas** (27-nov-2026): el avance de una meta son los tickets resueltos entre sus
+  fechas, como principal o apoyo; un reabierto cuenta solo mientras esté resuelto, en la fecha de su
+  último cierre. El estado se calcula y a mano solo se cancela. Un técnico no tiene metas encimadas
+  ni se cambia el de una meta. Crear, editar y cancelar es de oficina. Las métricas muestran a los
+  técnicos activos y a quien tenga tickets en el mes.
+
 ### 3.2 Orden de trabajo
 
 En nombres, fusiones y alcance esta tabla manda sobre la propuesta de §15.1 del estándar.
@@ -347,7 +358,7 @@ En nombres, fusiones y alcance esta tabla manda sobre la propuesta de §15.1 del
 | 16 | `servicio` | `servicio`, `servicio-internet`, `tipo-servicio` | ✅ Hecho | `servicio #1–#3`: fachada `SERVICIO`, borrado lógico solo sin uso, precio con contraseña, rutas renombradas |
 | 17 | `ubicacion` | `location`, `sector` | ✅ Hecho | `ubicacion #1–#3`: fachada `UBICACION`, borrado lógico de sectores, municipios completos y rutas destructivas retiradas |
 | 18 | `empresa` | `empresa` | Pendiente | |
-| 19 | `ticket-soporte-metrica` | `metas-tickets` | Pendiente | |
+| 19 | `ticket-soporte-metrica` | `metas-tickets` | ✅ Hecho | `ticket-soporte-metrica #1–#2`: avance calculado desde los tickets resueltos (principal o apoyo), sin metas encimadas, cancelar en vez de borrar, escrituras solo de oficina, métricas por mes, sin migraciones |
 | 20 | `dashboard` | `dashboard` | Pendiente | Solo lectura: puertos de consulta y read models |
 | Final | `tareas-programadas` (H4), `cobranza` (H7–H10), `ciclo-facturacion` (H11) | `zona-facturacion-cron` y nuevos | Pendiente | Incluye los días 29–31 y la limpieza de sesiones vencidas (G6). El diseño de cobranza está en la guía del dueño |
 | Aplazado | `reporte` | `generate-reports`, `modules/excel-reports`, `modules/reports` | Aplazado | |
