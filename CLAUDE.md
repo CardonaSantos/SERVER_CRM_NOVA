@@ -35,7 +35,7 @@ La etapa de auth y NestJS 12 está terminada en código (aún no desplegada). Ah
    `real-time-location`), ✅ paso 4 (`cliente`), ✅ paso 5 (`zona-facturacion`), ✅ paso 6
    (`facturacion`), ✅ paso 7 (`mensajeria-cliente`), ✅ paso 8 (`ruta-cobro`), ✅ paso 16
    (`servicio`), ✅ paso 17 (`ubicacion`), ✅ paso 11 (`ticket-soporte`), ✅ paso 12 (`notificacion`), ✅ paso 19
-   (`ticket-soporte-metrica`) y ✅ paso 13
+   (`ticket-soporte-metrica`), ✅ paso 18 (`empresa`) y ✅ paso 13
    (`common/tiempo-real`, eventos en `docs/eventos-tiempo-real.md`); H2 (roles) queda en
    espera del dueño; `credito` (paso 9) queda aplazado y `mikrotik-router` (paso 10) fuera hasta
    nuevo aviso; el dueño elige el siguiente paso. **Los crons van al final**; reportes queda aplazado.
@@ -84,7 +84,7 @@ npm run start:dev
 npx prisma migrate status
 ```
 
-Node 24 (`.nvmrc`). Línea base: lint ≤ 90 errores (tras el paso 19; sin errores nuevos en
+Node 24 (`.nvmrc`). Línea base: lint ≤ 88 errores (tras el paso 18; sin errores nuevos en
 archivos tocados); Jest: todas las suites en verde.
 
 ## Seguridad que ya existe (no la rehagas ni la rodees)
