@@ -6,7 +6,8 @@ export const RESUMEN_QUERY = Symbol('RESUMEN_QUERY');
 export interface ResumenQueryPort {
   /**
    * Clientes vigentes hoy (la cobranza, sin desinstalados) y la facturación
-   * del rango (sin facturas anuladas).
+   * del mes del rango (sin facturas anuladas): emitidas, facturado y pendiente
+   * por el `periodo` de la factura; pagadas y cobrado por la fecha de pago.
    */
   findDatos(rango: RangoFechas): Promise<DatosResumen>;
 }

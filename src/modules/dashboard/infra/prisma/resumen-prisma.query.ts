@@ -26,8 +26,10 @@ export class ResumenPrismaQuery implements ResumenQueryPort {
     const vigentes = {
       isEliminado: false,
     } satisfies Prisma.ClienteInternetWhereInput;
+    // Las facturas del mes son las de su `periodo` (`YYYYMM`), como en la
+    // gráfica mensual, sin importar el día en que se crearon.
     const emitidas = {
-      creadoEn: periodo,
+      periodo: rango.desde.slice(0, 7).replace('-', ''),
       estadoFacturaInternet: { not: StateFacturaInternet.ANULADA },
     } satisfies Prisma.FacturaInternetWhereInput;
 

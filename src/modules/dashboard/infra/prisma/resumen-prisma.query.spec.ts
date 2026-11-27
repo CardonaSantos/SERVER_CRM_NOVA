@@ -33,13 +33,21 @@ describe('ResumenPrismaQuery', () => {
         },
       }),
     );
-    expect(contarFacturas).toHaveBeenCalledWith({
+    // Emitidas por el periodo de la factura, no por el día en que se creó.
+    expect(contarFacturas).toHaveBeenNthCalledWith(1, {
       where: {
-        creadoEn: {
+        periodo: '202611',
+        estadoFacturaInternet: { not: 'ANULADA' },
+      },
+    });
+    // Pagadas por la fecha en que se pagaron, en días de Guatemala.
+    expect(contarFacturas).toHaveBeenNthCalledWith(2, {
+      where: {
+        estadoFacturaInternet: 'PAGADA',
+        fechaPagada: {
           gte: new Date('2026-11-01T06:00:00.000Z'),
           lt: new Date('2026-12-01T06:00:00.000Z'),
         },
-        estadoFacturaInternet: { not: 'ANULADA' },
       },
     });
   });

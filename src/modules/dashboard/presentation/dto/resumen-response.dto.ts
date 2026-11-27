@@ -27,7 +27,7 @@ export class ResumenResponseDto {
       morosos: number;
     };
   };
-  /** Facturación del mes, sin anuladas */
+  /** Facturación del mes, sin anuladas: emitidas, facturado y pendiente son del periodo; pagadas y cobrado, por fecha de pago */
   facturacion: {
     facturasEmitidasMes: number;
     facturasPagadasMes: number;
