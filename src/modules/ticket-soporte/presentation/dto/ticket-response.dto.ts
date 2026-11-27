@@ -82,7 +82,10 @@ export class TicketDetalleResponseDto extends TicketResponseDto {
   };
   /** Lo que este usuario puede hacer ahora. */
   acciones: AccionTicket[];
+  /** Edita título, descripción, prioridad, cliente y etiquetas. */
   puedeEditar: boolean;
+  /** Asigna técnicos y fija. */
+  puedeAsignar: boolean;
 }
 
 export class ContadoresTicketResponseDto {

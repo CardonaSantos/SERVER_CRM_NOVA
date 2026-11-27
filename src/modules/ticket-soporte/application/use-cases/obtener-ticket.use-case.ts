@@ -18,6 +18,7 @@ export type ObtenerTicketInput = {
   ticketId: number;
   usuarioId: number;
   gestiona: boolean;
+  puedeAsignar: boolean;
   soloAsignadosA?: number;
 };
 
@@ -26,6 +27,7 @@ export type ObtenerTicketResult = {
   /** Lo que este usuario puede hacer ahora. */
   acciones: AccionTicket[];
   puedeEditar: boolean;
+  puedeAsignar: boolean;
   tiempoTrabajado: {
     /** `null`: no hay registro. */
     minutos: number | null;
@@ -64,6 +66,7 @@ export class ObtenerTicketUseCase {
         tieneAsignados: asignados.length > 0,
       }),
       puedeEditar: input.gestiona,
+      puedeAsignar: input.puedeAsignar,
       tiempoTrabajado: {
         minutos: tiempoTecnico(ticket.ciclos, this.reloj.ahora()),
         corriendoDesde:

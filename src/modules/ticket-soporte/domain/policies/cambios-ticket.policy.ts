@@ -7,6 +7,29 @@ export type NombresDeReferencias = {
   clientes: Map<number, string>;
 };
 
+/**
+ * Si la edición toca algo más que la asignación y el fijado, que es lo único
+ * que puede cambiar quien no es de oficina.
+ */
+export function cambiaDatosDeOficina(
+  antes: TicketProps,
+  despues: TicketProps,
+): boolean {
+  const etiquetas = (t: TicketProps) =>
+    [...t.etiquetaIds].sort((a, b) => a - b).join(',');
+
+  // Los textos antiguos pueden traer espacios que la edición recorta.
+  const texto = (valor: string | null) => valor?.trim() || null;
+
+  return (
+    texto(antes.titulo) !== texto(despues.titulo) ||
+    texto(antes.descripcion) !== texto(despues.descripcion) ||
+    antes.prioridad !== despues.prioridad ||
+    antes.clienteId !== despues.clienteId ||
+    etiquetas(antes) !== etiquetas(despues)
+  );
+}
+
 /** Cambios de una edición, con nombres para que la bitácora se pueda leer. */
 export function cambiosDelTicket(
   antes: TicketProps,

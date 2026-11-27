@@ -111,6 +111,7 @@ export class TicketPresenter {
       },
       acciones: r.acciones,
       puedeEditar: r.puedeEditar,
+      puedeAsignar: r.puedeAsignar,
     };
   }
 

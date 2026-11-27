@@ -27,6 +27,8 @@ import {
 export type CrearTicketInput = ActorTicket &
   Omit<CrearTicketProps, 'creadoPorId' | 'empresaId'> & {
     empresaId: number;
+    /** Todos los roles salvo el técnico asignan y fijan. */
+    puedeAsignar: boolean;
     /** Número extra que también recibe el aviso por WhatsApp. */
     telefonoTemporal?: string | null;
   };
@@ -56,11 +58,11 @@ export class CrearTicketUseCase {
     );
 
     if (
-      !input.gestiona &&
+      !input.puedeAsignar &&
       (nuevo.asignados.length || nuevo.toPrimitives().fijado)
     ) {
       throw new TicketAccionDeOficinaError(
-        'Solo la oficina puede asignar técnicos o fijar tickets.',
+        'Un técnico no puede asignar ni fijar tickets.',
       );
     }
 

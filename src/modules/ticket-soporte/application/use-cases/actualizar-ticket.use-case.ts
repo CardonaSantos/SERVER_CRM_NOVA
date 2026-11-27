@@ -8,8 +8,14 @@ import {
   TICKET_SOPORTE_HISTORIAL,
   TicketSoporteHistorialFacadePort,
 } from 'src/modules/ticket-soporte-historial/public/ticket-soporte-historial.facade.port';
-import { TicketNoEncontradoError } from '../../domain/errors/ticket-soporte.errors';
-import { cambiosDelTicket } from '../../domain/policies/cambios-ticket.policy';
+import {
+  TicketAccionDeOficinaError,
+  TicketNoEncontradoError,
+} from '../../domain/errors/ticket-soporte.errors';
+import {
+  cambiaDatosDeOficina,
+  cambiosDelTicket,
+} from '../../domain/policies/cambios-ticket.policy';
 import {
   TICKET_REFERENCIA_QUERY,
   TicketReferenciaQueryPort,
@@ -27,6 +33,8 @@ export type ActualizarTicketInput = {
   ticketId: number;
   usuarioId: number;
   usuarioNombre: string;
+  /** Personal de oficina: edita todos los datos del ticket. */
+  gestiona: boolean;
   cambios: CambiosTicket;
 };
 
@@ -39,7 +47,10 @@ function asignadosDe(ticket: TicketProps): number[] {
 const sin = (ids: number[], otros: number[]) =>
   ids.filter((id) => !otros.includes(id));
 
-/** Edición de la oficina. El estado no se cambia aquí: tiene sus acciones. */
+/**
+ * La oficina edita todo; los demás roles autorizados solo asignan y fijan. El
+ * estado no se cambia aquí: tiene sus acciones.
+ */
 @Injectable()
 export class ActualizarTicketUseCase {
   private readonly logger = new Logger(ActualizarTicketUseCase.name);
@@ -67,6 +78,14 @@ export class ActualizarTicketUseCase {
         const antes = ticket.toPrimitives();
         ticket.editar(input.cambios, this.reloj.ahora());
         const despues = ticket.toPrimitives();
+
+        // Se compara lo que cambia, no lo que llega: un formulario puede
+        // reenviar los datos sin tocarlos.
+        if (!input.gestiona && cambiaDatosDeOficina(antes, despues)) {
+          throw new TicketAccionDeOficinaError(
+            'Solo la oficina puede cambiar los datos del ticket. Puedes asignar técnicos y fijarlo.',
+          );
+        }
 
         const agregados = sin(asignadosDe(despues), asignadosDe(antes));
         await this.referencias.exigir({

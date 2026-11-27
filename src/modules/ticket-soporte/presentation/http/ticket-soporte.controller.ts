@@ -16,6 +16,7 @@ import { Roles } from 'src/auth/decoradores/roles.decorator';
 import {
   perteneceA,
   ROLES_OFICINA,
+  ROLES_SIN_TECNICO,
   ROLES_TECNICO,
 } from 'src/auth/roles/grupos-roles';
 import { ActualizarTicketUseCase } from '../../application/use-cases/actualizar-ticket.use-case';
@@ -44,6 +45,10 @@ import { TicketPresenter } from '../presenters/ticket.presenter';
 
 /** La oficina cambia cualquier ticket. */
 const gestiona = (actor: ActorHttp) => perteneceA(ROLES_OFICINA, actor.rol);
+
+/** Todos menos el técnico asignan y fijan. */
+const puedeAsignar = (actor: ActorHttp) =>
+  perteneceA(ROLES_SIN_TECNICO, actor.rol);
 
 /** Un técnico solo ve los tickets que tiene asignados. */
 const alcance = (actor: ActorHttp) =>
@@ -104,6 +109,7 @@ export class TicketSoporteController {
     return this.crearTicket.execute({
       ...quienActua(actor),
       empresaId: actor.empresaId,
+      puedeAsignar: puedeAsignar(actor),
       titulo: dto.titulo,
       descripcion: dto.descripcion,
       clienteId: dto.clienteId,
@@ -156,6 +162,7 @@ export class TicketSoporteController {
         ticketId,
         usuarioId: actor.usuarioId,
         gestiona: gestiona(actor),
+        puedeAsignar: puedeAsignar(actor),
         soloAsignadosA: alcance(actor),
       }),
     );
@@ -195,8 +202,9 @@ export class TicketSoporteController {
     );
   }
 
+  /** La oficina edita todo; los demás, salvo el técnico, asignan y fijan. */
   @Patch(':ticketId')
-  @Roles(...ROLES_OFICINA)
+  @Roles(...ROLES_SIN_TECNICO)
   actualizar(
     @Param('ticketId', ParseIntPipe) ticketId: number,
     @Body() dto: ActualizarTicketDto,
@@ -206,6 +214,7 @@ export class TicketSoporteController {
       ticketId,
       usuarioId: actor.usuarioId,
       usuarioNombre: actor.nombre,
+      gestiona: gestiona(actor),
       cambios: {
         titulo: dto.titulo,
         descripcion: dto.descripcion,

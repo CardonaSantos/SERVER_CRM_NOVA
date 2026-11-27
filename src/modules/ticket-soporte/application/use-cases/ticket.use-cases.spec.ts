@@ -1,3 +1,4 @@
+import { PrioridadTicket } from '../../domain/enums/prioridad-ticket.enum';
 import {
   ComentarioImagenInvalidaError,
   ComentarioNoEncontradoError,
@@ -76,7 +77,12 @@ function armar() {
   };
 }
 
-const NUEVO = { ...OFICINA, empresaId: 1, titulo: 'Sin señal' };
+const NUEVO = {
+  ...OFICINA,
+  puedeAsignar: true,
+  empresaId: 1,
+  titulo: 'Sin señal',
+};
 
 describe('crear ticket', () => {
   it('deja bitácora, avisa a los asignados y al cliente', async () => {
@@ -114,9 +120,9 @@ describe('crear ticket', () => {
     expect(t.tickets.tickets.size).toBe(0);
   });
 
-  it('quien no es oficina crea, pero no asigna ni fija', async () => {
+  it('un técnico crea, pero no asigna ni fija', async () => {
     const t = armar();
-    const base = { ...NUEVO, ...TECNICO };
+    const base = { ...NUEVO, ...TECNICO, puedeAsignar: false };
 
     await expect(t.crear.execute(base)).resolves.toBeDefined();
     await expect(t.crear.execute({ ...base, tecnicoId: 1 })).rejects.toThrow(
@@ -125,6 +131,19 @@ describe('crear ticket', () => {
     await expect(t.crear.execute({ ...base, fijado: true })).rejects.toThrow(
       TicketAccionDeOficinaError,
     );
+  });
+
+  it('otro rol que no es oficina sí asigna y fija', async () => {
+    const t = armar();
+
+    await expect(
+      t.crear.execute({
+        ...NUEVO,
+        gestiona: false,
+        tecnicoId: 1,
+        fijado: true,
+      }),
+    ).resolves.toBeDefined();
   });
 
   it('el del bot entra abierto, urgente, fijado y firmado', async () => {
@@ -171,6 +190,64 @@ describe('editar ticket', () => {
         ]),
       }),
     );
+  });
+
+  it('quien no es oficina asigna y fija aunque reenvíe el resto igual', async () => {
+    const t = armar();
+    const ticketId = await t.sembrar({ etiquetaIds: [100, 101] });
+
+    await t.actualizar.execute({
+      ticketId,
+      ...OFICINA,
+      gestiona: false,
+      cambios: {
+        titulo: 'Sin señal',
+        etiquetaIds: [101, 100],
+        tecnicoId: 2,
+        fijado: true,
+      },
+    });
+
+    expect(t.tickets.tickets.get(ticketId)).toMatchObject({
+      tecnicoId: 2,
+      fijado: true,
+    });
+  });
+
+  it('recortar un texto antiguo no cuenta como cambiarlo', async () => {
+    const t = armar();
+    const ticketId = await t.sembrar({});
+    t.tickets.tickets.get(ticketId)!.titulo = 'Sin señal  ';
+
+    await expect(
+      t.actualizar.execute({
+        ticketId,
+        ...OFICINA,
+        gestiona: false,
+        cambios: { titulo: 'Sin señal  ', tecnicoId: 2 },
+      }),
+    ).resolves.toEqual({ ticketId });
+  });
+
+  it.each([
+    { titulo: 'Otro' },
+    { descripcion: 'Otra' },
+    { prioridad: PrioridadTicket.URGENTE },
+    { clienteId: 10 },
+    { etiquetaIds: [100] },
+  ])('quien no es oficina no cambia los datos: %o', async (cambios) => {
+    const t = armar();
+    const ticketId = await t.sembrar({});
+
+    await expect(
+      t.actualizar.execute({
+        ticketId,
+        ...OFICINA,
+        gestiona: false,
+        cambios: { ...cambios, tecnicoId: 2 },
+      }),
+    ).rejects.toThrow(TicketAccionDeOficinaError);
+    expect(t.tickets.tickets.get(ticketId)?.tecnicoId).toBeNull();
   });
 
   it('conserva lo que ya tenía aunque se haya desactivado', async () => {
