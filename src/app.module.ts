@@ -21,11 +21,10 @@ import { ExcepcionesModule } from './common/excepciones/excepciones.module';
 import { RelojModule } from './common/reloj/reloj.module';
 import { TransaccionModule } from './common/transaccion/transaccion.module';
 import { ZonaFacturacionCronModule } from './zona-facturacion-cron/zona-facturacion-cron.module';
-import { IdContratoModule } from './id-contrato/id-contrato.module';
 import { RutaCobroModule } from './modules/ruta-cobro/ruta-cobro.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { UbicacionModule } from './modules/ubicacion/ubicacion.module';
-import { ContratoClienteModule } from './contrato-cliente/contrato-cliente.module';
+import { ContratoClienteModule } from './modules/contrato-cliente/contrato-cliente.module';
 import { MikroTikModule } from './mikro-tik/mikro-tik.module';
 import { TicketSoporteMetricaModule } from './modules/ticket-soporte-metrica/ticket-soporte-metrica.module';
 import { ReportsModule } from './modules/reports/reports.module';
@@ -85,7 +84,6 @@ import { RealTimeLocationModule } from './modules/real-time-location/real-time-l
     TiempoRealModule,
     // TerminusModule,
     ZonaFacturacionCronModule,
-    IdContratoModule,
     RutaCobroModule,
     DashboardModule,
     UbicacionModule,
