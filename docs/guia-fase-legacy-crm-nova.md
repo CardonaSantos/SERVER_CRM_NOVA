@@ -70,6 +70,7 @@ Módulos hexagonales conformes en `src/modules/` (usa estos como **plantilla**):
 | `pppoe-cliente-cuenta` | Entidad con transiciones de estado |
 | `cliente` | Fachada de escritura para otros módulos, borrado lógico, listas con filtros, saldo calculado en una policy y puertos transitorios hacia módulos legacy |
 | `facturacion` | Dinero: bloqueo del cliente por operación, entidad que deriva saldo y estado de los pagos, bitácoras de lo eliminado y fachada consumida por `cliente` sin ciclos (`cliente-cobranza`) |
+| `mensajeria-cliente` | Proveedor externo como adaptador (errores: rechazado, no disponible, sin confirmar), trabajo en segundo plano con registro por destino y reanudación, candado para "uno a la vez" |
 | `real-time-location` | Puerto de transacción de intención (`application/ports/<modulo>-transaction.port.ts`), cron delgado con `RELOJ`, policies de métricas |
 | `ticket-soporte-historial` | Fachada consumida por un módulo **legacy** (`tickets-soporte`) dentro de su transacción (`PrismaTransaccional.unirseA`, transitorio) |
 | `ticket-soporte-conformidad` | Compensación de efectos (subida de archivo + rollback), traducción de `P2002` a `CONFLICTO` |
@@ -96,9 +97,9 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 ### 2.3 Línea base medida
 
 - `npm run build`: verde.
-- `npm run lint:check`: **175** errores tras el paso 6 (no subir; los archivos que toques quedan sin errores nuevos).
-- Jest: 801/805; las suites de `src/common`, `src/auth/decoradores` y de todos los `src/modules/*`
-  en verde. Fallan 4 suites boilerplate de `cloud-api-meta` y `location`.
+- `npm run lint:check`: **158** errores tras el paso 7 (no subir; los archivos que toques quedan sin errores nuevos).
+- Jest: 851/853; las suites de `src/common`, `src/auth/decoradores` y de todos los `src/modules/*`
+  en verde. Fallan 2 suites boilerplate de `location`.
 - Correr un spec: `npm test -- src/modules/<modulo>` (1–2 min). Con la caché fría la suite completa
   puede pasar de 5 minutos: córrela en segundo plano.
 
@@ -116,6 +117,12 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 | Migración `20261126200000_facturacion_pagos_eliminados` (tabla `PagoEliminado` y dos columnas opcionales), aplicada solo en local | **En el deploy**: `prisma migrate deploy` |
 | Los crons crean facturas y escriben `estadoCobranza` directamente en las tablas | `ciclo-facturacion`: por las fachadas de `facturacion` y `cliente-cobranza` |
 | Los reportes deducen la ruta de un pago por `facturaRutaId`; los pagos nuevos la guardan en `rutaId` | `reporte` |
+| Migración `20261126220000_campanias_mensaje` (tablas `CampaniaMensaje` y `EnvioCampaniaMensaje`), aplicada solo en local | **En el deploy**: `prisma migrate deploy` |
+| Mensajería sin probar por HTTP ni contra Meta (solo proveedor falso y base local) | Antes del deploy: una campaña a un número propio |
+| El webhook de Meta descarta los estados de entrega: `ENVIADO` es "aceptado por WhatsApp" | Si el dueño pide confirmar entregas |
+| Crons y tickets envían uno por uno por `MENSAJERIA_CLIENTE` sin registrar el envío; `RecordatorioPago` no se escribe | `ciclo-facturacion` |
+| La creación de tickets registra el DTO completo (incluye teléfono) y espera a WhatsApp antes de responder | `ticket-soporte` |
+| En producción (`main`) plantillas y campañas no piden sesión; el React no envía token en esas pantallas y crea plantillas contra la URL del POS | Se cierra con el deploy; la UI nueva envía el token a la URL del CRM |
 | Los crons leen `FacturacionZona` directamente (solo se les agregó `eliminadoEn: null`) | `ciclo-facturacion`: por la fachada de `zona-facturacion` |
 | Los `Input` públicos de prealta/provisionamiento PPPoE aún llevan `empresaId` | Cuando se toquen; `empresaId` no es filtro (una empresa por BD) |
 | `ClienteDesinstalacionEntity` ~950 líneas; varios use cases de C3 > 300 líneas | Opcional, cuando se toquen |
@@ -167,6 +174,11 @@ Decisiones del dueño del **26-nov-2026**. Los nombres nuevos siguen §15 del es
   registran las transferencias) el número es obligatorio e irrepetible. Cobra el usuario de la
   sesión. No hay saldo a favor. Los servicios adicionales se descartan hasta rediseñar sus tablas
   y crear su facturación. El cálculo de montos y fechas no cambió.
+- **Mensajería:** las campañas se registran y se envían en segundo plano, una a la vez; reciben ids
+  de clientes (el servidor busca los teléfonos), omiten con motivo a eliminados, con WhatsApp
+  desactivado, sin teléfono válido o con número repetido, y no admiten plantillas con variables.
+  Lo que quedó sin confirmar no se reenvía. `enviarRecordatorio` solo aplica a los recordatorios.
+  Los avisos de crons y tickets conservan plantillas, variables y números.
 - **Una empresa por base de datos, siempre:** ninguna ruta refactorizada pide `empresaId`; si una
   tabla lo necesita, sale de la sesión (`actor.empresaId`). No se agrega a DTO, rutas ni filtros
   nuevos.
@@ -191,8 +203,8 @@ En nombres, fusiones y alcance esta tabla manda sobre la propuesta de §15.1 del
 | 4 | `cliente` (H3) | `cliente-internet`, `customer-network-config` | ✅ Hecho | `cliente #1–#4`: fachada `CLIENTE`, borrado lógico, saldo calculado, rutas sin uso retiradas |
 | 5 | `zona-facturacion` (H5) | `facturacion-zona` | ✅ Hecho | `zona-facturacion #1–#2`: borrado lógico, fachada `ZONA_FACTURACION`, una sola ruta de opciones |
 | 6 | `facturacion` | `facturacion`, `factura-eliminacion` | ✅ Hecho | `facturacion #1–#2`: incluye los pagos; módulo `cliente-cobranza` para la cobranza |
-| 7 | `mensajeria-cliente` (H6) | `whatsapp-template`, `cloud-api-meta`, `whatsapp-api-meta`, `whatsapp-campaigns` | **Siguiente** | Meta como adaptador. **Nunca** enviar mensajes en pruebas |
-| 8 | `ruta-cobro` | `ruta-cobro` | Pendiente | Registra pagos por la fachada de `facturacion` |
+| 7 | `mensajeria-cliente` (H6) | `whatsapp-template`, `cloud-api-meta`, `whatsapp-api-meta`, `whatsapp-campaigns` | ✅ Hecho | `mensajeria-cliente #1–#2`: campañas con historial, fachada `MENSAJERIA_CLIENTE`. **Nunca** enviar mensajes en pruebas |
+| 8 | `ruta-cobro` | `ruta-cobro` | **Siguiente** | Los pagos ya van por `facturacion`; retirar `RUTA_COBRADO` pasando a su fachada. `Ruta.montoCobrado` es entero |
 | 9 | `credito` | `credito` | Pendiente | Ya parcialmente hexagonal. Su cron no cambia de comportamiento |
 | 10 | `mikrotik-router` | `mikro-tik` | Pendiente | Quita la deuda de `pppoe-automatizacion` |
 | 11 | `ticket-soporte` | `tickets-soporte`, `ticket-resumen`, `ticket-seguimiento`, `ticket-soluciones`, `tags-ticket`, `bot-functions` | Pendiente | Al terminar se borra `unirseA`. Conservar `@RequiereSecretoInterno()` |
@@ -447,6 +459,10 @@ a la UI (fugas de campos), y `catch` que tragan errores y devuelven `200`.
   después se lee la factura; así dos cobros no se pisan.
 - **Antes de permitir decimales o cambiar un formato,** mira el tipo de cada columna que lo recibe
   (`Ruta.montoCobrado` es entero y truncaba centavos). La prueba contra la base local lo detectó.
+- **Axios con `HttpService`:** toma los tipos de `Parameters<HttpService['request']>`; importarlos
+  de `axios` mezcla dos definiciones y no compila.
+- **Candado sin fila que bloquear** ("solo uno a la vez"): `$executeRaw` con
+  `pg_advisory_xact_lock` dentro de la unidad de trabajo (ver `campania-prisma.repository.ts`).
 - **"Solo si no tiene uso" necesita bloqueo:** una llave foránea no ve el borrado lógico. Quien
   asigna toma la fila `FOR SHARE` dentro de su unidad de trabajo y quien elimina `FOR UPDATE`
   antes de comprobar (ver `zona-facturacion`).
