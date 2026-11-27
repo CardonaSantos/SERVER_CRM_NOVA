@@ -186,6 +186,7 @@ model Usuario {
 
   sesiones              SesionUsuario[]
   intentosAutenticacion IntentoAutenticacion[]
+  campaniasMensaje      CampaniaMensaje[]      @relation("CampaniaMensajeCreadaPor")
 }
 
 // =====================================================================
@@ -687,6 +688,7 @@ model ClienteInternet {
   auditoriasPppoe PppoeAuditoria[]
 
   conformidadesTicket TicketConformidad[]
+  enviosCampania      EnvioCampaniaMensaje[]
 
   @@index([empresaId, isEliminado])
   @@index([empresaId, estadoCliente])
@@ -932,9 +934,9 @@ model ClienteInstalacionAcceso {
 
   creadoEn DateTime @default(now())
 
-  instalacion ClienteInstalacion @relation(fields: [instalacionId],references: [id],onDelete: Cascade)
+  instalacion ClienteInstalacion @relation(fields: [instalacionId], references: [id], onDelete: Cascade)
 
-  accesoInternet ClienteAccesoInternet @relation(fields: [accesoInternetId],references: [id],onDelete: Restrict)
+  accesoInternet ClienteAccesoInternet @relation(fields: [accesoInternetId], references: [id], onDelete: Restrict)
 
   @@index([accesoInternetId])
 }
@@ -978,9 +980,9 @@ model ClientePppoeCuenta {
 
   perfilHomologacion PppoePerfilHomologacion @relation(fields: [perfilHomologacionId], references: [id], onDelete: Restrict)
 
-  generadoPor Usuario? @relation("PppoeCuentaGeneradaPor",fields: [generadoPorId],references: [id],onDelete: Restrict)
+  generadoPor Usuario? @relation("PppoeCuentaGeneradaPor", fields: [generadoPorId], references: [id], onDelete: Restrict)
 
-  adoptadoPor Usuario? @relation("PppoeCuentaAdoptadaPor",fields: [adoptadoPorId],references: [id],onDelete: Restrict)
+  adoptadoPor Usuario? @relation("PppoeCuentaAdoptadaPor", fields: [adoptadoPorId], references: [id], onDelete: Restrict)
 
   operaciones PppoeOperacion[]
   auditorias  PppoeAuditoria[]
@@ -989,7 +991,6 @@ model ClientePppoeCuenta {
   /// La unicidad de cuentas vigentes se protege en PostgreSQL mediante
   /// un índice único parcial definido en la migración correspondiente.
   @@index([empresaId, usuario])
-
   @@index([empresaId, estado])
   @@index([perfilHomologacionId])
   @@index([generadoPorId])
@@ -2940,7 +2941,7 @@ model ClienteInstalacion {
 
   // clienteInstalacionAccesos ClienteInstalacionAcceso[]
 
-  equiposAccesoAsignados ClienteAccesoEquipo[] @relation("AccesoEquipoInstalacionAsignacion")
+  equiposAccesoAsignados   ClienteAccesoEquipo[]     @relation("AccesoEquipoInstalacionAsignacion")
   clienteInstalacionAcceso ClienteInstalacionAcceso?
 
   equiposAccesoRetirados ClienteAccesoEquipo[] @relation("AccesoEquipoInstalacionRetiro")
@@ -3977,4 +3978,58 @@ enum CategoriaMedia {
   CLIENTE_ELIMINACION
   SOPORTE_TICKET
   OTRO
+}
+
+/// Campaña de WhatsApp: la plantilla enviada y quién la lanzó.
+model CampaniaMensaje {
+  id           Int                    @id @default(autoincrement())
+  plantilla    String
+  idioma       String
+  imagenUrl    String?
+  estado       EstadoCampaniaMensaje  @default(EN_CURSO)
+  creadoPorId  Int?
+  creadoEn     DateTime               @default(now())
+  /// Último avance del envío: si deja de moverse, la campaña quedó interrumpida.
+  actividadEn  DateTime
+  finalizadaEn DateTime?
+  creadoPor    Usuario?               @relation("CampaniaMensajeCreadaPor", fields: [creadoPorId], references: [id], onDelete: SetNull)
+  envios       EnvioCampaniaMensaje[]
+
+  @@index([estado])
+}
+
+/// Un destino de una campaña (cliente y teléfono) con su resultado.
+model EnvioCampaniaMensaje {
+  id                 Int                @id @default(autoincrement())
+  campaniaId         Int
+  clienteId          Int
+  /// Número usado en ese momento; vacío si el cliente se omitió sin número.
+  telefono           String?
+  estado             EstadoEnvioMensaje @default(PENDIENTE)
+  /// Código estable de por qué se omitió o falló.
+  motivo             String?
+  detalle            String?
+  mensajeProveedorId String?
+  intentadoEn        DateTime?
+  campania           CampaniaMensaje    @relation(fields: [campaniaId], references: [id], onDelete: Restrict)
+  cliente            ClienteInternet    @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+
+  @@unique([campaniaId, clienteId, telefono])
+  @@index([campaniaId, estado])
+  @@index([clienteId])
+}
+
+enum EstadoCampaniaMensaje {
+  EN_CURSO
+  COMPLETADA
+  INTERRUMPIDA
+}
+
+enum EstadoEnvioMensaje {
+  PENDIENTE
+  ENVIANDO
+  ENVIADO
+  FALLIDO
+  OMITIDO
+  SIN_CONFIRMAR
 }

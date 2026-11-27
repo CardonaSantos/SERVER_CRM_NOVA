@@ -1,0 +1,25 @@
+export enum EstadoCampania {
+  EN_CURSO = 'EN_CURSO',
+  COMPLETADA = 'COMPLETADA',
+  INTERRUMPIDA = 'INTERRUMPIDA',
+}
+
+export enum EstadoEnvio {
+  PENDIENTE = 'PENDIENTE',
+  ENVIANDO = 'ENVIANDO',
+  ENVIADO = 'ENVIADO',
+  FALLIDO = 'FALLIDO',
+  OMITIDO = 'OMITIDO',
+  /** No se sabe si llegó: no se reintenta solo. */
+  SIN_CONFIRMAR = 'SIN_CONFIRMAR',
+}
+
+/** Códigos estables de por qué un destino no quedó enviado. */
+export enum MotivoEnvio {
+  CLIENTE_ELIMINADO = 'CLIENTE_ELIMINADO',
+  WHATSAPP_DESACTIVADO = 'WHATSAPP_DESACTIVADO',
+  SIN_TELEFONO_VALIDO = 'SIN_TELEFONO_VALIDO',
+  TELEFONO_REPETIDO = 'TELEFONO_REPETIDO',
+  RECHAZADO_POR_PROVEEDOR = 'RECHAZADO_POR_PROVEEDOR',
+  ENVIO_SIN_CONFIRMAR = 'ENVIO_SIN_CONFIRMAR',
+}
