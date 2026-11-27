@@ -13,6 +13,12 @@ export const ROLES_OFICINA: RolUsuario[] = [
   RolUsuario.OFICINA,
 ];
 
+/** Administración: textos legales como las plantillas de contrato. */
+export const ROLES_ADMINISTRACION: RolUsuario[] = [
+  RolUsuario.SUPER_ADMIN,
+  RolUsuario.ADMIN,
+];
+
 /** Configuración de la instalación (datos de la empresa). */
 export const ROLES_SUPER_ADMIN: RolUsuario[] = [RolUsuario.SUPER_ADMIN];
 
