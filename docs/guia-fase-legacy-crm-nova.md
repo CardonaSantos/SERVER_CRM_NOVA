@@ -8,7 +8,7 @@
 >
 > | Dato | Valor |
 > |---|---|
-> | Rama de trabajo | `refactorizaciones-hexagonales` (usa la punta; último cambio de código `377f49f`) |
+> | Rama de trabajo | `refactorizaciones-hexagonales` (usa la punta; último cambio de código `d00ed3b`) |
 > | Punto de control | `checkpoints-refactorizaciones` en `ee2b197` (26-nov-2026; solo se mueve si el dueño lo pide) |
 > | Producción (`main`) | `108c6ef`: **nada de este trabajo está desplegado**. `main` es ancestro de la rama |
 > | Para desplegar | §10 |
@@ -28,7 +28,7 @@
 | Pasos por hacer | 14 y el bloque final (crons y cobranza) |
 | En espera, aplazados o fuera | 2 (roles), 9 (`credito`), 10 (`mikrotik-router`, fuera), `reporte` |
 | Pendiente propio de tickets | Firma del cliente en el teléfono del técnico (§7) |
-| Verificación | build verde · lint 83 (partió de 429) · Jest 1253/1253 en 163 suites |
+| Verificación | build verde · lint 83 (partió de 429) · Jest 1265/1265 en 164 suites |
 | Migraciones por aplicar en producción | **11** (§10.2) |
 | Commits sobre `main` | Más de 200 |
 
@@ -139,7 +139,7 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 
 - `npm run build`: verde.
 - `npm run lint:check`: **83** errores tras el paso 20 (no subir; los archivos que toques quedan sin errores nuevos).
-- Jest: 1253/1253 en 163 suites; todas en verde.
+- Jest: 1265/1265 en 164 suites; todas en verde.
 - Correr un spec: `npm test -- src/modules/<modulo>` (1–2 min). Con la caché fría la suite completa
   puede pasar de 5 minutos: córrela en segundo plano.
 
@@ -244,7 +244,7 @@ Conformidad medida el 27-nov-2026 con `scripts/conformidad-hexagonal.sh`.
 | 27 nov | `ticket-soporte-metrica #1–#2` | Paso 19 |
 | 27 nov | `empresa #1–#3` | Paso 18 |
 | 27 nov | `contrato-cliente #1–#3` | Paso 15 |
-| 27 nov | `dashboard #1–#2` | Paso 20 |
+| 27 nov | `dashboard #1–#3` | Paso 20 y gráficas nuevas |
 
 El detalle de cada cambio visible está en `docs/cambios-contrato-ui.md`; el de cada commit, en su
 mensaje (`git log`).
@@ -350,6 +350,11 @@ Decisiones del dueño del **26-nov-2026**. Los nombres nuevos siguen §15 del es
   solo lo propio. Un ticket resuelto se fecha por su cierre (como en las metas) y su duración llega
   hasta que el técnico terminó. Las facturas anuladas no cuentan y el top de morosos excluye eliminados
   y desinstalados (cuenta toda factura sin pagar, también la que aún no vence).
+- **Gráficas** (27-nov-2026): Angular usa ECharts 6, así que cada serie del panel es un arreglo de filas
+  planas con números (`dataset`). Las cifras salen solo de lo registrado: el mes de una factura es su
+  `periodo`, la deuda de desinstalados va aparte y el ingreso esperado usa las condiciones del cron.
+  La evolución mensual de clientes y morosidad necesita una foto mensual: va de lo primero en el
+  bloque de crons.
 
 ### 3.2 Orden de trabajo
 
@@ -377,8 +382,8 @@ En nombres, fusiones y alcance esta tabla manda sobre la propuesta de §15.1 del
 | 17 | `ubicacion` | `location`, `sector` | ✅ Hecho | `ubicacion #1–#3`: fachada `UBICACION`, borrado lógico de sectores, municipios completos y rutas destructivas retiradas |
 | 18 | `empresa` | `empresa` | ✅ Hecho | `empresa #1–#3`: datos de la empresa de la instalación (leer cualquier sesión, editar solo super administrador), sin creación ni borrado, rutas sin id, `seed` con datos de ejemplo, sin migraciones |
 | 19 | `ticket-soporte-metrica` | `metas-tickets` | ✅ Hecho | `ticket-soporte-metrica #1–#2`: avance calculado desde los tickets resueltos (principal o apoyo), sin metas encimadas, cancelar en vez de borrar, escrituras solo de oficina, métricas por mes, sin migraciones |
-| 20 | `dashboard` | `dashboard` | ✅ Hecho | `dashboard #1–#2`: solo lectura, panel general para todos menos técnicos, tickets resueltos por fecha de cierre, cobranza sin desinstalados, facturas sin anuladas, rutas sin uso retiradas, sin migraciones |
-| Final | `tareas-programadas` (H4), `cobranza` (H7–H10), `ciclo-facturacion` (H11) | `zona-facturacion-cron` y nuevos | Pendiente | Incluye los días 29–31 y la limpieza de sesiones vencidas (G6). El diseño de cobranza está en la guía del dueño |
+| 20 | `dashboard` | `dashboard` | ✅ Hecho | `dashboard #1–#3`: cinco gráficas nuevas, solo lectura, panel general para todos menos técnicos, tickets resueltos por fecha de cierre, cobranza sin desinstalados, facturas sin anuladas, rutas sin uso retiradas, sin migraciones |
+| Final | `tareas-programadas` (H4), `cobranza` (H7–H10), `ciclo-facturacion` (H11) | `zona-facturacion-cron` y nuevos | Pendiente | Primero, la foto mensual de clientes y morosidad. Incluye los días 29–31 y la limpieza de sesiones vencidas (G6). El diseño de cobranza está en la guía del dueño |
 | Aplazado | `reporte` | `generate-reports`, `modules/excel-reports`, `modules/reports` | Aplazado | |
 
 Transversal: `Utils`, `shared` y `CustomDecoratorAuthToken` se absorben en `common/` o en el módulo
@@ -595,7 +600,7 @@ a la UI (fugas de campos), y `catch` que tragan errores y devuelven `200`.
 | 8 | ¿Quién administra etiquetas y soluciones de tickets? Hoy cualquier sesión | Con H2 | — |
 | 9 | ¿Destruir del almacenamiento las imágenes quitadas de un comentario? | Si lo pide | Hoy solo se ocultan |
 | 10 | ¿Tienda y cobrador editan los datos de un ticket? Hoy solo asignan y fijan | Si lo pide | — |
-| 11 | ¿Qué gráficas nuevas lleva el dashboard? El dueño pidió propuestas (27-nov-2026) | Cuando las elija | Recaudación por mes y método, cartera por antigüedad, altas y bajas netas, motivos de desinstalación, clientes e ingreso por plan y zona |
+| 11 | **Resuelta** (27-nov-2026): se añadieron facturación y cobro por mes, método, antigüedad de la deuda, planes y ubicación. Quedan con pocos datos: motivos de desinstalación, cobro por cobrador, costos de instalación y soluciones de tickets | Si las pide | — |
 
 ---
 
@@ -785,6 +790,10 @@ El resto (WhatsApp, Meta, almacenamiento, Firebase, MikroTik, plantillas) no cam
 - Clientes con sector de otro municipio, sectores sin nombre y coordenadas fuera de Guatemala.
 - Zonas con generación en los días 29 a 31 (los crons las saltan en meses cortos).
 - Que exista una sola empresa: la API anterior permitía crear más.
+- Antes de confiar en las gráficas de historia: revisar si hay facturas o pagos cargados en bloque (en
+  la copia local casi todos los pagos se registraron un mismo día y salen como cobrados ese mes).
+- La tarjeta del resumen cuenta las facturas **creadas** en el mes y la gráfica mensual las del
+  **periodo**: pueden no coincidir.
 
 ---
 
