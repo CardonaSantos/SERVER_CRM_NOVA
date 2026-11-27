@@ -214,15 +214,15 @@ En nombres, fusiones y alcance esta tabla manda sobre la propuesta de §15.1 del
 | 6 | `facturacion` | `facturacion`, `factura-eliminacion` | ✅ Hecho | `facturacion #1–#2`: incluye los pagos; módulo `cliente-cobranza` para la cobranza |
 | 7 | `mensajeria-cliente` (H6) | `whatsapp-template`, `cloud-api-meta`, `whatsapp-api-meta`, `whatsapp-campaigns` | ✅ Hecho | `mensajeria-cliente #1–#2`: campañas con historial, fachada `MENSAJERIA_CLIENTE`. **Nunca** enviar mensajes en pruebas |
 | 8 | `ruta-cobro` | `ruta-cobro` | ✅ Hecho | `ruta-cobro #1–#2`: fachada `RUTA_COBRO`, borrado lógico, totales calculados, rutas web renombradas |
-| 9 | `credito` | `credito` | **Siguiente** | Ya parcialmente hexagonal. Su cron no cambia de comportamiento |
+| 9 | `credito` | `credito` | Aplazado | Decisión del dueño (26-nov-2026): no urge. Ya parcialmente hexagonal. Su cron no cambia de comportamiento |
 | 10 | `mikrotik-router` | `mikro-tik` | Pendiente | Quita la deuda de `pppoe-automatizacion` |
 | 11 | `ticket-soporte` | `tickets-soporte`, `ticket-resumen`, `ticket-seguimiento`, `ticket-soluciones`, `tags-ticket`, `bot-functions` | Pendiente | Al terminar se borra `unirseA`. Conservar `@RequiereSecretoInterno()` |
 | 12 | `notificacion` | `notificaciones`, `push-notifications`, `push-dispositivos` | Pendiente | Migrar y mejorar. Push = efecto real |
 | 13 | `common/tiempo-real` | `web-sockets` | Pendiente | Incluye `POST /internal/server/broadcast` |
 | 14 | `usuario` | `user`, `perfil` | Pendiente | Sin tocar `auth`; solo SUPER_ADMIN edita a otros |
 | 15 | `contrato-cliente` | `contrato-cliente`, `id-contrato` | Pendiente | |
-| 16 | `servicio` | `servicio`, `servicio-internet`, `tipo-servicio` | Pendiente | |
-| 17 | `ubicacion` | `location`, `sector` | Pendiente | |
+| 16 | `servicio` | `servicio`, `servicio-internet`, `tipo-servicio` | **Siguiente** | Planes y servicios: críticos. Un borrado no puede dejar clientes sin plan ni borrar historial |
+| 17 | `ubicacion` | `location`, `sector` | Después del 16 | |
 | 18 | `empresa` | `empresa` | Pendiente | |
 | 19 | `ticket-soporte-metrica` | `metas-tickets` | Pendiente | |
 | 20 | `dashboard` | `dashboard` | Pendiente | Solo lectura: puertos de consulta y read models |

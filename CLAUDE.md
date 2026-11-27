@@ -31,8 +31,8 @@ La etapa de auth y NestJS 12 está terminada en código (aún no desplegada). Ah
    lo que no se usa, ✅ **H1** (saneamiento de estados, §6.1), ✅ paso 3 (ubicación de técnicos en
    `real-time-location`), ✅ paso 4 (`cliente`), ✅ paso 5 (`zona-facturacion`), ✅ paso 6
    (`facturacion`), ✅ paso 7 (`mensajeria-cliente`) y ✅ paso 8 (`ruta-cobro`); H2 (roles) queda
-   en espera del dueño; sigue el paso 9 (`credito`). **Los crons van al final**; reportes queda
-   aplazado.
+   en espera del dueño; `credito` (paso 9) queda aplazado; siguen el paso 16 (`servicio`) y
+   después el 17 (`ubicacion`). **Los crons van al final**; reportes queda aplazado.
 
 **No empieces un paso hasta que el dueño diga que se empieza.**
 
