@@ -95,8 +95,8 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 ### 2.3 Línea base medida
 
 - `npm run build`: verde.
-- `npm run lint:check`: **200** errores tras el paso 4 (no subir; los archivos que toques quedan sin errores nuevos).
-- Jest: 700/704; las suites de `src/common`, `src/auth/decoradores` y de todos los `src/modules/*`
+- `npm run lint:check`: **195** errores tras el paso 5 (no subir; los archivos que toques quedan sin errores nuevos).
+- Jest: 738/742; las suites de `src/common`, `src/auth/decoradores` y de todos los `src/modules/*`
   en verde. Fallan 4 suites boilerplate de `cloud-api-meta` y `location`.
 - Correr un spec: `npm test -- src/modules/<modulo>` (1–2 min). Con la caché fría la suite completa
   puede pasar de 5 minutos: córrela en segundo plano.
@@ -110,6 +110,8 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 | `pppoe-automatizacion` lee el router con puertos internos de `src/mikro-tik` | `mikrotik-router` |
 | `cliente` escribe la primera factura (`PRIMERA_FACTURA`, con el registro de `SaldoCliente`) y el contrato (`CONTRATO_FISICO`) por adaptadores propios, y usa el servicio de `credito` (`CLASIFICACION_CREDITO`) | `facturacion`, `contrato-cliente` y `credito`: pasan a sus fachadas |
 | `SaldoCliente`: `cliente` ya no la lee; la escriben `facturacion` y el alta, y la lee `ruta-cobro` | `facturacion` y `ruta-cobro`: calcular al leer (`modules/cliente/domain/policies/saldo.policy.ts` es la referencia) y dejar de escribirla |
+| Migración `20261126180000_zona_facturacion_borrado_logico` (dos columnas opcionales en `FacturacionZona`), aplicada solo en local | **En el deploy**: `prisma migrate deploy` antes de arrancar esta versión |
+| Los crons leen `FacturacionZona` directamente (solo se les agregó `eliminadoEn: null`) | `ciclo-facturacion`: por la fachada de `zona-facturacion` |
 | Los `Input` públicos de prealta/provisionamiento PPPoE aún llevan `empresaId` | Cuando se toquen; `empresaId` no es filtro (una empresa por BD) |
 | `ClienteDesinstalacionEntity` ~950 líneas; varios use cases de C3 > 300 líneas | Opcional, cuando se toquen |
 | Enum viejo comentado en `pppoe-cliente-cuenta/domain/enums/estado-cuenta-pppoe.enum.ts` | Cualquier commit de limpieza |
@@ -150,6 +152,10 @@ Decisiones del dueño del **26-nov-2026**. Los nombres nuevos siguen §15 del es
 - **Eliminar un cliente es borrado lógico**; no habrá eliminación definitiva. Facturas, pagos,
   contrato e historial se conservan, y sus valores únicos (contrato, boleta, confirmación) siguen
   ocupados. El flujo para restaurar no existe todavía.
+- **Zonas de facturación:** nunca se borran de la base; eliminar es borrado lógico y solo si no
+  tienen clientes (también eliminados) ni facturas. Los canales (`whatsapp`, `email`, `sms`,
+  `llamada`, `telegram`) y `horaRecordatorio` salieron de la API; sus columnas se quedan.
+  `modoCorte` se diseña con la cobranza. `diaCorte` y `suspenderTrasFacturas` se conservan para ella.
 - **Despliegue:** el servidor sale junto con una interfaz refactorizada; no se crea interfaz ni
   funciones nuevas en esta fase.
 - **Los crons van al final** y tendrán un tratamiento especial que definirá el dueño. Hasta entonces
@@ -169,8 +175,8 @@ En nombres, fusiones y alcance esta tabla manda sobre la propuesta de §15.1 del
 | 2 | **H2** roles | API legacy que quede | En espera | El dueño definirá los permisos (§3.1). No agregar restricciones sin su mapa |
 | 3 | Ubicación de técnicos → `real-time-location` | `real-time-location` legacy | ✅ Hecho | `real-time-location #3–#5`: rutas abiertas a cualquier sesión, `last-locations` en el módulo (misma ruta), retiro de `update-location` y de la carpeta legacy |
 | 4 | `cliente` (H3) | `cliente-internet`, `customer-network-config` | ✅ Hecho | `cliente #1–#4`: fachada `CLIENTE`, borrado lógico, saldo calculado, rutas sin uso retiradas |
-| 5 | `zona-facturacion` (H5) | `facturacion-zona` | **Siguiente** | `modoCorte`, días 1–31, `@Roles` |
-| 6 | `facturacion` | `facturacion`, `factura-eliminacion` | Pendiente | Incluye los pagos |
+| 5 | `zona-facturacion` (H5) | `facturacion-zona` | ✅ Hecho | `zona-facturacion #1–#2`: borrado lógico, fachada `ZONA_FACTURACION`, una sola ruta de opciones |
+| 6 | `facturacion` | `facturacion`, `factura-eliminacion` | **Siguiente** | Incluye los pagos |
 | 7 | `mensajeria-cliente` (H6) | `whatsapp-template`, `cloud-api-meta`, `whatsapp-api-meta`, `whatsapp-campaigns` | Pendiente | Meta como adaptador. **Nunca** enviar mensajes en pruebas |
 | 8 | `ruta-cobro` | `ruta-cobro` | Pendiente | Registra pagos por la fachada de `facturacion` |
 | 9 | `credito` | `credito` | Pendiente | Ya parcialmente hexagonal. Su cron no cambia de comportamiento |
@@ -376,6 +382,8 @@ H1 es saneamiento en sitio: commits `refactorizacion facturacion #N`, `refactori
 | Sesiones, refresh e intentos de auth | Nadie los limpia (G6) | `tareas-programadas` |
 | `src/real-time-location` legacy | **Corregido** (paso 3): su `POST update-location` permitía escribir la ubicación de otro usuario y registraba datos personales en los logs | Hecho |
 | `SaldoCliente` | El saldo guardado está atrasado (los crons no lo actualizan): en la copia local difería en 299 de 573 clientes. `cliente` ya lo calcula al leer | `facturacion` y `ruta-cobro` |
+| `zona-facturacion-cron` día de pago | El interruptor `enviarAvisoPago` no se lee: avisa si el general está encendido aunque el aviso esté apagado | Crons |
+| Zonas con días 29–31 | `shouldSkipZoneToday` las salta en meses cortos (en la copia local, una zona con generación el 30) | Crons |
 | `facturacion` `delete-one-factura` | El usuario que elimina llega en el body (`userId`) en vez de salir de la sesión | Módulo `facturacion` |
 | `generate-reports` `QueryCobranzaReport` | Fechas con `@IsDate` sin conversión: probable 400 con el pipe estricto (sin probar) | Antes del deploy |
 | Legacy en general | `throw new BadRequestException(...)` en services, `console.log` con datos, `new Date()` en UTC para fechas de negocio, métodos con `tx?: Prisma.TransactionClient` opcional (escrituras que a veces son atómicas y a veces no), `findMany` sin `count` en la misma transacción | Cada módulo al refactorizarse |
@@ -405,6 +413,7 @@ a la UI (fugas de campos), y `catch` que tragan errores y devuelven `200`.
 - **Permisos:** no agregues `@Roles` a una ruta por convención (decisión de §3.1). Antes, mira qué
   roles usan esa pantalla en la app Android; en el paso 3 la restricción puesta en C5 la habría dejado
   con 403.
+- **Zonas eliminadas:** toda consulta nueva que liste `FacturacionZona` filtra `eliminadoEn: null`.
 - **Clientes eliminados:** toda consulta nueva sobre `ClienteInternet` (directa o por relación) debe
   filtrar `isEliminado: false`, salvo reportes o bitácoras que los pidan a propósito.
 - **Si el dueño tiene `start:dev` corriendo**, no ejecutes `npm run build` (borra `dist` y su
