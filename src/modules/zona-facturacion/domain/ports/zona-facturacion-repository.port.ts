@@ -25,6 +25,12 @@ export interface ZonaFacturacionRepositoryPort {
   contarUso(id: number): Promise<UsoZonaFacturacion>;
 
   /**
+   * Impide que la zona se elimine hasta que termine la unidad de trabajo en
+   * curso. Si se está eliminando, espera a que acabe. No falla si no existe.
+   */
+  bloquearParaAsignar(id: number): Promise<void>;
+
+  /**
    * Guarda el borrado lógico solo si la zona sigue activa y sin clientes ni
    * facturas. Nunca borra la fila.
    * @throws ZonaFacturacionModificadaError si dejó de cumplirlo.

@@ -51,22 +51,35 @@ export class ZonaFacturacionPrismaRepository
     return { clientes, facturas };
   }
 
-  async eliminar(entity: ZonaFacturacionEntity): Promise<void> {
+  async bloquearParaAsignar(id: number): Promise<void> {
+    // Compartido: varias asignaciones conviven; un borrado espera.
+    await this.db
+      .$queryRaw`SELECT "id" FROM "FacturacionZona" WHERE "id" = ${id} FOR SHARE`;
+  }
+
+  eliminar(entity: ZonaFacturacionEntity): Promise<void> {
     const props = entity.toPrimitives();
-    // Las condiciones van en la misma sentencia que la escritura.
-    const { count } = await this.db.facturacionZona.updateMany({
-      where: {
-        id: entity.id!,
-        eliminadoEn: null,
-        clientes: { none: {} },
-        facturas: { none: {} },
-      },
-      data: {
-        eliminadoEn: props.eliminadoEn,
-        eliminadoPorId: props.eliminadoPorId,
-        actualizadoEn: props.actualizadoEn,
-      },
+
+    return this.transaccional.ejecutar(async () => {
+      // Primero se bloquea la fila: espera a quien esté asignando un cliente,
+      // y la sentencia siguiente ya lo ve.
+      await this.db
+        .$queryRaw`SELECT "id" FROM "FacturacionZona" WHERE "id" = ${entity.id!} FOR UPDATE`;
+
+      const { count } = await this.db.facturacionZona.updateMany({
+        where: {
+          id: entity.id!,
+          eliminadoEn: null,
+          clientes: { none: {} },
+          facturas: { none: {} },
+        },
+        data: {
+          eliminadoEn: props.eliminadoEn,
+          eliminadoPorId: props.eliminadoPorId,
+          actualizadoEn: props.actualizadoEn,
+        },
+      });
+      if (count !== 1) throw new ZonaFacturacionModificadaError();
     });
-    if (count !== 1) throw new ZonaFacturacionModificadaError();
   }
 }

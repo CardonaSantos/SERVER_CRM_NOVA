@@ -30,6 +30,7 @@ export class ZonaFacturacionRepositoryFake
 {
   readonly filas = new Map<number, ZonaFacturacionProps>();
   readonly usos = new Map<number, UsoZonaFacturacion>();
+  readonly bloqueadas: number[] = [];
   private siguienteId = 1;
 
   sembrar(cambios: Partial<ZonaFacturacionProps> = {}): number {
@@ -74,6 +75,12 @@ export class ZonaFacturacionRepositoryFake
 
   contarUso(id: number): Promise<UsoZonaFacturacion> {
     return Promise.resolve(this.usos.get(id) ?? { clientes: 0, facturas: 0 });
+  }
+
+  bloquearParaAsignar(id: number): Promise<void> {
+    this.bloqueadas.push(id);
+
+    return Promise.resolve();
   }
 
   eliminar(entity: ZonaFacturacionEntity): Promise<void> {

@@ -109,6 +109,7 @@ describe('Casos de uso de zonas de facturación', () => {
     const eliminada = zonas.sembrar({ eliminadoEn: AHORA });
 
     await expect(caso.execute(activa)).resolves.toBeUndefined();
+    expect(zonas.bloqueadas).toEqual([activa]);
     await expect(caso.execute(eliminada)).rejects.toThrow(
       ZonaFacturacionEliminadaError,
     );
