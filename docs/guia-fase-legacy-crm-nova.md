@@ -71,6 +71,7 @@ Módulos hexagonales conformes en `src/modules/` (usa estos como **plantilla**):
 | `cliente` | Fachada de escritura para otros módulos, borrado lógico, listas con filtros, saldo calculado en una policy y puertos transitorios hacia módulos legacy |
 | `facturacion` | Dinero: bloqueo del cliente por operación, entidad que deriva saldo y estado de los pagos, bitácoras de lo eliminado y fachada consumida por `cliente` sin ciclos (`cliente-cobranza`) |
 | `mensajeria-cliente` | Proveedor externo como adaptador (errores: rechazado, no disponible, sin confirmar), trabajo en segundo plano con registro por destino y reanudación, candado para "uno a la vez" |
+| `ruta-cobro` | Totales calculados desde los pagos, bloqueo compartido para cobrar y exclusivo para modificar, fachada que valida dentro de la transacción de otro módulo, exportación a Excel como adaptador |
 | `real-time-location` | Puerto de transacción de intención (`application/ports/<modulo>-transaction.port.ts`), cron delgado con `RELOJ`, policies de métricas |
 | `ticket-soporte-historial` | Fachada consumida por un módulo **legacy** (`tickets-soporte`) dentro de su transacción (`PrismaTransaccional.unirseA`, transitorio) |
 | `ticket-soporte-conformidad` | Compensación de efectos (subida de archivo + rollback), traducción de `P2002` a `CONFLICTO` |
@@ -97,8 +98,8 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 ### 2.3 Línea base medida
 
 - `npm run build`: verde.
-- `npm run lint:check`: **158** errores tras el paso 7 (no subir; los archivos que toques quedan sin errores nuevos).
-- Jest: 851/853; las suites de `src/common`, `src/auth/decoradores` y de todos los `src/modules/*`
+- `npm run lint:check`: **153** errores tras el paso 8 (no subir; los archivos que toques quedan sin errores nuevos).
+- Jest: 909/911; las suites de `src/common`, `src/auth/decoradores` y de todos los `src/modules/*`
   en verde. Fallan 2 suites boilerplate de `location`.
 - Correr un spec: `npm test -- src/modules/<modulo>` (1–2 min). Con la caché fría la suite completa
   puede pasar de 5 minutos: córrela en segundo plano.
@@ -111,7 +112,10 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 | `real-time-location` y otros emiten por `WebSocketServices` legacy (`src/web-sockets`) | Paso `common/tiempo-real` |
 | `pppoe-automatizacion` lee el router con puertos internos de `src/mikro-tik` | `mikrotik-router` |
 | `cliente` escribe el contrato (`CONTRATO_FISICO`) por un adaptador propio y usa el servicio de `credito` (`CLASIFICACION_CREDITO`) | `contrato-cliente` y `credito`: pasan a sus fachadas |
-| `facturacion` suma y descuenta `Ruta.montoCobrado` por un adaptador propio (`RUTA_COBRADO`) | `ruta-cobro`: pasa a su fachada. La columna es entera: el cobro en ruta es en quetzales enteros |
+| Columnas `Ruta.montoCobrado` y tablas `CobroRuta`, `RutaTurno`, `FacturaRuta` sin escritura desde el paso 8 | Se quedan en la base |
+| Migración `20261126230000_ruta_cobro_borrado_logico` (dos columnas opcionales en `Ruta` e índice en `PagoFacturaInternet.rutaId`), aplicada solo en local | **En el deploy**: `prisma migrate deploy` |
+| `GET /user/get-users-to-rutas` devuelve todos los usuarios (también inactivos) y `apellidos` repite el nombre. El servidor ya rechaza asignar uno inactivo | `usuario` |
+| `dashboard` lee las rutas abiertas directamente de la tabla (solo se le agregó `eliminadoEn: null`) | `dashboard` |
 | Tabla `SaldoCliente` sin uso desde el paso 6 (nadie la escribe ni la lee) | Se queda en la base |
 | Migración `20261126180000_zona_facturacion_borrado_logico` (dos columnas opcionales en `FacturacionZona`), aplicada solo en local | **En el deploy**: `prisma migrate deploy` antes de arrancar esta versión |
 | Migración `20261126200000_facturacion_pagos_eliminados` (tabla `PagoEliminado` y dos columnas opcionales), aplicada solo en local | **En el deploy**: `prisma migrate deploy` |
@@ -130,6 +134,7 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 | Tabla `TicketConformidadEnlace` sin uso (flujo de enlace público retirado); env `TICKET_CONFORMIDAD_LINK_TTL_MINUTES` ya no se lee | Flujo nuevo de firma en el teléfono del técnico (lo define el dueño). **No** se borra la tabla (migraciones solo aditivas) |
 | Socket `emit:location:real-time` (compatibilidad): `real-time-location` lo emite para el mapa del dashboard React | Se retira cuando la UI nueva use `tracking:location-updated` |
 | La app Android (`checkpoint-android-studio`) no guarda el `refresh_token` ni renueva la sesión: con esta rama el access token dura 20 min | **Antes del deploy**: el dueño ajusta la app (§4.1 de la guía post-auth) |
+| La app Android no puede cobrar contra esta rama: envía `cobradorId` y `observaciones` al pagar en ruta (400), exige `saldo.saldoFavor` y la forma vieja de las rutas, y el comprobante exige `empresa.id` y `servicios` (pasos 6 y 8) | El dueño la actualizará en su momento (decisión del 26-nov-2026): el servidor no conserva compatibilidad. Desplegar sin la app nueva deja a los cobradores sin cobrar |
 
 ---
 
@@ -174,6 +179,10 @@ Decisiones del dueño del **26-nov-2026**. Los nombres nuevos siguen §15 del es
   registran las transferencias) el número es obligatorio e irrepetible. Cobra el usuario de la
   sesión. No hay saldo a favor. Los servicios adicionales se descartan hasta rediseñar sus tablas
   y crear su facturación. El cálculo de montos y fechas no cambió.
+- **Rutas de cobro:** solo se cobra en una ruta abierta y a sus clientes (no se exige ser el
+  cobrador asignado). Lo cobrado sale de los pagos de la ruta; los acumulados anteriores ya no se
+  muestran. Eliminar es borrado lógico en cualquier estado. Editar solo cambia lo que llega y permite
+  reabrir. El cobrador asignado debe estar activo. Un cliente puede estar en varias rutas.
 - **Mensajería:** las campañas se registran y se envían en segundo plano, una a la vez; reciben ids
   de clientes (el servidor busca los teléfonos), omiten con motivo a eliminados, con WhatsApp
   desactivado, sin teléfono válido o con número repetido, y no admiten plantillas con variables.
@@ -204,8 +213,8 @@ En nombres, fusiones y alcance esta tabla manda sobre la propuesta de §15.1 del
 | 5 | `zona-facturacion` (H5) | `facturacion-zona` | ✅ Hecho | `zona-facturacion #1–#2`: borrado lógico, fachada `ZONA_FACTURACION`, una sola ruta de opciones |
 | 6 | `facturacion` | `facturacion`, `factura-eliminacion` | ✅ Hecho | `facturacion #1–#2`: incluye los pagos; módulo `cliente-cobranza` para la cobranza |
 | 7 | `mensajeria-cliente` (H6) | `whatsapp-template`, `cloud-api-meta`, `whatsapp-api-meta`, `whatsapp-campaigns` | ✅ Hecho | `mensajeria-cliente #1–#2`: campañas con historial, fachada `MENSAJERIA_CLIENTE`. **Nunca** enviar mensajes en pruebas |
-| 8 | `ruta-cobro` | `ruta-cobro` | **Siguiente** | Los pagos ya van por `facturacion`; retirar `RUTA_COBRADO` pasando a su fachada. `Ruta.montoCobrado` es entero |
-| 9 | `credito` | `credito` | Pendiente | Ya parcialmente hexagonal. Su cron no cambia de comportamiento |
+| 8 | `ruta-cobro` | `ruta-cobro` | ✅ Hecho | `ruta-cobro #1–#2`: fachada `RUTA_COBRO`, borrado lógico, totales calculados, rutas web renombradas |
+| 9 | `credito` | `credito` | **Siguiente** | Ya parcialmente hexagonal. Su cron no cambia de comportamiento |
 | 10 | `mikrotik-router` | `mikro-tik` | Pendiente | Quita la deuda de `pppoe-automatizacion` |
 | 11 | `ticket-soporte` | `tickets-soporte`, `ticket-resumen`, `ticket-seguimiento`, `ticket-soluciones`, `tags-ticket`, `bot-functions` | Pendiente | Al terminar se borra `unirseA`. Conservar `@RequiereSecretoInterno()` |
 | 12 | `notificacion` | `notificaciones`, `push-notifications`, `push-dispositivos` | Pendiente | Migrar y mejorar. Push = efecto real |
@@ -448,7 +457,13 @@ a la UI (fugas de campos), y `catch` que tragan errores y devuelven `200`.
   `PrismaTransaccional.ejecutar` y lanza un error al final para revertir.
 - **App Android:** https://github.com/CardonaSantos/ANDROID-BASE, rama `checkpoint-android-studio`
   (la que compiló el dueño). Sirve para verificar rutas, roles, cuerpos y eventos de socket antes de
-  retirar o cambiar algo. Clónala fuera del proyecto y trátala solo como lectura.
+  retirar o cambiar algo. Clónala fuera del proyecto y trátala solo como lectura. Compara también
+  sus esquemas zod (`features/*/api/*.contracts.api.ts`) con la respuesta: un campo que falte la
+  rompe aunque la ruta no cambie.
+- **Probar por HTTP sin arrancar la aplicación:** `Test.createTestingModule` con solo los módulos
+  del paso más `RelojModule`, `TransaccionModule`, `ValidacionModule` y `ExcepcionesModule`,
+  `overrideModule(GatewayModule)` con sockets falsos y un middleware que ponga `req.user`. No corren
+  crons ni integraciones. Verifica antes que la base sea local.
 - **El build no detecta dependencias de Nest rotas.** Tras mover o borrar módulos, resuelve `AppModule`
   con `Test.createTestingModule({ imports: [AppModule] }).compile()` desde un script temporal en una
   carpeta **sin `.env`**, con `DATABASE_URL` apuntando a `127.0.0.1` y secretos ficticios (`JWT_SECRET`,
