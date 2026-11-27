@@ -13,6 +13,9 @@ export const ROLES_OFICINA: RolUsuario[] = [
   RolUsuario.OFICINA,
 ];
 
+/** Configuración de la instalación (datos de la empresa). */
+export const ROLES_SUPER_ADMIN: RolUsuario[] = [RolUsuario.SUPER_ADMIN];
+
 /** Técnicos de campo. */
 export const ROLES_TECNICO: RolUsuario[] = [RolUsuario.TECNICO];
 
