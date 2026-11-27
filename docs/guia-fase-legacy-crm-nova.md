@@ -8,7 +8,7 @@
 >
 > | Dato | Valor |
 > |---|---|
-> | Rama de trabajo | `refactorizaciones-hexagonales` (usa la punta; último cambio de código `0beef64`) |
+> | Rama de trabajo | `refactorizaciones-hexagonales` (usa la punta; último cambio de código `0991e7c`) |
 > | Punto de control | `checkpoints-refactorizaciones` en `ee2b197` (26-nov-2026; solo se mueve si el dueño lo pide) |
 > | Producción (`main`) | `108c6ef`: **nada de este trabajo está desplegado**. `main` es ancestro de la rama |
 > | Para desplegar | §10 |
@@ -23,13 +23,13 @@
 
 | Medida | Valor |
 |---|---|
-| Módulos en `src/modules` | 26: **24 hechos** y 2 pendientes de `reporte` (`excel-reports`, `reports`) |
-| Pasos de la fase legacy (§3.2) hechos | 0, 1, 3, 4, 5, 6, 7, 8, 11, 13, 16 y 17 |
-| Pasos por hacer | 12, 14, 15, 18, 19, 20 y el bloque final (crons y cobranza) |
+| Módulos en `src/modules` | 27: **25 hechos** y 2 pendientes de `reporte` (`excel-reports`, `reports`) |
+| Pasos de la fase legacy (§3.2) hechos | 0, 1, 3, 4, 5, 6, 7, 8, 11, 12, 13, 16 y 17 |
+| Pasos por hacer | 14, 15, 18, 19, 20 y el bloque final (crons y cobranza) |
 | En espera, aplazados o fuera | 2 (roles), 9 (`credito`), 10 (`mikrotik-router`, fuera), `reporte` |
 | Pendiente propio de tickets | Firma del cliente en el teléfono del técnico (§7) |
-| Verificación | build verde · lint 104 (partió de 429) · Jest 1133/1133 en 141 suites |
-| Migraciones por aplicar en producción | **10** (§10.2) |
+| Verificación | build verde · lint 98 (partió de 429) · Jest 1172/1172 en 147 suites |
+| Migraciones por aplicar en producción | **11** (§10.2) |
 | Commits sobre `main` | Más de 200 |
 
 **Siguiente paso:** lo elige el dueño. No empieces ninguno hasta que lo diga.
@@ -100,6 +100,7 @@ Módulos hexagonales conformes en `src/modules/` (usa estos como **plantilla**):
 | `ruta-cobro` | Totales calculados desde los pagos, bloqueo compartido para cobrar y exclusivo para modificar, fachada que valida dentro de la transacción de otro módulo, exportación a Excel como adaptador |
 | `servicio` | Catálogo que nunca se borra físicamente: eliminar solo lo nunca usado, bloqueo de fila entre asignar y eliminar, fachada consumida por cinco módulos y cambio de precio con contraseña |
 | `ubicacion` | Catálogo de solo lectura con carga repetible por SQL, y comprobación de coherencia entre referencias que solo mira lo que cambia |
+| `notificacion` | Fachada con efecto externo (push) que nunca lanza, bandeja por usuario sobre una tabla de destinatarios, listener de un evento de `auth` y adaptador que se inicializa al primer uso |
 | `real-time-location` | Puerto de transacción de intención (`application/ports/<modulo>-transaction.port.ts`), cron delgado con `RELOJ`, policies de métricas |
 | `ticket-soporte` | Módulo grande de punta a punta: máquina de estados con acciones según quién actúa, lista por bandejas con contadores, línea de tiempo, adjuntos con compensación y adaptadores transitorios sobre servicios legacy |
 | `ticket-soporte-historial` | Bitácora publicada como fachada que otro módulo llama dentro de su unidad de trabajo |
@@ -120,6 +121,7 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 | Unidad de trabajo | `src/common/transaccion/` | `UNIDAD_DE_TRABAJO.ejecutar(...)`; repos leen `PrismaTransaccional.cliente` (`private get db()`) |
 | Tiempo real | `src/common/tiempo-real/` | `TIEMPO_REAL.emitir(evento, datos, { usuarioIds?, roles?, todos? })` desde el adaptador `infra/websocket/` del módulo (nunca lanza); `TiempoRealEnMemoria` en pruebas. Cada evento se anota en `docs/eventos-tiempo-real.md` |
 | Orígenes permitidos | `src/common/http/origenes-permitidos.ts` | Lista de CORS compartida por HTTP y sockets |
+| Notificaciones y push | `src/modules/notificacion/public/` | Fachada `NOTIFICACION`: `notificar({ …, destino })` deja el aviso en la bandeja de cada destinatario activo y lo emite en vivo; `enviarPush({ usuarioId, … })` respeta las preferencias y nunca lanza por el proveedor |
 | Actor | `src/auth/decoradores/actor.decorator.ts` | `@Actor() actor: ActorHttp` (usuarioId, empresaId, rol, nombre, sesionId, ip, userAgent) |
 | Grupos de roles | `src/auth/roles/grupos-roles.ts` | `ROLES_OFICINA` (SUPER_ADMIN, ADMIN, COORDINADOR_OPERACIONES, OFICINA), `ROLES_TECNICO`; un grupo nuevo (p. ej. cobrador) se agrega **ahí** |
 | Endpoint retirado | `src/common/endpoint-retirado/` | `@EndpointRetirado()` → 410 |
@@ -129,8 +131,8 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 ### 2.3 Línea base medida
 
 - `npm run build`: verde.
-- `npm run lint:check`: **104** errores tras el paso 13 (no subir; los archivos que toques quedan sin errores nuevos).
-- Jest: 1133/1133 en 141 suites; todas en verde.
+- `npm run lint:check`: **98** errores tras el paso 12 (no subir; los archivos que toques quedan sin errores nuevos).
+- Jest: 1172/1172 en 147 suites; todas en verde.
 - Correr un spec: `npm test -- src/modules/<modulo>` (1–2 min). Con la caché fría la suite completa
   puede pasar de 5 minutos: córrela en segundo plano.
 
@@ -138,9 +140,12 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 
 | Deuda | Se resuelve en |
 |---|---|
-| **El bot de WhatsApp debe cambiar de ruta:** `POST /internal/server/broadcast` ya no existe; ahora es `POST /mensajeria-cliente/bot/mensajes` con `x-internal-secret` y cuerpo `{ wamid }` (204). Sin eso el chat de la oficina no se refresca en vivo | **Antes del deploy**: el dueño ajusta el bot (`docs/eventos-tiempo-real.md` §5) |
+| **El bot de WhatsApp debe cambiar de ruta:** `POST /internal/server/broadcast` ya no existe; ahora es `POST /mensajeria-cliente/bot/mensajes` con `x-internal-secret` y cuerpo `{ wamid }` (204). Sin eso el chat de la oficina no se refresca en vivo | **Antes del deploy**: el dueño ajusta el bot (`docs/eventos-tiempo-real.md` §6) |
 | La app Android escucha los nombres viejos de eventos (`tracking:*`, `ticket:assignment-changed`) y, cuando el servidor cierra el socket (`TOKEN_EXPIRADO` cada 20 min), queda quieta sin reconectar | El dueño ajusta la app con `docs/eventos-tiempo-real.md` |
-| `notificacion:creada` envía a todos el registro legacy de la notificación tal cual | Paso 12 (`notificacion`): forma y audiencia propias |
+| La app Android usa las rutas viejas de push (`register`, `current`) y navega con los datos viejos del push (`type: "ticket.assignment"`) | El dueño ajusta la app con `docs/eventos-tiempo-real.md` §5 |
+| Las notificaciones creadas antes del paso 12 no tienen destinatarios y no salen en ninguna bandeja (siguen en la base) | Decisión del dueño (27-nov-2026) |
+| Nadie borra las notificaciones viejas: los crons crean varias por zona cada día | `tareas-programadas` (bloque final) |
+| Los dispositivos push registrados antes del paso 12 no tienen sesión: no se apagan con el logout hasta que la app los vuelva a registrar (lo hace al iniciar sesión) | Solo |
 | `GET real-time-location/tracking/realtime` y `GET real-time/last-locations` siguen devolviendo el teléfono del técnico a cualquier sesión (los eventos ya no lo llevan) | H2 (roles) |
 | Los puertos `FacturacionEventosPort` y `RutaCobroEventosPort` aún reciben `empresaId`, que el adaptador ya no usa | Cuando se toquen esos casos de uso |
 | El origen web de Angular no está en `ORIGENES_PERMITIDOS` (tampoco para HTTP) | Al publicar la UI nueva |
@@ -170,7 +175,7 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 | Datos de la copia local por revisar: 4 clientes con un sector de otro municipio, un sector sin nombre y sin clientes, y 11 de 160 coordenadas de clientes fuera de Guatemala | El dueño |
 | La app Android (`checkpoint-android-studio`) no guarda el `refresh_token` ni renueva la sesión: con esta rama el access token dura 20 min | **Antes del deploy**: el dueño ajusta la app (§4.1 de la guía post-auth) |
 | La app Android no puede cobrar contra esta rama: envía `cobradorId` y `observaciones` al pagar en ruta (400), exige `saldo.saldoFavor` y la forma vieja de las rutas, y el comprobante exige `empresa.id` y `servicios` (pasos 6 y 8) | El dueño la actualizará en su momento (decisión del 26-nov-2026): el servidor no conserva compatibilidad. Desplegar sin la app nueva deja a los cobradores sin cobrar |
-| `ticket-soporte` avisa por `FirebasePushService` y `NotificacionesService`, y suma metas con `MetasTicketsService`, por adaptadores en su `infra/` (el tiempo real ya va por `TIEMPO_REAL`) | `notificacion` y `ticket-soporte-metrica` |
+| `ticket-soporte` suma metas con `MetasTicketsService` por un adaptador en su `infra/` (tiempo real, push y bandeja ya van por `TIEMPO_REAL` y `NOTIFICACION`) | `ticket-soporte-metrica` |
 | Metas: cada primer cierre suma a la última meta abierta del técnico aunque esté fuera de sus fechas (reabrir ya no suma) | `ticket-soporte-metrica` |
 | **El cliente no tiene cómo firmar** la conformidad: el enlace público se retiró y la app aún lo llama | Paso aparte, el siguiente de tickets (decisión del dueño, 27-nov-2026) |
 | Las imágenes quitadas, o de un comentario eliminado, se ocultan pero siguen en el almacenamiento, visibles por enlace | Si el dueño pide destruirlas |
@@ -187,7 +192,7 @@ Conformidad medida el 27-nov-2026 con `scripts/conformidad-hexagonal.sh`.
 
 | Módulo en `src/modules` | Conformidad |
 |---|---|
-| `almacenamiento-media`, `cliente`, `cliente-cobranza`, `mensajeria-cliente`, `mikrotik-router-credentials`, `pppoe-credentials`, `real-time-location`, `ruta-cobro`, `servicio`, `ticket-soporte`, `ticket-soporte-historial`, `ubicacion`, `zona-facturacion` | Sin hallazgos |
+| `almacenamiento-media`, `cliente`, `cliente-cobranza`, `mensajeria-cliente`, `mikrotik-router-credentials`, `notificacion`, `pppoe-credentials`, `real-time-location`, `ruta-cobro`, `servicio`, `ticket-soporte`, `ticket-soporte-historial`, `ubicacion`, `zona-facturacion` | Sin hallazgos |
 | `facturacion`, `ticket-soporte-conformidad` | Solo el falso positivo del check 13 (un enum con un valor igual a un rol) |
 | `cliente-instalacion`, `cliente-desinstalacion`, `mikrotik-ssh`, `pppoe-acceso-internet`, `pppoe-auditoria`, `pppoe-automatizacion`, `pppoe-cliente-cuenta`, `pppoe-operacion`, `pppoe-perfil-homologacion` | Marcan líneas en el check 6 (`throw new Error`), que el estándar admite solo para errores de programación: revisar a mano cuando se toquen |
 | `excel-reports`, `reports` | No conformes: se resuelven en `reporte` |
@@ -203,7 +208,6 @@ Conformidad medida el 27-nov-2026 con `scripts/conformidad-hexagonal.sh`.
 | `user`, `perfil` | 1602 + 619 | 16 | 14 |
 | `zona-facturacion-cron` | 1241 | crons | Final |
 | `contrato-cliente`, `id-contrato` | 729 + 106 | 15 | 15 |
-| `notificaciones`, `push-notifications`, `push-dispositivos` | 535 + 370 + 694 | 3 | 12 |
 | `metas-tickets` | 688 | 7 | 19 |
 | `empresa` | 217 | 4 | 18 |
 | `Utils`, `shared`, `CustomDecoratorAuthToken`, `migrate.*`, `app.controller/service` | pocas | — | Transversal (§3.2) |
@@ -231,6 +235,7 @@ Conformidad medida el 27-nov-2026 con `scripts/conformidad-hexagonal.sh`.
 | 27 nov | `ubicacion #1–#3` | Paso 17 |
 | 27 nov | `comun #10–#11`, `ticket-soporte #1–#5` | Paso 11 |
 | 27 nov | `comun #12`, `tiempo-real #1` | Paso 13 |
+| 27 nov | `notificacion #1–#2` | Paso 12 |
 
 El detalle de cada cambio visible está en `docs/cambios-contrato-ui.md`; el de cada commit, en su
 mensaje (`git log`).
@@ -335,7 +340,7 @@ En nombres, fusiones y alcance esta tabla manda sobre la propuesta de §15.1 del
 | 9 | `credito` | `credito` | Aplazado | Decisión del dueño (26-nov-2026): no urge. Ya parcialmente hexagonal. Su cron no cambia de comportamiento |
 | 10 | `mikrotik-router` | `mikro-tik` | Fuera hasta nuevo aviso | Era para clientes por IP y ya usan PPPoE (dueño, 27-nov-2026). **No borrar** `src/mikro-tik`: PPPoE lo importa |
 | 11 | `ticket-soporte` | `tickets-soporte`, `ticket-resumen`, `ticket-seguimiento`, `ticket-soluciones`, `tags-ticket`, `bot-functions` | ✅ Hecho | `ticket-soporte #1–#5`: bandejas, acciones de estado, comentarios editables con imágenes, reporte diario en hora de Guatemala; `unirseA` retirado. Falta la firma del cliente (§7) |
-| 12 | `notificacion` | `notificaciones`, `push-notifications`, `push-dispositivos` | Pendiente | Migrar y mejorar. Push = efecto real |
+| 12 | `notificacion` | `notificaciones`, `push-notifications`, `push-dispositivos` | ✅ Hecho | `notificacion #1–#2`: fachada `NOTIFICACION`, bandeja por usuario (leída, descartada) en `NotificacionUsuario`, push con Firebase como adaptador (se inicializa al primer envío), dispositivo ligado a su sesión y apagado al revocarla, avisos de crons y bot a todos menos técnicos, rutas de push por `:instalacionId` |
 | 13 | `common/tiempo-real` | `web-sockets` | ✅ Hecho | `comun #12`, `tiempo-real #1`: puerto `TIEMPO_REAL`, handshake validado como el guard HTTP, cierre al vencer el token o revocar la sesión, salas por usuario y rol, eventos en español (`docs/eventos-tiempo-real.md`), ruta del bot en `mensajeria-cliente` |
 | 14 | `usuario` | `user`, `perfil` | Pendiente | Sin tocar `auth`; solo SUPER_ADMIN edita a otros |
 | 15 | `contrato-cliente` | `contrato-cliente`, `id-contrato` | Pendiente | |
@@ -692,7 +697,7 @@ momento.
 
 El detalle de la etapa auth está en §6 de `guia-post-auth-refactor-hexagonal-crm-nova.md`.
 
-### 10.2 Migraciones pendientes (10)
+### 10.2 Migraciones pendientes (11)
 
 Aplicadas solo en la base local. Todas aditivas, salvo el cambio de índice indicado.
 
@@ -708,6 +713,7 @@ Aplicadas solo en la base local. Todas aditivas, salvo el cambio de índice indi
 | `20261127020000_sector_borrado_logico` | Borrado lógico en sectores |
 | `20261128000000_ticket_soporte_cancelacion_comentarios` | Motivo de cancelación, borrado lógico de comentarios y etiquetas, imágenes de comentario e índices |
 | `20261128010000_ticket_comentario_edicion` | Fecha de edición del comentario y borrado lógico de sus imágenes |
+| `20261128020000_push_dispositivo_sesion` | Columna opcional `sesionId` (e índice) en `UsuarioPushDispositivo` |
 
 `prisma/departamentos-municipios.sql` es solo para instalaciones nuevas.
 
@@ -729,7 +735,7 @@ El resto (WhatsApp, Meta, almacenamiento, Firebase, MikroTik, plantillas) no cam
 | Cliente | Qué se rompe |
 |---|---|
 | React actual | Sesión con refresh, bodies estrictos, errores nuevos, y las pantallas de clientes, zonas, facturas y pagos, mensajería, rutas de cobro, planes y servicios, sectores y ubicación, y tickets. Todos los eventos en vivo (cambiaron de nombre) |
-| App Android | Refresh de sesión, cobros en ruta y comprobante, todas las pantallas de tickets (incluidas las dos rutas que estaban en `dashboard` y la firma del cliente) y los eventos en vivo (nombres nuevos y reconexión tras `TOKEN_EXPIRADO`) |
+| App Android | Refresh de sesión, cobros en ruta y comprobante, todas las pantallas de tickets (incluidas las dos rutas que estaban en `dashboard` y la firma del cliente) los eventos en vivo (nombres nuevos y reconexión tras `TOKEN_EXPIRADO`) y el push (rutas `PUT`/`DELETE /push-dispositivos/:instalacionId` y datos en español) |
 | Angular | Es la interfaz nueva: se construye con `cambios-contrato-ui.md` y `eventos-tiempo-real.md` |
 | Bot y Banrural | El bot envía solo `titulo` y `descripcion` con su secreto al crear tickets, y debe pasar a `POST /mensajeria-cliente/bot/mensajes` para avisar mensajes. Banrural nunca se implementó y se retiró |
 
