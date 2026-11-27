@@ -8,6 +8,10 @@ import {
   ZONA_FACTURACION,
   ZonaFacturacionFacadePort,
 } from '../../../zona-facturacion/public/zona-facturacion.facade.port';
+import {
+  FACTURACION,
+  FacturacionFacadePort,
+} from '../../../facturacion/public/facturacion.facade.port';
 import { ClienteEntity } from '../../domain/entities/cliente.entity';
 import { leerCoordenadas } from '../../domain/policies/coordenadas.policy';
 import {
@@ -21,10 +25,6 @@ import {
   ContratoFisicoPort,
   GuardarContratoFisico,
 } from '../ports/contrato-fisico.port';
-import {
-  PRIMERA_FACTURA,
-  PrimeraFacturaPort,
-} from '../ports/primera-factura.port';
 
 export type CrearClienteInput = {
   cliente: CrearClienteProps & {
@@ -48,8 +48,8 @@ export class CrearClienteUseCase {
   constructor(
     @Inject(CLIENTE_REPOSITORY)
     private readonly clientes: ClienteRepositoryPort,
-    @Inject(PRIMERA_FACTURA)
-    private readonly primeraFactura: PrimeraFacturaPort,
+    @Inject(FACTURACION)
+    private readonly facturacion: FacturacionFacadePort,
     @Inject(CONTRATO_FISICO)
     private readonly contratos: ContratoFisicoPort,
     @Inject(UNIDAD_DE_TRABAJO)
@@ -86,7 +86,7 @@ export class CrearClienteUseCase {
         props.fechaInstalacion,
       );
 
-      const { estadoCobranza } = await this.primeraFactura.generar({
+      const { estadoCobranza } = await this.facturacion.generarPrimeraFactura({
         clienteId,
         empresaId: input.cliente.empresaId,
         nombre: props.nombre,

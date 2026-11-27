@@ -61,6 +61,17 @@ describe('PagoEntity', () => {
     );
   });
 
+  it('en ruta solo admite quetzales enteros', () => {
+    const enRuta = { ...base, origen: OrigenPago.RUTA, montoPagado: 10.5 };
+
+    expect(() => PagoEntity.registrar(enRuta, AHORA)).toThrow(
+      PagoInvalidoError,
+    );
+    expect(() =>
+      PagoEntity.registrar({ ...base, montoPagado: 10.5 }, AHORA),
+    ).not.toThrow();
+  });
+
   it('el mismo número con otros espacios o mayúsculas es el mismo', () => {
     expect(claveNumeroBoleta('AB 12-x')).toBe(claveNumeroBoleta(' ab12-X'));
     expect(claveNumeroBoleta('AB12')).not.toBe(claveNumeroBoleta('AB-12'));

@@ -23,9 +23,11 @@ describe('DTO de facturación', () => {
     })) as RegistrarPagoDto;
 
     expect(dto.fechaPago).toBeInstanceOf(Date);
+    const enRuta = { ...pago, montoPagado: 150, rutaId: 3 };
+    await expect(validar(RegistrarPagoRutaDto, enRuta)).resolves.toBeTruthy();
     await expect(
-      validar(RegistrarPagoRutaDto, { ...pago, rutaId: 3 }),
-    ).resolves.toBeTruthy();
+      validar(RegistrarPagoRutaDto, { ...enRuta, montoPagado: 150.5 }),
+    ).rejects.toThrow();
   });
 
   it.each([

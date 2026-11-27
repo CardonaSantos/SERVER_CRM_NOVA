@@ -227,7 +227,6 @@ export class RutaCobroService {
                 select: { id: true, latitud: true, longitud: true },
               },
               facturacionZonaId: true,
-              saldoCliente: { select: { saldoPendiente: true } },
               facturaInternet: {
                 where: {
                   estadoFacturaInternet: {
@@ -393,12 +392,10 @@ export class RutaCobroService {
                   detalleFactura: true,
                 },
               },
-              saldoCliente: {
-                select: {
-                  saldoFavor: true,
-                  saldoPendiente: true,
-                  ultimoPago: true,
-                },
+              PagoFacturaInternet: {
+                select: { fechaPago: true },
+                orderBy: { fechaPago: 'desc' },
+                take: 1,
               },
             },
           },
@@ -456,9 +453,8 @@ export class RutaCobroService {
                 detalleFactura: factura.detalleFactura,
               })),
               saldo: {
-                saldoFavor: cliente.saldoCliente?.saldoFavor ?? 0,
-                saldoPendiente: cliente.saldoCliente?.saldoPendiente ?? 0,
-                ultimoPago: cliente.saldoCliente?.ultimoPago ?? null,
+                saldoPendiente: totalDebe,
+                ultimoPago: cliente.PagoFacturaInternet[0]?.fechaPago ?? null,
               },
               //nuevo
               totalDebe: totalDebe,
@@ -510,9 +506,8 @@ export class RutaCobroService {
                   in: ['PENDIENTE', 'VENCIDA', 'PARCIAL'],
                 },
               },
-              select: { id: true }, // traemos solo ids para contar
+              select: { id: true, saldoPendiente: true },
             },
-            saldoCliente: { select: { saldoPendiente: true } },
           },
         },
         // << Importante: en el schema es "cobros"
@@ -540,7 +535,10 @@ export class RutaCobroService {
         empresaId: c.empresaId,
         empresa: c.empresa,
         ubicacion: c.ubicacion ?? undefined,
-        saldoPendiente: c.saldoCliente?.saldoPendiente ?? 0,
+        saldoPendiente: c.facturaInternet.reduce(
+          (total, factura) => total + (factura.saldoPendiente ?? 0),
+          0,
+        ),
         facturasPendientes: c.facturaInternet.length,
         facturacionZona: c.facturacionZonaId ?? undefined,
       })),

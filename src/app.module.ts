@@ -12,7 +12,7 @@ import { ServicioModule } from './servicio/servicio.module';
 import { TipoServicioModule } from './tipo-servicio/tipo-servicio.module';
 import { ServicioInternetModule } from './servicio-internet/servicio-internet.module';
 import { ZonaFacturacionModule } from './modules/zona-facturacion/zona-facturacion.module';
-import { FacturacionModule } from './facturacion/facturacion.module';
+import { FacturacionModule } from './modules/facturacion/facturacion.module';
 import { TagsTicketModule } from './tags-ticket/tags-ticket.module';
 import { TicketsSoporteModule } from './tickets-soporte/tickets-soporte.module';
 import { TicketSeguimientoModule } from './ticket-seguimiento/ticket-seguimiento.module';
@@ -33,7 +33,6 @@ import { SectorModule } from './sector/sector.module';
 import { ContratoClienteModule } from './contrato-cliente/contrato-cliente.module';
 import { MikroTikModule } from './mikro-tik/mikro-tik.module';
 import { MetasTicketsModule } from './metas-tickets/metas-tickets.module';
-import { FacturaEliminacionModule } from './factura-eliminacion/factura-eliminacion.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { AlmacenamientoMediaModule } from './modules/almacenamiento-media/almacenamiento-media.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
@@ -108,7 +107,6 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     ContratoClienteModule,
     MikroTikModule,
     MetasTicketsModule,
-    FacturaEliminacionModule,
     ReportsModule,
     AlmacenamientoMediaModule,
     NotificacionesModule,

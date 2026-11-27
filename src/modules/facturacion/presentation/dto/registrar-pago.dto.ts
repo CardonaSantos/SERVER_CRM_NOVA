@@ -48,6 +48,10 @@ export class RegistrarPagoDto extends PagoDto {
 }
 
 export class RegistrarPagoRutaDto extends PagoDto {
+  /** En ruta el monto es en quetzales enteros */
+  @IsInt()
+  montoPagado: number;
+
   /** Ruta de cobro en la que se registra */
   @IsInt()
   @Min(1)

@@ -1,6 +1,7 @@
 import { RelojFijo } from 'src/common/reloj/reloj-fijo';
 import { UnidadDeTrabajoEnMemoria } from 'src/common/transaccion/unidad-de-trabajo-en-memoria';
 import { ZonaFacturacionFacadePort } from '../../../zona-facturacion/public/zona-facturacion.facade.port';
+import { FacturacionFacadePort } from '../../../facturacion/public/facturacion.facade.port';
 import { EstadoCobranzaCliente } from '../../domain/enums/estado-cobranza-cliente.enum';
 import { EstadoOperativoCliente } from '../../domain/enums/estado-operativo-cliente.enum';
 import { EstadoServicioMikrotik } from '../../domain/enums/estado-servicio-mikrotik.enum';
@@ -14,7 +15,6 @@ import {
   ContratoFisicoPort,
   GuardarContratoFisico,
 } from '../ports/contrato-fisico.port';
-import { PrimeraFacturaPort } from '../ports/primera-factura.port';
 import { ActualizarClienteUseCase } from './actualizar-cliente.use-case';
 import { ActualizarIpClienteUseCase } from './actualizar-ip-cliente.use-case';
 import {
@@ -72,11 +72,11 @@ describe('alta y edición de clientes', () => {
       contrato: { idContrato: 'C-1' },
     };
 
-    function crear(factura?: PrimeraFacturaPort) {
+    function crear(factura?: FacturacionFacadePort) {
       return new CrearClienteUseCase(
         clientes,
         factura ?? {
-          generar: () =>
+          generarPrimeraFactura: () =>
             Promise.resolve({
               estadoCobranza: EstadoCobranzaCliente.PAGO_PENDIENTE,
             }),
@@ -133,7 +133,7 @@ describe('alta y edición de clientes', () => {
 
     it('si la factura falla, el alta falla', async () => {
       const factura = {
-        generar: () => Promise.reject(new Error('zona caída')),
+        generarPrimeraFactura: () => Promise.reject(new Error('zona caída')),
       };
 
       await expect(crear(factura).execute(input)).rejects.toThrow('zona caída');
