@@ -48,6 +48,7 @@ const SELECT_TICKET = {
     },
   },
   SeguimientoTicket: {
+    where: { eliminadoEn: null },
     select: {
       id: true,
       descripcion: true,

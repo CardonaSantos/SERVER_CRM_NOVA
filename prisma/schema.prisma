@@ -1482,6 +1482,8 @@ model Media {
 
   firmaTicket TicketFirma? @relation("TicketFirmaMedia")
 
+  comentarioTicket SeguimientoTicketMedia?
+
   @@unique([bucket, key])
   @@index([clienteId, albumId, creadoEn(sort: Desc)])
   @@index([empresaId, categoria, tipo])
@@ -1763,6 +1765,10 @@ model TicketSoporte {
 
   fijado Boolean @default(false)
 
+  canceladoEn       DateTime?
+  canceladoPorId    Int?
+  motivoCancelacion String?
+
   resumen TicketResumen? @relation("TicketResumenTicket")
 
   boleta            BoletaSoporte?
@@ -1787,6 +1793,10 @@ model TicketSoporte {
 
   ticketsConformidad TicketConformidad[]
   historialCambios   TicketSoporteHistorial[]
+
+  @@index([estado, fechaApertura])
+  @@index([tecnicoId, estado])
+  @@index([clienteId])
 }
 
 model TicketSoporteHistorial {
@@ -1858,6 +1868,9 @@ model EtiquetaTicket {
   actualizadoEn DateTime?        @updatedAt
   creadoEn      DateTime?        @default(now())
   tickets       TicketEtiqueta[]
+
+  eliminadoEn    DateTime?
+  eliminadoPorId Int?
 }
 
 model TicketEtiqueta {
@@ -1883,6 +1896,25 @@ model SeguimientoTicket {
 
   creadoEn      DateTime @default(now())
   actualizadoEn DateTime @default(now()) @updatedAt
+
+  eliminadoEn    DateTime?
+  eliminadoPorId Int?
+  medios         SeguimientoTicketMedia[]
+
+  @@index([ticketId, fechaRegistro])
+}
+
+/// Imágenes adjuntas a un comentario de ticket.
+model SeguimientoTicketMedia {
+  id            Int               @id @default(autoincrement())
+  seguimientoId Int
+  mediaId       Int               @unique
+  orden         Int               @default(0)
+  creadoEn      DateTime          @default(now())
+  seguimiento   SeguimientoTicket @relation(fields: [seguimientoId], references: [id], onDelete: Cascade)
+  media         Media             @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@index([seguimientoId])
 }
 
 //PIVOTE TEC. ASIGNADOS Y RESUELTOS POR ->

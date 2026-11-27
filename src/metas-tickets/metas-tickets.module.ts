@@ -6,5 +6,6 @@ import { PrismaService } from 'src/prisma/prisma.service';
 @Module({
   controllers: [MetasTicketsController],
   providers: [MetasTicketsService, PrismaService],
+  exports: [MetasTicketsService],
 })
 export class MetasTicketsModule {}
