@@ -509,6 +509,9 @@ model FacturacionZona {
   enviarRecordatorio2           Boolean           @default(true)
   enviarRecordatorioGeneracion  Boolean           @default(true)
   enviarSiTieneFacturasVencidas Boolean           @default(false)
+  /// Borrado lógico: la zona no se borra nunca de la base.
+  eliminadoEn                   DateTime?
+  eliminadoPorId                Int?
   clientes                      ClienteInternet[]
   facturas                      FacturaInternet[]
   empresa                       Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
