@@ -8,7 +8,7 @@
 >
 > | Dato | Valor |
 > |---|---|
-> | Rama de trabajo | `refactorizaciones-hexagonales` (usa la punta; último cambio de código `d00ed3b`) |
+> | Rama de trabajo | `refactorizaciones-hexagonales` (usa la punta; último cambio de código `441fa49`) |
 > | Punto de control | `checkpoints-refactorizaciones` en `ee2b197` (26-nov-2026; solo se mueve si el dueño lo pide) |
 > | Producción (`main`) | `108c6ef`: **nada de este trabajo está desplegado**. `main` es ancestro de la rama |
 > | Para desplegar | §10 |
@@ -244,7 +244,7 @@ Conformidad medida el 27-nov-2026 con `scripts/conformidad-hexagonal.sh`.
 | 27 nov | `ticket-soporte-metrica #1–#2` | Paso 19 |
 | 27 nov | `empresa #1–#3` | Paso 18 |
 | 27 nov | `contrato-cliente #1–#3` | Paso 15 |
-| 27 nov | `dashboard #1–#3` | Paso 20 y gráficas nuevas |
+| 27 nov | `dashboard #1–#4` | Paso 20, gráficas nuevas y resumen por periodo |
 
 El detalle de cada cambio visible está en `docs/cambios-contrato-ui.md`; el de cada commit, en su
 mensaje (`git log`).
@@ -354,7 +354,8 @@ Decisiones del dueño del **26-nov-2026**. Los nombres nuevos siguen §15 del es
   planas con números (`dataset`). Las cifras salen solo de lo registrado: el mes de una factura es su
   `periodo`, la deuda de desinstalados va aparte y el ingreso esperado usa las condiciones del cron.
   La evolución mensual de clientes y morosidad necesita una foto mensual: va de lo primero en el
-  bloque de crons.
+  bloque de crons. La tarjeta del resumen cuenta las facturas del mes por `periodo`, igual que la
+  gráfica; pagadas y cobrado van por fecha de pago.
 
 ### 3.2 Orden de trabajo
 
@@ -792,8 +793,6 @@ El resto (WhatsApp, Meta, almacenamiento, Firebase, MikroTik, plantillas) no cam
 - Que exista una sola empresa: la API anterior permitía crear más.
 - Antes de confiar en las gráficas de historia: revisar si hay facturas o pagos cargados en bloque (en
   la copia local casi todos los pagos se registraron un mismo día y salen como cobrados ese mes).
-- La tarjeta del resumen cuenta las facturas **creadas** en el mes y la gráfica mensual las del
-  **periodo**: pueden no coincidir.
 
 ---
 
