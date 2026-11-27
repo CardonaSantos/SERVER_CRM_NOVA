@@ -25,8 +25,9 @@
 |---|---|
 | Módulos en `src/modules` | 31: **29 hechos** y 2 pendientes de `reporte` (`excel-reports`, `reports`) |
 | Pasos de la fase legacy (§3.2) hechos | 0, 1, 3, 4, 5, 6, 7, 8, 11, 12, 13, 15, 16, 17, 18, 19 y 20 |
-| Pasos por hacer | 14 y el bloque final (crons y cobranza) |
-| En espera, aplazados o fuera | 2 (roles), 9 (`credito`), 10 (`mikrotik-router`, fuera), `reporte` |
+| Pasos por hacer | 14 (`usuario`) y el bloque final: `tareas-programadas`, `cobranza` y, de último, `ciclo-facturacion` |
+| En espera | 2 (roles) |
+| No se refactorizan (dueño, 27-nov-2026) | 9 (`credito`), 10 (`mikro-tik`) y `reporte` (`generate-reports`, `excel-reports`, `reports`) |
 | Pendiente propio de tickets | Firma del cliente en el teléfono del técnico (§7) |
 | Verificación | build verde · lint 83 (partió de 429) · Jest 1265/1265 en 164 suites |
 | Migraciones por aplicar en producción | **11** (§10.2) |
@@ -34,8 +35,8 @@
 
 **Siguiente paso:** lo elige el dueño. No empieces ninguno hasta que lo diga.
 
-**Modelo acordado por paso** (27-nov-2026): 14, crons,
-cobranza y `credito` → Opus 5.5 high o superior.
+**Modelo acordado por paso** (27-nov-2026): 14, `tareas-programadas`, `cobranza` y
+`ciclo-facturacion` → Opus 5.5 high o superior.
 
 ---
 
@@ -372,8 +373,8 @@ En nombres, fusiones y alcance esta tabla manda sobre la propuesta de §15.1 del
 | 6 | `facturacion` | `facturacion`, `factura-eliminacion` | ✅ Hecho | `facturacion #1–#2`: incluye los pagos; módulo `cliente-cobranza` para la cobranza |
 | 7 | `mensajeria-cliente` (H6) | `whatsapp-template`, `cloud-api-meta`, `whatsapp-api-meta`, `whatsapp-campaigns` | ✅ Hecho | `mensajeria-cliente #1–#2`: campañas con historial, fachada `MENSAJERIA_CLIENTE`. **Nunca** enviar mensajes en pruebas |
 | 8 | `ruta-cobro` | `ruta-cobro` | ✅ Hecho | `ruta-cobro #1–#2`: fachada `RUTA_COBRO`, borrado lógico, totales calculados, rutas web renombradas |
-| 9 | `credito` | `credito` | Aplazado | Decisión del dueño (26-nov-2026): no urge. Ya parcialmente hexagonal. Su cron no cambia de comportamiento |
-| 10 | `mikrotik-router` | `mikro-tik` | Fuera hasta nuevo aviso | Era para clientes por IP y ya usan PPPoE (dueño, 27-nov-2026). **No borrar** `src/mikro-tik`: PPPoE lo importa |
+| 9 | `credito` | `credito` | No se refactoriza | Decisión del dueño (27-nov-2026): se queda como está, con su cron |
+| 10 | `mikrotik-router` | `mikro-tik` | No se refactoriza (dueño, 27-nov-2026) | Era para clientes por IP y ya usan PPPoE (dueño, 27-nov-2026). **No borrar** `src/mikro-tik`: PPPoE lo importa |
 | 11 | `ticket-soporte` | `tickets-soporte`, `ticket-resumen`, `ticket-seguimiento`, `ticket-soluciones`, `tags-ticket`, `bot-functions` | ✅ Hecho | `ticket-soporte #1–#5`: bandejas, acciones de estado, comentarios editables con imágenes, reporte diario en hora de Guatemala; `unirseA` retirado. Falta la firma del cliente (§7) |
 | 12 | `notificacion` | `notificaciones`, `push-notifications`, `push-dispositivos` | ✅ Hecho | `notificacion #1–#2`: fachada `NOTIFICACION`, bandeja por usuario (leída, descartada) en `NotificacionUsuario`, push con Firebase como adaptador (se inicializa al primer envío), dispositivo ligado a su sesión y apagado al revocarla, avisos de crons y bot a todos menos técnicos, rutas de push por `:instalacionId` |
 | 13 | `common/tiempo-real` | `web-sockets` | ✅ Hecho | `comun #12`, `tiempo-real #1`: puerto `TIEMPO_REAL`, handshake validado como el guard HTTP, cierre al vencer el token o revocar la sesión, salas por usuario y rol, eventos en español (`docs/eventos-tiempo-real.md`), ruta del bot en `mensajeria-cliente` |
@@ -384,8 +385,8 @@ En nombres, fusiones y alcance esta tabla manda sobre la propuesta de §15.1 del
 | 18 | `empresa` | `empresa` | ✅ Hecho | `empresa #1–#3`: datos de la empresa de la instalación (leer cualquier sesión, editar solo super administrador), sin creación ni borrado, rutas sin id, `seed` con datos de ejemplo, sin migraciones |
 | 19 | `ticket-soporte-metrica` | `metas-tickets` | ✅ Hecho | `ticket-soporte-metrica #1–#2`: avance calculado desde los tickets resueltos (principal o apoyo), sin metas encimadas, cancelar en vez de borrar, escrituras solo de oficina, métricas por mes, sin migraciones |
 | 20 | `dashboard` | `dashboard` | ✅ Hecho | `dashboard #1–#3`: cinco gráficas nuevas, solo lectura, panel general para todos menos técnicos, tickets resueltos por fecha de cierre, cobranza sin desinstalados, facturas sin anuladas, rutas sin uso retiradas, sin migraciones |
-| Final | `tareas-programadas` (H4), `cobranza` (H7–H10), `ciclo-facturacion` (H11) | `zona-facturacion-cron` y nuevos | Pendiente | Primero, la foto mensual de clientes y morosidad. Incluye los días 29–31 y la limpieza de sesiones vencidas (G6). El diseño de cobranza está en la guía del dueño |
-| Aplazado | `reporte` | `generate-reports`, `modules/excel-reports`, `modules/reports` | Aplazado | |
+| Final | `tareas-programadas` (H4), `cobranza` (H7–H10), `ciclo-facturacion` (H11) | `zona-facturacion-cron` y nuevos | Pendiente | Los tres van, en ese orden: los crons de facturación de último (dueño, 27-nov-2026). `tareas-programadas` da candado, registro y reintento a todo cron (con migración aditiva); `cobranza` es el corte por mora con simulación, aprobación y conciliación. Primero, la foto mensual de clientes y morosidad. Incluye los días 29–31 y la limpieza de sesiones vencidas (G6). El diseño de cobranza está en la guía del dueño |
+| — | `reporte` | `generate-reports`, `modules/excel-reports`, `modules/reports` | No se refactoriza | Se queda como está (dueño, 27-nov-2026). Pendiente autorizado: comprobar el reporte de cobranza con el pipe estricto y, si falla, corregirlo con el cambio mínimo |
 
 Transversal: `Utils`, `shared` y `CustomDecoratorAuthToken` se absorben en `common/` o en el módulo
 que los use; `migrate.module.ts` y `migrate.service.ts` se revisan y se preguntan. Estado final de
@@ -810,8 +811,8 @@ El resto (WhatsApp, Meta, almacenamiento, Firebase, MikroTik, plantillas) no cam
 - Funciones nuevas: solo las que pida (como en tickets).
 - Facturación y cobranza no cambian `estadoCliente`. La contraseña PPPoE es una convención suya:
   no se cambia su formato.
-- `credito` aplazado; `mikrotik-router` fuera hasta nuevo aviso; los crons al final; reportes
-  aplazado (se arregló solo el diario de tickets).
+- `credito`, `mikro-tik` y los reportes no se refactorizan (27-nov-2026); los crons de facturación
+  van de último.
 
 ---
 

@@ -37,8 +37,9 @@ La etapa de auth y NestJS 12 está terminada en código (aún no desplegada). Ah
    (`servicio`), ✅ paso 17 (`ubicacion`), ✅ paso 11 (`ticket-soporte`), ✅ paso 12 (`notificacion`), ✅ paso 19
    (`ticket-soporte-metrica`), ✅ paso 18 (`empresa`), ✅ paso 15 (`contrato-cliente`), ✅ paso 20 (`dashboard`) y ✅ paso 13
    (`common/tiempo-real`, eventos en `docs/eventos-tiempo-real.md`); H2 (roles) queda en
-   espera del dueño; `credito` (paso 9) queda aplazado y `mikrotik-router` (paso 10) fuera hasta
-   nuevo aviso; el dueño elige el siguiente paso. **Los crons van al final**; reportes queda aplazado.
+   espera del dueño; `credito`, `mikro-tik` y los reportes no se refactorizan (dueño,
+   27-nov-2026). Quedan el paso 14 (`usuario`) y el bloque final: `tareas-programadas`, `cobranza` y,
+   **de último**, los crons de facturación (`ciclo-facturacion`).
 
 **No empieces un paso hasta que el dueño diga que se empieza.**
 
