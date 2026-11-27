@@ -35,10 +35,10 @@ La etapa de auth y NestJS 12 está terminada en código (aún no desplegada). Ah
    `real-time-location`), ✅ paso 4 (`cliente`), ✅ paso 5 (`zona-facturacion`), ✅ paso 6
    (`facturacion`), ✅ paso 7 (`mensajeria-cliente`), ✅ paso 8 (`ruta-cobro`), ✅ paso 16
    (`servicio`), ✅ paso 17 (`ubicacion`), ✅ paso 11 (`ticket-soporte`), ✅ paso 12 (`notificacion`), ✅ paso 19
-   (`ticket-soporte-metrica`), ✅ paso 18 (`empresa`), ✅ paso 15 (`contrato-cliente`), ✅ paso 20 (`dashboard`) y ✅ paso 13
+   (`ticket-soporte-metrica`), ✅ paso 18 (`empresa`), ✅ paso 15 (`contrato-cliente`), ✅ paso 20 (`dashboard`), ✅ paso 14 (`usuario`) y ✅ paso 13
    (`common/tiempo-real`, eventos en `docs/eventos-tiempo-real.md`); H2 (roles) queda en
    espera del dueño; `credito`, `mikro-tik` y los reportes no se refactorizan (dueño,
-   27-nov-2026). Quedan el paso 14 (`usuario`) y el bloque final: `tareas-programadas`, `cobranza` y,
+   27-nov-2026). Queda el bloque final: `tareas-programadas`, `cobranza` y,
    **de último**, los crons de facturación (`ciclo-facturacion`).
 
 **No empieces un paso hasta que el dueño diga que se empieza.**
@@ -85,7 +85,7 @@ npm run start:dev
 npx prisma migrate status
 ```
 
-Node 24 (`.nvmrc`). Línea base: lint ≤ 83 errores (tras el paso 20; sin errores nuevos en
+Node 24 (`.nvmrc`). Línea base: lint ≤ 61 errores (tras el paso 14; sin errores nuevos en
 archivos tocados); Jest: todas las suites en verde.
 
 ## Seguridad que ya existe (no la rehagas ni la rodees)
