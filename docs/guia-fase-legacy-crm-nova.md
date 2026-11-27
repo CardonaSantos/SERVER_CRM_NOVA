@@ -8,7 +8,7 @@
 >
 > | Dato | Valor |
 > |---|---|
-> | Rama de trabajo | `refactorizaciones-hexagonales` (usa la punta; último cambio de código `01a853e`) |
+> | Rama de trabajo | `refactorizaciones-hexagonales` (usa la punta; último cambio de código `4fa59ec`) |
 > | Punto de control | `checkpoints-refactorizaciones` en `ee2b197` (26-nov-2026; solo se mueve si el dueño lo pide) |
 > | Producción (`main`) | `108c6ef`: **nada de este trabajo está desplegado**. `main` es ancestro de la rama |
 > | Para desplegar | §10 |
@@ -23,18 +23,18 @@
 
 | Medida | Valor |
 |---|---|
-| Módulos en `src/modules` | 29: **27 hechos** y 2 pendientes de `reporte` (`excel-reports`, `reports`) |
-| Pasos de la fase legacy (§3.2) hechos | 0, 1, 3, 4, 5, 6, 7, 8, 11, 12, 13, 16, 17, 18 y 19 |
-| Pasos por hacer | 14, 15, 20 y el bloque final (crons y cobranza) |
+| Módulos en `src/modules` | 30: **28 hechos** y 2 pendientes de `reporte` (`excel-reports`, `reports`) |
+| Pasos de la fase legacy (§3.2) hechos | 0, 1, 3, 4, 5, 6, 7, 8, 11, 12, 13, 15, 16, 17, 18 y 19 |
+| Pasos por hacer | 14, 20 y el bloque final (crons y cobranza) |
 | En espera, aplazados o fuera | 2 (roles), 9 (`credito`), 10 (`mikrotik-router`, fuera), `reporte` |
 | Pendiente propio de tickets | Firma del cliente en el teléfono del técnico (§7) |
-| Verificación | build verde · lint 88 (partió de 429) · Jest 1213/1213 en 153 suites |
+| Verificación | build verde · lint 84 (partió de 429) · Jest 1237/1237 en 159 suites |
 | Migraciones por aplicar en producción | **11** (§10.2) |
 | Commits sobre `main` | Más de 200 |
 
 **Siguiente paso:** lo elige el dueño. No empieces ninguno hasta que lo diga.
 
-**Modelo acordado por paso** (27-nov-2026): 15 y 20 → Sonnet 5.5 high; 14, crons,
+**Modelo acordado por paso** (27-nov-2026): 20 → Sonnet 5.5 high; 14, crons,
 cobranza y `credito` → Opus 5.5 high o superior.
 
 ---
@@ -111,6 +111,7 @@ Módulos hexagonales conformes en `src/modules/` (usa estos como **plantilla**):
 | `almacenamiento-media`, `mikrotik-ssh`, `pppoe-credentials`, `mikrotik-router-credentials` | Capacidades técnicas publicadas como puerto en `public/` |
 | `ticket-soporte-metrica` | Datos calculados al leer (avance y estado sin contador), reglas de fechas de negocio en `domain/` sin dayjs y candado por técnico contra solapes |
 | `empresa` | El módulo más pequeño posible: configuración que se lee y se edita, sin fachada porque nadie más la escribe |
+| `contrato-cliente` | Documento armado desde una plantilla con una policy pura (sin dayjs), fechas de negocio convertidas en el mapper y fachada consumida dentro de la unidad de trabajo de `cliente` |
 
 Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el módulo `reporte`, §3).
 
@@ -128,7 +129,7 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 | Orígenes permitidos | `src/common/http/origenes-permitidos.ts` | Lista de CORS compartida por HTTP y sockets |
 | Notificaciones y push | `src/modules/notificacion/public/` | Fachada `NOTIFICACION`: `notificar({ …, destino })` deja el aviso en la bandeja de cada destinatario activo y lo emite en vivo; `enviarPush({ usuarioId, … })` respeta las preferencias y nunca lanza por el proveedor |
 | Actor | `src/auth/decoradores/actor.decorator.ts` | `@Actor() actor: ActorHttp` (usuarioId, empresaId, rol, nombre, sesionId, ip, userAgent) |
-| Grupos de roles | `src/auth/roles/grupos-roles.ts` | `ROLES_OFICINA` (SUPER_ADMIN, ADMIN, COORDINADOR_OPERACIONES, OFICINA), `ROLES_TECNICO`; un grupo nuevo (p. ej. cobrador) se agrega **ahí** |
+| Grupos de roles | `src/auth/roles/grupos-roles.ts` | `ROLES_OFICINA` (SUPER_ADMIN, ADMIN, COORDINADOR_OPERACIONES, OFICINA), `ROLES_ADMINISTRACION` (SUPER_ADMIN, ADMIN), `ROLES_SUPER_ADMIN`, `ROLES_TECNICO`; un grupo nuevo (p. ej. cobrador) se agrega **ahí** |
 | Endpoint retirado | `src/common/endpoint-retirado/` | `@EndpointRetirado()` → 410 |
 | Secreto interno | `src/common/secretos/` | `@RequiereSecretoInterno()` para integraciones públicas |
 | Conformidad | `scripts/conformidad-hexagonal.sh <modulo>` | Checklist §12 del estándar (solo `src/modules/<modulo>`) |
@@ -136,8 +137,8 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 ### 2.3 Línea base medida
 
 - `npm run build`: verde.
-- `npm run lint:check`: **88** errores tras el paso 18 (no subir; los archivos que toques quedan sin errores nuevos).
-- Jest: 1213/1213 en 153 suites; todas en verde.
+- `npm run lint:check`: **84** errores tras el paso 15 (no subir; los archivos que toques quedan sin errores nuevos).
+- Jest: 1237/1237 en 159 suites; todas en verde.
 - Correr un spec: `npm test -- src/modules/<modulo>` (1–2 min). Con la caché fría la suite completa
   puede pasar de 5 minutos: córrela en segundo plano.
 
@@ -155,7 +156,10 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 | Los puertos `FacturacionEventosPort` y `RutaCobroEventosPort` aún reciben `empresaId`, que el adaptador ya no usa | Cuando se toquen esos casos de uso |
 | El origen web de Angular no está en `ORIGENES_PERMITIDOS` (tampoco para HTTP) | Al publicar la UI nueva |
 | `pppoe-automatizacion` lee el router con puertos internos de `src/mikro-tik` | `mikrotik-router` |
-| `cliente` escribe el contrato (`CONTRATO_FISICO`) por un adaptador propio y usa el servicio de `credito` (`CLASIFICACION_CREDITO`) | `contrato-cliente` y `credito`: pasan a sus fachadas |
+| `cliente` usa el servicio de `credito` (`CLASIFICACION_CREDITO`) | `credito`: pasa a su fachada |
+| `cliente` convierte `fechaFirma` del contrato en papel con `new Date(texto)`: si llega sin hora se guarda un día antes | Cuando se toque `cliente` |
+| Contratos creados antes del paso 15 quedaron con las fechas un día antes. No se modificaron | El dueño, si le importa |
+| No hay ruta para corregir un contrato de servicio ya creado (decisión del dueño) | Cuando Angular la necesite |
 | Columnas `Ruta.montoCobrado` y tablas `CobroRuta`, `RutaTurno`, `FacturaRuta` sin escritura desde el paso 8 | Se quedan en la base |
 | `GET /user/get-users-to-rutas` devuelve todos los usuarios (también inactivos) y `apellidos` repite el nombre. El servidor ya rechaza asignar uno inactivo | `usuario` |
 | `dashboard` lee las rutas abiertas directamente de la tabla (solo se le agregó `eliminadoEn: null`) | `dashboard` |
@@ -173,7 +177,7 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 | Tabla `TicketConformidadEnlace` sin uso (flujo de enlace público retirado); env `TICKET_CONFORMIDAD_LINK_TTL_MINUTES` ya no se lee | Flujo nuevo de firma en el teléfono del técnico (lo define el dueño). **No** se borra la tabla (migraciones solo aditivas) |
 | La base conserva las reglas antiguas: borrar un plan por SQL (o con `main`) deja clientes, accesos e instalaciones **sin plan**, y borrar un servicio adicional arrastra asignaciones y líneas de factura. La protección es de la aplicación; cambiar las llaves exige `DROP CONSTRAINT` | Solo con autorización del dueño |
 | Revisar en producción: clientes activos sin plan (en la copia local 170, que no se facturan) y accesos PPPoE con un plan distinto al de su cliente (33 de 68) | El dueño, antes del deploy |
-| Los crons y `contrato-cliente` leen los planes directamente de la tabla | `ciclo-facturacion` y `contrato-cliente` |
+| Los crons leen los planes directamente de la tabla | `ciclo-facturacion` |
 | Reemplazar los servicios de un cliente borra sus filas de `ClienteServicio` y las vuelve a crear: no queda historial y se pierde `fechaInicio` original | Cuando se rediseñen los servicios adicionales |
 | El React envía `empresaId` y `estado` al crear planes, servicios y tipos: ahora responden 400 | La UI nueva (ver `cambios-contrato-ui.md`) |
 | La base conserva el borrado en cascada de departamentos, municipios y sectores: por SQL todavía se pierde la ubicación de los clientes | Solo con autorización del dueño |
@@ -198,7 +202,7 @@ Conformidad medida el 27-nov-2026 con `scripts/conformidad-hexagonal.sh`.
 
 | Módulo en `src/modules` | Conformidad |
 |---|---|
-| `almacenamiento-media`, `cliente`, `cliente-cobranza`, `empresa`, `mensajeria-cliente`, `mikrotik-router-credentials`, `notificacion`, `pppoe-credentials`, `real-time-location`, `ruta-cobro`, `servicio`, `ticket-soporte`, `ticket-soporte-historial`, `ticket-soporte-metrica`, `ubicacion`, `zona-facturacion` | Sin hallazgos |
+| `almacenamiento-media`, `cliente`, `cliente-cobranza`, `contrato-cliente`, `empresa`, `mensajeria-cliente`, `mikrotik-router-credentials`, `notificacion`, `pppoe-credentials`, `real-time-location`, `ruta-cobro`, `servicio`, `ticket-soporte`, `ticket-soporte-historial`, `ticket-soporte-metrica`, `ubicacion`, `zona-facturacion` | Sin hallazgos |
 | `facturacion`, `ticket-soporte-conformidad` | Solo el falso positivo del check 13 (un enum con un valor igual a un rol) |
 | `cliente-instalacion`, `cliente-desinstalacion`, `mikrotik-ssh`, `pppoe-acceso-internet`, `pppoe-auditoria`, `pppoe-automatizacion`, `pppoe-cliente-cuenta`, `pppoe-operacion`, `pppoe-perfil-homologacion` | Marcan líneas en el check 6 (`throw new Error`), que el estándar admite solo para errores de programación: revisar a mano cuando se toquen |
 | `excel-reports`, `reports` | No conformes: se resuelven en `reporte` |
@@ -213,7 +217,6 @@ Conformidad medida el 27-nov-2026 con `scripts/conformidad-hexagonal.sh`.
 | `mikro-tik` | 1816 | 7 | 10 (fuera; PPPoE lo importa) |
 | `user`, `perfil` | 1602 + 619 | 16 | 14 |
 | `zona-facturacion-cron` | 1241 | crons | Final |
-| `contrato-cliente`, `id-contrato` | 729 + 106 | 15 | 15 |
 | `Utils`, `shared`, `CustomDecoratorAuthToken`, `migrate.*`, `app.controller/service` | pocas | — | Transversal (§3.2) |
 
 ### 2.6 Historial por paso
@@ -242,6 +245,7 @@ Conformidad medida el 27-nov-2026 con `scripts/conformidad-hexagonal.sh`.
 | 27 nov | `notificacion #1–#2` | Paso 12 |
 | 27 nov | `ticket-soporte-metrica #1–#2` | Paso 19 |
 | 27 nov | `empresa #1–#3` | Paso 18 |
+| 27 nov | `contrato-cliente #1–#3` | Paso 15 |
 
 El detalle de cada cambio visible está en `docs/cambios-contrato-ui.md`; el de cada commit, en su
 mensaje (`git log`).
@@ -338,6 +342,11 @@ Decisiones del dueño del **26-nov-2026**. Los nombres nuevos siguen §15 del es
   facturas y documentos. No se crea ni se borra desde la API (muchas tablas la referencian) y solo la
   edita `SUPER_ADMIN`. Los logos son direcciones web escritas a mano.
 
+- **Contratos** (27-nov-2026): el texto de las plantillas lo crean, editan y borran solo `SUPER_ADMIN` y
+  `ADMIN`; oficina las lee, crea contratos y arma documentos. El día de pago del documento es el de la
+  zona de facturación del cliente (sin zona, el día de activación). Un contrato no se edita desde la API
+  por ahora.
+
 ### 3.2 Orden de trabajo
 
 En nombres, fusiones y alcance esta tabla manda sobre la propuesta de §15.1 del estándar.
@@ -359,7 +368,7 @@ En nombres, fusiones y alcance esta tabla manda sobre la propuesta de §15.1 del
 | 12 | `notificacion` | `notificaciones`, `push-notifications`, `push-dispositivos` | ✅ Hecho | `notificacion #1–#2`: fachada `NOTIFICACION`, bandeja por usuario (leída, descartada) en `NotificacionUsuario`, push con Firebase como adaptador (se inicializa al primer envío), dispositivo ligado a su sesión y apagado al revocarla, avisos de crons y bot a todos menos técnicos, rutas de push por `:instalacionId` |
 | 13 | `common/tiempo-real` | `web-sockets` | ✅ Hecho | `comun #12`, `tiempo-real #1`: puerto `TIEMPO_REAL`, handshake validado como el guard HTTP, cierre al vencer el token o revocar la sesión, salas por usuario y rol, eventos en español (`docs/eventos-tiempo-real.md`), ruta del bot en `mensajeria-cliente` |
 | 14 | `usuario` | `user`, `perfil` | Pendiente | Sin tocar `auth`; solo SUPER_ADMIN edita a otros |
-| 15 | `contrato-cliente` | `contrato-cliente`, `id-contrato` | Pendiente | |
+| 15 | `contrato-cliente` | `contrato-cliente`, `id-contrato` | ✅ Hecho | `contrato-cliente #1–#3`: plantillas en `/contrato-plantilla`, documento y alta de contrato solo de oficina, plantillas editables solo por administración, día de pago de la zona, rutas sin uso retiradas, `cliente` por la fachada `CONTRATO_CLIENTE`, sin migraciones |
 | 16 | `servicio` | `servicio`, `servicio-internet`, `tipo-servicio` | ✅ Hecho | `servicio #1–#3`: fachada `SERVICIO`, borrado lógico solo sin uso, precio con contraseña, rutas renombradas |
 | 17 | `ubicacion` | `location`, `sector` | ✅ Hecho | `ubicacion #1–#3`: fachada `UBICACION`, borrado lógico de sectores, municipios completos y rutas destructivas retiradas |
 | 18 | `empresa` | `empresa` | ✅ Hecho | `empresa #1–#3`: datos de la empresa de la instalación (leer cualquier sesión, editar solo super administrador), sin creación ni borrado, rutas sin id, `seed` con datos de ejemplo, sin migraciones |
@@ -750,7 +759,7 @@ El resto (WhatsApp, Meta, almacenamiento, Firebase, MikroTik, plantillas) no cam
 
 | Cliente | Qué se rompe |
 |---|---|
-| React actual | Sesión con refresh, bodies estrictos, errores nuevos, y las pantallas de clientes, zonas, facturas y pagos, mensajería, rutas de cobro, planes y servicios, sectores y ubicación, y tickets. Todos los eventos en vivo (cambiaron de nombre) |
+| React actual | Sesión con refresh, bodies estrictos, errores nuevos, y las pantallas de clientes, zonas, facturas y pagos, mensajería, rutas de cobro, planes y servicios, sectores y ubicación, tickets y contratos (alta, plantillas y documento). Todos los eventos en vivo (cambiaron de nombre) |
 | App Android | Refresh de sesión, cobros en ruta y comprobante, todas las pantallas de tickets (incluidas las dos rutas que estaban en `dashboard` y la firma del cliente) los eventos en vivo (nombres nuevos y reconexión tras `TOKEN_EXPIRADO`) y el push (rutas `PUT`/`DELETE /push-dispositivos/:instalacionId` y datos en español) |
 | Angular | Es la interfaz nueva: se construye con `cambios-contrato-ui.md` y `eventos-tiempo-real.md` |
 | Bot y Banrural | El bot envía solo `titulo` y `descripcion` con su secreto al crear tickets, y debe pasar a `POST /mensajeria-cliente/bot/mensajes` para avisar mensajes. Banrural nunca se implementó y se retiró |
