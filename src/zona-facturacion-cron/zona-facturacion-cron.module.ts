@@ -7,16 +7,14 @@ import { PrimerRecordatorioCronService } from './2_primer-recordatorio-cron/prim
 import { SegundoRecordatorioCronService } from './3_segundo-recordatorio-cron/segundo-recordatorio-cron.service';
 import { RecordatorioDiaPagoService } from './4_recordatorio-dia-pago/recordatorio-dia-pago.service';
 import { FacturacionUtilitiesService } from './utilities/factura-manager.service';
-import { CloudApiMetaService } from 'src/cloud-api-meta/cloud-api-meta.service';
+import { MensajeriaClienteModule } from 'src/modules/mensajeria-cliente/mensajeria-cliente.module';
 import { ConfigModule } from '@nestjs/config';
-import { HttpModule } from '@nestjs/axios';
 import { NotificacionesModule } from 'src/notificaciones/notificaciones.module';
 
 @Module({
-  imports: [HttpModule, ConfigModule, NotificacionesModule],
+  imports: [ConfigModule, NotificacionesModule, MensajeriaClienteModule],
   controllers: [ZonaFacturacionCronController],
   providers: [
-    CloudApiMetaService,
     ZonaFacturacionCronService,
     PrismaService,
     GeneracionFacturaCronService,

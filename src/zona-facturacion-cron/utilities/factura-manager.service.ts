@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -15,8 +16,10 @@ import {
   StateFacturaInternet,
 } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CloudApiMetaService } from 'src/cloud-api-meta/cloud-api-meta.service';
-import { formatearTelefonosMeta } from 'src/cloud-api-meta/helpers/cleantelefono';
+import {
+  MENSAJERIA_CLIENTE,
+  MensajeriaClienteFacadePort,
+} from 'src/modules/mensajeria-cliente/public/mensajeria-cliente.facade.port';
 import { dayjs } from 'src/Utils/dayjs.config';
 import {
   calcularFechaPagoEsperada,
@@ -48,7 +51,8 @@ export class FacturacionUtilitiesService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly cloudApi: CloudApiMetaService,
+    @Inject(MENSAJERIA_CLIENTE)
+    private readonly mensajeria: MensajeriaClienteFacadePort,
   ) {}
 
   async obtenerOcrearFactura(
@@ -197,7 +201,7 @@ export class FacturacionUtilitiesService {
       .format('MMMM YYYY')
       .toUpperCase();
 
-    const telefonos = formatearTelefonosMeta([cliente.telefono]);
+    const telefonos = this.mensajeria.normalizarTelefonos([cliente.telefono]);
     const destinosUnicos = Array.from(new Set(telefonos));
 
     if (destinosUnicos.length === 0) {
@@ -214,20 +218,15 @@ export class FacturacionUtilitiesService {
     let enviados = 0;
 
     for (const tel of destinosUnicos) {
-      const payload = this.cloudApi.crearPayloadTicket(
-        tel,
-        templateName,
-        variablesPlantilla,
-      );
+      const { mensajeId } = await this.mensajeria.enviarPlantilla({
+        telefono: tel,
+        plantilla: templateName,
+        variables: variablesPlantilla,
+      });
 
-      const resp = await this.cloudApi.enviarMensaje(payload);
-      const msgId = resp?.messages?.[0]?.id;
+      if (mensajeId) enviados++;
 
-      if (msgId) enviados++;
-
-      this.logger.log(
-        `Factura notificada a ${tel}${msgId ? ` (msgId: ${msgId})` : ''}`,
-      );
+      this.logger.log(`Factura ${factura.id} notificada`);
     }
 
     return enviados;

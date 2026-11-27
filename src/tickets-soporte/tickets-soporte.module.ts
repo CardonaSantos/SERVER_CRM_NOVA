@@ -6,7 +6,7 @@ import { MetasTicketsService } from 'src/metas-tickets/metas-tickets.service';
 import { GatewayModule } from 'src/web-sockets/websocket.module';
 import { TICKET_SOPORTE_REPOSITORY } from './domain/ticket-soporte-repository';
 import { PrismaTicketSoporteRepository } from './infraestructure/prisma-ticket-soporte';
-import { CloudApiMetaModule } from 'src/cloud-api-meta/cloud-api-meta.module';
+import { MensajeriaClienteModule } from 'src/modules/mensajeria-cliente/mensajeria-cliente.module';
 import { TicketResumenModule } from 'src/ticket-resumen/ticket-resumen.module';
 import { PushNotificationsModule } from 'src/push-notifications/push-notifications.module';
 import { TicketSoporteHistorialModule } from 'src/modules/ticket-soporte-historial/ticket-soporte-historial.module';
@@ -14,7 +14,7 @@ import { TicketSoporteHistorialModule } from 'src/modules/ticket-soporte-histori
 @Module({
   imports: [
     GatewayModule,
-    CloudApiMetaModule,
+    MensajeriaClienteModule,
     TicketResumenModule,
     PushNotificationsModule,
     TicketSoporteHistorialModule,
@@ -23,7 +23,6 @@ import { TicketSoporteHistorialModule } from 'src/modules/ticket-soporte-histori
   providers: [
     TicketsSoporteService,
     PrismaService,
-    // CloudApiMetaService,
     MetasTicketsService,
     {
       provide: TICKET_SOPORTE_REPOSITORY,

@@ -37,17 +37,14 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { AlmacenamientoMediaModule } from './modules/almacenamiento-media/almacenamiento-media.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { TicketSolucionesModule } from './ticket-soluciones/ticket-soluciones.module';
-import { WhatsappApiMetaModule } from './whatsapp-api-meta/whatsapp-api-meta.module';
+import { MensajeriaClienteModule } from './modules/mensajeria-cliente/mensajeria-cliente.module';
 import { GatewayModule } from './web-sockets/websocket.module';
 import { TicketResumenModule } from './ticket-resumen/ticket-resumen.module';
-import { CloudApiMetaModule } from './cloud-api-meta/cloud-api-meta.module';
 import { BotFunctionsModule } from './bot-functions/bot-functions.module';
 import { CreditoModule } from './credito/credito.module';
 import { CuotasPagoModule } from './credito/cuotas-pago/cuotas-pago.module';
 import { GenerateReportsModule } from './generate-reports/generate-reports.module';
 import { PerfilModule } from './perfil/perfil.module';
-import { WhatsappCampaignsModule } from './whatsapp-campaigns/whatsapp-campaigns.module';
-import { WhatsappTemplateModule } from './whatsapp-template/whatsapp-template.module';
 import { ClienteInstalacionModule } from './modules/cliente-instalacion/cliente-instalacion.module';
 import { ClienteDesinstalacionModule } from './modules/cliente-desinstalacion/cliente-desinstalacion.module';
 import { PppoeAccesoInternetModule } from './modules/pppoe-acceso-internet/pppoe-acceso-internet.module';
@@ -111,18 +108,14 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     AlmacenamientoMediaModule,
     NotificacionesModule,
     TicketSolucionesModule,
-    WhatsappApiMetaModule,
+    MensajeriaClienteModule,
     GatewayModule,
     TicketResumenModule,
-    CloudApiMetaModule,
     BotFunctionsModule,
     CreditoModule,
     CuotasPagoModule,
     GenerateReportsModule,
     PerfilModule,
-
-    WhatsappCampaignsModule,
-    WhatsappTemplateModule,
 
     ClienteInstalacionModule,
     ClienteDesinstalacionModule,

@@ -22,8 +22,10 @@ import {
   TICKET_SOPORTE_REPOSITORY,
   TicketSoporteRepository,
 } from '../domain/ticket-soporte-repository';
-import { CloudApiMetaService } from 'src/cloud-api-meta/cloud-api-meta.service';
-import { formatearTelefonosMeta } from 'src/cloud-api-meta/helpers/cleantelefono';
+import {
+  MENSAJERIA_CLIENTE,
+  MensajeriaClienteFacadePort,
+} from 'src/modules/mensajeria-cliente/public/mensajeria-cliente.facade.port';
 import { ConfigService } from '@nestjs/config';
 import { throwFatalError } from 'src/Utils/CommonFatalError';
 import { CreateBotFunctionDto } from 'src/bot-functions/dto/create-bot-function.dto';
@@ -335,7 +337,8 @@ export class TicketsSoporteService {
 
     private readonly configService: ConfigService,
 
-    private readonly cloudApi: CloudApiMetaService,
+    @Inject(MENSAJERIA_CLIENTE)
+    private readonly mensajeria: MensajeriaClienteFacadePort,
     private readonly ticketResumen: TicketResumenService,
 
     private readonly firebasePush: FirebasePushService,
@@ -487,15 +490,14 @@ export class TicketsSoporteService {
       createTicketsSoporteDto?.telefonoTemporal,
     ];
 
-    const telefonos = formatearTelefonosMeta(telefonosRaw).filter(Boolean);
+    const telefonos = this.mensajeria.normalizarTelefonos(telefonosRaw);
     try {
       for (const telefono of telefonos) {
-        const payload = this.cloudApi.crearPayloadTicket(
+        await this.mensajeria.enviarPlantilla({
           telefono,
-          templateName,
-          variablesPlantilla,
-        );
-        await this.cloudApi.enviarMensaje(payload);
+          plantilla: templateName,
+          variables: variablesPlantilla,
+        });
       }
     } catch (err) {
       this.logger.error(
