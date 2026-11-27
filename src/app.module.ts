@@ -11,7 +11,7 @@ import { ClienteModule } from './modules/cliente/cliente.module';
 import { ServicioModule } from './servicio/servicio.module';
 import { TipoServicioModule } from './tipo-servicio/tipo-servicio.module';
 import { ServicioInternetModule } from './servicio-internet/servicio-internet.module';
-import { FacturacionZonaModule } from './facturacion-zona/facturacion-zona.module';
+import { ZonaFacturacionModule } from './modules/zona-facturacion/zona-facturacion.module';
 import { FacturacionModule } from './facturacion/facturacion.module';
 import { TagsTicketModule } from './tags-ticket/tags-ticket.module';
 import { TicketsSoporteModule } from './tickets-soporte/tickets-soporte.module';
@@ -79,7 +79,7 @@ import { PushDispositivosModule } from './push-dispositivos/push-dispositivos.mo
     ServicioModule,
     TipoServicioModule,
     ServicioInternetModule,
-    FacturacionZonaModule,
+    ZonaFacturacionModule,
     FacturacionModule,
     TagsTicketModule,
     TicketsSoporteModule,

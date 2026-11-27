@@ -1,5 +1,6 @@
 import { RelojFijo } from 'src/common/reloj/reloj-fijo';
 import { UnidadDeTrabajoEnMemoria } from 'src/common/transaccion/unidad-de-trabajo-en-memoria';
+import { ZonaFacturacionFacadePort } from '../../../zona-facturacion/public/zona-facturacion.facade.port';
 import { EstadoCobranzaCliente } from '../../domain/enums/estado-cobranza-cliente.enum';
 import { EstadoOperativoCliente } from '../../domain/enums/estado-operativo-cliente.enum';
 import { EstadoServicioMikrotik } from '../../domain/enums/estado-servicio-mikrotik.enum';
@@ -29,6 +30,8 @@ describe('alta y edición de clientes', () => {
   let contratosGuardados: GuardarContratoFisico[];
   let contratos: ContratoFisicoPort;
   let unidad: UnidadDeTrabajoEnMemoria;
+  let zonasVerificadas: number[];
+  let zonas: ZonaFacturacionFacadePort;
   const reloj = new RelojFijo(AHORA);
 
   beforeEach(() => {
@@ -41,6 +44,16 @@ describe('alta y edición de clientes', () => {
       },
     };
     unidad = new UnidadDeTrabajoEnMemoria();
+    zonasVerificadas = [];
+    // La zona 99 no admite clientes.
+    zonas = {
+      verificarAsignable: (id) => {
+        zonasVerificadas.push(id);
+        return id === 99
+          ? Promise.reject(new Error('zona eliminada'))
+          : Promise.resolve();
+      },
+    };
   });
 
   describe('CrearClienteUseCase', () => {
@@ -70,6 +83,7 @@ describe('alta y edición de clientes', () => {
         },
         contratos,
         unidad,
+        zonas,
         reloj,
       );
     }
@@ -106,6 +120,17 @@ describe('alta y edición de clientes', () => {
       expect(contratosGuardados).toHaveLength(0);
     });
 
+    it('no guarda nada si la zona no admite clientes', async () => {
+      await expect(
+        crear().execute({
+          ...input,
+          cliente: { ...input.cliente, facturacionZonaId: 99 },
+        }),
+      ).rejects.toThrow('zona eliminada');
+      expect(clientes.ips.size).toBe(0);
+      expect(contratosGuardados).toHaveLength(0);
+    });
+
     it('si la factura falla, el alta falla', async () => {
       const factura = {
         generar: () => Promise.reject(new Error('zona caída')),
@@ -125,7 +150,7 @@ describe('alta y edición de clientes', () => {
       asignaciones: {},
     };
     const actualizar = () =>
-      new ActualizarClienteUseCase(clientes, contratos, unidad, reloj);
+      new ActualizarClienteUseCase(clientes, contratos, unidad, zonas, reloj);
 
     it('lo que no llega no se toca', async () => {
       clientes.sembrar({
@@ -151,6 +176,21 @@ describe('alta y edición de clientes', () => {
       await actualizar().execute({ ...base, servicioIds: [] });
 
       expect(clientes.servicios.get(7)).toEqual([]);
+    });
+
+    it('verifica la zona solo cuando llega una', async () => {
+      clientes.sembrar();
+
+      await actualizar().execute(base);
+      expect(zonasVerificadas).toEqual([]);
+
+      await expect(
+        actualizar().execute({
+          ...base,
+          asignaciones: { facturacionZonaId: 99 },
+        }),
+      ).rejects.toThrow('zona eliminada');
+      expect(zonasVerificadas).toEqual([99]);
     });
 
     it('un cambio manual de estado queda en el historial', async () => {

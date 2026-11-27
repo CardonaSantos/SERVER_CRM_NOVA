@@ -4,6 +4,10 @@ import {
   UNIDAD_DE_TRABAJO,
   UnidadDeTrabajoPort,
 } from 'src/common/transaccion/unidad-de-trabajo.port';
+import {
+  ZONA_FACTURACION,
+  ZonaFacturacionFacadePort,
+} from '../../../zona-facturacion/public/zona-facturacion.facade.port';
 import { ClienteEntity } from '../../domain/entities/cliente.entity';
 import {
   EstadoClientePersistido,
@@ -55,6 +59,8 @@ export class ActualizarClienteUseCase {
     private readonly contratos: ContratoFisicoPort,
     @Inject(UNIDAD_DE_TRABAJO)
     private readonly unidad: UnidadDeTrabajoPort,
+    @Inject(ZONA_FACTURACION)
+    private readonly zonas: ZonaFacturacionFacadePort,
     @Inject(RELOJ) private readonly reloj: RelojPort,
   ) {}
 
@@ -63,6 +69,11 @@ export class ActualizarClienteUseCase {
       const cliente = await this.clientes.findById(input.clienteId);
       if (!cliente) throw new ClienteNoEncontradoError();
       if (cliente.isEliminado) throw new ClienteEliminadoError();
+
+      const { facturacionZonaId } = input.asignaciones;
+      if (typeof facturacionZonaId === 'number') {
+        await this.zonas.verificarAsignable(facturacionZonaId);
+      }
 
       const estadoAnterior = cliente.estadoCliente;
 

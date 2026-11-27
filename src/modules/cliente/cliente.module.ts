@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { VerifyCustomerModule } from 'src/credito/verify-customer/verify-customer.module';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { PppoeAccesoInternetModule } from '../pppoe-acceso-internet/pppoe-acceso-internet.module';
+import { ZonaFacturacionModule } from '../zona-facturacion/zona-facturacion.module';
 import { ClienteFacade } from './application/facade/cliente.facade';
 import { CLASIFICACION_CREDITO } from './application/ports/clasificacion-credito.port';
 import { CONTRATO_FISICO } from './application/ports/contrato-fisico.port';
@@ -37,7 +38,12 @@ import { CLIENTE } from './public/cliente.facade.port';
  * API pública (`public/`): la fachada `CLIENTE` y sus tipos.
  */
 @Module({
-  imports: [PrismaModule, PppoeAccesoInternetModule, VerifyCustomerModule],
+  imports: [
+    PrismaModule,
+    PppoeAccesoInternetModule,
+    VerifyCustomerModule,
+    ZonaFacturacionModule,
+  ],
   controllers: [ClienteController, ClienteRedController],
   providers: [
     // Casos de uso

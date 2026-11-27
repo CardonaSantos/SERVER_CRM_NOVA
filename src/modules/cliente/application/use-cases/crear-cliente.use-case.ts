@@ -4,6 +4,10 @@ import {
   UNIDAD_DE_TRABAJO,
   UnidadDeTrabajoPort,
 } from 'src/common/transaccion/unidad-de-trabajo.port';
+import {
+  ZONA_FACTURACION,
+  ZonaFacturacionFacadePort,
+} from '../../../zona-facturacion/public/zona-facturacion.facade.port';
 import { ClienteEntity } from '../../domain/entities/cliente.entity';
 import { leerCoordenadas } from '../../domain/policies/coordenadas.policy';
 import {
@@ -50,6 +54,8 @@ export class CrearClienteUseCase {
     private readonly contratos: ContratoFisicoPort,
     @Inject(UNIDAD_DE_TRABAJO)
     private readonly unidad: UnidadDeTrabajoPort,
+    @Inject(ZONA_FACTURACION)
+    private readonly zonas: ZonaFacturacionFacadePort,
     @Inject(RELOJ) private readonly reloj: RelojPort,
   ) {}
 
@@ -58,6 +64,8 @@ export class CrearClienteUseCase {
     const nuevo = ClienteEntity.create(input.cliente, ahora);
 
     return this.unidad.ejecutar(async () => {
+      await this.zonas.verificarAsignable(input.cliente.facturacionZonaId);
+
       const cliente = await this.clientes.create(nuevo);
       const clienteId = cliente.id!;
       const props = cliente.toPrimitives();

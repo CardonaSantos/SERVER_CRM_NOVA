@@ -35,6 +35,7 @@ export class GeneracionFacturaCronService {
       })();
 
     const zonas = await this.prisma.facturacionZona.findMany({
+      where: { eliminadoEn: null },
       include: {
         clientes: {
           where: CLIENTE_FACTURABLE_WHERE,
