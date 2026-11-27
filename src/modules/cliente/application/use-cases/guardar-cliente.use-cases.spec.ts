@@ -14,9 +14,9 @@ import {
 } from '../../domain/errors/cliente.errors';
 import { ClienteRepositoryFake } from '../../test/fakes/cliente-repository.fake';
 import {
-  ContratoFisicoPort,
-  GuardarContratoFisico,
-} from '../ports/contrato-fisico.port';
+  ContratoClienteFacadePort,
+  GuardarContratoFisicoInput,
+} from '../../../contrato-cliente/public/contrato-cliente.facade.port';
 import { ActualizarClienteUseCase } from './actualizar-cliente.use-case';
 import { ActualizarIpClienteUseCase } from './actualizar-ip-cliente.use-case';
 import {
@@ -29,8 +29,8 @@ const { ACTIVO, SUSPENDIDO, DESINSTALADO } = EstadoOperativoCliente;
 
 describe('alta y edición de clientes', () => {
   let clientes: ClienteRepositoryFake;
-  let contratosGuardados: GuardarContratoFisico[];
-  let contratos: ContratoFisicoPort;
+  let contratosGuardados: GuardarContratoFisicoInput[];
+  let contratos: ContratoClienteFacadePort;
   let unidad: UnidadDeTrabajoEnMemoria;
   let zonasVerificadas: number[];
   let zonas: ZonaFacturacionFacadePort;
@@ -44,7 +44,7 @@ describe('alta y edición de clientes', () => {
     clientes = new ClienteRepositoryFake();
     contratosGuardados = [];
     contratos = {
-      guardar: (c) => {
+      guardarContratoFisico: (c) => {
         contratosGuardados.push(c);
         return Promise.resolve();
       },

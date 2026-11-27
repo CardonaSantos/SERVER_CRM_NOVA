@@ -52,17 +52,6 @@ export class ClienteReferenciaInvalidaError extends DomainError {
   }
 }
 
-export class ClienteContratoDuplicadoError extends DomainError {
-  readonly codigo = 'CLIENTE_CONTRATO_DUPLICADO';
-  readonly tipo: TipoErrorDominio = 'CONFLICTO';
-
-  constructor() {
-    super(
-      'Ese número de contrato ya está registrado en otro cliente (puede ser uno eliminado).',
-    );
-  }
-}
-
 export class ClienteModificadoError extends DomainError {
   readonly codigo = 'CLIENTE_MODIFICADO';
   readonly tipo: TipoErrorDominio = 'CONFLICTO';

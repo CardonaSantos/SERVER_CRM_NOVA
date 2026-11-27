@@ -6,9 +6,9 @@ import { FacturacionModule } from '../facturacion/facturacion.module';
 import { UbicacionModule } from '../ubicacion/ubicacion.module';
 import { ZonaFacturacionModule } from '../zona-facturacion/zona-facturacion.module';
 import { ServicioModule } from '../servicio/servicio.module';
+import { ContratoClienteModule } from '../contrato-cliente/contrato-cliente.module';
 import { ClienteFacade } from './application/facade/cliente.facade';
 import { CLASIFICACION_CREDITO } from './application/ports/clasificacion-credito.port';
-import { CONTRATO_FISICO } from './application/ports/contrato-fisico.port';
 import { ActualizarClienteUseCase } from './application/use-cases/actualizar-cliente.use-case';
 import { ActualizarIpClienteUseCase } from './application/use-cases/actualizar-ip-cliente.use-case';
 import { CrearClienteUseCase } from './application/use-cases/crear-cliente.use-case';
@@ -28,7 +28,6 @@ import { ClasificacionCreditoVerificacionAdapter } from './infra/credito/clasifi
 import { ClienteFichaPrismaQuery } from './infra/prisma/cliente-ficha-prisma.query';
 import { ClienteListadoPrismaQuery } from './infra/prisma/cliente-listado-prisma.query';
 import { ClientePrismaRepository } from './infra/prisma/cliente-prisma.repository';
-import { ContratoFisicoPrismaAdapter } from './infra/prisma/contrato-fisico-prisma.adapter';
 import { ClienteRedController } from './presentation/http/cliente-red.controller';
 import { ClienteController } from './presentation/http/cliente.controller';
 import { CLIENTE } from './public/cliente.facade.port';
@@ -47,6 +46,7 @@ import { CLIENTE } from './public/cliente.facade.port';
     FacturacionModule,
     ServicioModule,
     UbicacionModule,
+    ContratoClienteModule,
   ],
   controllers: [ClienteController, ClienteRedController],
   providers: [
@@ -70,7 +70,6 @@ import { CLIENTE } from './public/cliente.facade.port';
     { provide: CLIENTE_REPOSITORY, useClass: ClientePrismaRepository },
     { provide: CLIENTE_LISTADO_QUERY, useClass: ClienteListadoPrismaQuery },
     { provide: CLIENTE_FICHA_QUERY, useClass: ClienteFichaPrismaQuery },
-    { provide: CONTRATO_FISICO, useClass: ContratoFisicoPrismaAdapter },
     {
       provide: CLASIFICACION_CREDITO,
       useClass: ClasificacionCreditoVerificacionAdapter,

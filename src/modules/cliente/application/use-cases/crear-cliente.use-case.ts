@@ -29,10 +29,10 @@ import {
 } from '../../domain/ports/cliente-repository.port';
 import { CrearClienteProps } from '../../domain/props/cliente.props';
 import {
-  CONTRATO_FISICO,
-  ContratoFisicoPort,
-  GuardarContratoFisico,
-} from '../ports/contrato-fisico.port';
+  CONTRATO_CLIENTE,
+  ContratoClienteFacadePort,
+  GuardarContratoFisicoInput,
+} from '../../../contrato-cliente/public/contrato-cliente.facade.port';
 
 export type CrearClienteInput = {
   cliente: CrearClienteProps & {
@@ -44,7 +44,7 @@ export type CrearClienteInput = {
   coordenadas?: string[];
   servicioIds: number[];
   /** Sin número no se registra contrato. */
-  contrato?: Omit<GuardarContratoFisico, 'clienteId'> | null;
+  contrato?: Omit<GuardarContratoFisicoInput, 'clienteId'> | null;
 };
 
 /**
@@ -58,8 +58,8 @@ export class CrearClienteUseCase {
     private readonly clientes: ClienteRepositoryPort,
     @Inject(FACTURACION)
     private readonly facturacion: FacturacionFacadePort,
-    @Inject(CONTRATO_FISICO)
-    private readonly contratos: ContratoFisicoPort,
+    @Inject(CONTRATO_CLIENTE)
+    private readonly contratos: ContratoClienteFacadePort,
     @Inject(UNIDAD_DE_TRABAJO)
     private readonly unidad: UnidadDeTrabajoPort,
     @Inject(ZONA_FACTURACION)
@@ -122,7 +122,10 @@ export class CrearClienteUseCase {
       const guardado = await this.clientes.update(cliente);
 
       if (input.contrato?.idContrato) {
-        await this.contratos.guardar({ ...input.contrato, clienteId });
+        await this.contratos.guardarContratoFisico({
+          ...input.contrato,
+          clienteId,
+        });
       }
 
       return guardado;

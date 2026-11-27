@@ -36,10 +36,10 @@ import {
   ActualizarPerfilCliente,
 } from '../../domain/props/cliente.props';
 import {
-  CONTRATO_FISICO,
-  ContratoFisicoPort,
-  GuardarContratoFisico,
-} from '../ports/contrato-fisico.port';
+  CONTRATO_CLIENTE,
+  ContratoClienteFacadePort,
+  GuardarContratoFisicoInput,
+} from '../../../contrato-cliente/public/contrato-cliente.facade.port';
 
 export type ActualizarClienteInput = {
   clienteId: number;
@@ -51,7 +51,7 @@ export type ActualizarClienteInput = {
   coordenadas?: string[];
   /** `undefined` conserva los servicios; una lista vacía los quita. */
   servicioIds?: number[];
-  contrato?: Omit<GuardarContratoFisico, 'clienteId'> | null;
+  contrato?: Omit<GuardarContratoFisicoInput, 'clienteId'> | null;
 };
 
 function ubicacionDe(cliente: ClienteEntity) {
@@ -69,8 +69,8 @@ export class ActualizarClienteUseCase {
   constructor(
     @Inject(CLIENTE_REPOSITORY)
     private readonly clientes: ClienteRepositoryPort,
-    @Inject(CONTRATO_FISICO)
-    private readonly contratos: ContratoFisicoPort,
+    @Inject(CONTRATO_CLIENTE)
+    private readonly contratos: ContratoClienteFacadePort,
     @Inject(UNIDAD_DE_TRABAJO)
     private readonly unidad: UnidadDeTrabajoPort,
     @Inject(ZONA_FACTURACION)
@@ -141,7 +141,7 @@ export class ActualizarClienteUseCase {
         );
       }
       if (input.contrato?.idContrato) {
-        await this.contratos.guardar({
+        await this.contratos.guardarContratoFisico({
           ...input.contrato,
           clienteId: input.clienteId,
         });
