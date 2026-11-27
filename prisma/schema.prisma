@@ -559,6 +559,9 @@ model Servicio {
   empresaId       Int
   creadoEn        DateTime          @default(now())
   actualizadoEn   DateTime          @updatedAt
+  /// Borrado lógico: la fila nunca se borra.
+  eliminadoEn     DateTime?
+  eliminadoPorId  Int?
   clientes        ClienteServicio[]
   FacturaServicio FacturaServicio[]
   empresa         Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
@@ -566,16 +569,19 @@ model Servicio {
 }
 
 model ServicioInternet {
-  id            Int               @id @default(autoincrement())
-  nombre        String
-  velocidad     String?
-  precio        Float
-  estado        EstadoServicio    @default(ACTIVO)
-  creadoEn      DateTime          @default(now())
-  actualizadoEn DateTime          @updatedAt
-  empresaId     Int
-  clientes      ClienteInternet[]
-  empresa       Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  id             Int               @id @default(autoincrement())
+  nombre         String
+  velocidad      String?
+  precio         Float
+  estado         EstadoServicio    @default(ACTIVO)
+  creadoEn       DateTime          @default(now())
+  actualizadoEn  DateTime          @updatedAt
+  /// Borrado lógico: la fila nunca se borra.
+  eliminadoEn    DateTime?
+  eliminadoPorId Int?
+  empresaId      Int
+  clientes       ClienteInternet[]
+  empresa        Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
   instalacionesCliente    ClienteInstalacion[]
   desinstalacionesCliente ClienteDesinstalacion[]
@@ -1654,24 +1660,24 @@ model FacturaEliminada {
 
 /// [08] Rutas de Cobro
 model Ruta {
-  id            Int               @id @default(autoincrement())
-  nombreRuta    String
-  cobradorId    Int?
-  montoCobrado  Int               @default(0)
-  estadoRuta    EstadoRuta        @default(ACTIVO)
-  empresaId     Int
-  observaciones String?
-  actualizadoEn DateTime          @updatedAt
-  creadoEn      DateTime          @default(now())
+  id             Int               @id @default(autoincrement())
+  nombreRuta     String
+  cobradorId     Int?
+  montoCobrado   Int               @default(0)
+  estadoRuta     EstadoRuta        @default(ACTIVO)
+  empresaId      Int
+  observaciones  String?
+  actualizadoEn  DateTime          @updatedAt
+  creadoEn       DateTime          @default(now())
   /// Borrado lógico: la ruta eliminada conserva sus clientes y pagos.
   eliminadoEn    DateTime?
   eliminadoPorId Int?
-  cobros        CobroRuta[]       @relation("RutaToCobros")
-  facturas      FacturaRuta[]
-  cobrador      Usuario?          @relation(fields: [cobradorId], references: [id], onDelete: Cascade)
-  empresa       Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  turnos        RutaTurno[]
-  clientes      ClienteInternet[] @relation("ClienteInternetToRuta")
+  cobros         CobroRuta[]       @relation("RutaToCobros")
+  facturas       FacturaRuta[]
+  cobrador       Usuario?          @relation(fields: [cobradorId], references: [id], onDelete: Cascade)
+  empresa        Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  turnos         RutaTurno[]
+  clientes       ClienteInternet[] @relation("ClienteInternetToRuta")
 }
 
 model RutaTurno {
