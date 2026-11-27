@@ -200,13 +200,13 @@ export class ClienteController {
           fechaInstalacion: dto.fechaInstalacion,
           enviarRecordatorio: dto.enviarRecordatorio,
         },
-        // Un valor vacío no desasigna; solo el router admite `null`.
+        // Un valor vacío no desasigna; solo router y sector admiten `null`.
         asignaciones: {
           facturacionZonaId: dto.zonaFacturacionId || undefined,
           servicioInternetId: dto.servicioWifiId || undefined,
           municipioId: dto.municipioId || undefined,
           departamentoId: dto.departamentoId || undefined,
-          sectorId: dto.sectorId || undefined,
+          sectorId: dto.sectorId === null ? null : dto.sectorId || undefined,
           asesorId: dto.asesorId || undefined,
           mikrotikRouterId: dto.mikrotikRouterId,
         },

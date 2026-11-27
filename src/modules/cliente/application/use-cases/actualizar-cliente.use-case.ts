@@ -12,6 +12,10 @@ import {
   SERVICIO,
   ServicioFacadePort,
 } from '../../../servicio/public/servicio.facade.port';
+import {
+  UBICACION,
+  UbicacionFacadePort,
+} from '../../../ubicacion/public/ubicacion.facade.port';
 import { ClienteEntity } from '../../domain/entities/cliente.entity';
 import {
   EstadoClientePersistido,
@@ -50,6 +54,12 @@ export type ActualizarClienteInput = {
   contrato?: Omit<GuardarContratoFisico, 'clienteId'> | null;
 };
 
+function ubicacionDe(cliente: ClienteEntity) {
+  const { departamentoId, municipioId, sectorId } = cliente.toPrimitives();
+
+  return { departamentoId, municipioId, sectorId };
+}
+
 /**
  * Edición de un cliente: lo que no llega no se modifica. La cobranza no se
  * edita (sale de las facturas). Un cambio de estado queda en el historial.
@@ -67,6 +77,8 @@ export class ActualizarClienteUseCase {
     private readonly zonas: ZonaFacturacionFacadePort,
     @Inject(SERVICIO)
     private readonly servicios: ServicioFacadePort,
+    @Inject(UBICACION)
+    private readonly ubicaciones: UbicacionFacadePort,
     @Inject(RELOJ) private readonly reloj: RelojPort,
   ) {}
 
@@ -98,9 +110,15 @@ export class ActualizarClienteUseCase {
       }
 
       const estadoAnterior = cliente.estadoCliente;
+      const ubicacionAnterior = ubicacionDe(cliente);
 
       cliente.actualizarPerfil(input.perfil);
       cliente.actualizarAsignaciones(input.asignaciones);
+      // Solo se comprueba lo que cambia, y antes de guardar.
+      await this.ubicaciones.verificarAsignacion({
+        nueva: ubicacionDe(cliente),
+        anterior: ubicacionAnterior,
+      });
       if (input.estado !== undefined) {
         cliente.ajustarEstadoOperativo(input.estado, this.reloj.ahora());
       }

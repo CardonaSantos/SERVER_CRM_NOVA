@@ -16,6 +16,10 @@ import {
   SERVICIO,
   ServicioFacadePort,
 } from '../../../servicio/public/servicio.facade.port';
+import {
+  UBICACION,
+  UbicacionFacadePort,
+} from '../../../ubicacion/public/ubicacion.facade.port';
 import { ClienteEntity } from '../../domain/entities/cliente.entity';
 import { leerCoordenadas } from '../../domain/policies/coordenadas.policy';
 import {
@@ -62,6 +66,8 @@ export class CrearClienteUseCase {
     private readonly zonas: ZonaFacturacionFacadePort,
     @Inject(SERVICIO)
     private readonly servicios: ServicioFacadePort,
+    @Inject(UBICACION)
+    private readonly ubicaciones: UbicacionFacadePort,
     @Inject(RELOJ) private readonly reloj: RelojPort,
   ) {}
 
@@ -76,6 +82,11 @@ export class CrearClienteUseCase {
       });
       await this.servicios.verificarServiciosAsignables({
         servicioIds: input.servicioIds,
+      });
+
+      const { departamentoId, municipioId, sectorId } = nuevo.toPrimitives();
+      await this.ubicaciones.verificarAsignacion({
+        nueva: { departamentoId, municipioId, sectorId },
       });
 
       const cliente = await this.clientes.create(nuevo);

@@ -3,6 +3,7 @@ import { UnidadDeTrabajoEnMemoria } from 'src/common/transaccion/unidad-de-traba
 import { ZonaFacturacionFacadePort } from '../../../zona-facturacion/public/zona-facturacion.facade.port';
 import { FacturacionFacadePort } from '../../../facturacion/public/facturacion.facade.port';
 import { ServicioFacadePort } from '../../../servicio/public/servicio.facade.port';
+import { UbicacionFacadePort } from '../../../ubicacion/public/ubicacion.facade.port';
 import { EstadoCobranzaCliente } from '../../domain/enums/estado-cobranza-cliente.enum';
 import { EstadoOperativoCliente } from '../../domain/enums/estado-operativo-cliente.enum';
 import { EstadoServicioMikrotik } from '../../domain/enums/estado-servicio-mikrotik.enum';
@@ -34,6 +35,8 @@ describe('alta y edición de clientes', () => {
   let zonasVerificadas: number[];
   let zonas: ZonaFacturacionFacadePort;
   let verificaciones: object[];
+  let ubicacionesVerificadas: object[];
+  let ubicaciones: UbicacionFacadePort;
   let servicios: ServicioFacadePort;
   const reloj = new RelojFijo(AHORA);
 
@@ -58,6 +61,16 @@ describe('alta y edición de clientes', () => {
       },
     };
     verificaciones = [];
+    ubicacionesVerificadas = [];
+    // El sector 99 no cuadra con ningún municipio.
+    ubicaciones = {
+      verificarAsignacion: (input) => {
+        ubicacionesVerificadas.push({ ...input, enUnidad: unidad.abierta });
+        return input.nueva.sectorId === 99
+          ? Promise.reject(new Error('sector de otro municipio'))
+          : Promise.resolve();
+      },
+    };
     const anotar = (verificacion: object) => {
       verificaciones.push({ ...verificacion, enUnidad: unidad.abierta });
     };
@@ -106,6 +119,7 @@ describe('alta y edición de clientes', () => {
         unidad,
         zonas,
         servicios,
+        ubicaciones,
         reloj,
       );
     }
@@ -173,6 +187,35 @@ describe('alta y edición de clientes', () => {
       expect(contratosGuardados).toHaveLength(0);
     });
 
+    it('verifica la ubicación completa dentro de la unidad', async () => {
+      await crear().execute({
+        ...input,
+        cliente: {
+          ...input.cliente,
+          departamentoId: 8,
+          municipioId: 120,
+          sectorId: 2,
+        },
+      });
+
+      expect(ubicacionesVerificadas).toEqual([
+        {
+          nueva: { departamentoId: 8, municipioId: 120, sectorId: 2 },
+          enUnidad: true,
+        },
+      ]);
+    });
+
+    it('no guarda nada si la ubicación no cuadra', async () => {
+      await expect(
+        crear().execute({
+          ...input,
+          cliente: { ...input.cliente, sectorId: 99 },
+        }),
+      ).rejects.toThrow('sector de otro municipio');
+      expect(clientes.ips.size).toBe(0);
+    });
+
     it('si la factura falla, el alta falla', async () => {
       const factura = {
         generarPrimeraFactura: () => Promise.reject(new Error('zona caída')),
@@ -198,6 +241,7 @@ describe('alta y edición de clientes', () => {
         unidad,
         zonas,
         servicios,
+        ubicaciones,
         reloj,
       );
 
@@ -222,6 +266,33 @@ describe('alta y edición de clientes', () => {
       await actualizar().execute(base);
 
       expect(verificaciones).toEqual([]);
+    });
+
+    it('envía la ubicación anterior y la que quedará', async () => {
+      clientes.sembrar({ departamentoId: 8, municipioId: 120, sectorId: 2 });
+
+      await actualizar().execute({
+        ...base,
+        asignaciones: { sectorId: null },
+      });
+
+      expect(ubicacionesVerificadas).toEqual([
+        {
+          nueva: { departamentoId: 8, municipioId: 120, sectorId: null },
+          anterior: { departamentoId: 8, municipioId: 120, sectorId: 2 },
+          enUnidad: true,
+        },
+      ]);
+      expect(clientes.filas.get(7)?.sectorId).toBeNull();
+    });
+
+    it('una ubicación rechazada no cambia al cliente', async () => {
+      clientes.sembrar({ sectorId: 2 });
+
+      await expect(
+        actualizar().execute({ ...base, asignaciones: { sectorId: 99 } }),
+      ).rejects.toThrow('sector de otro municipio');
+      expect(clientes.filas.get(7)?.sectorId).toBe(2);
     });
 
     it('un plan rechazado no cambia al cliente', async () => {
