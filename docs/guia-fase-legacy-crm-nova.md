@@ -2,13 +2,13 @@
 
 > ## ★ DOCUMENTO DE TRASPASO — fuente de verdad del estado del refactor
 >
-> Actualizado el **27-nov-2026**. Léelo completo junto con `CLAUDE.md` y
+> Actualizado el **28-nov-2026**. Léelo completo junto con `CLAUDE.md` y
 > `docs/estandar-hexagonal-crm-nova.md`: con eso tienes todo lo necesario para continuar, sin
 > memoria de conversaciones anteriores. **Al cerrar cada paso se actualiza aquí.**
 >
 > | Dato | Valor |
 > |---|---|
-> | Rama de trabajo | `refactorizaciones-hexagonales` (usa la punta; último cambio de código `e69886e`) |
+> | Rama de trabajo | `refactorizaciones-hexagonales` (usa la punta; último cambio de código `5c26135`) |
 > | Punto de control | `checkpoints-refactorizaciones` = la rama de trabajo en `refactorizacion docs #41` (27-nov-2026): última versión antes del bloque final. Solo se mueve si el dueño lo pide |
 > | Producción (`main`) | `108c6ef`: **nada de este trabajo está desplegado**. `main` es ancestro de la rama |
 > | Para desplegar | §10 |
@@ -23,19 +23,22 @@
 
 | Medida | Valor |
 |---|---|
-| Módulos en `src/modules` | 32: **30 hechos** y 2 de `reporte` que se quedan como están (`excel-reports`, `reports`) |
+| Módulos en `src/modules` | 33: **31 hechos** (el último, `tareas-programadas`) y 2 de `reporte` que se quedan como están (`excel-reports`, `reports`) |
 | Pasos de la fase legacy (§3.2) hechos | 0, 1, 3 a 8 y 11 a 20 |
-| Pasos por hacer | El bloque final: `tareas-programadas`, `cobranza` y, de último, `ciclo-facturacion` |
+| Pasos por hacer | Lo que queda del bloque final: `cobranza` (con sus piezas en `mensajeria-cliente`, `zona-facturacion` y `cliente`) y, de último, `ciclo-facturacion` |
 | En espera | 2 (roles) |
 | No se refactorizan (dueño, 27-nov-2026) | 9 (`credito`), 10 (`mikro-tik`) y `reporte` (`generate-reports`, `excel-reports`, `reports`) |
 | Pendiente propio de tickets | Firma del cliente en el teléfono del técnico (§7) |
-| Verificación | build verde · lint 61 (partió de 429) · Jest 1333/1333 en 170 suites |
+| Verificación | build verde · lint 60 (partió de 429) · Jest 1436/1436 en 186 suites |
 | Migraciones por aplicar en producción | **14** (§10.2) |
 | Commits sobre `main` | Más de 200 |
 
-**Siguiente paso:** el bloque final, en este orden: 1) `tareas-programadas`, 2) `cobranza`,
-3) `ciclo-facturacion`. Empieza por presentar el inventario de `tareas-programadas` (§4.1) y espera a
-que el dueño diga que se empieza. Pendiente suelto y autorizado: comprobar el reporte de cobranza de
+**Siguiente paso:** seguir el plan de `docs/guia-desarrollo-cobranza-corte-crm-nova.md` §10 desde el
+punto 6: `mensajeria-cliente #3` (cola de comunicaciones), luego `zona-facturacion`/`cliente` (modo de
+corte, exclusión, historial de estado y comunicaciones), `cobranza #1–#3` y, de último,
+`ciclo-facturacion`. `tareas-programadas` está hecho (`#1–#4`, 28-nov-2026): el interruptor
+`TAREAS_PROGRAMADAS_ACTIVAS` debe ir en `true` en producción (§10.3). Espera a que el dueño diga que se
+empieza cada punto. Pendiente suelto y autorizado: comprobar el reporte de cobranza de
 `generate-reports` con el pipe estricto y, si falla, el cambio mínimo en un commit aparte (§6.2).
 
 **Modelo acordado por paso** (27-nov-2026): `tareas-programadas`, `cobranza` y
@@ -117,6 +120,7 @@ Módulos hexagonales conformes en `src/modules/` (usa estos como **plantilla**):
 | `empresa` | El módulo más pequeño posible: configuración que se lee y se edita, sin fachada porque nadie más la escribe |
 | `contrato-cliente` | Documento armado desde una plantilla con una policy pura (sin dayjs), fechas de negocio convertidas en el mapper y fachada consumida dentro de la unidad de trabajo de `cliente` |
 | `dashboard` | Módulo de solo lectura: sin entidades ni fachada, un puerto de consulta por panel y series calculadas en policies sobre fechas `YYYY-MM-DD` |
+| `tareas-programadas` | Módulo transversal que no conoce a nadie: candado por arriendo con versión, registro y reintento, etapas y tareas manuales que los demás registran al iniciar (`onModuleInit`), y ventana horaria como policy |
 | `usuario` | Fachada consumida por `auth` sin ciclo (usa los servicios globales de contraseñas y sesiones), borrado lógico que libera un valor único, regla "siempre queda uno" con candado, y archivos que se suben antes de borrar el anterior |
 
 Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el módulo `reporte`, §3).
@@ -143,8 +147,8 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 ### 2.3 Línea base medida
 
 - `npm run build`: verde.
-- `npm run lint:check`: **61** errores tras el paso 14 (no subir; los archivos que toques quedan sin errores nuevos).
-- Jest: 1333/1333 en 170 suites; todas en verde.
+- `npm run lint:check`: **60** errores tras `tareas-programadas` (no subir; los archivos que toques quedan sin errores nuevos).
+- Jest: 1436/1436 en 186 suites; todas en verde.
 - Correr un spec: `npm test -- src/modules/<modulo>` (1–2 min). Con la caché fría la suite completa
   puede pasar de 5 minutos: córrela en segundo plano.
 
@@ -211,6 +215,7 @@ Conformidad medida el 27-nov-2026 con `scripts/conformidad-hexagonal.sh`.
 | `almacenamiento-media`, `cliente`, `cliente-cobranza`, `contrato-cliente`, `dashboard`, `empresa`, `mensajeria-cliente`, `mikrotik-router-credentials`, `notificacion`, `pppoe-credentials`, `real-time-location`, `ruta-cobro`, `servicio`, `ticket-soporte`, `ticket-soporte-historial`, `ticket-soporte-metrica`, `ubicacion`, `zona-facturacion` | Sin hallazgos |
 | `facturacion`, `ticket-soporte-conformidad` | Solo el falso positivo del check 13 (un enum con un valor igual a un rol) |
 | `usuario` | Check 13: su enum de roles y la regla "siempre queda un super administrador activo" (es de datos, no de permisos) |
+| `tareas-programadas` | Check 6: el `never` del `switch` de situaciones y un `Error` de prueba en un spec |
 | `cliente-instalacion`, `cliente-desinstalacion`, `mikrotik-ssh`, `pppoe-acceso-internet`, `pppoe-auditoria`, `pppoe-automatizacion`, `pppoe-cliente-cuenta`, `pppoe-operacion`, `pppoe-perfil-homologacion` | Marcan líneas en el check 6 (`throw new Error`), que el estándar admite solo para errores de programación: revisar a mano cuando se toquen |
 | `excel-reports`, `reports` | No conformes: se resuelven en `reporte` |
 
@@ -253,6 +258,7 @@ Conformidad medida el 27-nov-2026 con `scripts/conformidad-hexagonal.sh`.
 | 27 nov | `contrato-cliente #1–#3` | Paso 15 |
 | 27 nov | `dashboard #1–#4` | Paso 20, gráficas nuevas y resumen por periodo |
 | 27 nov | `usuario #1–#2` | Paso 14 |
+| 28 nov | `docs #42`, `tareas-programadas #1–#4`, `dashboard #5` | Bloque final, parte 1: guía de cobranza; registro con candado por arriendo; jornada (10:00) y repaso con los 4 crons de facturación como etapas; crédito y recorridos con candado; limpieza nocturna; foto mensual y su gráfica; consulta del registro y ejecución manual |
 
 El detalle de cada cambio visible está en `docs/cambios-contrato-ui.md`; el de cada commit, en su
 mensaje (`git log`).
@@ -400,7 +406,7 @@ En nombres, fusiones y alcance esta tabla manda sobre la propuesta de §15.1 del
 | 18 | `empresa` | `empresa` | ✅ Hecho | `empresa #1–#3`: datos de la empresa de la instalación (leer cualquier sesión, editar solo super administrador), sin creación ni borrado, rutas sin id, `seed` con datos de ejemplo, sin migraciones |
 | 19 | `ticket-soporte-metrica` | `metas-tickets` | ✅ Hecho | `ticket-soporte-metrica #1–#2`: avance calculado desde los tickets resueltos (principal o apoyo), sin metas encimadas, cancelar en vez de borrar, escrituras solo de oficina, métricas por mes, sin migraciones |
 | 20 | `dashboard` | `dashboard` | ✅ Hecho | `dashboard #1–#3`: cinco gráficas nuevas, solo lectura, panel general para todos menos técnicos, tickets resueltos por fecha de cierre, cobranza sin desinstalados, facturas sin anuladas, rutas sin uso retiradas, sin migraciones |
-| Final | `tareas-programadas` (H4), `cobranza` (H7–H10), `ciclo-facturacion` (H11) | `zona-facturacion-cron` y nuevos | Pendiente | Los tres van, en ese orden: los crons de facturación de último (dueño, 27-nov-2026). `tareas-programadas` da candado, registro y reintento a todo cron (con migración aditiva); `cobranza` es el corte por mora con simulación, aprobación y conciliación. Primero, la foto mensual de clientes y morosidad. Incluye los días 29–31 y la limpieza de sesiones vencidas (G6). Diseño, horario y orden: `docs/guia-desarrollo-cobranza-corte-crm-nova.md` (jornada a las 10:00, repaso hasta las 18:00, candado por arriendo) |
+| Final | `tareas-programadas` (H4), `cobranza` (H7–H10), `ciclo-facturacion` (H11) | `zona-facturacion-cron` y nuevos | En curso: ✅ `tareas-programadas` (`#1–#4`) | Los tres van, en ese orden: los crons de facturación de último (dueño, 27-nov-2026). `tareas-programadas` da candado, registro y reintento a todo cron (con migración aditiva); `cobranza` es el corte por mora con simulación, aprobación y conciliación. Primero, la foto mensual de clientes y morosidad. Incluye los días 29–31 y la limpieza de sesiones vencidas (G6). Diseño, horario y orden: `docs/guia-desarrollo-cobranza-corte-crm-nova.md` (jornada a las 10:00, repaso hasta las 18:00, candado por arriendo) |
 | — | `reporte` | `generate-reports`, `modules/excel-reports`, `modules/reports` | No se refactoriza | Se queda como está (dueño, 27-nov-2026). Pendiente autorizado: comprobar el reporte de cobranza con el pipe estricto y, si falla, corregirlo con el cambio mínimo |
 
 Transversal: `Utils`, `shared` y `CustomDecoratorAuthToken` se absorben en `common/` o en el módulo

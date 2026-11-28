@@ -38,8 +38,9 @@ La etapa de auth y NestJS 12 está terminada en código (aún no desplegada). Ah
    (`ticket-soporte-metrica`), ✅ paso 18 (`empresa`), ✅ paso 15 (`contrato-cliente`), ✅ paso 20 (`dashboard`), ✅ paso 14 (`usuario`) y ✅ paso 13
    (`common/tiempo-real`, eventos en `docs/eventos-tiempo-real.md`); H2 (roles) queda en
    espera del dueño; `credito`, `mikro-tik` y los reportes no se refactorizan (dueño,
-   27-nov-2026). Queda el bloque final: `tareas-programadas`, `cobranza` y,
-   **de último**, los crons de facturación (`ciclo-facturacion`).
+   27-nov-2026). Bloque final: ✅ `tareas-programadas` (28-nov-2026; en producción
+   `TAREAS_PROGRAMADAS_ACTIVAS=true`), luego `cobranza` y, **de último**, los crons de facturación
+   (`ciclo-facturacion`), según el plan de `docs/guia-desarrollo-cobranza-corte-crm-nova.md` §10.
 
 **No empieces un paso hasta que el dueño diga que se empieza.**
 
@@ -85,7 +86,7 @@ npm run start:dev
 npx prisma migrate status
 ```
 
-Node 24 (`.nvmrc`). Línea base: lint ≤ 61 errores (tras el paso 14; sin errores nuevos en
+Node 24 (`.nvmrc`). Línea base: lint ≤ 60 errores (tras `tareas-programadas`; sin errores nuevos en
 archivos tocados); Jest: todas las suites en verde.
 
 ## Seguridad que ya existe (no la rehagas ni la rodees)
