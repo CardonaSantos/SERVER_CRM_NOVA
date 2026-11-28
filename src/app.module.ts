@@ -49,6 +49,7 @@ import { TicketSoporteConformidadModule } from './modules/ticket-soporte-conform
 import { ExcelReportsModule } from './modules/excel-reports/excel-reports.module';
 import { RealTimeLocationModule } from './modules/real-time-location/real-time-location.module';
 import { UsuarioModule } from './modules/usuario/usuario.module';
+import { TareasProgramadasModule } from './modules/tareas-programadas/tareas-programadas.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { UsuarioModule } from './modules/usuario/usuario.module';
     // Global: puerto RELOJ (hora y fecha de negocio en America/Guatemala).
     RelojModule,
     TransaccionModule,
+    TareasProgramadasModule,
     // Global: puerto TIEMPO_REAL (Socket.IO en /ws).
     TiempoRealModule,
     // TerminusModule,

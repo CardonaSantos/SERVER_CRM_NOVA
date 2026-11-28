@@ -4092,3 +4092,52 @@ enum EstadoEnvioMensaje {
   OMITIDO
   SIN_CONFIRMAR
 }
+
+/// ======================================================================
+/// TAREAS PROGRAMADAS
+/// ======================================================================
+
+/// Registro de cada ejecución de una tarea programada o de una etapa de la
+/// jornada. La fila hace también de candado por arriendo: quien la tiene en
+/// EJECUTANDO con `bloqueadoHasta` vigente es el único que trabaja en ella.
+/// `intentos` sube en cada retoma y sirve de versión para las escrituras.
+/// Es una bitácora: guarda ids sin llaves foráneas.
+model TareaProgramadaEjecucion {
+  id                 Int                   @id @default(autoincrement())
+  /// Identifica la intención: `<TAREA>:<fecha>`, `<ETAPA>:zona-<id>:<fecha>`…
+  clave              String                @unique
+  tarea              String
+  facturacionZonaId  Int?
+  fechaOperativa     DateTime              @db.Date
+  origen             OrigenTareaProgramada @default(PROGRAMADA)
+  ejecutadaPorId     Int?
+  estado             EstadoTareaProgramada
+  intentos           Int                   @default(1)
+  bloqueadoHasta     DateTime?
+  siguienteIntentoEn DateTime?
+  iniciadaEn         DateTime
+  finalizadaEn       DateTime?
+  procesados         Int                   @default(0)
+  errores            Int                   @default(0)
+  /// Conteos y hasta 50 errores (referencia y código). Nunca datos personales.
+  resumen            Json?
+  errorCodigo        String?
+  errorMensaje       String?
+  creadoEn           DateTime              @default(now())
+  actualizadoEn      DateTime              @updatedAt
+
+  @@index([fechaOperativa, tarea])
+  @@index([estado, bloqueadoHasta])
+}
+
+enum EstadoTareaProgramada {
+  EJECUTANDO
+  COMPLETADA
+  COMPLETADA_CON_ERRORES
+  FALLIDA
+}
+
+enum OrigenTareaProgramada {
+  PROGRAMADA
+  MANUAL
+}
