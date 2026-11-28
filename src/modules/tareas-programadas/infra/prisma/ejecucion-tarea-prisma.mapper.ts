@@ -76,6 +76,10 @@ export class EjecucionTareaPrismaMapper {
     };
   }
 
+  static fechaDb(fecha: string): Date {
+    return fechaDb(fecha);
+  }
+
   static estadoDb(estado: EstadoEjecucionTarea): EstadoTareaProgramada {
     return EstadoTareaProgramada[estado];
   }

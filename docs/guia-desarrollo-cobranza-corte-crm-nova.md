@@ -596,8 +596,9 @@ Listados con `{ data, meta }` (`page`, `limit`, filtros con nombre de negocio).
 
 | Método | Ruta | Roles | Contraseña |
 |---|---|---|---|
-| GET | `/tareas-programadas/ejecuciones?fecha=&tarea=&estado=` | `ROLES_ADMINISTRACION` | — |
-| POST | `/tareas-programadas/:tarea/ejecutar` (solo tareas idempotentes; nunca cortes) | `ROLES_SUPER_ADMIN` | Sí |
+| GET | `/tareas-programadas/ejecuciones?desde=&hasta=&tarea=&estados=&facturacionZonaId=&search=&sortBy=` | `ROLES_ADMINISTRACION` | — |
+| GET | `/tareas-programadas/manuales` (las que se pueden lanzar a mano) | `ROLES_ADMINISTRACION` | — |
+| POST | `/tareas-programadas/:tarea/ejecutar` (solo las registradas con `registrarTareaManual`: crédito, limpiezas y recorridos; nunca jornada, foto ni cortes) | `ROLES_SUPER_ADMIN` | Sí |
 | GET | `/cobranza/casos-mora` · `/cobranza/casos-mora/:id` | `ROLES_OFICINA` | — |
 | POST | `/cobranza/casos-mora/:id/cancelar` | `ROLES_ADMINISTRACION` | — |
 | GET | `/cobranza/lotes-corte` · `/cobranza/lotes-corte/:id` | `ROLES_OFICINA` | — |

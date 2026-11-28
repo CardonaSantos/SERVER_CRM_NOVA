@@ -23,3 +23,21 @@ export class EtapaJornadaInvalidaError extends DomainError {
     super(mensaje);
   }
 }
+
+export class TareaProgramadaEnCursoError extends DomainError {
+  readonly codigo = 'TAREA_PROGRAMADA_EN_CURSO';
+  readonly tipo = 'CONFLICTO';
+  constructor() {
+    super(
+      'La tarea, o la jornada del día, se está ejecutando. Intente más tarde.',
+    );
+  }
+}
+
+export class TareaProgramadaNoManualError extends DomainError {
+  readonly codigo = 'TAREA_PROGRAMADA_NO_MANUAL';
+  readonly tipo = 'PROHIBIDO';
+  constructor() {
+    super('Esa tarea no se puede ejecutar a mano.');
+  }
+}

@@ -33,7 +33,29 @@ export interface TareasProgramadasPort {
    * la fase o el orden no son válidos o si la etapa ya existe en esa fase.
    */
   registrarEtapa(input: RegistrarEtapaInput): void;
+
+  /**
+   * Permite que un super administrador lance la tarea a mano
+   * (`POST /tareas-programadas/:tarea/ejecutar`). Solo para tareas que se
+   * pueden repetir sin efectos dobles y que no tocan clientes ni routers.
+   * Lanza `TAREA_PROGRAMADA_INVALIDA` si el nombre no es válido o ya existe.
+   */
+  registrarTareaManual(input: RegistrarTareaManualInput): void;
 }
+
+export type RegistrarTareaManualInput = {
+  /** Mismo nombre que usa en `ejecutarTarea`. */
+  tarea: string;
+  /** Qué hace, para la pantalla. */
+  descripcion: string;
+  /**
+   * La corre con su clave de hoy, con `origen: MANUAL` y quien la lanzó.
+   * Devuelve lo que devolvió `ejecutarTarea`.
+   */
+  ejecutar: (quien: {
+    ejecutadaPorId: number;
+  }) => Promise<ResultadoTareaProgramada>;
+};
 
 export type EjecutarTareaInput = {
   /** Identifica la intención: `LIMPIEZA:2027-03-06`, `EVALUAR_MORA:zona-3:2027-03-06`. */
