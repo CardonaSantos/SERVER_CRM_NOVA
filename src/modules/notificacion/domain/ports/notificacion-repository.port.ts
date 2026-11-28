@@ -11,4 +11,10 @@ export interface NotificacionRepositoryPort {
     notificacion: NotificacionEntity,
     destinatarioIds: readonly number[],
   ): Promise<NotificacionEntity>;
+
+  /**
+   * Borra las notificaciones creadas antes de `corte`, junto con su lugar en
+   * la bandeja de cada destinatario. Devuelve cuántas borró.
+   */
+  borrarCreadasAntesDe(corte: Date): Promise<number>;
 }

@@ -16,6 +16,17 @@ export class EjecucionTareaRepositoryFake
   /** Simula que otra instancia inserta la clave justo antes que nosotros. */
   antesDeCrear: (() => void) | null = null;
 
+  async borrarAnterioresA(fecha: string) {
+    let borradas = 0;
+    for (const [clave, fila] of this.filas) {
+      if (fila.fechaOperativa < fecha) {
+        this.filas.delete(clave);
+        borradas += 1;
+      }
+    }
+    return borradas;
+  }
+
   async findByClave(clave: string) {
     const fila = this.filas.get(clave);
     return fila ? EjecucionTareaEntity.hydrate({ ...fila }) : null;

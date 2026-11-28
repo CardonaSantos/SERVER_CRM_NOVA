@@ -1,8 +1,11 @@
 import { Global, Module } from '@nestjs/common';
 
 import { PrismaModule } from 'src/prisma/prisma.module';
+import { TareasProgramadasModule } from 'src/modules/tareas-programadas/tareas-programadas.module';
 
 import { AuditoriaAuthService } from './auditoria-auth.service';
+import { LimpiezaSesionesCron } from './limpieza-sesiones.cron';
+import { LimpiezaSesionesService } from './limpieza-sesiones.service';
 import { SesionesService } from './sesiones.service';
 
 /*
@@ -12,8 +15,13 @@ import { SesionesService } from './sesiones.service';
  */
 @Global()
 @Module({
-  imports: [PrismaModule],
-  providers: [SesionesService, AuditoriaAuthService],
+  imports: [PrismaModule, TareasProgramadasModule],
+  providers: [
+    SesionesService,
+    AuditoriaAuthService,
+    LimpiezaSesionesService,
+    LimpiezaSesionesCron,
+  ],
   exports: [SesionesService, AuditoriaAuthService],
 })
 export class SesionesModule {}

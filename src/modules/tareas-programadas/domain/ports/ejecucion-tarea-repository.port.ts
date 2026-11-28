@@ -39,4 +39,10 @@ export interface EjecucionTareaRepositoryPort {
    * tiene. `false` si otra ejecución la retomó mientras tanto.
    */
   finalizar(ejecucion: EjecucionTareaEntity): Promise<boolean>;
+
+  /**
+   * Borra las ejecuciones de fechas operativas anteriores a `fecha`
+   * (`YYYY-MM-DD`, sin incluirla). Devuelve cuántas borró.
+   */
+  borrarAnterioresA(fecha: string): Promise<number>;
 }

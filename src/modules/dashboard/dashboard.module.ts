@@ -1,5 +1,10 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from 'src/prisma/prisma.module';
+import { TareasProgramadasModule } from 'src/modules/tareas-programadas/tareas-programadas.module';
+import { TomarFotoMensualUseCase } from './application/use-cases/tomar-foto-mensual.use-case';
+import { FOTO_MENSUAL_CARTERA_REPOSITORY } from './domain/ports/foto-mensual-cartera-repository.port';
+import { FotoMensualCarteraPrismaRepository } from './infra/prisma/foto-mensual-cartera-prisma.repository';
+import { FotoMensualCron } from './presentation/cron/foto-mensual.cron';
 import { ObtenerActividadTicketsUseCase } from './application/use-cases/obtener-actividad-tickets.use-case';
 import { ObtenerClientesPorPlanUseCase } from './application/use-cases/obtener-clientes-por-plan.use-case';
 import { ObtenerClientesPorUbicacionUseCase } from './application/use-cases/obtener-clientes-por-ubicacion.use-case';
@@ -28,9 +33,12 @@ import { ResumenPrismaQuery } from './infra/prisma/resumen-prisma.query';
 import { DashboardController } from './presentation/http/dashboard.controller';
 import { GraficasController } from './presentation/http/graficas.controller';
 
-/** Paneles de solo lectura: no escribe en ninguna tabla ni publica fachada. */
+/**
+ * Paneles de solo lectura, sin fachada. Lo único que escribe es su propia foto
+ * mensual de la cartera (para las gráficas de evolución).
+ */
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, TareasProgramadasModule],
   controllers: [DashboardController, GraficasController],
   providers: [
     // Casos de uso
@@ -45,6 +53,9 @@ import { GraficasController } from './presentation/http/graficas.controller';
     ObtenerDeudaAntiguedadUseCase,
     ObtenerClientesPorPlanUseCase,
     ObtenerClientesPorUbicacionUseCase,
+    TomarFotoMensualUseCase,
+    // Cron
+    FotoMensualCron,
     // Adaptadores
     { provide: RESUMEN_QUERY, useClass: ResumenPrismaQuery },
     { provide: FINANZAS_QUERY, useClass: FinanzasPrismaQuery },
@@ -53,6 +64,10 @@ import { GraficasController } from './presentation/http/graficas.controller';
     { provide: ACTIVIDAD_TICKETS_QUERY, useClass: ActividadTicketsPrismaQuery },
     { provide: COBROS_QUERY, useClass: CobrosPrismaQuery },
     { provide: PANEL_TECNICO_QUERY, useClass: PanelTecnicoPrismaQuery },
+    {
+      provide: FOTO_MENSUAL_CARTERA_REPOSITORY,
+      useClass: FotoMensualCarteraPrismaRepository,
+    },
   ],
 })
 export class DashboardModule {}

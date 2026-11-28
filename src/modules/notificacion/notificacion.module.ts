@@ -24,11 +24,14 @@ import { DispositivoPushPrismaRepository } from './infra/prisma/dispositivo-push
 import { NotificacionPrismaQuery } from './infra/prisma/notificacion-prisma.query';
 import { NotificacionPrismaRepository } from './infra/prisma/notificacion-prisma.repository';
 import { NotificacionEventosWebsocketAdapter } from './infra/websocket/notificacion-eventos-websocket.adapter';
+import { LimpiarNotificacionesUseCase } from './application/use-cases/limpiar-notificaciones.use-case';
+import { LimpiezaNotificacionesCron } from './presentation/cron/limpieza-notificaciones.cron';
 import { SesionesRevocadasListener } from './presentation/eventos/sesiones-revocadas.listener';
 import { DispositivoPushController } from './presentation/http/dispositivo-push.controller';
 import { NotificacionController } from './presentation/http/notificacion.controller';
 import { NOTIFICACION } from './public/notificacion.facade.port';
 import { PrismaModule } from 'src/prisma/prisma.module';
+import { TareasProgramadasModule } from 'src/modules/tareas-programadas/tareas-programadas.module';
 
 /**
  * Avisos internos del CRM: bandeja de cada usuario, aviso en vivo y push al
@@ -37,7 +40,7 @@ import { PrismaModule } from 'src/prisma/prisma.module';
  * API pública (`public/`): la fachada `NOTIFICACION`.
  */
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, TareasProgramadasModule],
   controllers: [NotificacionController, DispositivoPushController],
   providers: [
     // Casos de uso
@@ -52,6 +55,9 @@ import { PrismaModule } from 'src/prisma/prisma.module';
     RevocarDispositivoPushUseCase,
     RevocarDispositivosDeSesionesUseCase,
     EnviarPushUseCase,
+    LimpiarNotificacionesUseCase,
+    // Cron
+    LimpiezaNotificacionesCron,
     // Eventos
     SesionesRevocadasListener,
     // Fachada

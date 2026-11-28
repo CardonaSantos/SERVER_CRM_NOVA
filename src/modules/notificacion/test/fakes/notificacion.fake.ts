@@ -72,6 +72,21 @@ export class NotificacionesEnMemoria
     return Promise.resolve(NotificacionEntity.hydrate(props));
   }
 
+  borrarCreadasAntesDe(corte: Date): Promise<number> {
+    let borradas = 0;
+    for (const [id, n] of this.notificaciones) {
+      if (n.creadaEn.getTime() < corte.getTime()) {
+        this.notificaciones.delete(id);
+        borradas += 1;
+      }
+    }
+    const quedan = this.filas.filter((f) =>
+      this.notificaciones.has(f.notificacionId),
+    );
+    this.filas.splice(0, this.filas.length, ...quedan);
+    return Promise.resolve(borradas);
+  }
+
   private enBandeja(usuarioId: number) {
     return this.filas.filter(
       (f) => f.usuarioId === usuarioId && f.descartadaEn === null,

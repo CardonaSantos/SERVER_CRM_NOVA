@@ -175,9 +175,9 @@ La lectura se hace por las fachadas `PPPOE_ACCESO_INTERNET` y `PPPOE_CLIENTE_CUE
 
 | Hora (GT) | Qué corre | Toca clientes |
 |---|---|---|
-| 00:30 del día 1 | Foto mensual de clientes y cobranza (para las gráficas de evolución) | No |
+| 00:30 del día 1 (reintento cada hora hasta las 05:30) | Foto mensual de clientes y cobranza (`dashboard`, para las gráficas de evolución) | No |
 | 01:00 | Mora de cuotas de crédito (`credito`, lógica sin cambios) | No |
-| 03:00 | Limpieza: sesiones vencidas o revocadas (30 días), intentos de auth (90 días), notificaciones (90 días), registro de ejecuciones (180 días) | No |
+| 03:00 | Limpieza, una tarea por módulo dueño: `LIMPIEZA_SESIONES` (`auth`: sesiones revocadas o vencidas hace más de 30 días con sus refresh, intentos de más de 90), `LIMPIEZA_NOTIFICACIONES` (`notificacion`: más de 90 días, con su bandeja) y `LIMPIEZA_EJECUCIONES` (`tareas-programadas`: más de 180 días) | No |
 | :45 de cada 2 h (01:45 … 23:45) | Cierre de recorridos de técnicos abandonados (`real-time-location`) | No |
 | **10:00** | **Jornada** (§4.2) | Sí |
 | 10:30 … 17:30, cada 30 min | **Repaso** (§4.3) | Sí |
@@ -458,9 +458,21 @@ model TareaProgramadaEjecucion {
 
 ### 7.2 Foto mensual (`tareas-programadas #3`)
 
-Una fila por mes con los totales de clientes por estado operativo y de cobranza, morosidad y monto
-pendiente al cierre del mes. Sus columnas se definen en ese commit a partir de lo que muestran las
-gráficas del `dashboard`.
+Tabla `FotoMensualCartera`, del módulo `dashboard` (es quien la grafica). Una fila por mes (`mes`
+`YYYY-MM`, único) que se toma el día 1 a las 00:30 (`FOTO_MENSUAL:<mes>`), antes de la jornada, y nunca
+se reemplaza. El cron vuelve cada hora hasta las 05:30 como reintento. Guarda solo lo que no se puede recalcular después, con las reglas del panel:
+
+| Grupo | Columnas |
+|---|---|
+| Clientes no eliminados por estado de servicio | `totalClientes`, `activos`, `suspendidos`, `pendientesActivacion`, `enInstalacion`, `desinstalados` |
+| Cobranza (sin desinstalados) | `alDia`, `pagoPendiente`, `atrasados`, `morosos` |
+| Deuda (sin desinstalados, facturas con saldo) | `facturasConDeuda`, `clientesConDeuda`, `clientesConDeudaVencida`, `deuda`, `deudaVencida` |
+| Aparte | `deudaDesinstalados`, `tomadaEn` |
+
+Lo facturado y lo cobrado de cada mes no se guarda: sale de las facturas (`periodo`) y los pagos. Si
+el servidor no está entre las 00:30 y las 05:30 del día 1, ese mes queda sin foto (no se toma tarde con
+datos de otro día). La
+gráfica que la lee es una ruta aparte del `dashboard`.
 
 ### 7.3 `FacturacionZona` y `ClienteInternet` (columnas nuevas)
 
@@ -549,7 +561,7 @@ EstadoRenglonCorte    PENDIENTE EN_PROCESO SUSPENDIDO FALLIDO BLOQUEADO_ROUTER E
 | # | Commit | Contenido |
 |---|---|---|
 | 1 | `tareas-programadas #1` | `TareaProgramadaEjecucion` y sus enums |
-| 2 | `tareas-programadas #3` | Foto mensual |
+| 2 | `tareas-programadas #3` | `FotoMensualCartera` e índice `IntentoAutenticacion(creadoEn)` |
 | 3 | `mensajeria-cliente` | `ComunicacionCliente` y sus enums |
 | 4 | `zona-facturacion` / `cliente` | Modo de corte y exclusión del corte |
 | 5 | `cobranza #1` | Casos, lotes, renglones, eventos, índices parciales y llaves de `ComunicacionCliente` |

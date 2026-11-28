@@ -291,6 +291,8 @@ model IntentoAutenticacion {
 
   @@index([usuarioId, creadoEn])
   @@index([ip, creadoEn])
+  /// Para la limpieza de la madrugada (90 días).
+  @@index([creadoEn])
 }
 
 model UsuarioPushDispositivo {
@@ -4140,4 +4142,39 @@ enum EstadoTareaProgramada {
 enum OrigenTareaProgramada {
   PROGRAMADA
   MANUAL
+}
+
+/// Foto de la cartera al cerrar cada mes (gráficas de evolución del dashboard).
+/// Una por mes; se toma el día 1 desde las 00:30 de Guatemala y no se reemplaza.
+model FotoMensualCartera {
+  id Int @id @default(autoincrement())
+
+  /// YYYY-MM del mes que cerró.
+  mes      String   @unique @db.VarChar(7)
+  tomadaEn DateTime
+
+  /// Clientes no eliminados, por estado de servicio.
+  totalClientes        Int
+  activos              Int
+  suspendidos          Int
+  pendientesActivacion Int
+  enInstalacion        Int
+  desinstalados        Int
+
+  /// Cobranza, sin desinstalados.
+  alDia         Int
+  pagoPendiente Int
+  atrasados     Int
+  morosos       Int
+
+  /// Deuda sin desinstalados (facturas sin pagar con saldo).
+  facturasConDeuda        Int
+  clientesConDeuda        Int
+  clientesConDeudaVencida Int
+  deuda                   Float
+  deudaVencida            Float
+  /// Lo que deben los desinstalados, aparte.
+  deudaDesinstalados      Float
+
+  creadoEn DateTime @default(now())
 }

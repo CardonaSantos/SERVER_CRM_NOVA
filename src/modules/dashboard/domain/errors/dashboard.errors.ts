@@ -20,3 +20,12 @@ export class DashboardUsuarioNoEncontradoError extends DomainError {
     super('El usuario no existe.');
   }
 }
+
+export class FotoMensualInvalidaError extends DomainError {
+  readonly codigo = 'DASHBOARD_FOTO_MENSUAL_INVALIDA';
+  readonly tipo: TipoErrorDominio = 'INVALIDO';
+
+  constructor(mensaje: string) {
+    super(mensaje);
+  }
+}

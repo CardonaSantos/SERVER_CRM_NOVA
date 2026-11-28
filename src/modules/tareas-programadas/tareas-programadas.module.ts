@@ -5,11 +5,13 @@ import { TEMPORIZADOR } from './application/ports/temporizador.port';
 import { RegistroEtapasJornadaService } from './application/services/registro-etapas-jornada.service';
 import { EjecutarJornadaUseCase } from './application/use-cases/ejecutar-jornada.use-case';
 import { EjecutarTareaProgramadaUseCase } from './application/use-cases/ejecutar-tarea-programada.use-case';
+import { LimpiarEjecucionesTareaUseCase } from './application/use-cases/limpiar-ejecuciones-tarea.use-case';
 import { EJECUCION_TAREA_REPOSITORY } from './domain/ports/ejecucion-tarea-repository.port';
 import { tareasProgramadasConfigProvider } from './infra/config/tareas-programadas-config.provider';
 import { EjecucionTareaPrismaRepository } from './infra/prisma/ejecucion-tarea-prisma.repository';
 import { TemporizadorTimersAdapter } from './infra/timers/temporizador-timers.adapter';
 import { JornadaCron } from './presentation/cron/jornada.cron';
+import { LimpiezaEjecucionesCron } from './presentation/cron/limpieza-ejecuciones.cron';
 import { TAREAS_PROGRAMADAS } from './public/tareas-programadas.facade.port';
 
 /**
@@ -25,6 +27,7 @@ import { TAREAS_PROGRAMADAS } from './public/tareas-programadas.facade.port';
     // Casos de uso
     EjecutarTareaProgramadaUseCase,
     EjecutarJornadaUseCase,
+    LimpiarEjecucionesTareaUseCase,
     // Services
     RegistroEtapasJornadaService,
     // Fachada
@@ -39,6 +42,7 @@ import { TAREAS_PROGRAMADAS } from './public/tareas-programadas.facade.port';
     tareasProgramadasConfigProvider,
     // Presentación
     JornadaCron,
+    LimpiezaEjecucionesCron,
   ],
   exports: [TAREAS_PROGRAMADAS],
 })

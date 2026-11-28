@@ -30,7 +30,7 @@
 | No se refactorizan (dueño, 27-nov-2026) | 9 (`credito`), 10 (`mikro-tik`) y `reporte` (`generate-reports`, `excel-reports`, `reports`) |
 | Pendiente propio de tickets | Firma del cliente en el teléfono del técnico (§7) |
 | Verificación | build verde · lint 61 (partió de 429) · Jest 1333/1333 en 170 suites |
-| Migraciones por aplicar en producción | **13** (§10.2) |
+| Migraciones por aplicar en producción | **14** (§10.2) |
 | Commits sobre `main` | Más de 200 |
 
 **Siguiente paso:** el bloque final, en este orden: 1) `tareas-programadas`, 2) `cobranza`,
@@ -156,7 +156,6 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 | La app Android escucha los nombres viejos de eventos (`tracking:*`, `ticket:assignment-changed`) y, cuando el servidor cierra el socket (`TOKEN_EXPIRADO` cada 20 min), queda quieta sin reconectar | El dueño ajusta la app con `docs/eventos-tiempo-real.md` |
 | La app Android usa las rutas viejas de push (`register`, `current`) y navega con los datos viejos del push (`type: "ticket.assignment"`) | El dueño ajusta la app con `docs/eventos-tiempo-real.md` §5 |
 | Las notificaciones creadas antes del paso 12 no tienen destinatarios y no salen en ninguna bandeja (siguen en la base) | Decisión del dueño (27-nov-2026) |
-| Nadie borra las notificaciones viejas: los crons crean varias por zona cada día | `tareas-programadas` (bloque final) |
 | Los dispositivos push registrados antes del paso 12 no tienen sesión: no se apagan con el logout hasta que la app los vuelva a registrar (lo hace al iniciar sesión) | Solo |
 | `GET real-time-location/tracking/realtime` y `GET real-time/last-locations` siguen devolviendo el teléfono del técnico a cualquier sesión (los eventos ya no lo llevan) | H2 (roles) |
 | Los puertos `FacturacionEventosPort` y `RutaCobroEventosPort` aún reciben `empresaId`, que el adaptador ya no usa | Cuando se toquen esos casos de uso |
@@ -590,7 +589,7 @@ H1 es saneamiento en sitio: commits `refactorizacion facturacion #N`, `refactori
 |---|---|---|
 | `modules/cliente-desinstalacion` | **Corregido** (paso 4): completar una desinstalación no marcaba al cliente `DESINSTALADO` | Hecho |
 | Gran parte de la API | Falta definir `@Roles` (G1) | H2 |
-| Sesiones, refresh e intentos de auth | Nadie los limpia (G6) | `tareas-programadas` |
+| Sesiones, refresh e intentos de auth | **Corregido** (`tareas-programadas #3`): a las 03:00 se borran las sesiones revocadas o vencidas hace más de 30 días (con sus refresh), los intentos de más de 90 días y las notificaciones de más de 90 días | Hecho |
 | `src/real-time-location` legacy | **Corregido** (paso 3): su `POST update-location` permitía escribir la ubicación de otro usuario y registraba datos personales en los logs | Hecho |
 | `SaldoCliente` | **Corregido** (pasos 4 y 6): el saldo se calcula al leer; el "saldo a favor" guardado era el total pagado y dejó de mostrarse | Hecho |
 | `zona-facturacion-cron` día de pago | El interruptor `enviarAvisoPago` no se lee: avisa si el general está encendido aunque el aviso esté apagado | Crons |
@@ -761,7 +760,7 @@ momento.
 
 El detalle de la etapa auth está en §6 de `guia-post-auth-refactor-hexagonal-crm-nova.md`.
 
-### 10.2 Migraciones pendientes (13)
+### 10.2 Migraciones pendientes (14)
 
 Aplicadas solo en la base local. Todas aditivas, salvo el cambio de índice indicado.
 
@@ -780,6 +779,7 @@ Aplicadas solo en la base local. Todas aditivas, salvo el cambio de índice indi
 | `20261128020000_push_dispositivo_sesion` | Columna opcional `sesionId` (e índice) en `UsuarioPushDispositivo` |
 | `20261129000000_usuario_borrado_logico` | Tres columnas opcionales en `Usuario` (borrado lógico y correo de antes) |
 | `20261130000000_tareas_programadas_ejecucion` | Tabla `TareaProgramadaEjecucion` (registro y candado de tareas programadas) y sus dos enums |
+| `20261130010000_foto_mensual_y_limpieza` | Tabla `FotoMensualCartera` (foto de la cartera al cerrar cada mes) e índice por fecha en `IntentoAutenticacion` para la limpieza |
 
 `prisma/departamentos-municipios.sql` es solo para instalaciones nuevas.
 

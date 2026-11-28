@@ -16,6 +16,14 @@ export class NotificacionPrismaRepository
     return this.transaccional.cliente;
   }
 
+  async borrarCreadasAntesDe(corte: Date): Promise<number> {
+    // NotificacionUsuario se borra en cascada (llave foránea).
+    const { count } = await this.db.notificacion.deleteMany({
+      where: { fechaCreacion: { lt: corte } },
+    });
+    return count;
+  }
+
   create(
     notificacion: NotificacionEntity,
     destinatarioIds: readonly number[],

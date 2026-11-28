@@ -26,6 +26,13 @@ export class EjecucionTareaPrismaRepository
     return this.transaccional.cliente;
   }
 
+  async borrarAnterioresA(fecha: string): Promise<number> {
+    const { count } = await this.db.tareaProgramadaEjecucion.deleteMany({
+      where: { fechaOperativa: { lt: new Date(`${fecha}T00:00:00.000Z`) } },
+    });
+    return count;
+  }
+
   async findByClave(clave: string): Promise<EjecucionTareaEntity | null> {
     const record = await this.db.tareaProgramadaEjecucion.findUnique({
       where: { clave },
