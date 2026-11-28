@@ -15,3 +15,11 @@ export class EjecucionTareaEstadoInvalidoError extends DomainError {
     super('La tarea programada no está en un estado que permita esa acción.');
   }
 }
+
+export class EtapaJornadaInvalidaError extends DomainError {
+  readonly codigo = 'TAREA_PROGRAMADA_ETAPA_INVALIDA';
+  readonly tipo = 'INVALIDO';
+  constructor(mensaje: string) {
+    super(mensaje);
+  }
+}

@@ -2,16 +2,20 @@ import { Module } from '@nestjs/common';
 
 import { TareasProgramadasFacade } from './application/facade/tareas-programadas.facade';
 import { TEMPORIZADOR } from './application/ports/temporizador.port';
+import { RegistroEtapasJornadaService } from './application/services/registro-etapas-jornada.service';
+import { EjecutarJornadaUseCase } from './application/use-cases/ejecutar-jornada.use-case';
 import { EjecutarTareaProgramadaUseCase } from './application/use-cases/ejecutar-tarea-programada.use-case';
 import { EJECUCION_TAREA_REPOSITORY } from './domain/ports/ejecucion-tarea-repository.port';
 import { tareasProgramadasConfigProvider } from './infra/config/tareas-programadas-config.provider';
 import { EjecucionTareaPrismaRepository } from './infra/prisma/ejecucion-tarea-prisma.repository';
 import { TemporizadorTimersAdapter } from './infra/timers/temporizador-timers.adapter';
+import { JornadaCron } from './presentation/cron/jornada.cron';
 import { TAREAS_PROGRAMADAS } from './public/tareas-programadas.facade.port';
 
 /**
  * Candado por arriendo, registro de ejecuciones y reintento para todo trabajo
- * programado (guía de cobranza §4). No conoce a ningún módulo de negocio.
+ * programado, más la jornada diaria y su repaso (guía de cobranza §4). No
+ * conoce a ningún módulo de negocio: ellos registran sus etapas.
  *
  * API pública (`public/`): la fachada `TAREAS_PROGRAMADAS`. RELOJ, la unidad
  * de trabajo y ConfigService son globales.
@@ -20,6 +24,9 @@ import { TAREAS_PROGRAMADAS } from './public/tareas-programadas.facade.port';
   providers: [
     // Casos de uso
     EjecutarTareaProgramadaUseCase,
+    EjecutarJornadaUseCase,
+    // Services
+    RegistroEtapasJornadaService,
     // Fachada
     TareasProgramadasFacade,
     { provide: TAREAS_PROGRAMADAS, useExisting: TareasProgramadasFacade },
@@ -30,6 +37,8 @@ import { TAREAS_PROGRAMADAS } from './public/tareas-programadas.facade.port';
     },
     { provide: TEMPORIZADOR, useClass: TemporizadorTimersAdapter },
     tareasProgramadasConfigProvider,
+    // Presentación
+    JornadaCron,
   ],
   exports: [TAREAS_PROGRAMADAS],
 })

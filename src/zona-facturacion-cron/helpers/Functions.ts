@@ -69,3 +69,20 @@ export const getEstadoCobranza = (
 
   return EstadoCobranzaCliente.MOROSO;
 };
+
+/**
+ * Código de un error por cliente para el registro de la tarea programada.
+ * Nunca el mensaje: el registro solo guarda ids y códigos.
+ */
+export const codigoErrorCron = (error: unknown): string => {
+  const codigo = (error as { codigo?: unknown } | null)?.codigo;
+  if (typeof codigo === 'string') return codigo;
+  return error instanceof Error ? error.name : 'ERROR';
+};
+
+/** Clave de un paso diario de la jornada: `<TAREA>:zona-<id>:<fecha>`. */
+export const clavePasoZona = (
+  tarea: string,
+  zonaId: number,
+  fechaOperativa: string,
+): string => `${tarea}:zona-${zonaId}:${fechaOperativa}`;

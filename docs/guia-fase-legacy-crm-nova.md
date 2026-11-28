@@ -30,7 +30,7 @@
 | No se refactorizan (dueño, 27-nov-2026) | 9 (`credito`), 10 (`mikro-tik`) y `reporte` (`generate-reports`, `excel-reports`, `reports`) |
 | Pendiente propio de tickets | Firma del cliente en el teléfono del técnico (§7) |
 | Verificación | build verde · lint 61 (partió de 429) · Jest 1333/1333 en 170 suites |
-| Migraciones por aplicar en producción | **12** (§10.2) |
+| Migraciones por aplicar en producción | **13** (§10.2) |
 | Commits sobre `main` | Más de 200 |
 
 **Siguiente paso:** el bloque final, en este orden: 1) `tareas-programadas`, 2) `cobranza`,
@@ -176,6 +176,7 @@ Fuera del refactor de módulos: `excel-reports` y `reports` (se resuelven en el 
 | Mensajería sin probar por HTTP ni contra Meta (solo proveedor falso y base local) | Antes del deploy: una campaña a un número propio |
 | El webhook de Meta descarta los estados de entrega: `ENVIADO` es "aceptado por WhatsApp" | Si el dueño pide confirmar entregas |
 | Crons y tickets envían uno por uno por `MENSAJERIA_CLIENTE` sin registrar el envío; `RecordatorioPago` no se escribe | `ciclo-facturacion` |
+| Las etapas legacy de facturación (generación con su aviso, recordatorios 1 y 2, día de pago) tienen **un solo intento por zona**: repetirlas reenviaría avisos. Si el proceso muere a mitad de una zona, el resto de esa zona no recibe el aviso ese día (como antes) y la fila queda `EJECUTANDO` vencida | `ciclo-facturacion`: avisos por la cola de comunicaciones, con reintento |
 | El React no envía token en plantillas y campañas, y crea plantillas contra la URL del POS | La UI nueva envía el token a la URL del CRM |
 | Los crons leen `FacturacionZona` directamente (solo se les agregó `eliminadoEn: null`) | `ciclo-facturacion`: por la fachada de `zona-facturacion` |
 | Los `Input` públicos de prealta/provisionamiento PPPoE aún llevan `empresaId` | Cuando se toquen; `empresaId` no es filtro (una empresa por BD) |
@@ -502,8 +503,10 @@ Para corregir formato **solo** en archivos tocados: `npx eslint --fix <archivos>
 
 **Humo con la app** (solo si hace falta y con estas reglas):
 - Hora de Guatemala primero: `node -e "console.log(new Date().toLocaleString('es-GT',{timeZone:'America/Guatemala'}))"`
-  (Git Bash da UTC). **No** arrancar cerca de las horas pares (`0 */2 * * *`), 01:00 ni 10:00 GT: hay
-  crons reales que generan facturas y mandan WhatsApp.
+  (Git Bash da UTC). Desde `tareas-programadas #2` ningún cron hace nada sin
+  `TAREAS_PROGRAMADAS_ACTIVAS=true`; aun así **no** lo pongas en local y no arranques cerca de las
+  10:00–18:00 (jornada y repaso), 01:00 ni de los :45 de las horas impares GT: con el interruptor
+  encendido generan facturas y mandan WhatsApp.
 - La base de `.env` es una copia **local y desechable**: se puede leer y escribir en ella. Las
   **integraciones son reales** (routers, WhatsApp, Firebase, almacenamiento): nunca ejecutes rutas
   que las alcancen. Prefiere el `TestingModule` con dobles (§8) a arrancar la aplicación.
@@ -758,7 +761,7 @@ momento.
 
 El detalle de la etapa auth está en §6 de `guia-post-auth-refactor-hexagonal-crm-nova.md`.
 
-### 10.2 Migraciones pendientes (12)
+### 10.2 Migraciones pendientes (13)
 
 Aplicadas solo en la base local. Todas aditivas, salvo el cambio de índice indicado.
 
@@ -776,6 +779,7 @@ Aplicadas solo en la base local. Todas aditivas, salvo el cambio de índice indi
 | `20261128010000_ticket_comentario_edicion` | Fecha de edición del comentario y borrado lógico de sus imágenes |
 | `20261128020000_push_dispositivo_sesion` | Columna opcional `sesionId` (e índice) en `UsuarioPushDispositivo` |
 | `20261129000000_usuario_borrado_logico` | Tres columnas opcionales en `Usuario` (borrado lógico y correo de antes) |
+| `20261130000000_tareas_programadas_ejecucion` | Tabla `TareaProgramadaEjecucion` (registro y candado de tareas programadas) y sus dos enums |
 
 `prisma/departamentos-municipios.sql` es solo para instalaciones nuevas.
 
@@ -784,6 +788,7 @@ Aplicadas solo en la base local. Todas aditivas, salvo el cambio de índice indi
 | Variable | Nota |
 |---|---|
 | `META_APP_SECRET` | **Nueva y obligatoria**: sin ella el webhook de WhatsApp deja de recibir |
+| `TAREAS_PROGRAMADAS_ACTIVAS` | **Nueva y obligatoria en producción: `true`**. Sin ella no corre ninguna tarea programada: **no se factura**, no salen recordatorios, no se calcula la mora de créditos ni se cierran recorridos. Al arrancar apagada, el log lo avisa. En local se deja sin poner |
 | `MY_SECRET_TOKEN_KEY_CRM`, `INTERNAL_SECRET`, `WHATSAPP_VERIFY_TOKEN` | Ya existían; obligatorias. El bot y el broadcast deben enviar `x-internal-secret` |
 | `AUTH_GUARD_MODO`, `VALIDACION_MODO` | Opcionales; sin ellas, estricto. `observacion` es la salida de emergencia |
 | `SWAGGER_HABILITADO` | Opcional; sin ella `/docs` está apagado |

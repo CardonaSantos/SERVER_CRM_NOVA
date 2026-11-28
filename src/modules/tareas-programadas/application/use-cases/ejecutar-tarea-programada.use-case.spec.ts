@@ -241,6 +241,39 @@ describe('EjecutarTareaProgramadaUseCase', () => {
     expect(falla).toHaveBeenCalledTimes(3);
   });
 
+  it('sin reintento, una fallida no se vuelve a ejecutar', async () => {
+    const { repo, reloj, useCase } = preparar();
+    const falla = jest.fn(async () => {
+      throw new SinPlantillaError();
+    });
+
+    await useCase.execute(entrada(falla, { reintentable: false }));
+    expect(repo.fila(CLAVE).siguienteIntentoEn).toBeNull();
+
+    reloj.avanzar({ minutos: 60 });
+    expect(
+      await useCase.execute(entrada(falla, { reintentable: false })),
+    ).toMatchObject({ resultado: 'OMITIDA', motivo: 'AGOTADA' });
+    expect(falla).toHaveBeenCalledTimes(1);
+  });
+
+  it('sin reintento, una abandonada a la mitad no se retoma', async () => {
+    const { repo, reloj, useCase } = preparar();
+    await useCase.execute(entrada(async () => {}, { reintentable: false }));
+    repo.modificar(CLAVE, {
+      estado: EstadoEjecucionTarea.EJECUTANDO,
+      bloqueadoHasta: reloj.ahora(),
+      finalizadaEn: null,
+    });
+    reloj.avanzar({ minutos: 11 });
+    const trabajo = jest.fn(async () => {});
+
+    const r = await useCase.execute(entrada(trabajo, { reintentable: false }));
+
+    expect(r).toMatchObject({ resultado: 'OMITIDA', motivo: 'AGOTADA' });
+    expect(trabajo).not.toHaveBeenCalled();
+  });
+
   it('a mano retoma una fallida sin esperar y registra quién la lanzó', async () => {
     const { repo, useCase } = preparar();
     await useCase.execute(

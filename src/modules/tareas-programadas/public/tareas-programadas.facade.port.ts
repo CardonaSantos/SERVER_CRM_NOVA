@@ -1,5 +1,7 @@
 import {
   EstadoEjecucionTarea,
+  FaseJornada,
+  MomentoJornada,
   OrigenEjecucionTarea,
   ValorResumen,
 } from './tareas-programadas.types';
@@ -8,7 +10,7 @@ export const TAREAS_PROGRAMADAS = Symbol('TAREAS_PROGRAMADAS');
 
 /**
  * Candado, registro y reintento para todo trabajo programado (guía de
- * cobranza §4.4). Los módulos le entregan su trabajo; no conoce a ninguno.
+ * cobranza §4). Los módulos le entregan su trabajo; no conoce a ninguno.
  */
 export interface TareasProgramadasPort {
   /**
@@ -21,6 +23,16 @@ export interface TareasProgramadasPort {
    * un fallo al leer o escribir el registro.
    */
   ejecutarTarea(input: EjecutarTareaInput): Promise<ResultadoTareaProgramada>;
+
+  /**
+   * Suma una etapa a la jornada diaria (10:00, Guatemala). Se llama al
+   * iniciar el módulo dueño. La jornada recorre las etapas por fase y orden;
+   * el repaso (cada 30 min hasta las 17:30) las vuelve a llamar para retomar
+   * lo fallido, así que una etapa debe apoyarse en `ejecutarPaso` para no
+   * repetir lo ya hecho. Lanza `TAREA_PROGRAMADA_ETAPA_INVALIDA` si el nombre,
+   * la fase o el orden no son válidos o si la etapa ya existe en esa fase.
+   */
+  registrarEtapa(input: RegistrarEtapaInput): void;
 }
 
 export type EjecutarTareaInput = {
@@ -35,6 +47,12 @@ export type EjecutarTareaInput = {
   origen?: OrigenEjecucionTarea;
   /** Quien la lanzó a mano. */
   ejecutadaPorId?: number | null;
+  /**
+   * `false` para un trabajo que no se puede repetir sin efectos dobles (envía
+   * mensajes sin registro propio): tiene un solo intento y, si falla o el
+   * proceso muere a la mitad, no se retoma solo. Por defecto `true`.
+   */
+  reintentable?: boolean;
   trabajo: (contexto: ContextoTareaProgramada) => Promise<void>;
 };
 
@@ -59,6 +77,38 @@ export interface ContextoTareaProgramada {
   sigueVigente(): boolean;
 }
 
+export type RegistrarEtapaInput = {
+  /** Nombre estable, en mayúsculas: `GENERAR_FACTURAS`. */
+  tarea: string;
+  fase: FaseJornada;
+  /** Posición dentro de la fase (menor primero). */
+  orden: number;
+  /**
+   * Hace la etapa, normalmente un `ejecutarPaso` por zona. Si lanza, la
+   * jornada lo anota y sigue con la siguiente etapa.
+   */
+  ejecutar: (contexto: ContextoEtapaJornada) => Promise<void>;
+};
+
+/** Lo que recibe una etapa de la jornada. */
+export interface ContextoEtapaJornada {
+  /** `YYYY-MM-DD` de Guatemala de la jornada. */
+  readonly fechaOperativa: string;
+  readonly momento: MomentoJornada;
+  /** `true` entre las 10:00 y las 18:00 de Guatemala. */
+  dentroDeVentana(): boolean;
+  /**
+   * Un paso de la etapa (por zona) con su propio candado y registro, con la
+   * fecha de la jornada. Fuera de la ventana no empieza (`FUERA_DE_VENTANA`).
+   */
+  ejecutarPaso(input: EjecutarPasoInput): Promise<ResultadoTareaProgramada>;
+}
+
+export type EjecutarPasoInput = Omit<
+  EjecutarTareaInput,
+  'fechaOperativa' | 'origen' | 'ejecutadaPorId'
+>;
+
 export type MotivoOmisionTarea =
   /** Interruptor global apagado. */
   | 'APAGADO'
@@ -67,7 +117,9 @@ export type MotivoOmisionTarea =
   /** Fallida; su reintento todavía no llega. */
   | 'EN_ESPERA'
   /** Sin intentos disponibles para esta clave. */
-  | 'AGOTADA';
+  | 'AGOTADA'
+  /** Toca clientes y ya no es horario (10:00–18:00 de Guatemala). */
+  | 'FUERA_DE_VENTANA';
 
 export type ResultadoTareaProgramada =
   | {

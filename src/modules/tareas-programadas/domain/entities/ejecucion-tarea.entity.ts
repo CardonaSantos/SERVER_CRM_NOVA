@@ -15,6 +15,7 @@ import {
 import {
   EjecucionTareaProps,
   IniciarEjecucionTareaProps,
+  LimitesEjecucionTarea,
   QuienEjecutaTarea,
   ResultadoParcialTarea,
   ResumenEjecucionTarea,
@@ -76,7 +77,7 @@ export class EjecucionTareaEntity {
    */
   situacion(
     ahora: Date,
-    opciones: { ignorarLimites?: boolean } = {},
+    opciones: LimitesEjecucionTarea = {},
   ): SituacionEjecucionTarea {
     const { estado, bloqueadoHasta, siguienteIntentoEn, intentos } = this.props;
 
@@ -94,7 +95,7 @@ export class EjecucionTareaEntity {
       return SituacionEjecucionTarea.EN_ESPERA;
     }
 
-    if (!opciones.ignorarLimites && intentos >= MAXIMO_INTENTOS_TAREA) {
+    if (!opciones.ignorarLimites && intentos >= maximoDe(opciones)) {
       return SituacionEjecucionTarea.AGOTADA;
     }
     return SituacionEjecucionTarea.RETOMABLE;
@@ -104,7 +105,7 @@ export class EjecucionTareaEntity {
   retomar(
     quien: QuienEjecutaTarea,
     ahora: Date,
-    opciones: { ignorarLimites?: boolean } = {},
+    opciones: LimitesEjecucionTarea = {},
   ): void {
     if (this.situacion(ahora, opciones) !== SituacionEjecucionTarea.RETOMABLE) {
       throw new EjecucionTareaEstadoInvalidoError();
@@ -154,9 +155,10 @@ export class EjecucionTareaEntity {
     error: { codigo: string; mensaje: string },
     resultado: ResultadoParcialTarea,
     ahora: Date,
+    limites: Pick<LimitesEjecucionTarea, 'maximoIntentos'> = {},
   ): void {
     this.assertEjecutando();
-    const quedanIntentos = this.props.intentos < MAXIMO_INTENTOS_TAREA;
+    const quedanIntentos = this.props.intentos < maximoDe(limites);
     this.props = {
       ...this.props,
       ...EjecucionTareaEntity.conteos(resultado),
@@ -255,6 +257,20 @@ export class EjecucionTareaEntity {
       );
     }
   }
+}
+
+function maximoDe(limites: LimitesEjecucionTarea): number {
+  const maximo = limites.maximoIntentos ?? MAXIMO_INTENTOS_TAREA;
+  if (
+    !Number.isInteger(maximo) ||
+    maximo < 1 ||
+    maximo > MAXIMO_INTENTOS_TAREA
+  ) {
+    throw new EjecucionTareaInvalidaError(
+      `Los intentos de una tarea van de 1 a ${MAXIMO_INTENTOS_TAREA}.`,
+    );
+  }
+  return maximo;
 }
 
 function esFecha(valor: string): boolean {

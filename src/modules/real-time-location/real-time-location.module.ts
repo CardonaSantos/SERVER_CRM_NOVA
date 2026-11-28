@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from 'src/prisma/prisma.module';
+import { TareasProgramadasModule } from 'src/modules/tareas-programadas/tareas-programadas.module';
 import { REAL_TIME_LOCATION_TRANSACTION } from './application/ports/real-time-location-transaction.port';
 import { TECNICO_TRACKING_REALTIME } from './application/ports/tecnico-tracking-realtime.port';
 import { ExpirarTecnicoTrackingUseCase } from './application/use-cases/expirar-tecnico-tracking.use-case';
@@ -33,7 +34,7 @@ import { UltimaUbicacionController } from './presentation/http/ultima-ubicacion.
  * API pública (`public/`): los tipos de `real-time-location.types.ts`.
  */
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, TareasProgramadasModule],
   controllers: [RealTimeLocationController, UltimaUbicacionController],
   providers: [
     // Casos de uso

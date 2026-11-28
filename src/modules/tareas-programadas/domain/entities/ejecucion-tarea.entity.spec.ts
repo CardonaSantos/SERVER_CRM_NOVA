@@ -148,6 +148,28 @@ describe('EjecucionTareaEntity', () => {
       );
     });
 
+    it('con un solo intento, ni la abandonada ni la fallida se retoman', () => {
+      const limites = { maximoIntentos: 1 };
+      expect(nueva().situacion(minutos(11), limites)).toBe(
+        SituacionEjecucionTarea.AGOTADA,
+      );
+      const e = nueva();
+      e.fallar({ codigo: 'X', mensaje: 'x' }, SIN_RESULTADO, AHORA, limites);
+      expect(e.toPrimitives().siguienteIntentoEn).toBeNull();
+      expect(e.situacion(minutos(60), limites)).toBe(
+        SituacionEjecucionTarea.AGOTADA,
+      );
+    });
+
+    it('rechaza límites de intentos fuera de 1 a 3', () => {
+      expect(() =>
+        nueva().situacion(minutos(11), { maximoIntentos: 0 }),
+      ).toThrow(EjecucionTareaInvalidaError);
+      expect(() =>
+        nueva().situacion(minutos(11), { maximoIntentos: 4 }),
+      ).toThrow(EjecucionTareaInvalidaError);
+    });
+
     it('a mano se puede retomar una fallida sin esperar ni con intentos agotados', () => {
       const opciones = { ignorarLimites: true };
       expect(fallida(1).situacion(minutos(1), opciones)).toBe(

@@ -198,6 +198,10 @@ registro; lo completado no se repite.
 
 - Las facturas y mensajes se generan **en la cola**; la fase de envío los manda uno por uno con una
   pausa corta. El corte empieza cuando termina lo anterior, sin hora fija.
+- Mientras existan los crons legacy (`tareas-programadas #2` hasta `ciclo-facturacion`): el aviso de
+  generación va dentro de `GENERAR_FACTURAS` y las cuatro etapas tienen un solo intento por zona
+  (`reintentable: false`), porque repetirlas reenviaría avisos. Sus días siguen la regla vieja (sin
+  ponerse al día ni ajuste de los días 29–31).
 - Un error con un cliente se anota (id y código) y se sigue. Un error de una etapa completa (BD
   caída, plantilla faltante) la deja `FALLIDA` y la jornada sigue con las demás.
 - Ningún otro trabajo pesado corre mientras la jornada tiene el candado; una ejecución manual recibe
@@ -381,12 +385,15 @@ ciclo-facturacion ──▶ FACTURACION, CLIENTE_COBRANZA, ZONA_FACTURACION, SER
 
 | Método | Para qué |
 |---|---|
-| `registrarEtapa({ tarea, fase, orden, ejecutar(contexto) })` | Una etapa de la jornada. La registra el cron del módulo dueño (`presentation/cron/*.cron.ts`) al iniciar. Puede repetirse en el repaso |
-| `ejecutarPaso({ clave, tarea, zonaId?, fechaOperativa, ejecutar })` | Lo usa una etapa por cada zona: arriendo, registro y salto de lo completado |
-| `ejecutarTarea({ clave, tarea, ejecutar })` | Tarea suelta con candado y registro (crédito, limpieza, tracking, foto) |
+| `registrarEtapa({ tarea, fase, orden, ejecutar(etapa) })` | Una etapa de la jornada. La registra el módulo dueño al iniciar (`onModuleInit`). El repaso la vuelve a llamar |
+| `etapa.ejecutarPaso({ clave, tarea, facturacionZonaId?, reintentable?, trabajo })` | Va en el contexto de la etapa, no en la fachada: un paso por zona con arriendo, registro y salto de lo completado, con la fecha de la jornada. Fuera de la ventana no empieza (`FUERA_DE_VENTANA`) |
+| `ejecutarTarea({ clave, tarea, fechaOperativa, reintentable?, trabajo })` | Tarea suelta con candado y registro (crédito, limpieza, tracking, foto) |
 
-El `contexto` trae `fechaOperativa`, `dentroDeVentana()` y un acumulador de errores por cliente
-(máximo 50 en el resumen, solo ids y códigos). Interruptor global `TAREAS_PROGRAMADAS_ACTIVAS`.
+El contexto de la etapa trae `fechaOperativa`, `momento` (`JORNADA` o `REPASO`) y
+`dentroDeVentana()`; el de cada paso o tarea, un acumulador de conteos y errores por elemento (máximo
+50 en el resumen, solo ids y códigos). `reintentable: false` deja un solo intento: lo fallido o
+abandonado no se retoma (para lo que enviaría dos veces un aviso). Interruptor global
+`TAREAS_PROGRAMADAS_ACTIVAS`.
 
 ### 6.3 Lo que se agrega a módulos existentes
 

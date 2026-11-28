@@ -60,3 +60,14 @@ export type QuienEjecutaTarea = {
   origen: OrigenEjecucionTarea;
   ejecutadaPorId: number | null;
 };
+
+/** Límites de reintento de una clave. */
+export type LimitesEjecucionTarea = {
+  /** Ejecución manual: retoma aunque falte la espera o no queden intentos. */
+  ignorarLimites?: boolean;
+  /**
+   * Intentos permitidos (1 a 3; por defecto 3). Con 1, lo fallido o abandonado
+   * no se retoma: para trabajos que no se pueden repetir sin efectos dobles.
+   */
+  maximoIntentos?: number;
+};

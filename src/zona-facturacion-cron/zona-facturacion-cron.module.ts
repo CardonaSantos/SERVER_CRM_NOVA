@@ -10,9 +10,15 @@ import { FacturacionUtilitiesService } from './utilities/factura-manager.service
 import { MensajeriaClienteModule } from 'src/modules/mensajeria-cliente/mensajeria-cliente.module';
 import { ConfigModule } from '@nestjs/config';
 import { NotificacionModule } from 'src/modules/notificacion/notificacion.module';
+import { TareasProgramadasModule } from 'src/modules/tareas-programadas/tareas-programadas.module';
 
 @Module({
-  imports: [ConfigModule, NotificacionModule, MensajeriaClienteModule],
+  imports: [
+    ConfigModule,
+    NotificacionModule,
+    MensajeriaClienteModule,
+    TareasProgramadasModule,
+  ],
   controllers: [ZonaFacturacionCronController],
   providers: [
     ZonaFacturacionCronService,

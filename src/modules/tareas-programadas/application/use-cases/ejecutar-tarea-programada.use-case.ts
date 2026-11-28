@@ -1,6 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
-import { esDomainError } from 'src/common/hexagonal/domain-error';
 import { RELOJ, RelojPort } from 'src/common/reloj/reloj.port';
 
 import { EjecucionTareaEntity } from '../../domain/entities/ejecucion-tarea.entity';
@@ -11,13 +10,16 @@ import {
 import {
   INTERVALO_RENOVACION_MS,
   MAXIMO_ERRORES_DETALLE,
+  MAXIMO_INTENTOS_TAREA,
 } from '../../domain/policies/arriendo.policy';
+import { errorSeguro } from '../../domain/policies/error-seguro.policy';
 import {
   EJECUCION_TAREA_REPOSITORY,
   EjecucionTareaRepositoryPort,
 } from '../../domain/ports/ejecucion-tarea-repository.port';
 import {
   ErrorElementoTarea,
+  LimitesEjecucionTarea,
   QuienEjecutaTarea,
   ResultadoParcialTarea,
   ValorResumen,
@@ -34,7 +36,7 @@ import {
 } from '../ports/tareas-programadas-config.port';
 import { TEMPORIZADOR, TemporizadorPort } from '../ports/temporizador.port';
 
-type Opciones = { ignorarLimites: boolean };
+type Opciones = Required<LimitesEjecucionTarea>;
 type Toma =
   | { ejecucion: EjecucionTareaEntity }
   | Extract<ResultadoTareaProgramada, { resultado: 'OMITIDA' }>;
@@ -67,15 +69,16 @@ export class EjecutarTareaProgramadaUseCase {
       origen: input.origen ?? OrigenEjecucionTarea.PROGRAMADA,
       ejecutadaPorId: input.ejecutadaPorId ?? null,
     };
-    // Una persona puede relanzar una fallida aunque falte la espera.
     const opciones: Opciones = {
+      // Una persona puede relanzar una fallida aunque falte la espera.
       ignorarLimites: quien.origen === OrigenEjecucionTarea.MANUAL,
+      maximoIntentos: input.reintentable === false ? 1 : MAXIMO_INTENTOS_TAREA,
     };
 
     const toma = await this.tomar(input, quien, opciones);
     if ('resultado' in toma) return toma;
 
-    return this.ejecutar(toma.ejecucion, input);
+    return this.ejecutar(toma.ejecucion, input, opciones);
   }
 
   private async tomar(
@@ -153,6 +156,7 @@ export class EjecutarTareaProgramadaUseCase {
   private async ejecutar(
     ejecucion: EjecucionTareaEntity,
     input: EjecutarTareaInput,
+    opciones: Opciones,
   ): Promise<ResultadoTareaProgramada> {
     const acumulado = new AcumuladorTarea();
     let vigente = true;
@@ -206,7 +210,7 @@ export class EjecutarTareaProgramadaUseCase {
         `[TAREA] Falló clave=${ejecucion.clave} intento=${ejecucion.intentos} codigo=${seguro.codigo}`,
         fallo instanceof Error ? fallo.stack : undefined,
       );
-      ejecucion.fallar(seguro, acumulado.resultado(), ahora);
+      ejecucion.fallar(seguro, acumulado.resultado(), ahora, opciones);
     }
 
     if (!(await this.ejecuciones.finalizar(ejecucion))) {
@@ -229,17 +233,6 @@ function omitida(
   ejecucionId: number | null,
 ): Extract<ResultadoTareaProgramada, { resultado: 'OMITIDA' }> {
   return { resultado: 'OMITIDA', motivo, ejecucionId };
-}
-
-/** El mensaje de un DomainError está escrito para mostrarse; el resto no. */
-function errorSeguro(error: unknown): { codigo: string; mensaje: string } {
-  if (esDomainError(error)) {
-    return { codigo: error.codigo, mensaje: error.message };
-  }
-  return {
-    codigo: 'ERROR_INTERNO',
-    mensaje: 'La tarea falló por un error inesperado.',
-  };
 }
 
 function nombreDe(error: unknown): string {
