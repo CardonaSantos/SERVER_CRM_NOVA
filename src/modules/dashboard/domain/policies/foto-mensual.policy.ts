@@ -1,7 +1,12 @@
+import {
+  EvolucionCarteraReadModel,
+  FotoMensualCarteraReadModel,
+  MesEvolucionCartera,
+} from '../read-models/evolucion-cartera.read-model';
 import { DatosResumen } from '../read-models/resumen.read-model';
 import { FacturaSinPagar } from '../read-models/finanzas.read-model';
 import { TomarFotoMensualProps } from '../props/foto-mensual-cartera.props';
-import { inicioDeMes, sumarMeses } from './calendario.policy';
+import { inicioDeMes, sumarDias, sumarMeses } from './calendario.policy';
 import { deudaPorAntiguedad, esVencida, saldoDe } from './deuda.policy';
 
 /** El mes que cierra cuando la fecha de negocio es `hoy` (el anterior). */
@@ -43,5 +48,56 @@ export function cifrasFotoMensual(
     deuda: deuda.totales.monto,
     deudaVencida: deuda.totales.vencido,
     deudaDesinstalados: deuda.desinstalados.monto,
+  };
+}
+
+/** Los últimos `cantidad` meses ya cerrados (sin el actual), del más viejo al más nuevo. */
+export function mesesCerrados(hoy: string, cantidad: number): string[] {
+  const ultimo = `${mesQueCierra(hoy)}-01`;
+  return Array.from({ length: cantidad }, (_, i) =>
+    sumarMeses(ultimo, i - cantidad + 1).slice(0, 7),
+  );
+}
+
+/** Una fila por mes; los meses sin foto quedan con sus cifras en `null`. */
+export function evolucionCartera(
+  meses: string[],
+  fotos: FotoMensualCarteraReadModel[],
+): EvolucionCarteraReadModel {
+  const porMes = new Map(fotos.map((f) => [f.mes, f]));
+  const ultimo = meses[meses.length - 1];
+
+  return {
+    periodo: {
+      desde: `${meses[0]}-01`,
+      hasta: sumarDias(sumarMeses(`${ultimo}-01`, 1), -1),
+    },
+    meses: meses.map((mes) => {
+      const foto = porMes.get(mes);
+      return foto ? { ...foto } : sinFoto(mes);
+    }),
+  };
+}
+
+function sinFoto(mes: string): MesEvolucionCartera {
+  return {
+    mes,
+    tomadaEn: null,
+    totalClientes: null,
+    activos: null,
+    suspendidos: null,
+    pendientesActivacion: null,
+    enInstalacion: null,
+    desinstalados: null,
+    alDia: null,
+    pagoPendiente: null,
+    atrasados: null,
+    morosos: null,
+    facturasConDeuda: null,
+    clientesConDeuda: null,
+    clientesConDeudaVencida: null,
+    deuda: null,
+    deudaVencida: null,
+    deudaDesinstalados: null,
   };
 }

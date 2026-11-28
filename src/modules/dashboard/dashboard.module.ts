@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { TareasProgramadasModule } from 'src/modules/tareas-programadas/tareas-programadas.module';
 import { TomarFotoMensualUseCase } from './application/use-cases/tomar-foto-mensual.use-case';
+import { ObtenerEvolucionCarteraUseCase } from './application/use-cases/obtener-evolucion-cartera.use-case';
+import { FOTO_MENSUAL_CARTERA_QUERY } from './domain/ports/foto-mensual-cartera-query.port';
+import { FotoMensualCarteraPrismaQuery } from './infra/prisma/foto-mensual-cartera-prisma.query';
 import { FOTO_MENSUAL_CARTERA_REPOSITORY } from './domain/ports/foto-mensual-cartera-repository.port';
 import { FotoMensualCarteraPrismaRepository } from './infra/prisma/foto-mensual-cartera-prisma.repository';
 import { FotoMensualCron } from './presentation/cron/foto-mensual.cron';
@@ -53,6 +56,7 @@ import { GraficasController } from './presentation/http/graficas.controller';
     ObtenerDeudaAntiguedadUseCase,
     ObtenerClientesPorPlanUseCase,
     ObtenerClientesPorUbicacionUseCase,
+    ObtenerEvolucionCarteraUseCase,
     TomarFotoMensualUseCase,
     // Cron
     FotoMensualCron,
@@ -64,6 +68,10 @@ import { GraficasController } from './presentation/http/graficas.controller';
     { provide: ACTIVIDAD_TICKETS_QUERY, useClass: ActividadTicketsPrismaQuery },
     { provide: COBROS_QUERY, useClass: CobrosPrismaQuery },
     { provide: PANEL_TECNICO_QUERY, useClass: PanelTecnicoPrismaQuery },
+    {
+      provide: FOTO_MENSUAL_CARTERA_QUERY,
+      useClass: FotoMensualCarteraPrismaQuery,
+    },
     {
       provide: FOTO_MENSUAL_CARTERA_REPOSITORY,
       useClass: FotoMensualCarteraPrismaRepository,

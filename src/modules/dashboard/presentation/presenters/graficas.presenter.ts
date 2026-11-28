@@ -10,15 +10,45 @@ import {
   MesFacturacion,
   ResumenDeuda,
 } from '../../domain/read-models/finanzas.read-model';
+import { EvolucionCarteraReadModel } from '../../domain/read-models/evolucion-cartera.read-model';
 import {
   ClientesPorPlanResponseDto,
   ClientesPorUbicacionResponseDto,
   CobradoPorMetodoResponseDto,
   DeudaAntiguedadResponseDto,
+  EvolucionCarteraResponseDto,
   FacturacionMensualResponseDto,
 } from '../dto/graficas-response.dto';
 
 export class GraficasPresenter {
+  static evolucionCartera(
+    m: EvolucionCarteraReadModel,
+  ): EvolucionCarteraResponseDto {
+    return {
+      periodo: periodo(m.periodo),
+      meses: m.meses.map((f) => ({
+        mes: f.mes,
+        tomadaEn: f.tomadaEn ? f.tomadaEn.toISOString() : null,
+        totalClientes: f.totalClientes,
+        activos: f.activos,
+        suspendidos: f.suspendidos,
+        pendientesActivacion: f.pendientesActivacion,
+        enInstalacion: f.enInstalacion,
+        desinstalados: f.desinstalados,
+        alDia: f.alDia,
+        pagoPendiente: f.pagoPendiente,
+        atrasados: f.atrasados,
+        morosos: f.morosos,
+        facturasConDeuda: f.facturasConDeuda,
+        clientesConDeuda: f.clientesConDeuda,
+        clientesConDeudaVencida: f.clientesConDeudaVencida,
+        deuda: f.deuda,
+        deudaVencida: f.deudaVencida,
+        deudaDesinstalados: f.deudaDesinstalados,
+      })),
+    };
+  }
+
   static facturacionMensual(
     m: FacturacionMensualReadModel,
   ): FacturacionMensualResponseDto {

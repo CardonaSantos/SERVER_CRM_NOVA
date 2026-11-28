@@ -6,6 +6,7 @@ import { ObtenerClientesPorPlanUseCase } from '../../application/use-cases/obten
 import { ObtenerClientesPorUbicacionUseCase } from '../../application/use-cases/obtener-clientes-por-ubicacion.use-case';
 import { ObtenerCobradoPorMetodoUseCase } from '../../application/use-cases/obtener-cobrado-por-metodo.use-case';
 import { ObtenerDeudaAntiguedadUseCase } from '../../application/use-cases/obtener-deuda-antiguedad.use-case';
+import { ObtenerEvolucionCarteraUseCase } from '../../application/use-cases/obtener-evolucion-cartera.use-case';
 import { ObtenerFacturacionMensualUseCase } from '../../application/use-cases/obtener-facturacion-mensual.use-case';
 import { MesesQueryDto, UbicacionQueryDto } from '../dto/graficas-query.dto';
 import { GraficasPresenter } from '../presenters/graficas.presenter';
@@ -20,7 +21,17 @@ export class GraficasController {
     private readonly antiguedad: ObtenerDeudaAntiguedadUseCase,
     private readonly planes: ObtenerClientesPorPlanUseCase,
     private readonly ubicacion: ObtenerClientesPorUbicacionUseCase,
+    private readonly evolucion: ObtenerEvolucionCarteraUseCase,
   ) {}
+
+  /** Clientes y deuda al cierre de cada mes (fotos mensuales; sin el mes en curso). */
+  @Get('evolucion-cartera')
+  @Roles(...ROLES_SIN_TECNICO)
+  async evolucionCartera(@Query() query: MesesQueryDto) {
+    return GraficasPresenter.evolucionCartera(
+      await this.evolucion.execute({ meses: query.meses }),
+    );
+  }
 
   @Get('facturacion-mensual')
   @Roles(...ROLES_SIN_TECNICO)
